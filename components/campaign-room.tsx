@@ -15,6 +15,7 @@ import {
   Radio,
   Shield,
   Users,
+  DoorOpen, // <-- Importamos o ícone novo aqui
 } from "lucide-react"
 
 interface Member {
@@ -37,6 +38,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [characters, setCharacters] = useState<Character[]>(initial.characters)
   const [creating, setCreating] = useState(false)
   const [live, setLive] = useState(false)
+  const [leaving, setLeaving] = useState(false) // <-- Estado de loading para a saída
 
   const isGm = data.role === "gm"
 
@@ -64,6 +66,28 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const applyOptimistic = useCallback((c: Character) => {
     setCharacters((prev) => prev.map((x) => (x.id === c.id ? c : x)))
   }, [])
+
+  // Nova função para abandonar a sessão
+  async function handleLeaveCampaign() {
+    const isOwner = data.campaign.ownerId === data.me.id
+    const msg = isOwner 
+      ? "Tem certeza que deseja encerrar e deletar esta campanha para todos?" 
+      : "Tem certeza que deseja abandonar esta mesa? Você precisará do código para entrar novamente."
+
+    if (!confirm(msg)) return
+
+    setLeaving(true)
+    try {
+      await apiFetch(`/api/campaigns/${data.campaign.id}/leave`, {
+        method: "POST",
+      })
+      router.push("/campaigns")
+      router.refresh()
+    } catch (err) {
+      alert("Erro ao abandonar a campanha.")
+      setLeaving(false)
+    }
+  }
 
   const myCharacters = characters.filter((c) => c.ownerId === data.me.id)
   const otherCharacters = characters.filter((c) => c.ownerId !== data.me.id)
@@ -188,7 +212,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           )}
         </div>
 
-        {/* Coluna lateral: membros */}
+        {/* Coluna lateral: membros e ações */}
         <aside className="flex flex-col gap-4">
           <div className="panel rounded-xl border border-border/60 p-4">
             <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -225,6 +249,24 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             <p className="mt-2 rounded-md border border-primary/30 bg-primary/10 py-2 text-center font-mono text-lg font-bold tracking-widest text-primary">
               {data.campaign.code}
             </p>
+          </div>
+
+          {/* NOVO: Zona de Perigo / Abandonar Sessão */}
+          <div className="panel mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-destructive">
+              Zona de Perigo
+            </h2>
+            <Button
+              variant="destructive"
+              className="w-full gap-2 font-semibold"
+              disabled={leaving}
+              onClick={handleLeaveCampaign}
+            >
+              <DoorOpen className="size-4" />
+              {leaving 
+                ? "Saindo..." 
+                : (isGm ? "Encerrar Campanha" : "Abandonar Sessão")}
+            </Button>
           </div>
         </aside>
       </div>

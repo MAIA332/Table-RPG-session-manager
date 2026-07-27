@@ -6,6 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  allowedDevOrigins: ['jrpg.slip.io'],
 }
 
 export default nextConfig
