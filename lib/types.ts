@@ -46,6 +46,7 @@ export interface EquipmentItem {
   category: "weapon" | "armor" | "shield" | "accessory"
   cost: number
   detail: string
+  purchasable?: boolean
 }
 
 export interface CharacterResources {
@@ -56,6 +57,7 @@ export interface CharacterResources {
   ip: number
   maxIp: number
   fp: number
+  xp:number
 }
 
 export interface Character {
@@ -76,9 +78,47 @@ export interface Character {
   updatedAt: number
 }
 
-// Eventos transmitidos via SSE (sistema realtime local)
+export type Affinity = "VU" | "RS" | "IM" | "AB" | "none"
+
+export interface CreatureAction {
+  name: string
+  attributes: [AttributeKey, AttributeKey]
+  damage: number
+  type: string
+  description?: string
+}
+
+export interface Creature {
+  id: string
+  name: string
+  imageUrl: string
+  level: number
+  species: string
+  attributes: Record<AttributeKey, DieSize>
+  maxHp: number
+  maxMp: number
+  def: number
+  mdef: number
+  affinities: {
+    physical: Affinity; air: Affinity; bolt: Affinity; dark: Affinity;
+    earth: Affinity; fire: Affinity; ice: Affinity; light: Affinity; poison: Affinity;
+  }
+  basicAttacks: CreatureAction[]
+  spells: string[]
+}
+
+export interface ActiveCreature extends Creature {
+  instanceId: string
+  currentHp: number
+  currentMp: number
+}
+
 export type RealtimeEvent =
   | { type: "character:created"; character: Character }
   | { type: "character:updated"; character: Character }
   | { type: "character:deleted"; characterId: string }
   | { type: "presence"; message: string }
+  | { type: "dice:roll"; characterId: string; characterName: string; playerName: string; attribute: string; result: number }
+  | { type: "creature:spawn"; creature: ActiveCreature }
+  | { type: "creature:update"; instanceId: string; updates: Partial<ActiveCreature> }
+  | { type: "creature:remove"; instanceId: string }

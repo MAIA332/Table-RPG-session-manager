@@ -1,0 +1,16 @@
+[
+  {
+    "id": "user_reulc3j3ms3snnxu",
+    "email": "lucasmaia@sinapselabs.com.br",
+    "name": "GILGAMESH",
+    "passwordHash": "d0af0bfd2506420e:c7fe188c15045840d451af85a2800184d0b1b5e94e6e0df5053f8aa1e9efebd0",
+    "createdAt": 1785191047410
+  },
+  {
+    "id": "user_ex0bq249ms6myjd2",
+    "email": "gustavo_antonio_mendes@aclnet.com.br",
+    "name": "BETA",
+    "passwordHash": "67517cad033d5439:85227db93d092fd38d021639fbab69b1a4a1aa6f98551dce815b13d87344840f",
+    "createdAt": 1785362875526
+  }
+]

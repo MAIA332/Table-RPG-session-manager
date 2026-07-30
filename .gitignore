@@ -14,3 +14,8 @@ node_modules
 .next/
 .DS_Store
 .vtt-fabula-ultima.zip
+.env
+/vtt-fabula-ultima.zip
+vtt-fabula-ultima.zip
+vtt-fabula-ultima.zip/
+*.zip

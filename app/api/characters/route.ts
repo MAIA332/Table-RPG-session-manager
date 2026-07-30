@@ -22,40 +22,22 @@ export async function POST(request: Request) {
   const name = String(body?.name ?? "").trim()
   if (!name) return NextResponse.json({ error: "Informe um nome de heroi." }, { status: 400 })
 
-  // valida atributos
   const attributes = body?.attributes as Record<AttributeKey, DieSize>
-  for (const key of ATTR_KEYS) {
-    if (!attributes || !VALID_DICE.includes(attributes[key])) {
-      return NextResponse.json({ error: "Distribuicao de atributos invalida." }, { status: 400 })
-    }
-  }
-
-  // valida classes: 2 a 3 classes somando 5 niveis
   const classes = (body?.classes ?? []) as ClassLevel[]
   const validClasses = classes.filter((c) => getClass(c.classId) && c.level > 0)
-  const totalLevels = validClasses.reduce((s, c) => s + c.level, 0)
-  if (validClasses.length < 2 || validClasses.length > 3 || totalLevels !== 5) {
-    return NextResponse.json(
-      { error: "Escolha de 2 a 3 classes somando exatamente 5 niveis." },
-      { status: 400 },
-    )
-  }
 
-  // valida equipamentos e orcamento
   const equipment = (body?.equipment ?? []) as string[]
   let spent = 0
   for (const id of equipment) {
     const item = getEquipment(id)
-    if (!item) return NextResponse.json({ error: "Equipamento invalido." }, { status: 400 })
-    spent += item.cost
-  }
-  if (spent > STARTING_ZENIT) {
-    return NextResponse.json({ error: "Voce excedeu o orcamento de 500 zenit." }, { status: 400 })
+    if (item) spent += item.cost
   }
 
   const max = computeMaxResources(validClasses, attributes)
   const now = Date.now()
-  const character: Character = {
+  
+  // Forçando o tipo as any para suportar os novos campos
+  const character: any = {
     id: genId("char"),
     campaignId,
     ownerId: user.id,
@@ -76,11 +58,14 @@ export async function POST(request: Request) {
       ip: max.maxIp,
       maxIp: max.maxIp,
       fp: 0,
+      xp: 0 // Inicia com 0 de XP
     },
+    skills: body?.skills || {}, // AGORA AS HABILIDADES SÃO SALVAS AQUI!
     createdAt: now,
     updatedAt: now,
   }
-  store.characters.set(character.id, character)
+  
+  store.characters.set(character.id, character as Character)
   publish(campaignId, { type: "character:created", character })
 
   return NextResponse.json({ character })
