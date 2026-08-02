@@ -71,7 +71,8 @@ export interface Character {
   theme: string
   attributes: Record<AttributeKey, DieSize>
   classes: ClassLevel[]
-  equipment: string[] // ids de EquipmentItem
+  skills: Record<string, number>
+  equipment: string[] 
   zenit: number
   resources: CharacterResources
   createdAt: number
@@ -105,12 +106,21 @@ export interface Creature {
   }
   basicAttacks: CreatureAction[]
   spells: string[]
+  equipment: string[];
 }
 
 export interface ActiveCreature extends Creature {
   instanceId: string
   currentHp: number
   currentMp: number
+}
+
+export interface ActivePoll {
+  id: string;
+  question: string;
+  options: string[];
+  votes: Record<string, number>;
+  expiresAt: number;
 }
 
 export type RealtimeEvent =
@@ -122,3 +132,5 @@ export type RealtimeEvent =
   | { type: "creature:spawn"; creature: ActiveCreature }
   | { type: "creature:update"; instanceId: string; updates: Partial<ActiveCreature> }
   | { type: "creature:remove"; instanceId: string }
+  | { type: "poll:start"; poll: ActivePoll }
+  | { type: "poll:vote"; pollId: string; userId: string; optionIndex: number };

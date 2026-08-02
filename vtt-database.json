@@ -1,0 +1,447 @@
+{
+  "users": [
+    [
+      "user_reulc3j3ms3snnxu",
+      {
+        "id": "user_reulc3j3ms3snnxu",
+        "email": "lucasmaia@sinapselabs.com.br",
+        "name": "GILGAMESH",
+        "passwordHash": "d0af0bfd2506420e:c7fe188c15045840d451af85a2800184d0b1b5e94e6e0df5053f8aa1e9efebd0",
+        "createdAt": 1785191047410
+      }
+    ],
+    [
+      "user_ex0bq249ms6myjd2",
+      {
+        "id": "user_ex0bq249ms6myjd2",
+        "email": "gustavo_antonio_mendes@aclnet.com.br",
+        "name": "BETA",
+        "passwordHash": "67517cad033d5439:85227db93d092fd38d021639fbab69b1a4a1aa6f98551dce815b13d87344840f",
+        "createdAt": 1785362875526
+      }
+    ]
+  ],
+  "sessions": [
+    [
+      "sess_w3k4s326ms82xhbi",
+      {
+        "token": "sess_w3k4s326ms82xhbi",
+        "userId": "user_reulc3j3ms3snnxu",
+        "createdAt": 1785450166254
+      }
+    ],
+    [
+      "sess_dw4vkt5yms846scu",
+      {
+        "token": "sess_dw4vkt5yms846scu",
+        "userId": "user_reulc3j3ms3snnxu",
+        "createdAt": 1785452280078
+      }
+    ],
+    [
+      "sess_6wn4re9ums847utz",
+      {
+        "token": "sess_6wn4re9ums847utz",
+        "userId": "user_ex0bq249ms6myjd2",
+        "createdAt": 1785452329943
+      }
+    ],
+    [
+      "sess_suh2e7lsms896bc3",
+      {
+        "token": "sess_suh2e7lsms896bc3",
+        "userId": "user_reulc3j3ms3snnxu",
+        "createdAt": 1785460656099
+      }
+    ],
+    [
+      "sess_l4g1lwlnms897qya",
+      {
+        "token": "sess_l4g1lwlnms897qya",
+        "userId": "user_ex0bq249ms6myjd2",
+        "createdAt": 1785460722994
+      }
+    ]
+  ],
+  "campaigns": [
+    [
+      "camp_61ixj4ybms847awt",
+      {
+        "id": "camp_61ixj4ybms847awt",
+        "name": "Morte Mágica",
+        "code": "5QBFW3",
+        "ownerId": "user_reulc3j3ms3snnxu",
+        "members": [
+          {
+            "userId": "user_reulc3j3ms3snnxu",
+            "role": "gm"
+          },
+          {
+            "userId": "user_ex0bq249ms6myjd2",
+            "role": "player"
+          }
+        ],
+        "createdAt": 1785452304125
+      }
+    ],
+    [
+      "camp_67ulnb0ims8971tr",
+      {
+        "id": "camp_67ulnb0ims8971tr",
+        "name": "Morte Mágica 2",
+        "code": "HT5UZD",
+        "ownerId": "user_reulc3j3ms3snnxu",
+        "members": [
+          {
+            "userId": "user_reulc3j3ms3snnxu",
+            "role": "gm"
+          },
+          {
+            "userId": "user_ex0bq249ms6myjd2",
+            "role": "player"
+          }
+        ],
+        "createdAt": 1785460690432
+      }
+    ]
+  ],
+  "characters": [
+    [
+      "char_u9ktmiaoms84iazu",
+      {
+        "id": "char_u9ktmiaoms84iazu",
+        "campaignId": "camp_61ixj4ybms847awt",
+        "ownerId": "user_ex0bq249ms6myjd2",
+        "name": "Aria Ventoluz",
+        "avatarUrl": "https://imgs.search.brave.com/qwjCMiOr5A-kEzjsWXlQPmndyTtF8G4_ijQONU9yf-o/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pdjEu/bGlzaW1nLmNvbS9p/bWFnZS8zMTQ1MTUw/My83NDBmdWxsLW1p/bGx5LWFsY29jay5q/cGc",
+        "origin": "As Ilhas Flutuantes de Aethel",
+        "identity": "Pirata dos Céus",
+        "theme": "Vingança",
+        "attributes": {
+          "dex": "d10",
+          "ins": "d10",
+          "mig": "d6",
+          "wlp": "d6"
+        },
+        "classes": [
+          {
+            "classId": "darkblade",
+            "level": 3
+          },
+          {
+            "classId": "rogue",
+            "level": 2
+          }
+        ],
+        "equipment": [
+          "eq-dagger",
+          "eq-staff",
+          "eq-brigandine",
+          "eq-dragon-scale"
+        ],
+        "zenit": 0,
+        "resources": {
+          "hp": 69,
+          "maxHp": 69,
+          "mp": 32,
+          "maxMp": 42,
+          "ip": 3,
+          "maxIp": 6,
+          "fp": 2,
+          "xp": 41
+        },
+        "skills": {
+          "db-agony": 4,
+          "ro-highspeed": 3,
+          "ro-cheapshot": 2
+        },
+        "createdAt": 1785452817450,
+        "updatedAt": 1785537832170
+      }
+    ],
+    [
+      "char_8lv4q87xms84x7qt",
+      {
+        "id": "char_8lv4q87xms84x7qt",
+        "campaignId": "camp_61ixj4ybms847awt",
+        "ownerId": "user_reulc3j3ms3snnxu",
+        "name": "Tigresa",
+        "avatarUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ96KTkn1zZ4rJKBcCd_31xM7To36EdbPBYrHSZUNCKx6feF9MQ6ey1r_s&s=10",
+        "origin": "A Floresta dos Druidas de Nova Gênese",
+        "identity": "Cavaleiro Desonrado",
+        "theme": "Ambição",
+        "attributes": {
+          "dex": "d8",
+          "ins": "d8",
+          "mig": "d8",
+          "wlp": "d8"
+        },
+        "classes": [
+          {
+            "classId": "darkblade",
+            "level": 2
+          },
+          {
+            "classId": "rogue",
+            "level": 1
+          },
+          {
+            "classId": "spiritist",
+            "level": 2
+          }
+        ],
+        "equipment": [
+          "eq-sword"
+        ],
+        "zenit": 300,
+        "resources": {
+          "hp": 68,
+          "maxHp": 68,
+          "mp": 45,
+          "maxMp": 45,
+          "ip": 6,
+          "maxIp": 6,
+          "fp": 0,
+          "xp": 1
+        },
+        "skills": {
+          "db-agony": 2,
+          "ro-seeyalater": 1,
+          "sp-bloodmage": 1,
+          "sp-support": 1
+        },
+        "createdAt": 1785453513077,
+        "updatedAt": 1785537832159
+      }
+    ],
+    [
+      "char_yfoargeqms89dc7g",
+      {
+        "id": "char_yfoargeqms89dc7g",
+        "campaignId": "camp_67ulnb0ims8971tr",
+        "ownerId": "user_ex0bq249ms6myjd2",
+        "name": "Aria",
+        "avatarUrl": "https://imgs.search.brave.com/7uXguUMydnkB-2aObNZXOONGmENM88QgVOXXhIw80G8/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly93YWxs/cGFwZXJzLmNvbS9p/bWFnZXMvaGQvYXJp/YW5hLWdyYW5kZS1w/aWN0dXJlcy0yaXBo/aGY3c2NpZmxpZ2w2/LmpwZw",
+        "origin": "As Minas de Ravenkhar",
+        "identity": "Mercenário de Sinatra",
+        "theme": "Pertencimento",
+        "attributes": {
+          "dex": "d6",
+          "ins": "d8",
+          "mig": "d12",
+          "wlp": "d6"
+        },
+        "classes": [
+          {
+            "classId": "darkblade",
+            "level": 1
+          },
+          {
+            "classId": "rogue",
+            "level": 3
+          },
+          {
+            "classId": "chimerist",
+            "level": 1
+          }
+        ],
+        "equipment": [
+          "eq-dagger",
+          "eq-staff"
+        ],
+        "zenit": 75,
+        "resources": {
+          "hp": 73,
+          "maxHp": 73,
+          "mp": 44,
+          "maxMp": 44,
+          "ip": 6,
+          "maxIp": 6,
+          "fp": 2,
+          "xp": 20
+        },
+        "skills": {
+          "db-shadowstrike": 1,
+          "qm-ritual": 1,
+          "ro-dodge": 3,
+          "qm-consume": 1,
+          "db-agony": 1
+        },
+        "createdAt": 1785460983820,
+        "updatedAt": 1785461518762
+      }
+    ],
+    [
+      "char_osegudfdms9huzk8",
+      {
+        "id": "char_osegudfdms9huzk8",
+        "campaignId": "camp_61ixj4ybms847awt",
+        "ownerId": "user_reulc3j3ms3snnxu",
+        "name": "dasd",
+        "avatarUrl": "asdasd",
+        "origin": "sadasdasd",
+        "identity": "asdasds",
+        "theme": "adasdsa",
+        "attributes": {
+          "dex": "d8",
+          "ins": "d8",
+          "mig": "d8",
+          "wlp": "d8"
+        },
+        "classes": [
+          {
+            "classId": "darkblade",
+            "level": 1
+          },
+          {
+            "classId": "rogue",
+            "level": 3
+          },
+          {
+            "classId": "spiritist",
+            "level": 1
+          }
+        ],
+        "equipment": [
+          "eq-buckler",
+          "eq-brigandine",
+          "eq-spear"
+        ],
+        "zenit": 50,
+        "resources": {
+          "hp": 68,
+          "maxHp": 68,
+          "mp": 44,
+          "maxMp": 44,
+          "ip": 6,
+          "maxIp": 6,
+          "fp": 0,
+          "xp": 1
+        },
+        "skills": {
+          "db-agony": 1,
+          "ro-soulsteal": 1,
+          "sp-bloodmage": 1,
+          "ro-cheapshot": 2
+        },
+        "createdAt": 1785535710344,
+        "updatedAt": 1785537832172
+      }
+    ],
+    [
+      "char_0j51e18amsas77i5",
+      {
+        "id": "char_0j51e18amsas77i5",
+        "campaignId": "camp_67ulnb0ims8971tr",
+        "ownerId": "user_ex0bq249ms6myjd2",
+        "name": "dasdasd",
+        "avatarUrl": "asdasd",
+        "origin": "As Minas de Ravenkhar",
+        "identity": "Cavaleiro Desonrado",
+        "theme": "Ambição",
+        "attributes": {
+          "dex": "d10",
+          "ins": "d12",
+          "mig": "d6",
+          "wlp": "d6"
+        },
+        "classes": [
+          {
+            "classId": "darkblade",
+            "level": 12
+          },
+          {
+            "classId": "rogue",
+            "level": 2
+          },
+          {
+            "classId": "spiritist",
+            "level": 1
+          }
+        ],
+        "equipment": [
+          "eq-bow",
+          "eq-sword",
+          "eq-bow"
+        ],
+        "zenit": 100,
+        "resources": {
+          "hp": 127,
+          "maxHp": 127,
+          "mp": 45,
+          "maxMp": 71,
+          "ip": 6,
+          "maxIp": 6,
+          "fp": 0,
+          "xp": 2565
+        },
+        "skills": {
+          "db-agony": 5,
+          "ro-cheapshot": 2,
+          "sp-healpower": 1,
+          "db-darkblood": 1,
+          "db-heart": 1,
+          "db-shadowstrike": 4,
+          "db-lesson": 3
+        },
+        "createdAt": 1785613542845,
+        "updatedAt": 1785630519891
+      }
+    ],
+    [
+      "char_uo4271f3msas83bd",
+      {
+        "id": "char_uo4271f3msas83bd",
+        "campaignId": "camp_67ulnb0ims8971tr",
+        "ownerId": "user_reulc3j3ms3snnxu",
+        "name": "TESTEaaa",
+        "avatarUrl": "sdadasd",
+        "origin": "As Ilhas Flutuantes de Aethel",
+        "identity": "Cavaleiro Desonrado",
+        "theme": "Ambição",
+        "attributes": {
+          "dex": "d8",
+          "ins": "d8",
+          "mig": "d8",
+          "wlp": "d8"
+        },
+        "classes": [
+          {
+            "classId": "darkblade",
+            "level": 2
+          },
+          {
+            "classId": "rogue",
+            "level": 2
+          },
+          {
+            "classId": "spiritist",
+            "level": 1
+          }
+        ],
+        "equipment": [
+          "eq-brigandine",
+          "eq-bow"
+        ],
+        "zenit": 150,
+        "resources": {
+          "hp": 62,
+          "maxHp": 69,
+          "mp": 43,
+          "maxMp": 43,
+          "ip": 6,
+          "maxIp": 6,
+          "fp": 0,
+          "xp": 0
+        },
+        "skills": {
+          "db-agony": 2,
+          "ro-cheapshot": 2,
+          "sp-healpower": 1
+        },
+        "createdAt": 1785613584073,
+        "updatedAt": 1785613592359
+      }
+    ]
+  ]
+}

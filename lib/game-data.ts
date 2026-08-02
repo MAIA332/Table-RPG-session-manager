@@ -63,7 +63,6 @@ export interface GameClass {
   skills: GameSkill[]
 }
 
-// Adicione junto com suas outras exportações em lib/game-data.ts
 export const CLASSES: GameClass[] = [
   {
     id: "darkblade",
@@ -209,6 +208,294 @@ export const CLASSES: GameClass[] = [
       { id: "ti-visionary", name: "Visionário", maxLevel: 5, description: "Ao criar Projetos, você economiza Zênites e agiliza o tempo de criação." },
     ],
   },
+  {
+    id: "wanderer",
+    name: "Andarilho",
+    archetype: "Explorador e Caçador",
+    description: "Nômades em busca de um lendário continente, exploradores desafiando o desconhecido. A natureza não é inimiga nem aliada, mas uma professora severa.",
+    hpPerLevel: 5,
+    mpPerLevel: 3,
+    primaryAttribute: "ins",
+    skills: [
+      { id: "wa-companion", name: "Companheiro Fiel", maxLevel: 5, description: "Crie uma besta, construto, elemental ou planta nível 5 como companheiro." },
+      { id: "wa-astute", name: "Astuto", maxLevel: 4, description: "Recupera [Nível da Perícia] Pontos de Inventário após cada teste de viagem." },
+      { id: "wa-tavern", name: "Conversa de Taverna", maxLevel: 3, description: "Ao descansar em uma estalagem, faça até [Nível da Perícia] perguntas ao Mestre sobre os arredores." },
+      { id: "wa-treasure", name: "Caçador de Tesouros", maxLevel: 2, description: "Faz uma descoberta no teste de viagem ao rolar (Nível da Perícia + 1) ou menos." },
+      { id: "wa-traveled", name: "Bem Viajado", maxLevel: 1, description: "Reduz o dado rolado para testes de viagem em um tamanho (mínimo d6)." }
+    ]
+  },
+  {
+    id: "arcanist",
+    name: "Arcanista",
+    archetype: "Invocador Mítico",
+    description: "Projetam sua alma para fora do corpo, ganhando habilidades sobrenaturais através da manifestação das almas de entidades míticas chamadas Arcana.",
+    hpPerLevel: 3,
+    mpPerLevel: 5,
+    primaryAttribute: "wlp",
+    skills: [
+      { id: "ar-regen", name: "Regeneração Arcana", maxLevel: 6, description: "Ao descartar voluntariamente um Arcanum em Crise, você e aliados curam [Nível x 5] PV." },
+      { id: "ar-bind", name: "Vincular e Invocar", maxLevel: 1, description: "Permite vincular Arcana à alma e invocá-los gastando 1 ação e 30 PM.", action: { cost: 30, resource: "mp" } },
+      { id: "ar-phantom", name: "Força Fantasma", maxLevel: 6, description: "Todo o dano ignora Afinidades. Na próxima vez que causar dano no turno, causa [Nível + 4] extra." },
+      { id: "ar-quick", name: "Invocação Rápida", maxLevel: 2, description: "Reduz o custo em PM do Arcanum em [Nível x 5] ou realiza imediatamente o Pulso após invocá-lo." },
+      { id: "ar-ritual", name: "Ritual Arcanista", maxLevel: 1, description: "Permite realizar Rituais de Arcanismo usando [VON + VON]." }
+    ]
+  },
+  {
+    id: "chanter",
+    name: "Cantor",
+    archetype: "Músico Mágico",
+    description: "Músicos excepcionais que dependem da força de suas almas para tecer magia em canções e apoiar os aliados no combate.",
+    hpPerLevel: 4,
+    mpPerLevel: 4,
+    primaryAttribute: "wlp",
+    skills: [
+      { id: "ch-magisong", name: "Magicanção", maxLevel: 10, description: "Teca voz e música em um Verso mágico gastando PM (combina Volume, Clave e Tom)." },
+      { id: "ch-resonance", name: "Ressonância", maxLevel: 3, description: "Após afetar inimigos com Versos, aliados causam [Nível] extra de dano, ou você recupera [Nível] PM ao feri-los." },
+      { id: "ch-siren", name: "Canção da Sereia", maxLevel: 1, description: "Permite rituais de Ritualismo voltados para criar ilusões auditivas." },
+      { id: "ch-barrier", name: "Barreira Sonora", maxLevel: 5, description: "Após cantar com volume médio/alto, todo dano físico sofrido é reduzido em [Nível]." },
+      { id: "ch-vibrato", name: "Vibrato", maxLevel: 1, description: "Após cantar em volume baixo/médio, você pode realizar um ataque gratuito ignorando sua RA." }
+    ]
+  },
+  {
+    id: "commander",
+    name: "Comandante",
+    archetype: "Líder e Estrategista",
+    description: "Figuras inspiradoras que conquistaram a lealdade de companheiros com determinação de ferro e habilidade tática.",
+    hpPerLevel: 5,
+    mpPerLevel: 3,
+    primaryAttribute: "mig",
+    skills: [
+      { id: "co-bishop", name: "Édito do Bispo", maxLevel: 5, description: "Gaste 10 PM. Dobra os custos de PM ou todas as fontes causam [Nível x 3] de dano extra até o próximo turno.", action: { cost: 10, resource: "mp" } },
+      { id: "co-cavalry", name: "Cavalaria de Choque", maxLevel: 5, description: "Gaste 10 PM. Um aliado realiza um ataque livre com bônus de [Nível] na Precisão.", action: { cost: 10, resource: "mp" } },
+      { id: "co-chariot", name: "Carroça Esmagadora", maxLevel: 1, description: "Após usar táticas, um aliado que ainda não agiu joga imediatamente após você." },
+      { id: "co-castle", name: "Castelo do Rei", maxLevel: 4, description: "Gaste 10 PM. Impede a cura de PV/PM ou todas as curas restauram [Nível x 5] PM adicionais.", action: { cost: 10, resource: "mp" } },
+      { id: "co-queen", name: "Gambito da Rainha", maxLevel: 6, description: "Após um ataque livre, você pode curar a equipe ou encadear táticas em sequência." }
+    ]
+  },
+  {
+    id: "dancer",
+    name: "Dançarino",
+    archetype: "Acrobata Marcial",
+    description: "Tornam movimentos precisos em fluxos de força espiritual que aumentam suas habilidades e repelem o mal.",
+    hpPerLevel: 4,
+    mpPerLevel: 4,
+    primaryAttribute: "dex",
+    skills: [
+      { id: "da-dance", name: "Dança", maxLevel: 10, description: "Aprende uma Dança que pode ser ativada por 10 PM (ou 5 PM ao encadear).", action: { cost: 10, resource: "mp" } },
+      { id: "da-follow", name: "Siga Meu Passo", maxLevel: 1, description: "Ao usar uma dança duradoura, gaste 10 PM extras para expandir seus efeitos a um aliado com um Elo." },
+      { id: "da-frenzy", name: "Passos Frenéticos", maxLevel: 2, description: "Ganha [Nível x 2] em todos os testes de Acrobacia, Coordenação ou Velocidade após dançar." },
+      { id: "da-quick", name: "Troca Rápida", maxLevel: 1, description: "Após dançar, pode realizar a Ação de Equipamento de graça." },
+      { id: "da-wardancer", name: "Dançarino de Guerra", maxLevel: 5, description: "Seus ataques ágeis e magias ofensivas causam [Nível] de dano extra após a dança." }
+    ]
+  },
+  {
+    id: "beastmaster",
+    name: "Domador",
+    archetype: "Senhor das Feras",
+    description: "Compreendem e negociam com monstros e bestas perigosas, recrutando essas ameaças como aliados mortais.",
+    hpPerLevel: 5,
+    mpPerLevel: 3,
+    primaryAttribute: "ins",
+    skills: [
+      { id: "bm-allout", name: "Ataque Total", maxLevel: 1, description: "Gaste 10 PM para ganhar precisão baseado em atitudes variadas ou dano extra.", action: { cost: 10, resource: "mp" } },
+      { id: "bm-hybrid", name: "Hibridização", maxLevel: 1, description: "Combina as afinidades e os ataques básicos de duas criaturas que você recrutou." },
+      { id: "bm-intercept", name: "Interceptador", maxLevel: 6, description: "Reduz o dano sofrido por um aliado em [Nível x 4] sacrificando acesso a uma criatura até o fim da cena." },
+      { id: "bm-negotiate", name: "Negociar", maxLevel: 4, description: "Permite usar a ação Objetivo para recrutar Demônios, Elementais, Monstros ou Mortos-vivos." },
+      { id: "bm-release", name: "Libertar", maxLevel: 4, description: "Permite realizar Rituais para invocar criaturas do Mestre com base em [Nível x 5]." }
+    ]
+  },
+  {
+    id: "entropist",
+    name: "Entropista",
+    archetype: "Mago do Caos",
+    description: "Manipulam as energias do Cosmos capazes de distorcer o tempo, o espaço e a probabilidade de sorte em combate.",
+    hpPerLevel: 3,
+    mpPerLevel: 5,
+    primaryAttribute: "wlp",
+    skills: [
+      { id: "en-absorb", name: "Absorver PM", maxLevel: 5, description: "Após sofrer dano, você recupera imediatamente [Nível x 2] Pontos de Mente." },
+      { id: "en-magic", name: "Magia Entrópica", maxLevel: 10, description: "Aprende feitiços Entrópicos. Testes ofensivos usam [INT + VON].", action: { cost: 10, resource: "mp" } },
+      { id: "en-luck", name: "Sete da Sorte", maxLevel: 1, description: "Uma vez por cena, altere qualquer dado para seu 'Número da Sorte' (começa em 7)." },
+      { id: "en-ritual", name: "Ritual Entrópico", maxLevel: 1, description: "Permite realizar Rituais de Entropismo usando [INT + VON]." },
+      { id: "en-timesteal", name: "Tempo Roubado", maxLevel: 4, description: "Gaste até [Nível x 5] PM para causar lentidão, dano temporal, ou conceder ações extras." }
+    ]
+  },
+  {
+    id: "esper",
+    name: "Esper",
+    archetype: "Vidente Psíquico",
+    description: "Conectam-se com a 'rede das almas' espiritual para transmitir informações e aprimorar capacidades mentais e telepáticas.",
+    hpPerLevel: 3,
+    mpPerLevel: 5,
+    primaryAttribute: "ins",
+    skills: [
+      { id: "es-focus", name: "Foco Cognitivo", maxLevel: 5, description: "Mire mentalmente em um alvo; ganhe +[Nível] em precisão e magia contra ele, e amplie a cura direcionada a ele." },
+      { id: "es-hyper", name: "Hipercognição", maxLevel: 5, description: "Reduz o custo em PM de magias contra seu Foco Cognitivo em [Nível x 2]." },
+      { id: "es-nav", name: "Navegador", maxLevel: 1, description: "Permite telepatia a longa distância e Rituais para transportar seres na rede das almas." },
+      { id: "es-gifts", name: "Dons Psíquicos", maxLevel: 5, description: "Desbloqueia poderes como Gravitocinese ou Atmocinese preenchendo um Relógio Cerebral." },
+      { id: "es-telekinesis", name: "Psicocinese", maxLevel: 1, description: "Pode substituir um atributo por VON e atingir alvos voadores com ataques corpo a corpo (Arcana/Espada)." }
+    ]
+  },
+  {
+    id: "fury",
+    name: "Fúria",
+    archetype: "Berserker Implacável",
+    description: "São enérgicos e guerreiros inquietos guiados por uma paixão que beira a descontrolada violência.",
+    hpPerLevel: 6,
+    mpPerLevel: 2,
+    primaryAttribute: "mig",
+    skills: [
+      { id: "fu-adrenaline", name: "Adrenalina", maxLevel: 5, description: "Enquanto estiver em Crise, você causa [Nível x 2] de dano extra com qualquer ataque ou magia." },
+      { id: "fu-frenzy", name: "Frenesi", maxLevel: 1, description: "Armas ágeis (briga, adagas, flexíveis) causam sucesso crítico se os dois dados rolarem o mesmo número." },
+      { id: "fu-spirit", name: "Espírito Indomável", maxLevel: 4, description: "Ao usar um Ponto de Fábula, cure [Nível x 5] de PV, de PM, ou recupere um status negativo." },
+      { id: "fu-taunt", name: "Provocar", maxLevel: 5, description: "Gaste 5 PM para furar e forçar o inimigo a te atacar. Testes (POD+VON) ganham +[Nível].", action: { cost: 5, resource: "mp" } },
+      { id: "fu-endure", name: "Resistir", maxLevel: 5, description: "Ao proteger, cura PV baseado nos seus Elos e aprimora Poder ou Vontade até o fim do turno." }
+    ]
+  },
+  {
+    id: "gourmet",
+    name: "Gourmet",
+    archetype: "Cozinheiro Magitech",
+    description: "Extraem energias espirituais de ingredientes selvagens, infundindo efeitos mágicos e melhorias impressionantes nas suas refeições.",
+    hpPerLevel: 4,
+    mpPerLevel: 4,
+    primaryAttribute: "ins",
+    skills: [
+      { id: "go-cook", name: "Culinária", maxLevel: 5, description: "Gaste uma ação e combine sabores para aplicar efeitos de cura ou dano elemental. Produz [Nível] ingredientes ao descansar." },
+      { id: "go-knife", name: "Faca e Garfo", maxLevel: 1, description: "Aplica os efeitos mortais das suas iguarias diretamente com o dano de sua arma." },
+      { id: "go-love", name: "Feito com Amor", maxLevel: 3, description: "Gaste até [Nível x 10] PM para aplicar suas comidas mágicas a aliados adicionais." },
+      { id: "go-spice", name: "Sal e Pimenta", maxLevel: 1, description: "Gaste 2 PI para transmutar à força o sabor de um ingrediente do seu estoque." },
+      { id: "go-travel", name: "Cozinheiro Andarilho", maxLevel: 3, description: "Coleta [Nível x 2] ingredientes gratuitos de sabores aleatórios após cada rolagem de viagem." }
+    ]
+  },
+  {
+    id: "invoker",
+    name: "Invocador",
+    archetype: "Canalizador Elemental",
+    description: "Manipulam o fluxo das almas ao redor, invocando entidades elementais baseadas nas fontes de energia presentes no ambiente.",
+    hpPerLevel: 3,
+    mpPerLevel: 5,
+    primaryAttribute: "ins",
+    skills: [
+      { id: "in-harmony", name: "Harmonia Elemental", maxLevel: 2, description: "A cura feita na presença de um Elemental aumenta em [Nível x 5]. Fala com Elementais." },
+      { id: "in-invoke", name: "Invocação", maxLevel: 3, description: "Use o ambiente para invocar 'explosões', 'maldições' ou grandes efeitos (5 PM base).", action: { cost: 5, resource: "mp" } },
+      { id: "in-bound", name: "Invocação Vinculada", maxLevel: 3, description: "Gaste até [Nível x 10] PM extras para que as Invocações atinjam múltiplos alvos." },
+      { id: "in-ripple", name: "Ondulações", maxLevel: 5, description: "Ataca gratuitamente um inimigo debuffado pelas maldições das invocações dos seus aliados (+[Nível] na Precisão)." },
+      { id: "in-expansion", name: "Expansão da Fonte", maxLevel: 5, description: "Aumenta o dano base das explosões e a letalidade das maldições elementais em [Nível]." }
+    ]
+  },
+  {
+    id: "merchant",
+    name: "Mercante",
+    archetype: "Senhor do Comércio",
+    description: "Comerciantes implacáveis que sabem usar suas riquezas (Zênites) como a verdadeira força que impulsiona reinos.",
+    hpPerLevel: 4,
+    mpPerLevel: 4,
+    primaryAttribute: "wlp",
+    skills: [
+      { id: "me-expire", name: "Data de Validade", maxLevel: 3, description: "Corrompe curas criadas por você, causando dano de veneno de [metade do Nível + (NP x 10)]." },
+      { id: "me-heard", name: "Já Ouvi Falar!", maxLevel: 3, description: "Gaste 1 Ponto de Comércio para dar +[Nível x 2] em Exames sobre criaturas e lugares." },
+      { id: "me-stock", name: "Estoque Privado", maxLevel: 3, description: "Permite gastar Pontos de Comércio para ignorar [Nível + 2] custos de PI." },
+      { id: "me-treas", name: "Tesouro Real", maxLevel: 3, description: "Ao lutar contra a corrupção de grandes líderes, recebe +[Nível + 1] Pontos de Comércio." },
+      { id: "me-wind", name: "Ventos do Comércio", maxLevel: 3, description: "Após descansar, recarrega [Nível + 1] Pontos de Comércio usados para subornar e manipular Zênites." }
+    ]
+  },
+  {
+    id: "loremaster",
+    name: "Mestre do Conhecimento",
+    archetype: "Sábio e Analista",
+    description: "Possuem sede de descobertas implacável; eles trocariam todo o tesouro por um bom mistério encriptado.",
+    hpPerLevel: 3,
+    mpPerLevel: 5,
+    primaryAttribute: "ins",
+    skills: [
+      { id: "lo-flash", name: "Flash de Intuição", maxLevel: 3, description: "Obtendo 13+ em investigações, faça [Nível] perguntas gratuitas e definitivas ao Mestre." },
+      { id: "lo-focus", name: "Focado", maxLevel: 6, description: "Aumenta seus PM totais em [Nível x 5]. Ganha bônus ao realizar Testes Abertos de Inteligência pura." },
+      { id: "lo-knowledge", name: "Conhecimento é Poder", maxLevel: 1, description: "Permite usar a Intuição como parâmetro balístico no lugar do principal para Precisão." },
+      { id: "lo-assess", name: "Avaliação Rápida", maxLevel: 6, description: "Gaste [Nível x 5] PM no início do combate para ler Traços e Afinidades de todos os inimigos." },
+      { id: "lo-memory", name: "Memória Treinada", maxLevel: 1, description: "Pode 'voltar no tempo' na própria mente para reviver investigações recentes da última semana." }
+    ]
+  },
+  {
+    id: "mutant",
+    name: "Mutante",
+    archetype: "Abominação Adaptável",
+    description: "Aqueles que suportaram experimentos severos. Alteram os ossos e fluídos do corpo para se adaptarem e sobreviver em combates extremos.",
+    hpPerLevel: 6,
+    mpPerLevel: 3,
+    primaryAttribute: "mig",
+    skills: [
+      { id: "mu-akro", name: "Akromorfose", maxLevel: 3, description: "Seus punhos causam [6 + (Nível x 2)] extra e mudam de classe estrutural dinamicamente (Alcance/Corpo-a-corpo)." },
+      { id: "mu-bio", name: "Biofagia", maxLevel: 4, description: "Ao infligir perda de PV em Crise, consuma o alvo e recupere [Nível x 5] PV de volta." },
+      { id: "mu-ecdysis", name: "Ecdise", maxLevel: 1, description: "Gaste 10 PV reativamente para criar resistência natural contra danos mágicos que te feriram." },
+      { id: "mu-geno", name: "Genoclépsis", maxLevel: 2, description: "Rouba a genética dos monstros inimigos momentaneamente concedendo Formas temporárias extras." },
+      { id: "mu-therio", name: "Theriomorfose", maxLevel: 6, description: "Custa 33% dos PVs: Manifesta até duas de suas evoluções mutantes devastadoras pela cena inteira." }
+    ]
+  },
+  {
+    id: "necromancer",
+    name: "Necromante",
+    archetype: "Senhor da Vida e da Morte",
+    description: "Magos sombrios que ceifam a energia das almas no ápice mortal para animar cadáveres e roubar a essência dos vivos.",
+    hpPerLevel: 3,
+    mpPerLevel: 5,
+    primaryAttribute: "wlp",
+    skills: [
+      { id: "ne-beyond", name: "Além dos Reinos da Morte", maxLevel: 5, description: "Gera Pontos de Sepultura ao presenciar mortes. Salva da própria aniquilação gastando os pontos colhidos." },
+      { id: "ne-grave", name: "Filhos da Sepultura", maxLevel: 1, description: "Comunica-se com os mortos livremente. Pode interrogar espíritos falecidos para saber verdades sombrias." },
+      { id: "ne-fear", name: "O Medo é a Chave", maxLevel: 3, description: "Ferir inimigos com as emoções abaladas/fracas gera Pontos de Sepultura e [Nível x 2] PV/PM passivos." },
+      { id: "ne-bell", name: "Para Quem Toca o Sino", maxLevel: 3, description: "Usa Pontos de Sepultura para estourar o dano final baseado nos status negativos que o alvo possui." },
+      { id: "ne-rondo", name: "Rondo do Pesadelo", maxLevel: 1, description: "Consome 2 Pontos de Sepultura para transformar feitiços singulares em obliterações em área (Dano Escuro puro)." }
+    ]
+  },
+  {
+    id: "pilot",
+    name: "Piloto",
+    archetype: "Cavaleiro Motorizado",
+    description: "Treinados para agir na velocidade do ferro e das máquinas, usam um exoesqueleto, nave ou mecha de combate em sinergia com o próprio corpo.",
+    hpPerLevel: 5,
+    mpPerLevel: 3,
+    primaryAttribute: "dex",
+    skills: [
+      { id: "pi-compress", name: "Compressão Tecnológica", maxLevel: 1, description: "Guarde seu Mecha gigante no bolso usando 2 PI para invocar o transporte a qualquer momento." },
+      { id: "pi-flex", name: "Configuração Flexível", maxLevel: 4, description: "Permite reativar [Nível] módulos da nave (armas, reatores, espadas magnéticas) durante o tiroteio em tempo real." },
+      { id: "pi-heart", name: "Coração no Motor", maxLevel: 3, description: "Gaste 10 PM para injetar [Nível x 2] em sobrecarga nos canhões ou nos defletores passivos do chassi." },
+      { id: "pi-vehicle", name: "Veículo Pessoal", maxLevel: 5, description: "O Nível determina a escala do Mecha, garantindo mais opções de armas de suporte massivas ou placas de blindagem pesadas." },
+      { id: "pi-grip", name: "Agarre Firme", maxLevel: 1, description: "Módulos de mira ganham assistência cibernética: Subtitua rolagens puras de precisão usando POD." }
+    ]
+  },
+  {
+    id: "chimerist",
+    name: "Quimerista",
+    archetype: "Metamorfo e Plagiador",
+    description: "Reúnem poder decifrando os instintos selvagens. Imitam e absorvem conhecimentos e a magia direta de animais e feras da natureza.",
+    hpPerLevel: 4,
+    mpPerLevel: 5,
+    primaryAttribute: "ins",
+    skills: [
+      { id: "qm-consume", name: "Consumir", maxLevel: 5, description: "Rouba as essências de feras e inimigos elementais conjurados; devolve [Nível x 2] PM por conjuração arcana letal." },
+      { id: "qm-speak", name: "Fala Bestial", maxLevel: 1, description: "Permite livre comunicação biológica com Espécies do tipo Besta, Monstro e Plantas arcanas." },
+      { id: "qm-patho", name: "Patogênese", maxLevel: 1, description: "Usa o conhecimento de doenças: Suas conjurações roubadas intoxicam outras feras do mesmo bioma copiando o veneno nativo." },
+      { id: "qm-ritual", name: "Ritual Quimerista", maxLevel: 1, description: "Aplica princípios Rituais na biologia da metamorfose para evocações [INT + VON]." },
+      { id: "qm-mimic", name: "Imitar Magia", maxLevel: 10, description: "O maior trunfo: Memorize instantaneamente a magia do Monstro-Chefe inimigo e use contra eles no futuro!" }
+    ]
+  },
+  {
+    id: "symbolist",
+    name: "Simbolista",
+    archetype: "Criador de Talismãs",
+    description: "Ocultistas precisos que codificam maldições ou aprimoramentos através de símbolos vitais: selos mágicos e pinturas encantadas.",
+    hpPerLevel: 4,
+    mpPerLevel: 4,
+    primaryAttribute: "wlp",
+    skills: [
+      { id: "sy-magic", name: "Símbolos Mágicos", maxLevel: 3, description: "Destrua reativamente selos aplicados nos aliados para replicar feitiços com até [Nível x 10] de valor rúnico passivo." },
+      { id: "sy-mirage", name: "Miragem", maxLevel: 1, description: "O Ritualismo focará integralmente no controle massivo da percepção ocular (ilusões de ótica ativas em combate)." },
+      { id: "sy-touch", name: "Toque Pessoal", maxLevel: 5, description: "Toda fonte de recuperação e ataque sob o selo de proteção ganha bônus contínuos passivos escalados em [Nível]." },
+      { id: "sy-connect", name: "Conexão Simbólica", maxLevel: 1, description: "Radar Rúnico absoluto da própria guilda; Rastrei um indivíduo traidor ou em perigo sob seus sigilos em dias de viagem." },
+      { id: "sy-symbolism", name: "Simbolismo", maxLevel: 5, description: "Invoca os totens na rodada de preparação; cria [Nível + 1] Símbolos de Ligação, Medo ou Crescimento nos escudos da party." }
+    ]
+  }
 ];
 
 export function getClass(id: string): GameClass | undefined {
@@ -278,7 +565,7 @@ export const BESTIARY: Creature[] = [
   {
     id: "cr-goblin",
     name: "Goblin Saqueador",
-    imageUrl: "https://images.unsplash.com/photo-1605806616949-1e87b487cb2a?q=80&w=400&auto=format&fit=crop", // placeholder
+    imageUrl: "https://images.unsplash.com/photo-1605806616949-1e87b487cb2a?q=80&w=400&auto=format&fit=crop",
     level: 5,
     species: "Humanóide",
     attributes: { dex: "d10", ins: "d8", mig: "d6", wlp: "d6" },
@@ -290,24 +577,146 @@ export const BESTIARY: Creature[] = [
     basicAttacks: [
       { name: "Adaga Enferrujada", attributes: ["dex", "mig"], damage: 4, type: "físico" }
     ],
-    spells: ["Roubar Item: O Goblin rouba 10z de um alvo."]
+    spells: ["Roubar Item: O Goblin rouba 10z de um alvo."],
+    equipment: []
+  },
+  {
+    id: "cr-slime",
+    name: "Lodo Tóxico",
+    imageUrl: "https://images.unsplash.com/photo-1500367215255-0e0b258c40fa?q=80&w=400&auto=format&fit=crop",
+    level: 5,
+    species: "Monstro",
+    attributes: { dex: "d6", ins: "d6", mig: "d10", wlp: "d8" },
+    maxHp: 45,
+    maxMp: 10,
+    def: 8,
+    mdef: 10,
+    affinities: { physical: "RS", air: "none", bolt: "VU", dark: "none", earth: "none", fire: "VU", ice: "none", light: "none", poison: "IM" },
+    basicAttacks: [
+      { name: "Tentáculo Ácido", attributes: ["mig", "mig"], damage: 6, type: "veneno", description: "Pode infligir [Envenenado] no alvo." }
+    ],
+    spells: ["Divisão Celular: Se sofrer dano cortante, cria uma cópia com metade do HP atual."],
+    equipment: []
+  },
+  {
+    id: "cr-wolf",
+    name: "Lobo Cárgico",
+    imageUrl: "https://images.unsplash.com/photo-1590422730036-79133bd40049?q=80&w=400&auto=format&fit=crop",
+    level: 10,
+    species: "Besta",
+    attributes: { dex: "d10", ins: "d8", mig: "d8", wlp: "d6" },
+    maxHp: 50,
+    maxMp: 20,
+    def: 11,
+    mdef: 8,
+    affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "RS", light: "none", poison: "none" },
+    basicAttacks: [
+      { name: "Mordida Feroz", attributes: ["dex", "mig"], damage: 8, type: "físico" }
+    ],
+    spells: ["Uivo da Matilha: Gaste 10 PM. Dá a todos os aliados do tipo Besta +2 no próximo Teste de Precisão."],
+    equipment: []
+  },
+  {
+    id: "cr-knight",
+    name: "Cavaleiro Caído",
+    imageUrl: "https://images.unsplash.com/photo-1601662998394-4360e2ce1f3d?q=80&w=400&auto=format&fit=crop",
+    level: 15,
+    species: "Morto-vivo",
+    attributes: { dex: "d8", ins: "d6", mig: "d10", wlp: "d8" },
+    maxHp: 75,
+    maxMp: 30,
+    def: 13,
+    mdef: 9,
+    affinities: { physical: "none", air: "none", bolt: "none", dark: "AB", earth: "none", fire: "VU", ice: "none", light: "VU", poison: "IM" },
+    basicAttacks: [
+      { name: "Montante Enferrujado", attributes: ["mig", "mig"], damage: 12, type: "físico", description: "Atinge pesado, ignorando 2 de Defesa." }
+    ],
+    spells: [
+      "Provocar Alma: 5 PM. Obriga um alvo a atacá-lo no próximo turno.",
+      "Aura de Pavor: Inimigos próximos sofrem [Abalado]."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-fire-elem",
+    name: "Elemental das Chamas",
+    imageUrl: "https://images.unsplash.com/photo-1497906539264-eb74442e37a9?q=80&w=400&auto=format&fit=crop",
+    level: 20,
+    species: "Elemental",
+    attributes: { dex: "d10", ins: "d8", mig: "d6", wlp: "d10" },
+    maxHp: 80,
+    maxMp: 60,
+    def: 12,
+    mdef: 12,
+    affinities: { physical: "RS", air: "none", bolt: "none", dark: "none", earth: "none", fire: "AB", ice: "VU", light: "RS", poison: "IM" },
+    basicAttacks: [
+      { name: "Chicote Ígneo", attributes: ["dex", "wlp"], damage: 10, type: "fogo" }
+    ],
+    spells: [
+      "Labareda: 20 PM. Causa 25 de dano de Fogo a um alvo (Ignora Resistências).",
+      "Corpo Volátil: Ficar muito perto causa 5 de dano de Fogo no início de cada rodada."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-golem",
+    name: "Golem de Ferro",
+    imageUrl: "https://images.unsplash.com/photo-1616422285623-13ff0162193c?q=80&w=400&auto=format&fit=crop",
+    level: 25,
+    species: "Construto",
+    attributes: { dex: "d6", ins: "d6", mig: "d12", wlp: "d10" },
+    maxHp: 120,
+    maxMp: 0,
+    def: 15,
+    mdef: 8,
+    affinities: { physical: "RS", air: "none", bolt: "VU", dark: "none", earth: "IM", fire: "none", ice: "none", light: "none", poison: "IM" },
+    basicAttacks: [
+      { name: "Pancada Sísmica", attributes: ["mig", "mig"], damage: 18, type: "físico", description: "Pode quebrar a armadura temporariamente." }
+    ],
+    spells: [
+      "Terremoto: Bate no chão causando 15 de dano de Terra a todos os inimigos terrestres."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-archmage",
+    name: "Arquimago Corrompido",
+    imageUrl: "https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?q=80&w=400&auto=format&fit=crop",
+    level: 30,
+    species: "Humanóide",
+    attributes: { dex: "d8", ins: "d12", mig: "d6", wlp: "d12" },
+    maxHp: 100,
+    maxMp: 150,
+    def: 10,
+    mdef: 16,
+    affinities: { physical: "VU", air: "RS", bolt: "RS", dark: "AB", earth: "RS", fire: "RS", ice: "RS", light: "VU", poison: "none" },
+    basicAttacks: [
+      { name: "Foco Místico", attributes: ["ins", "wlp"], damage: 10, type: "mágico" }
+    ],
+    spells: [
+      "Buraco Negro: 30 PM. Causa 30 de dano Escuro em área e inflige [Lento].",
+      "Distorcer Tempo: 20 PM. Ganha uma Ação Extra no próximo turno.",
+      "Barreira Absoluta: 15 PM. Concede Resistência a todos os elementos exceto Luz por 2 rodadas."
+    ],
+    equipment: []
   },
   {
     id: "cr-dragon",
     name: "Dragão Vermelho Ancião",
-    imageUrl: "https://images.unsplash.com/photo-1577493341514-63cb53531fb5?q=80&w=400&auto=format&fit=crop", // placeholder
-    level: 15,
+    imageUrl: "https://images.unsplash.com/photo-1577493341514-63cb53531fb5?q=80&w=400&auto=format&fit=crop",
+    level: 40,
     species: "Fera Mitológica",
     attributes: { dex: "d8", ins: "d8", mig: "d12", wlp: "d10" },
-    maxHp: 120,
-    maxMp: 40,
-    def: 12,
-    mdef: 10,
+    maxHp: 200,
+    maxMp: 80,
+    def: 13,
+    mdef: 12,
     affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "AB", ice: "VU", light: "none", poison: "IM" },
     basicAttacks: [
-      { name: "Garras Dracônicas", attributes: ["mig", "mig"], damage: 10, type: "físico" },
-      { name: "Sopro de Fogo", attributes: ["dex", "ins"], damage: 15, type: "fogo", description: "Atinge todos os inimigos na área." }
+      { name: "Garras Dracônicas", attributes: ["mig", "mig"], damage: 15, type: "físico" },
+      { name: "Sopro de Fogo", attributes: ["dex", "ins"], damage: 25, type: "fogo", description: "Atinge todos os inimigos na área." }
     ],
-    spells: ["Rugido Aterrador: Gaste 10 PM. Todos os alvos fazem teste de VON. Se falharem, ficam Abalados."]
+    spells: ["Rugido Aterrador: Gaste 20 PM. Todos os alvos fazem teste de VON. Se falharem, ficam Abalados e Enfraquecidos."],
+    equipment: []
   }
 ]
