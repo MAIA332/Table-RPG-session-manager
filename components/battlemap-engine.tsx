@@ -55,11 +55,16 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
 
     // Renderiza Fundo
     if (!imageCache.current["bg"]) {
-      const bg = new Image(); bg.src = mapData.imageUrl;
+      const bg = new Image(); 
+      bg.src = mapData.imageUrl;
       bg.onload = () => setRenderTick(t => t + 1);
+      bg.onerror = () => setRenderTick(t => t + 1); // Evita travamento se o fundo falhar
       imageCache.current["bg"] = bg;
     }
-    if (imageCache.current["bg"].complete) ctx.drawImage(imageCache.current["bg"], offset.x, offset.y)
+    // Verifica se completou e tem largura real (não está quebrado)
+    if (imageCache.current["bg"].complete && imageCache.current["bg"].naturalWidth > 0) {
+      ctx.drawImage(imageCache.current["bg"], offset.x, offset.y)
+    }
 
     // Pathfinding
     const reachable = new Set<string>()
@@ -146,9 +151,11 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
                const img = new Image(); 
                img.src = url; 
                img.onload = () => setRenderTick(t => t + 1); // Força render avatar
+               img.onerror = () => setRenderTick(t => t + 1); // Trata imagens quebradas 404
                imageCache.current[url] = img;
            }
-           if (imageCache.current[url].complete) {
+           // Nova verificação para garantir que a imagem não está "quebrada"
+           if (imageCache.current[url].complete && imageCache.current[url].naturalWidth > 0) {
                ctx.drawImage(imageCache.current[url], px - radius, py - radius, radius*2, radius*2)
            } else {
                ctx.fillStyle = pos.type === "character" ? "#3b82f6" : "#ef4444"; ctx.fill()
