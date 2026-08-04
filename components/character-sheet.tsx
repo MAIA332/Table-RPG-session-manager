@@ -16,7 +16,7 @@ import {
 } from "@/lib/game-data"
 import { formatSkillDescription } from "./creator-steps"
 import type { AttributeKey, Character, Role } from "@/lib/types"
-import { Heart, Zap, Backpack, Sparkles, Minus, Plus, Dices, Package, TrendingUp, X, Store, Coins, Info, Loader2, BookOpenText, UserPlus, Shield, Skull } from "lucide-react"
+import { Heart, Zap, Backpack, Sparkles, Minus, Plus, Dices, Package, TrendingUp, X, Store, Coins, Info, Loader2, BookOpenText, UserPlus, Shield, Skull, ScrollText, ImageIcon, Film, Lock, Trash2 } from "lucide-react"
 import { Button } from "./ui/button"
 import { motion, AnimatePresence } from "framer-motion"
 import { computeMaxResources } from "@/lib/character"
@@ -80,6 +80,83 @@ function getLevelInfo(totalXp: number) {
   return { charLevel: level, currentLevelXp: Math.floor(xpLeft), xpRequired };
 }
 
+function getEmbedUrl(url: string) {
+  if (!url) return "";
+  let embedUrl = url;
+  if (url.includes("youtube.com/watch?v=")) {
+    embedUrl = url.replace("watch?v=", "embed/");
+    const ampersandPos = embedUrl.indexOf("&");
+    if (ampersandPos !== -1) embedUrl = embedUrl.substring(0, ampersandPos);
+  } else if (url.includes("youtu.be/")) {
+    embedUrl = url.replace("youtu.be/", "youtube.com/embed/");
+    const questionPos = embedUrl.indexOf("?");
+    if (questionPos !== -1) embedUrl = embedUrl.substring(0, questionPos);
+  }
+  return embedUrl;
+}
+
+// ==========================================
+// APP DE INVENTOR (BLUEPRINT APP)
+// ==========================================
+function BlueprintApp({ character, editable, onSpendMp }: any) {
+  const skillLvl = character.skills["ti-gadgets"] || 0;
+  const currentMp = character.resources.mp;
+
+  // Trava de Segurança
+  if (skillLvl === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 bg-destructive/10 border border-destructive/30 rounded-xl text-center">
+        <Lock className="size-10 text-destructive mb-3" />
+        <h3 className="font-bold text-destructive text-lg">Acesso Negado</h3>
+        <p className="text-sm text-destructive/80 mt-2 max-w-sm">
+          Este Almanaque possui travas de segurança intrincadas. Apenas um Inventor treinado com a perícia <strong>"Aparelhos"</strong> pode decifrar e construir estes projetos Magitech.
+        </p>
+      </div>
+    );
+  }
+
+  const blueprints = [
+    { level: 1, name: "Magiesfera Luminosa", cost: 5, desc: "Cria uma esfera de luz flutuante que segue o inventor." },
+    { level: 2, name: "Gancho Pneumático", cost: 10, desc: "Dispara um gancho trator permitindo escalar superfícies instantaneamente." },
+    { level: 3, name: "Bomba de Fumaça", cost: 15, desc: "Cobre a área em fumaça espessa, garantindo fuga ou furtividade." },
+    { level: 4, name: "Drone Escoteiro", cost: 20, desc: "Pequeno robô voador que transmite imagens temporárias do local para seu HUD." },
+    { level: 5, name: "Canhão Magitech", cost: 30, desc: "Dispara uma rajada concentrada de energia pura (Dano massivo)." },
+  ];
+
+  return (
+    <div className="flex flex-col gap-3">
+       <div className="bg-primary/10 border border-primary/30 p-4 rounded-xl mb-2 shadow-inner">
+          <p className="text-sm text-primary font-bold">Nível da Perícia 'Aparelhos': {skillLvl}</p>
+          <p className="text-xs text-muted-foreground mt-1">Projetos de nível superior ao seu nível de perícia ficam bloqueados na interface.</p>
+       </div>
+       {blueprints.map(bp => {
+         const unlocked = skillLvl >= bp.level;
+         const canAfford = currentMp >= bp.cost;
+         
+         return (
+           <div key={bp.level} className={`p-4 rounded-xl border transition-all ${unlocked ? 'border-border/50 bg-card/50' : 'border-destructive/20 bg-destructive/5 opacity-60 grayscale'}`}>
+             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <div>
+                  <h4 className={`font-bold ${unlocked ? "text-foreground" : "text-destructive"}`}>
+                    {bp.name} <span className="text-[10px] bg-background border border-border px-1.5 py-0.5 rounded text-muted-foreground ml-2 uppercase tracking-widest">Req: Nv. {bp.level}</span>
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-1.5 leading-snug">{bp.desc}</p>
+                </div>
+                {unlocked ? (
+                  <Button size="sm" disabled={!canAfford || !editable} onClick={() => onSpendMp(bp.cost)} className="gap-2 shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-bold h-9">
+                    <Zap className="size-3.5" /> Criar (-{bp.cost} MP)
+                  </Button>
+                ) : (
+                  <span className="text-[10px] uppercase font-bold text-destructive flex items-center gap-1.5 shrink-0 bg-background/50 px-2 py-1 rounded"><Lock className="size-3"/> Bloqueado</span>
+                )}
+             </div>
+           </div>
+         )
+       })}
+    </div>
+  )
+}
+
 // ==========================================
 // FICHA DO PERSONAGEM (JOGADORES E NPCS DO MESTRE)
 // ==========================================
@@ -93,6 +170,9 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
   const [showInventory, setShowInventory] = useState(false)
   const [showStore, setShowStore] = useState(false)
   
+  // Handouts & Itens Úteis
+  const [viewingItem, setViewingItem] = useState<any | null>(null)
+
   // Modais de Transferência
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [transferUserId, setTransferUserId] = useState<string>("")
@@ -104,6 +184,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
 
   const currentZenit = character.zenit || 0
   const skillsObj = character.skills || {}
+  const customItems = character.customItems || []
 
   let totalSkillPointsSpent = Object.values(skillsObj).reduce((a: any, b: any) => a + b, 0) as number
   if (totalSkillPointsSpent === 0 && character.classes?.length > 0) {
@@ -268,6 +349,20 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
     setShowInventory(false)
   }
 
+  async function deleteCustomItem(id: string) {
+    if (!confirm("Destruir este item para sempre?")) return;
+    const newItems = customItems.filter((i: any) => i.id !== id);
+    onOptimistic({ ...character, customItems: newItems } as any);
+    setViewingItem(null);
+    setPending(true);
+    try {
+      const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, {
+        method: "PATCH", body: JSON.stringify({ customItems: newItems })
+      });
+      onOptimistic(updated);
+    } finally { setPending(false); }
+  }
+
   // Ação de Transferir Ficha
   async function handleTransferOwnership() {
     if (!transferUserId) return alert("Selecione um jogador na lista.");
@@ -427,6 +522,52 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
                           })}
                         </div>
                       )}
+
+                      {/* ITENS ÚTEIS / RELÍQUIAS NA MOCHILA (ALTERAÇÃO 2 APLICADA AQUI) */}
+                      {customItems.length > 0 && (
+                        <div className="mt-6 pt-6 border-t border-white/10">
+                          <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground pb-3 flex items-center gap-2">
+                            <Sparkles className="size-4" /> Relíquias e Pergaminhos
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {customItems.map((item: any) => {
+                              const isAppBlueprint = item.type === 'app-blueprints';
+                              const hasGadgetsSkill = (character.skills["ti-gadgets"] || 0) > 0;
+                              const isLockedForThisChar = isAppBlueprint && !hasGadgetsSkill;
+
+                              return (
+                                <button
+                                  key={item.id}
+                                  onClick={() => !isLockedForThisChar && setViewingItem(item)}
+                                  className={`flex items-center justify-between p-3 rounded-lg bg-card border transition-colors text-left ${
+                                    isLockedForThisChar 
+                                      ? 'border-destructive/30 opacity-50 cursor-not-allowed' 
+                                      : 'border-border/50 hover:border-primary/50'
+                                  }`}
+                                  disabled={isLockedForThisChar}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    {item.type === 'text' && <ScrollText className="size-5 text-amber-500" />}
+                                    {item.type === 'image' && <ImageIcon className="size-5 text-blue-400" />}
+                                    {item.type === 'video' && <Film className="size-5 text-purple-400" />}
+                                    {item.type === 'app-blueprints' && <Package className={`size-5 ${isLockedForThisChar ? 'text-destructive' : 'text-blue-500'}`} />}
+                                    
+                                    <div className="flex flex-col">
+                                       <span className={`font-bold text-sm truncate ${isLockedForThisChar ? 'text-destructive' : 'text-foreground'}`}>
+                                         {item.name}
+                                       </span>
+                                       {isLockedForThisChar && (
+                                         <span className="text-[9px] uppercase tracking-widest text-destructive mt-0.5">Requer: Inventor</span>
+                                       )}
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                     </section>
                     <section className="flex-1 space-y-4">
                       <div className="flex justify-between items-center border-b border-white/10 pb-2">
@@ -448,6 +589,68 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
                       ) : <div className="p-6 text-center rounded-lg border border-dashed border-border/40 bg-card/20"><p className="text-sm text-muted-foreground">Apenas o jogador acessa.</p></div>}
                     </section>
                   </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* MODAL VISUALIZADOR DE ITENS ÚTEIS / RELÍQUIAS / APPS */}
+          <AnimatePresence>
+            {viewingItem && (
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
+                <motion.div variants={modalVariants} className={`relative w-full max-w-3xl max-h-[85vh] flex flex-col rounded-xl overflow-hidden shadow-2xl ${viewingItem.type === 'text' ? 'bg-[#f4e4bc] text-black border-2 border-[#d4af37]' : 'bg-zinc-950 border border-primary/50'}`}>
+                  <div className={`flex justify-between items-center p-4 border-b shrink-0 ${viewingItem.type === 'text' ? 'border-[#d4af37]/30' : 'border-white/10 bg-black/40'}`}>
+                    <h4 className={`font-serif text-xl font-bold flex items-center gap-2 ${viewingItem.type === 'text' ? 'text-amber-900' : 'text-primary'}`}>
+                      {viewingItem.type === 'text' && <ScrollText className="size-5" />}
+                      {viewingItem.type === 'image' && <ImageIcon className="size-5" />}
+                      {viewingItem.type === 'video' && <Film className="size-5" />}
+                      {viewingItem.type === 'app-blueprints' && <Package className="size-5" />}
+                      {viewingItem.name}
+                    </h4>
+                    <button onClick={() => setViewingItem(null)} className="rounded-full p-2 hover:bg-black/10 transition-colors">
+                      <X className={`size-5 ${viewingItem.type === 'text' ? 'text-amber-900' : 'text-white'}`} />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-6 custom-scrollbar-sepia">
+                    {viewingItem.type === 'text' && (
+                      <div className="font-serif text-lg leading-relaxed whitespace-pre-wrap text-amber-950">
+                        {viewingItem.content}
+                      </div>
+                    )}
+                    {viewingItem.type === 'image' && (
+                      <div className="flex justify-center items-center">
+                        <img src={viewingItem.content} alt={viewingItem.name} className="max-w-full h-auto rounded-lg shadow-lg" />
+                      </div>
+                    )}
+                    {viewingItem.type === 'video' && (
+                      <div className="aspect-video w-full rounded-lg overflow-hidden shadow-lg bg-black">
+                        <iframe
+                          src={getEmbedUrl(viewingItem.content)}
+                          className="w-full h-full border-0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    )}
+                    {/* === O APLICATIVO INJETADO AQUI === */}
+                    {viewingItem.type === 'app-blueprints' && (
+                       <BlueprintApp 
+                          character={character} 
+                          editable={editable} 
+                          onSpendMp={(cost: number) => patchResource("mp", -cost)} 
+                       />
+                    )}
+                  </div>
+
+                  {/* Botão para Deletar/Destruir a Relíquia (Apenas Dono/GM) */}
+                  {editable && (
+                    <div className={`p-4 border-t shrink-0 flex justify-end ${viewingItem.type === 'text' ? 'border-[#d4af37]/30' : 'border-white/10 bg-black/40'}`}>
+                      <Button variant="outline" size="sm" onClick={() => deleteCustomItem(viewingItem.id)} className={`gap-2 ${viewingItem.type === 'text' ? 'border-red-500/50 text-red-700 hover:bg-red-500/10' : 'border-red-500/50 text-red-400 hover:bg-red-500/20'}`}>
+                        <Trash2 className="size-4" /> Destruir Item
+                      </Button>
+                    </div>
+                  )}
                 </motion.div>
               </motion.div>
             )}

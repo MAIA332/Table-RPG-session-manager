@@ -409,14 +409,14 @@
         "theme": "Ambição",
         "attributes": {
           "dex": "d8",
-          "ins": "d8",
+          "ins": "d10",
           "mig": "d8",
           "wlp": "d8"
         },
         "classes": [
           {
             "classId": "darkblade",
-            "level": 8
+            "level": 9
           },
           {
             "classId": "rogue",
@@ -434,16 +434,16 @@
         "zenit": 150,
         "resources": {
           "hp": 70,
-          "maxHp": 111,
+          "maxHp": 116,
           "mp": 50,
-          "maxMp": 64,
+          "maxMp": 68,
           "ip": 6,
           "maxIp": 6,
           "fp": 0,
-          "xp": 1000
+          "xp": 1150
         },
         "skills": {
-          "db-agony": 4,
+          "db-agony": 5,
           "ro-cheapshot": 5,
           "sp-healpower": 1,
           "db-darkblood": 1,
@@ -451,7 +451,166 @@
           "db-shadowstrike": 1
         },
         "createdAt": 1785613584073,
-        "updatedAt": 1785791291563
+        "updatedAt": 1785868855123
+      }
+    ],
+    [
+      "char_rw3h5qijmses8n0c",
+      {
+        "id": "char_rw3h5qijmses8n0c",
+        "campaignId": "camp_67ulnb0ims8971tr",
+        "ownerId": "user_reulc3j3ms3snnxu",
+        "name": "dsf",
+        "avatarUrl": "sdfsdf",
+        "origin": "A Cidade-Relógio de Grivenholt",
+        "identity": "Erudito Exilado de Éliat",
+        "theme": "Devoção",
+        "attributes": {
+          "dex": "d10",
+          "ins": "d10",
+          "mig": "d6",
+          "wlp": "d6"
+        },
+        "classes": [
+          {
+            "classId": "orator",
+            "level": 2
+          },
+          {
+            "classId": "tinkerer",
+            "level": 1
+          },
+          {
+            "classId": "symbolist",
+            "level": 2
+          }
+        ],
+        "equipment": [
+          "eq-sword",
+          "eq-bow"
+        ],
+        "zenit": 100,
+        "resources": {
+          "hp": 66,
+          "maxHp": 66,
+          "mp": 50,
+          "maxMp": 50,
+          "ip": 6,
+          "maxIp": 6,
+          "fp": 0,
+          "xp": 0
+        },
+        "skills": {
+          "ti-emergency": 1,
+          "or-condemn": 2,
+          "sy-connect": 1,
+          "sy-symbolism": 1
+        },
+        "createdAt": 1785855474300,
+        "updatedAt": 1785855474300
+      }
+    ],
+    [
+      "char_epxop2izmsf08b49",
+      {
+        "id": "char_epxop2izmsf08b49",
+        "campaignId": "camp_67ulnb0ims8971tr",
+        "ownerId": "user_reulc3j3ms3snnxu",
+        "name": "mecancio",
+        "avatarUrl": "sdad",
+        "origin": "A Cidade-Relógio de Grivenholt",
+        "identity": "Erudito Exilado de Éliat",
+        "theme": "Dúvida",
+        "attributes": {
+          "dex": "d10",
+          "ins": "d10",
+          "mig": "d6",
+          "wlp": "d6"
+        },
+        "classes": [
+          {
+            "classId": "orator",
+            "level": 1
+          },
+          {
+            "classId": "tinkerer",
+            "level": 4
+          }
+        ],
+        "equipment": [
+          "eq-bow",
+          "eq-greatsword",
+          "eq-staff"
+        ],
+        "zenit": 0,
+        "resources": {
+          "hp": 66,
+          "maxHp": 66,
+          "mp": 5,
+          "maxMp": 50,
+          "ip": 6,
+          "maxIp": 6,
+          "fp": 0,
+          "xp": 0
+        },
+        "skills": {
+          "ti-gadgets": 4,
+          "or-condemn": 1
+        },
+        "createdAt": 1785868895817,
+        "updatedAt": 1785868973033
+      }
+    ],
+    [
+      "char_qwfuhwanmsf4sm2e",
+      {
+        "id": "char_qwfuhwanmsf4sm2e",
+        "campaignId": "camp_67ulnb0ims8971tr",
+        "ownerId": "user_reulc3j3ms3snnxu",
+        "name": "mrvs",
+        "avatarUrl": "sdfsdfsd",
+        "origin": "As Ilhas Flutuantes de Aethel",
+        "identity": "Cavaleiro Desonrado",
+        "theme": "Vingança",
+        "attributes": {
+          "dex": "d10",
+          "ins": "d10",
+          "mig": "d6",
+          "wlp": "d6"
+        },
+        "classes": [
+          {
+            "classId": "elementalist",
+            "level": 4
+          },
+          {
+            "classId": "tinkerer",
+            "level": 1
+          }
+        ],
+        "equipment": [
+          "eq-spear",
+          "eq-staff",
+          "eq-plate"
+        ],
+        "zenit": 0,
+        "resources": {
+          "hp": 62,
+          "maxHp": 62,
+          "mp": 54,
+          "maxMp": 54,
+          "ip": 6,
+          "maxIp": 6,
+          "fp": 0,
+          "xp": 0
+        },
+        "skills": {
+          "ti-gadgets": 1,
+          "el-cataclysm": 3,
+          "el-magic": 1
+        },
+        "createdAt": 1785876561590,
+        "updatedAt": 1785876587219
       }
     ]
   ],

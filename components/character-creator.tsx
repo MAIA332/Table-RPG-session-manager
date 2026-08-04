@@ -8,8 +8,6 @@ import { computeMaxResources } from "@/lib/character"
 import type { AttributeKey, Character, ClassLevel, DieSize } from "@/lib/types"
 import { ArrowLeft, ArrowRight, Check, Coins, Heart, Loader2, Sparkles, Swords, Zap } from "lucide-react"
 
-
-// Importa os steps organizados!
 import { EssenceStep, ClassesStep, EquipmentStep } from "./creator-steps"
 import { AttributesStep } from "./attributes-step"
 
@@ -26,26 +24,21 @@ export function CharacterCreator({ campaignId, onCreated, onCancel }: Props) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Step 1: Essencia
   const [name, setName] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
   const [origin, setOrigin] = useState("")
   const [identity, setIdentity] = useState("")
   const [theme, setTheme] = useState("")
 
-  // Step 2: Classes
   const [skillLevels, setSkillLevels] = useState<Record<string, number>>({})
 
-  // Step 3: Atributos
   const [profileId, setProfileId] = useState<string>(ATTRIBUTE_PROFILES[0].id)
   const [customAttributes, setCustomAttributes] = useState<Record<AttributeKey, DieSize>>({
     dex: "d8", ins: "d8", mig: "d8", wlp: "d8"
   })
 
-  // Step 4: Equipamento
   const [equipment, setEquipment] = useState<string[]>([])
 
-  // Derivados das Classes
   const totalLevels = useMemo(() => Object.values(skillLevels).reduce((s, n) => s + n, 0), [skillLevels])
   
   const classLevels = useMemo(() => {
@@ -60,23 +53,18 @@ export function CharacterCreator({ campaignId, onCreated, onCancel }: Props) {
 
   const chosenClassCount = Object.keys(classLevels).length
 
-  // Derivados de Atributos
   const attributes = useMemo<Record<AttributeKey, DieSize>>(() => {
     if (profileId === "custom") return customAttributes;
     return ATTRIBUTE_PROFILES.find((p) => p.id === profileId)?.dice || customAttributes;
   }, [profileId, customAttributes])
 
-  // Lógica matemática do point-buy para validação
   const customPoints = useMemo(() => Object.values(customAttributes).reduce((acc, die) => {
       return acc + (die === "d6" ? 1 : die === "d8" ? 2 : die === "d10" ? 3 : 4);
   }, 0), [customAttributes])
 
-  // Derivados de Equipamento
   const spent = useMemo(() => equipment.reduce((s, id) => s + (getEquipment(id)?.cost ?? 0), 0), [equipment])
   const remaining = STARTING_ZENIT - spent
-
   const classesPayload: ClassLevel[] = useMemo(() => Object.entries(classLevels).map(([classId, level]) => ({ classId, level })), [classLevels])
-
   const preview = useMemo(() => computeMaxResources(classesPayload, attributes), [classesPayload, attributes])
 
   function setSkillLvl(skillId: string, level: number, max: number) {
@@ -101,6 +89,22 @@ export function CharacterCreator({ campaignId, onCreated, onCancel }: Props) {
   async function submit() {
     setSaving(true)
     setError(null)
+
+    // ===============================================
+    // INJEÇÃO AUTOMÁTICA DE ITENS BASEADOS NA CLASSE
+    // ===============================================
+    const initialCustomItems: any[] = [];
+    
+    // Injeta o BlueprintApp silenciosamente na mochila caso possua a classe Inventor!
+    if (classesPayload.some(c => c.classId === "tinkerer")) {
+      initialCustomItems.push({
+        id: "item-" + Math.random().toString(36).substring(2, 9),
+        name: "Almanaque de Projetos Magitech",
+        type: "app-blueprints", // <-- O Type mágico que ativa o render customizado
+        content: "" 
+      });
+    }
+
     try {
       const { character } = await apiFetch<{ character: Character }>("/api/characters", {
         method: "POST",
@@ -115,6 +119,7 @@ export function CharacterCreator({ campaignId, onCreated, onCancel }: Props) {
           skills: skillLevels,
           attributes,
           equipment,
+          customItems: initialCustomItems,
         }),
       })
       onCreated(character)
@@ -127,7 +132,6 @@ export function CharacterCreator({ campaignId, onCreated, onCancel }: Props) {
 
   return (
     <div className="mx-auto max-w-3xl">
-      {/* Stepper Superior */}
       <div className="mb-8 flex items-center justify-between">
         {STEPS.map((label, i) => (
           <div key={label} className="flex flex-1 items-center">
@@ -155,7 +159,6 @@ export function CharacterCreator({ campaignId, onCreated, onCancel }: Props) {
         )}
       </div>
 
-      {/* Preview Global */}
       <div className="mt-4 flex flex-wrap items-center gap-4 rounded-lg border border-border/60 bg-card/40 px-4 py-3 text-sm">
         <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Previsao</span>
         <span className="flex items-center gap-1.5 text-[color:var(--hp)]"><Heart className="size-4" /> {preview.maxHp} HP</span>
@@ -166,7 +169,6 @@ export function CharacterCreator({ campaignId, onCreated, onCancel }: Props) {
 
       {error && <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
 
-      {/* Controles */}
       <div className="mt-6 flex items-center justify-between">
         <Button variant="ghost" onClick={() => (step === 0 ? onCancel() : setStep(step - 1))} className="gap-1.5 text-muted-foreground">
           <ArrowLeft className="size-4" /> {step === 0 ? "Cancelar" : "Voltar"}

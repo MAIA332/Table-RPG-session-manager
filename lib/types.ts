@@ -6,6 +6,13 @@ export type DieSize = "d6" | "d8" | "d10" | "d12"
 
 export type AttributeKey = "dex" | "ins" | "mig" | "wlp"
 
+export interface CustomItem {
+  id: string;
+  name: string;
+  type: "text" | "image" | "video" | "app-blueprints"; // <-- Adicionado aqui
+  content: string;
+}
+
 export interface User {
   id: string
   email: string

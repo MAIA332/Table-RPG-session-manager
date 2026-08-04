@@ -28,7 +28,7 @@ import { formatSkillDescription } from "@/components/creator-steps"
 
 import type { Character, Role, Creature, ActiveCreature, AttributeKey, ActivePoll, DieSize, ClassLevel } from "@/lib/types"
 
-import { ArrowLeft, ArrowRight, Crown, Plus, Radio, Shield, Users, DoorOpen, Dices, Gift, X, Send, Skull, Target, Heart, Zap, Package, Info, Loader2, BookOpenText, Store, Coins, TrendingUp, Backpack, Sparkles, Minus, Search, BarChart2, Clock, Trash2, CheckCircle2, Save, UserPlus, Check, Swords, Inbox, Sun, CloudRain, CloudSnow, CloudFog, Cloud, SunMedium, Grid3X3, ScrollText, ImageIcon, Film, Mic, Activity, RefreshCw, Clapperboard } from "lucide-react"
+import { ArrowLeft, ArrowRight, Crown, Plus, Radio, Shield, Users, DoorOpen, Dices, Gift, X, Send, Skull, Target, Heart, Zap, Package, Info, Loader2, BookOpenText, Store, Coins, TrendingUp, Backpack, Sparkles, Minus, Search, BarChart2, Clock, Trash2, CheckCircle2, Save, UserPlus, Check, Swords, Inbox, Sun, CloudRain, CloudSnow, CloudFog, Cloud, SunMedium, Grid3X3, ScrollText, ImageIcon, Film, Mic, Activity, RefreshCw, Clapperboard, Lock } from "lucide-react"
 
 import { EssenceStep, ClassesStep, EquipmentStep } from "./creator-steps"
 import { AttributesStep } from "./attributes-step"
@@ -51,12 +51,12 @@ export interface Member {
   name: string;
 }
 
-interface CampaignData { 
-  campaign: { id: string; name: string; code: string; ownerId: string }; 
-  role: Role; 
-  members: Member[]; 
-  characters: Character[]; 
-  me: { id: string; name: string } 
+interface CampaignData {
+  campaign: { id: string; name: string; code: string; ownerId: string };
+  role: Role;
+  members: Member[];
+  characters: Character[];
+  me: { id: string; name: string }
 }
 
 interface HistoryRecord { id: string; type: "roll" | "poll"; title: string; subtitle: string; detail: string; result: string | number; time: string }
@@ -67,7 +67,7 @@ interface DroppedLoot { uid: string; itemId: string; sourceName: string; }
 export interface CustomItem {
   id: string;
   name: string;
-  type: "text" | "image" | "video";
+  type: "text" | "image" | "video" | "app-blueprints";
   content: string;
 }
 
@@ -165,6 +165,66 @@ function getEmbedUrl(url: string) {
 // ==========================================
 // COMPONENTES SECUNDÁRIOS & SISTEMAS NOVOS
 // ==========================================
+
+// APP DE INVENTOR
+function BlueprintApp({ character, editable, onSpendMp }: any) {
+  const skillLvl = character.skills["ti-gadgets"] || 0;
+  const currentMp = character.resources.mp;
+
+  // --- NOVO TRATAMENTO DE ERRO / AVISO ---
+  if (skillLvl === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 bg-destructive/10 border border-destructive/30 rounded-xl text-center">
+        <Lock className="size-10 text-destructive mb-3" />
+        <h3 className="font-bold text-destructive text-lg">Acesso Negado</h3>
+        <p className="text-sm text-destructive/80 mt-2 max-w-sm">
+          Este Almanaque possui travas de segurança intrincadas. Apenas um Inventor treinado com a perícia <strong>"Aparelhos"</strong> pode decifrar e construir estes projetos Magitech.
+        </p>
+      </div>
+    );
+  }
+
+  const blueprints = [
+    { level: 1, name: "Magiesfera Luminosa", cost: 5, desc: "Cria uma esfera de luz flutuante que segue o inventor." },
+    { level: 2, name: "Gancho Pneumático", cost: 10, desc: "Dispara um gancho trator permitindo escalar superfícies instantaneamente." },
+    { level: 3, name: "Bomba de Fumaça", cost: 15, desc: "Cobre a área em fumaça espessa, garantindo fuga ou furtividade." },
+    { level: 4, name: "Drone Escoteiro", cost: 20, desc: "Pequeno robô voador que transmite imagens temporárias do local para seu HUD." },
+    { level: 5, name: "Canhão Magitech", cost: 30, desc: "Dispara uma rajada concentrada de energia pura (Dano massivo)." },
+  ];
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="bg-primary/10 border border-primary/30 p-4 rounded-xl mb-2 shadow-inner">
+        <p className="text-sm text-primary font-bold">Nível da Perícia 'Aparelhos': {skillLvl}</p>
+        <p className="text-xs text-muted-foreground mt-1">Projetos de nível superior ao seu nível de perícia ficam bloqueados na interface.</p>
+      </div>
+      {blueprints.map(bp => {
+        const unlocked = skillLvl >= bp.level;
+        const canAfford = currentMp >= bp.cost;
+
+        return (
+          <div key={bp.level} className={`p-4 rounded-xl border transition-all ${unlocked ? 'border-border/50 bg-card/50' : 'border-destructive/20 bg-destructive/5 opacity-60 grayscale'}`}>
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+              <div>
+                <h4 className={`font-bold ${unlocked ? "text-foreground" : "text-destructive"}`}>
+                  {bp.name} <span className="text-[10px] bg-background border border-border px-1.5 py-0.5 rounded text-muted-foreground ml-2 uppercase tracking-widest">Req: Nv. {bp.level}</span>
+                </h4>
+                <p className="text-xs text-muted-foreground mt-1.5 leading-snug">{bp.desc}</p>
+              </div>
+              {unlocked ? (
+                <Button size="sm" disabled={!canAfford || !editable} onClick={() => onSpendMp(bp.cost)} className="gap-2 shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-bold h-9">
+                  <Zap className="size-3.5" /> Criar (-{bp.cost} MP)
+                </Button>
+              ) : (
+                <span className="text-[10px] uppercase font-bold text-destructive flex items-center gap-1.5 shrink-0 bg-background/50 px-2 py-1 rounded"><Lock className="size-3" /> Bloqueado</span>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 const WeatherOverlay = ({ weather }: { weather: WeatherType }) => {
   useEffect(() => {
@@ -282,43 +342,43 @@ function CombinedChecksPanel({ character, onRoll, rollingAttr, disabled }: any) 
 
   return (
     <div className="flex flex-col gap-4 mt-2 animate-in fade-in zoom-in-95 duration-200">
-       <div className="relative border border-primary/20 bg-black/40 rounded-lg overflow-hidden shadow-inner">
-         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-primary" />
-         <input 
-            type="text" 
-            placeholder="Procurar teste de perícia..." 
-            value={search} 
-            onChange={e=>setSearch(e.target.value)} 
-            className="w-full bg-transparent border-none py-2.5 pl-10 pr-4 text-sm text-foreground focus:outline-none placeholder:text-muted-foreground/60" 
-         />
-       </div>
+      <div className="relative border border-primary/20 bg-black/40 rounded-lg overflow-hidden shadow-inner">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-primary" />
+        <input
+          type="text"
+          placeholder="Procurar teste de perícia..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full bg-transparent border-none py-2.5 pl-10 pr-4 text-sm text-foreground focus:outline-none placeholder:text-muted-foreground/60"
+        />
+      </div>
 
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto custom-scrollbar-sepia pr-2">
-         {filtered.map(check => (
-            <Button 
-               key={check.id} 
-               disabled={disabled || rollingAttr === check.id} 
-               variant="outline" 
-               className="h-auto p-3 justify-start border-border/40 hover:border-primary/50 hover:bg-primary/5 transition-all group" 
-               onClick={() => onRoll(check)}
-            >
-               <div className="flex flex-col items-start w-full gap-1">
-                  <div className="flex justify-between items-center w-full">
-                     <span className="font-bold text-foreground group-hover:text-primary transition-colors">{check.name}</span>
-                     <div className="flex gap-1.5">
-                       {check.attrs.map((attr, i) => (
-                         <span key={i} className="text-[10px] bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded font-mono uppercase font-bold">
-                           {attr} <span className="opacity-50">({character.attributes[attr]})</span>
-                         </span>
-                       ))}
-                     </div>
-                  </div>
-                  <span className="text-xs font-normal opacity-60 text-left whitespace-normal leading-snug">{check.desc}</span>
-               </div>
-            </Button>
-         ))}
-         {filtered.length === 0 && <p className="text-sm text-muted-foreground italic text-center col-span-2 py-8">Nenhum teste encontrado com esse nome.</p>}
-       </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto custom-scrollbar-sepia pr-2">
+        {filtered.map(check => (
+          <Button
+            key={check.id}
+            disabled={disabled || rollingAttr === check.id}
+            variant="outline"
+            className="h-auto p-3 justify-start border-border/40 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+            onClick={() => onRoll(check)}
+          >
+            <div className="flex flex-col items-start w-full gap-1">
+              <div className="flex justify-between items-center w-full">
+                <span className="font-bold text-foreground group-hover:text-primary transition-colors">{check.name}</span>
+                <div className="flex gap-1.5">
+                  {check.attrs.map((attr, i) => (
+                    <span key={i} className="text-[10px] bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded font-mono uppercase font-bold">
+                      {attr} <span className="opacity-50">({character.attributes[attr]})</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <span className="text-xs font-normal opacity-60 text-left whitespace-normal leading-snug">{check.desc}</span>
+            </div>
+          </Button>
+        ))}
+        {filtered.length === 0 && <p className="text-sm text-muted-foreground italic text-center col-span-2 py-8">Nenhum teste encontrado com esse nome.</p>}
+      </div>
     </div>
   )
 }
@@ -352,69 +412,69 @@ function ModifiersPanel({ character, isGm, onUpdate }: any) {
 
   return (
     <div className="flex flex-col gap-6 mt-2 animate-in fade-in zoom-in-95 duration-200">
-       <div className="bg-black/20 border border-border/40 rounded-xl p-4">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
-             <Activity className="size-4" /> Condições Ativas
-          </h3>
-          {mods.length === 0 ? (
-             <p className="text-sm text-muted-foreground italic text-center py-4 border border-dashed border-border/30 rounded-lg">Personagem saudável. Nenhuma condição afeta seus testes.</p>
-          ) : (
-             <div className="flex flex-col gap-2">
-                {mods.map(mod => (
-                   <div key={mod.id} className={`flex items-center justify-between p-3 rounded-lg border ${mod.value > 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
-                      <div className="flex flex-col">
-                         <span className={`font-bold text-sm ${mod.value > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                           {mod.name} ({mod.value > 0 ? '+'+mod.value : mod.value})
-                         </span>
-                         <span className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">Alvo: {getTargetName(mod.target)}</span>
-                      </div>
-                      {(isGm || character.ownerId) && (
-                         <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemove(mod.id)}>
-                            <Trash2 className="size-4" />
-                         </Button>
-                      )}
-                   </div>
-                ))}
-             </div>
-          )}
-       </div>
-
-       {isGm && (
-          <div className="bg-primary/5 border border-primary/30 rounded-xl p-4">
-             <h3 className="text-xs font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
-                <Plus className="size-4" /> Atribuir Modificador (GM)
-             </h3>
-             <div className="flex flex-col gap-3">
-                <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Nome (Ex: Cansado, Veneno, Aura Abençoada)" className="w-full bg-black/40 border border-white/10 rounded-md p-2.5 text-sm text-foreground focus:outline-none focus:border-primary/50" />
-                
-                <div className="flex gap-3">
-                   <div className="w-1/3 flex flex-col gap-1">
-                      <span className="text-[10px] uppercase text-muted-foreground font-bold">Valor (+ ou -)</span>
-                      <input type="number" value={value} onChange={e=>setValue(Number(e.target.value))} className="w-full bg-black/40 border border-white/10 rounded-md p-2 text-sm text-foreground focus:outline-none focus:border-primary/50 text-center font-mono font-bold" />
-                   </div>
-                   <div className="w-2/3 flex flex-col gap-1">
-                      <span className="text-[10px] uppercase text-muted-foreground font-bold">Afeta Qual Teste?</span>
-                      <select value={target} onChange={e=>setTarget(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-md p-2 text-sm text-foreground focus:outline-none focus:border-primary/50">
-                         <option value="all">Todos os Testes Gerais</option>
-                         <optgroup label="Por Atributo Envolvido">
-                            <option value="mig">Qualquer rolagem usando Vigor (MIG)</option>
-                            <option value="dex">Qualquer rolagem usando Destreza (DEX)</option>
-                            <option value="ins">Qualquer rolagem usando Intuição (INS)</option>
-                            <option value="wlp">Qualquer rolagem usando Vontade (WLP)</option>
-                         </optgroup>
-                         <optgroup label="Testes Específicos">
-                            {PRESET_CHECKS.map(c => <option key={c.id} value={c.name}>Apenas: {c.name}</option>)}
-                         </optgroup>
-                      </select>
-                   </div>
+      <div className="bg-black/20 border border-border/40 rounded-xl p-4">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
+          <Activity className="size-4" /> Condições Ativas
+        </h3>
+        {mods.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic text-center py-4 border border-dashed border-border/30 rounded-lg">Personagem saudável. Nenhuma condição afeta seus testes.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {mods.map(mod => (
+              <div key={mod.id} className={`flex items-center justify-between p-3 rounded-lg border ${mod.value > 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                <div className="flex flex-col">
+                  <span className={`font-bold text-sm ${mod.value > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {mod.name} ({mod.value > 0 ? '+' + mod.value : mod.value})
+                  </span>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">Alvo: {getTargetName(mod.target)}</span>
                 </div>
-
-                <Button className="w-full mt-2 gap-2 bg-primary text-primary-foreground font-bold hover:bg-primary/90" onClick={handleAdd}>
-                   <Save className="size-4" /> Aplicar Condição ao Jogador
-                </Button>
-             </div>
+                {(isGm || character.ownerId) && (
+                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemove(mod.id)}>
+                    <Trash2 className="size-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
           </div>
-       )}
+        )}
+      </div>
+
+      {isGm && (
+        <div className="bg-primary/5 border border-primary/30 rounded-xl p-4">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
+            <Plus className="size-4" /> Atribuir Modificador (GM)
+          </h3>
+          <div className="flex flex-col gap-3">
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nome (Ex: Cansado, Veneno, Aura Abençoada)" className="w-full bg-black/40 border border-white/10 rounded-md p-2.5 text-sm text-foreground focus:outline-none focus:border-primary/50" />
+
+            <div className="flex gap-3">
+              <div className="w-1/3 flex flex-col gap-1">
+                <span className="text-[10px] uppercase text-muted-foreground font-bold">Valor (+ ou -)</span>
+                <input type="number" value={value} onChange={e => setValue(Number(e.target.value))} className="w-full bg-black/40 border border-white/10 rounded-md p-2 text-sm text-foreground focus:outline-none focus:border-primary/50 text-center font-mono font-bold" />
+              </div>
+              <div className="w-2/3 flex flex-col gap-1">
+                <span className="text-[10px] uppercase text-muted-foreground font-bold">Afeta Qual Teste?</span>
+                <select value={target} onChange={e => setTarget(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-md p-2 text-sm text-foreground focus:outline-none focus:border-primary/50">
+                  <option value="all">Todos os Testes Gerais</option>
+                  <optgroup label="Por Atributo Envolvido">
+                    <option value="mig">Qualquer rolagem usando Vigor (MIG)</option>
+                    <option value="dex">Qualquer rolagem usando Destreza (DEX)</option>
+                    <option value="ins">Qualquer rolagem usando Intuição (INS)</option>
+                    <option value="wlp">Qualquer rolagem usando Vontade (WLP)</option>
+                  </optgroup>
+                  <optgroup label="Testes Específicos">
+                    {PRESET_CHECKS.map(c => <option key={c.id} value={c.name}>Apenas: {c.name}</option>)}
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+
+            <Button className="w-full mt-2 gap-2 bg-primary text-primary-foreground font-bold hover:bg-primary/90" onClick={handleAdd}>
+              <Save className="size-4" /> Aplicar Condição ao Jogador
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -750,7 +810,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
   const [showInventory, setShowInventory] = useState(false)
   const [showStore, setShowStore] = useState(false)
   const [sheetTab, setSheetTab] = useState<"main" | "checks" | "modifiers">("main")
-  
+
   // Handouts & Itens Úteis
   const [viewingItem, setViewingItem] = useState<CustomItem | null>(null)
 
@@ -762,10 +822,10 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
 
   // NOVA SOLUÇÃO: Se a Room pedir pra abrir essa mochila específica, ela abre e avisa o pai para limpar o pedido.
   useEffect(() => {
-     if (shouldOpenInventory) {
-        setShowInventory(true);
-        if (onClearInventoryRequest) onClearInventoryRequest();
-     }
+    if (shouldOpenInventory) {
+      setShowInventory(true);
+      if (onClearInventoryRequest) onClearInventoryRequest();
+    }
   }, [shouldOpenInventory, onClearInventoryRequest])
 
   const totalXp = character.resources?.xp || 0
@@ -914,30 +974,30 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
       const sides = parseInt(dieString.replace("d", ""));
       const result = Math.floor(Math.random() * sides) + 1;
       const attrLabel = ATTRIBUTE_META[attr].label;
-      
+
       let modTotal = 0;
       const activeMods: string[] = [];
       const mods = (character as any).customModifiers || [];
       mods.forEach((m: any) => {
-         if (m.target === 'all' || m.target === attr) {
-            modTotal += m.value;
-            activeMods.push(`${m.name}(${m.value > 0 ? '+'+m.value : m.value})`);
-         }
+        if (m.target === 'all' || m.target === attr) {
+          modTotal += m.value;
+          activeMods.push(`${m.name}(${m.value > 0 ? '+' + m.value : m.value})`);
+        }
       });
-      
+
       const finalResult = result + modTotal;
       const detailStr = `[${attrLabel}] 🎲 ${result}` + (modTotal !== 0 ? ` ⚡ Mod: ${activeMods.join(', ')}` : '');
 
       setRollResult({ attr: attrLabel, value: finalResult });
       if (onRoll) {
         apiFetch(`/api/campaigns/${character.campaignId}/roll`, {
-          method: "POST", 
-          body: JSON.stringify({ 
-             characterId: 'sys', 
-             characterName: character.name, 
-             playerName: campaignMembers.find((m:any) => m.userId === character.ownerId)?.name || 'Jogador', 
-             attribute: attrLabel, 
-             result: `${finalResult} (${result}${modTotal !== 0 ? (modTotal>0?'+'+modTotal:modTotal) : ''})` 
+          method: "POST",
+          body: JSON.stringify({
+            characterId: 'sys',
+            characterName: character.name,
+            playerName: campaignMembers.find((m: any) => m.userId === character.ownerId)?.name || 'Jogador',
+            attribute: attrLabel,
+            result: `${finalResult} (${result}${modTotal !== 0 ? (modTotal > 0 ? '+' + modTotal : modTotal) : ''})`
           })
         }).catch(console.error);
       }
@@ -949,49 +1009,49 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
   function handleCombinedRoll(check: any) {
     if (rollingAttr || !editable) return;
     setRollingAttr(check.id);
-    
+
     setTimeout(() => {
-       let totalDice = 0;
-       let details: number[] = [];
-       check.attrs.forEach((a: string) => {
-          const dieSize = parseInt((character.attributes[a as AttributeKey] || "d6").replace("d", ""));
-          const roll = Math.floor(Math.random() * dieSize) + 1;
-          totalDice += roll;
-          details.push(roll);
-       });
+      let totalDice = 0;
+      let details: number[] = [];
+      check.attrs.forEach((a: string) => {
+        const dieSize = parseInt((character.attributes[a as AttributeKey] || "d6").replace("d", ""));
+        const roll = Math.floor(Math.random() * dieSize) + 1;
+        totalDice += roll;
+        details.push(roll);
+      });
 
-       let modTotal = 0;
-       let activeMods: string[] = [];
-       const mods = (character as any).customModifiers || [];
-       mods.forEach((m: any) => {
-          if (m.target === 'all' || check.attrs.includes(m.target) || m.target === check.name) {
-             modTotal += m.value;
-             activeMods.push(`${m.name} (${m.value > 0 ? '+'+m.value : m.value})`);
-          }
-       });
+      let modTotal = 0;
+      let activeMods: string[] = [];
+      const mods = (character as any).customModifiers || [];
+      mods.forEach((m: any) => {
+        if (m.target === 'all' || check.attrs.includes(m.target) || m.target === check.name) {
+          modTotal += m.value;
+          activeMods.push(`${m.name} (${m.value > 0 ? '+' + m.value : m.value})`);
+        }
+      });
 
-       const finalResult = totalDice + modTotal;
-       const diceStr = `[${check.attrs.join('+').toUpperCase()}] 🎲 ${details.join(' + ')}`;
-       const modStr = modTotal !== 0 ? ` ⚡ Mod: ${modTotal > 0 ? '+'+modTotal : modTotal}` : '';
-       
-       const logDetail = `${check.name} ${diceStr}${modStr}`;
+      const finalResult = totalDice + modTotal;
+      const diceStr = `[${check.attrs.join('+').toUpperCase()}] 🎲 ${details.join(' + ')}`;
+      const modStr = modTotal !== 0 ? ` ⚡ Mod: ${modTotal > 0 ? '+' + modTotal : modTotal}` : '';
 
-       if (onRoll) {
-          apiFetch(`/api/campaigns/${character.campaignId}/roll`, {
-            method: "POST", 
-            body: JSON.stringify({ 
-               characterId: 'sys', 
-               characterName: character.name, 
-               playerName: campaignMembers.find((m:any) => m.userId === character.ownerId)?.name || 'Jogador', 
-               attribute: logDetail, 
-               result: finalResult 
-            })
-          }).catch(console.error);
-       }
-       
-       setRollResult({ attr: check.name, value: finalResult });
-       setRollingAttr(null);
-       setTimeout(() => setRollResult(null), 4000);
+      const logDetail = `${check.name} ${diceStr}${modStr}`;
+
+      if (onRoll) {
+        apiFetch(`/api/campaigns/${character.campaignId}/roll`, {
+          method: "POST",
+          body: JSON.stringify({
+            characterId: 'sys',
+            characterName: character.name,
+            playerName: campaignMembers.find((m: any) => m.userId === character.ownerId)?.name || 'Jogador',
+            attribute: logDetail,
+            result: finalResult
+          })
+        }).catch(console.error);
+      }
+
+      setRollResult({ attr: check.name, value: finalResult });
+      setRollingAttr(null);
+      setTimeout(() => setRollResult(null), 4000);
     }, 800);
   }
 
@@ -1216,6 +1276,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
                                   {item.type === 'text' && <ScrollText className="size-5 text-amber-500" />}
                                   {item.type === 'image' && <ImageIcon className="size-5 text-blue-400" />}
                                   {item.type === 'video' && <Film className="size-5 text-purple-400" />}
+                                  {item.type === 'app-blueprints' && <Package className="size-5 text-blue-500" />}
                                   <span className="font-bold text-sm text-foreground truncate">{item.name}</span>
                                 </div>
                               </button>
@@ -1250,7 +1311,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
             )}
           </AnimatePresence>
 
-          {/* NOVO: MODAL VISUALIZADOR DE ITENS ÚTEIS / RELÍQUIAS */}
+          {/* NOVO: MODAL VISUALIZADOR DE ITENS ÚTEIS / RELÍQUIAS / APPS */}
           <AnimatePresence>
             {viewingItem && (
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
@@ -1260,6 +1321,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
                       {viewingItem.type === 'text' && <ScrollText className="size-5" />}
                       {viewingItem.type === 'image' && <ImageIcon className="size-5" />}
                       {viewingItem.type === 'video' && <Film className="size-5" />}
+                      {viewingItem.type === 'app-blueprints' && <Package className="size-5" />}
                       {viewingItem.name}
                     </h4>
                     <button onClick={() => setViewingItem(null)} className="rounded-full p-2 hover:bg-black/10 transition-colors">
@@ -1287,6 +1349,15 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
                           allowFullScreen
                         />
                       </div>
+                    )}
+
+                    {/* === O APLICATIVO INJETADO AQUI === */}
+                    {viewingItem.type === 'app-blueprints' && (
+                      <BlueprintApp
+                        character={character}
+                        editable={editable}
+                        onSpendMp={(cost: number) => patchResource("mp", -cost)}
+                      />
                     )}
                   </div>
 
@@ -1334,26 +1405,26 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                 <motion.div variants={modalVariants} className="w-full max-w-md rounded-xl border border-primary/50 bg-zinc-950 p-6 shadow-2xl relative">
                   <button onClick={() => setShowTransferModal(false)} className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
-                  
+
                   <h4 className="font-serif text-xl font-bold text-primary mb-2 flex items-center gap-2">
                     <UserPlus className="size-5" /> Ceder Controle
                   </h4>
                   <p className="text-sm text-muted-foreground mb-6">Selecione para qual jogador você deseja transferir o controle permanente desta ficha.</p>
-                  
+
                   <div className="space-y-2 mb-6">
-                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Jogadores na Mesa</p>
-                     <div className="flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar-sepia">
-                        {campaignMembers.map((m:any) => (
-                           <button 
-                             key={m.userId} 
-                             onClick={() => setTransferUserId(m.userId)} 
-                             className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${transferUserId === m.userId ? "border-primary bg-primary/20 text-white font-bold" : "border-white/5 bg-white/5 hover:border-primary/50"}`}
-                           >
-                              <Shield className="size-4 text-primary" /> {m.name} {m.role === 'gm' && '(Mestre)'}
-                           </button>
-                        ))}
-                        {campaignMembers.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhum outro jogador conectado.</p>}
-                     </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Jogadores na Mesa</p>
+                    <div className="flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar-sepia">
+                      {campaignMembers.map((m: any) => (
+                        <button
+                          key={m.userId}
+                          onClick={() => setTransferUserId(m.userId)}
+                          className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${transferUserId === m.userId ? "border-primary bg-primary/20 text-white font-bold" : "border-white/5 bg-white/5 hover:border-primary/50"}`}
+                        >
+                          <Shield className="size-4 text-primary" /> {m.name} {m.role === 'gm' && '(Mestre)'}
+                        </button>
+                      ))}
+                      {campaignMembers.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhum outro jogador conectado.</p>}
+                    </div>
                   </div>
 
                   <div className="flex justify-end gap-3">
@@ -1386,18 +1457,18 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
             </p>
           </div>
         </div>
-        
+
         {/* Painel do Topo a Direita (Ouro e Controle) */}
         <div className="flex flex-col items-end gap-2 shrink-0">
           <div className="flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-full border border-border/60 shadow-sm">
-             <Coins className="size-3.5 text-accent"/>
-             <span className="font-mono text-xs font-bold text-foreground">{currentZenit} z</span>
+            <Coins className="size-3.5 text-accent" />
+            <span className="font-mono text-xs font-bold text-foreground">{currentZenit} z</span>
           </div>
           {/* Botão de Transferência Aparece para o Dono ou GM */}
           {editable && (
-             <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 border-primary/40 text-primary hover:bg-primary/10 transition-colors" onClick={() => setShowTransferModal(true)}>
-               <UserPlus className="size-3 mr-1.5" /> Ceder Controle
-             </Button>
+            <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 border-primary/40 text-primary hover:bg-primary/10 transition-colors" onClick={() => setShowTransferModal(true)}>
+              <UserPlus className="size-3 mr-1.5" /> Ceder Controle
+            </Button>
           )}
         </div>
       </div>
@@ -1407,137 +1478,137 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
         <button onClick={() => setSheetTab('main')} className={`flex-1 text-xs py-2 rounded-md transition-colors ${sheetTab === 'main' ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'text-muted-foreground hover:text-white'}`}>Principal</button>
         <button onClick={() => setSheetTab('checks')} className={`flex-1 text-xs py-2 rounded-md transition-colors ${sheetTab === 'checks' ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'text-muted-foreground hover:text-white'}`}>Testes e Perícias</button>
         <button onClick={() => setSheetTab('modifiers')} className={`flex-1 text-xs py-2 rounded-md transition-colors ${sheetTab === 'modifiers' ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'text-muted-foreground hover:text-white flex items-center justify-center gap-1'}`}>
-           Condições {(character as any).customModifiers?.length > 0 && <span className="flex size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold">{(character as any).customModifiers.length}</span>}
+          Condições {(character as any).customModifiers?.length > 0 && <span className="flex size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold">{(character as any).customModifiers.length}</span>}
         </button>
       </div>
 
       {/* CONTEÚDO DA ABA SELECIONADA */}
       {sheetTab === 'main' && (
         <div className="animate-in fade-in zoom-in-95 duration-200">
-           {/* XP System */}
-           <div className="bg-black/40 rounded-lg p-3 sm:p-4 border border-border/40">
-             <div className="flex justify-between items-center mb-2">
-               <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest">Experiência (XP)</p>
-               <p className="text-xs sm:text-sm text-primary font-mono font-bold">{currentLevelXp} / {xpRequired}</p>
-             </div>
-             <div className="w-full bg-zinc-800/80 rounded-full h-1.5 sm:h-2 mb-3 sm:mb-4 overflow-hidden">
-               <div className="bg-primary h-1.5 sm:h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${(currentLevelXp / xpRequired) * 100}%` }}></div>
-             </div>
-             <div className="flex flex-wrap items-center gap-2">
-               {unspentPoints > 0 ? (
-                 <Button size="sm" variant="default" disabled={!editable} className="h-8 text-xs animate-pulse bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 shrink-0" onClick={() => setShowLevelUp(true)}>
-                   <TrendingUp className="size-3.5 mr-1.5" /> Classes ({unspentPoints})
-                 </Button>
-               ) : <div />}
-               {isGm && (
-                 <div className="flex gap-1.5 ml-auto shrink-0">
-                   <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", -1)}>-1</Button>
-                   <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 1)}>+1</Button>
-                   <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 5)}>+5</Button>
-                   <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 10)}>+10</Button>
-                   <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 50)}>+50</Button>
-                 </div>
-               )}
-             </div>
-           </div>
+          {/* XP System */}
+          <div className="bg-black/40 rounded-lg p-3 sm:p-4 border border-border/40">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest">Experiência (XP)</p>
+              <p className="text-xs sm:text-sm text-primary font-mono font-bold">{currentLevelXp} / {xpRequired}</p>
+            </div>
+            <div className="w-full bg-zinc-800/80 rounded-full h-1.5 sm:h-2 mb-3 sm:mb-4 overflow-hidden">
+              <div className="bg-primary h-1.5 sm:h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${(currentLevelXp / xpRequired) * 100}%` }}></div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {unspentPoints > 0 ? (
+                <Button size="sm" variant="default" disabled={!editable} className="h-8 text-xs animate-pulse bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 shrink-0" onClick={() => setShowLevelUp(true)}>
+                  <TrendingUp className="size-3.5 mr-1.5" /> Classes ({unspentPoints})
+                </Button>
+              ) : <div />}
+              {isGm && (
+                <div className="flex gap-1.5 ml-auto shrink-0">
+                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", -1)}>-1</Button>
+                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 1)}>+1</Button>
+                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 5)}>+5</Button>
+                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 10)}>+10</Button>
+                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 50)}>+50</Button>
+                </div>
+              )}
+            </div>
+          </div>
 
-           <div className="mt-5 grid grid-cols-4 gap-2">
-             {ATTR_KEYS.map((k) => {
-               const isRolling = rollingAttr === k
-               const canUpgradeAttribute = editable && unspentAttrPoints > 0 && character.attributes[k] !== "d12"
+          <div className="mt-5 grid grid-cols-4 gap-2">
+            {ATTR_KEYS.map((k) => {
+              const isRolling = rollingAttr === k
+              const canUpgradeAttribute = editable && unspentAttrPoints > 0 && character.attributes[k] !== "d12"
 
-               return (
-                 <div key={k} className="relative">
-                   <button disabled={!editable || isRolling} onClick={() => rollDice(k, character.attributes[k])} className={`w-full rounded-lg border py-3 text-center transition-all duration-300 ${isRolling ? "animate-bounce border-primary bg-primary/20" : "border-border/60 bg-card/40 hover:-translate-y-1 hover:border-primary/50 hover:bg-card"}`}>
-                     <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">{ATTRIBUTE_META[k].short}</p>
-                     <p className="font-serif text-xl sm:text-2xl font-black text-primary drop-shadow-sm">{character.attributes[k]}</p>
-                   </button>
+              return (
+                <div key={k} className="relative">
+                  <button disabled={!editable || isRolling} onClick={() => rollDice(k, character.attributes[k])} className={`w-full rounded-lg border py-3 text-center transition-all duration-300 ${isRolling ? "animate-bounce border-primary bg-primary/20" : "border-border/60 bg-card/40 hover:-translate-y-1 hover:border-primary/50 hover:bg-card"}`}>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">{ATTRIBUTE_META[k].short}</p>
+                    <p className="font-serif text-xl sm:text-2xl font-black text-primary drop-shadow-sm">{character.attributes[k]}</p>
+                  </button>
 
-                   {canUpgradeAttribute && (
-                     <button onClick={(e) => { e.stopPropagation(); handleUpgradeAttribute(k); }} className="absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md hover:scale-110 transition-transform z-10" title={`Evoluir Atributo (${unspentAttrPoints} sobrando)`}>
-                       <TrendingUp className="size-3" />
-                     </button>
-                   )}
-                 </div>
-               )
-             })}
-           </div>
-
-           <div className="mt-6 flex flex-col gap-4">
-             <ResourceBar label="Vida" short="HP" icon={<Heart className="size-4" />} current={character.resources.hp} max={character.resources.maxHp} colorVar="--hp" editable={editable} onChange={(d) => patchResource("hp", d)} />
-             <ResourceBar label="Mente" short="MP" icon={<Zap className="size-4" />} current={character.resources.mp} max={character.resources.maxMp} colorVar="--mp" editable={editable} onChange={(d) => patchResource("mp", d)} />
-             <ResourceBar label="Inventario" short="IP" icon={<Backpack className="size-4" />} current={character.resources.ip} max={character.resources.maxIp} colorVar="--ip" editable={editable} onChange={(d) => patchResource("ip", d)} />
-           </div>
-
-           <div className="flex flex-wrap gap-2 mt-5">
-             <div className="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-[color:var(--fp)]/30 bg-[color:var(--fp)]/5 px-3 py-2">
-               <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[color:var(--fp)]"><Sparkles className="size-3.5" /> Fabula</span>
-               <div className="flex items-center gap-1.5 shrink-0">
-                 {editable && <button onClick={() => patchResource("fp", -1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-[color:var(--fp)] hover:bg-[color:var(--fp)]/10 transition-colors"><Minus className="size-3" /></button>}
-                 <span className="w-5 text-center font-mono text-sm font-bold text-[color:var(--fp)]">{character.resources.fp}</span>
-                 {editable && <button onClick={() => patchResource("fp", 1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-[color:var(--fp)] hover:bg-[color:var(--fp)]/10 transition-colors"><Plus className="size-3" /></button>}
-               </div>
-             </div>
-             
-             <div className="flex-1 min-w-[140px] flex gap-2">
-               <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors" onClick={() => setShowInventory(true)}>
-                 <Package className="size-4 mr-2 shrink-0" /> Mochila
-               </Button>
-
-               <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-accent/30 bg-accent/5 text-accent hover:bg-accent/20 hover:border-accent/50 transition-colors" onClick={() => setShowStore(true)}>
-                 <Store className="size-4 mr-2 shrink-0" /> Loja
-               </Button>
-             </div>
-           </div>
-
-           <div className="mt-8 pt-5 border-t border-border/30">
-             <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Habilidades de Classe Ativas</p>
-             <div className="flex flex-wrap gap-2.5">
-               {Object.entries(skillsObj).map(([skillId, lvl]) => {
-                  const classMatch = CLASSES.find(c => c.skills.some(s => s.id === skillId))
-                  const skill = classMatch?.skills.find(s => s.id === skillId)
-                  if (!skill || lvl === 0) return null
-
-                  return (
-                    <button key={skill.id} onClick={() => setSelectedSkill(skill)} className="rounded-md border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary hover:text-primary-foreground shadow-sm">
-                      {skill.name} <span className="opacity-70 font-mono ml-1 text-[10px]">(Nv. {lvl as React.ReactNode})</span>
+                  {canUpgradeAttribute && (
+                    <button onClick={(e) => { e.stopPropagation(); handleUpgradeAttribute(k); }} className="absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md hover:scale-110 transition-transform z-10" title={`Evoluir Atributo (${unspentAttrPoints} sobrando)`}>
+                      <TrendingUp className="size-3" />
                     </button>
-                  )
-               })}
-               {totalSkillPointsSpent === 0 && (
-                 <p className="text-xs text-muted-foreground italic mt-1">Nenhuma habilidade aprendida ainda.</p>
-               )}
-             </div>
-           </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="mt-6 flex flex-col gap-4">
+            <ResourceBar label="Vida" short="HP" icon={<Heart className="size-4" />} current={character.resources.hp} max={character.resources.maxHp} colorVar="--hp" editable={editable} onChange={(d) => patchResource("hp", d)} />
+            <ResourceBar label="Mente" short="MP" icon={<Zap className="size-4" />} current={character.resources.mp} max={character.resources.maxMp} colorVar="--mp" editable={editable} onChange={(d) => patchResource("mp", d)} />
+            <ResourceBar label="Inventario" short="IP" icon={<Backpack className="size-4" />} current={character.resources.ip} max={character.resources.maxIp} colorVar="--ip" editable={editable} onChange={(d) => patchResource("ip", d)} />
+          </div>
+
+          <div className="flex flex-wrap gap-2 mt-5">
+            <div className="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-[color:var(--fp)]/30 bg-[color:var(--fp)]/5 px-3 py-2">
+              <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[color:var(--fp)]"><Sparkles className="size-3.5" /> Fabula</span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {editable && <button onClick={() => patchResource("fp", -1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-[color:var(--fp)] hover:bg-[color:var(--fp)]/10 transition-colors"><Minus className="size-3" /></button>}
+                <span className="w-5 text-center font-mono text-sm font-bold text-[color:var(--fp)]">{character.resources.fp}</span>
+                {editable && <button onClick={() => patchResource("fp", 1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-[color:var(--fp)] hover:bg-[color:var(--fp)]/10 transition-colors"><Plus className="size-3" /></button>}
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-[140px] flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors" onClick={() => setShowInventory(true)}>
+                <Package className="size-4 mr-2 shrink-0" /> Mochila
+              </Button>
+
+              <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-accent/30 bg-accent/5 text-accent hover:bg-accent/20 hover:border-accent/50 transition-colors" onClick={() => setShowStore(true)}>
+                <Store className="size-4 mr-2 shrink-0" /> Loja
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-5 border-t border-border/30">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Habilidades de Classe Ativas</p>
+            <div className="flex flex-wrap gap-2.5">
+              {Object.entries(skillsObj).map(([skillId, lvl]) => {
+                const classMatch = CLASSES.find(c => c.skills.some(s => s.id === skillId))
+                const skill = classMatch?.skills.find(s => s.id === skillId)
+                if (!skill || lvl === 0) return null
+
+                return (
+                  <button key={skill.id} onClick={() => setSelectedSkill(skill)} className="rounded-md border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary hover:text-primary-foreground shadow-sm">
+                    {skill.name} <span className="opacity-70 font-mono ml-1 text-[10px]">(Nv. {lvl as React.ReactNode})</span>
+                  </button>
+                )
+              })}
+              {totalSkillPointsSpent === 0 && (
+                <p className="text-xs text-muted-foreground italic mt-1">Nenhuma habilidade aprendida ainda.</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {sheetTab === 'checks' && (
-         <CombinedChecksPanel 
-           character={character} 
-           onRoll={handleCombinedRoll} 
-           rollingAttr={rollingAttr} 
-           disabled={!editable} 
-         />
+        <CombinedChecksPanel
+          character={character}
+          onRoll={handleCombinedRoll}
+          rollingAttr={rollingAttr}
+          disabled={!editable}
+        />
       )}
 
       {sheetTab === 'modifiers' && (
-         <ModifiersPanel 
-           character={character} 
-           isGm={isGm} 
-           onUpdate={updateModifiers} 
-         />
+        <ModifiersPanel
+          character={character}
+          isGm={isGm}
+          onUpdate={updateModifiers}
+        />
       )}
 
       {isGm && onKill && character.resources.hp <= 0 && (
-         <div className="mt-6 pt-5 border-t border-destructive/50">
-           <Button
-             className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2 h-12 text-lg font-bold shadow-[0_0_15px_rgba(255,0,0,0.3)] animate-pulse"
-             onClick={() => onKill(character)}
-           >
-             <Skull className="size-5" /> Confirmar Morte e Recolher Loots
-           </Button>
-         </div>
+        <div className="mt-6 pt-5 border-t border-destructive/50">
+          <Button
+            className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2 h-12 text-lg font-bold shadow-[0_0_15px_rgba(255,0,0,0.3)] animate-pulse"
+            onClick={() => onKill(character)}
+          >
+            <Skull className="size-5" /> Confirmar Morte e Recolher Loots
+          </Button>
+        </div>
       )}
 
       {pending && <div className="absolute top-2 right-2 flex items-center gap-2 px-2 py-1 rounded bg-background/80 border border-border/50 backdrop-blur-sm"><Loader2 className="size-3 text-muted-foreground animate-spin" /><span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Sincronizando</span></div>}
@@ -1569,7 +1640,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   // Criador de Itens Úteis (Handouts)
   const [customItemName, setCustomItemName] = useState("")
-  const [customItemType, setCustomItemType] = useState<"text" | "image" | "video">("text")
+  const [customItemType, setCustomItemType] = useState<"text" | "image" | "video" | "app-blueprints">("text")
   const [customItemContent, setCustomItemContent] = useState("")
   const [itemNotification, setItemNotification] = useState<string | null>(null)
   const [inventoryToOpen, setInventoryToOpen] = useState<string | null>(null)
@@ -1663,8 +1734,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   // Sincroniza savedMaps localmente se houver edição
   const syncMapsToStorage = useCallback((maps: GameMap[]) => {
-      setSavedMaps(maps);
-      localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(maps));
+    setSavedMaps(maps);
+    localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(maps));
   }, [data.campaign.id]);
 
   // Verificador de Expiração da Enquete
@@ -1719,8 +1790,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     if (event.type === "weather:change" || event.eventType === "weather:change" || event.action === "weather:change") {
       const w = event.weather;
       if (w) {
-         setWeather(w);
-         localStorage.setItem(`weather_${data.campaign.id}`, w);
+        setWeather(w);
+        localStorage.setItem(`weather_${data.campaign.id}`, w);
       }
       return;
     }
@@ -1733,9 +1804,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     // Mapa
     if (event.type === "map:created") {
       setSavedMaps(prev => {
-         const next = [...prev, event.map];
-         localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(next));
-         return next;
+        const next = [...prev, event.map];
+        localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(next));
+        return next;
       });
       return;
     }
@@ -1766,9 +1837,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         };
         // O mapa que você tá olhando deve refletir no storage global também pra não perder as configs!
         setSavedMaps(allMaps => {
-           const nextAllMaps = allMaps.map(m => m.id === updatedMap.id ? updatedMap : m);
-           localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(nextAllMaps));
-           return nextAllMaps;
+          const nextAllMaps = allMaps.map(m => m.id === updatedMap.id ? updatedMap : m);
+          localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(nextAllMaps));
+          return nextAllMaps;
         });
         return updatedMap;
       });
@@ -1787,9 +1858,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         };
         // O mapa que você tá olhando deve refletir no storage global também pra não perder as configs!
         setSavedMaps(allMaps => {
-           const nextAllMaps = allMaps.map(m => m.id === updatedMap.id ? updatedMap : m);
-           localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(nextAllMaps));
-           return nextAllMaps;
+          const nextAllMaps = allMaps.map(m => m.id === updatedMap.id ? updatedMap : m);
+          localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(nextAllMaps));
+          return nextAllMaps;
         });
         return updatedMap;
       })
@@ -1799,63 +1870,63 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     // Dados & Truques de Mestre Ocultos
     if (event.type === "dice:roll") {
       const attr = String(event.attribute || "");
-      
+
       // INTERCEPTA CLIMA
       if (attr.startsWith("SYNC_WEATHER:")) {
-         const newWeather = attr.split(":")[1] as WeatherType;
-         setWeather(newWeather);
-         localStorage.setItem(`weather_${data.campaign.id}`, newWeather);
-         
-         setHistory((prev) => [{
-           id: Math.random().toString(36).substring(7),
-           type: "roll" as const,
-           title: "Mestre",
-           subtitle: "Controle do Ambiente",
-           detail: "CLIMA ALTERADO",
-           result: event.result,
-           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-         }, ...prev].slice(0, 50));
-         return; // Pula histórico normal
+        const newWeather = attr.split(":")[1] as WeatherType;
+        setWeather(newWeather);
+        localStorage.setItem(`weather_${data.campaign.id}`, newWeather);
+
+        setHistory((prev) => [{
+          id: Math.random().toString(36).substring(7),
+          type: "roll" as const,
+          title: "Mestre",
+          subtitle: "Controle do Ambiente",
+          detail: "CLIMA ALTERADO",
+          result: event.result,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }, ...prev].slice(0, 50));
+        return; // Pula histórico normal
       }
 
       // INTERCEPTA NOTIFICAÇÃO DE ITEM E SYNC DA FICHA
       if (attr.startsWith("SYNC_ITEM_GIVEN")) {
-         try {
-            const payload = JSON.parse(String(event.result));
-            // Sincroniza a ficha para todos da mesa verem a alteração (evita F5)
-            // Atualiza inclusive customItems que vieram do Payload
-            setCharacters((prev) => prev.map(c => c.id === payload.charId ? payload.character : c));
-            
-            // Se o ID do dono for o ID de quem recebeu o websocket, lança o Toast verde!
-            if (payload.character.ownerId === data.me.id) {
-               setItemNotification(payload.itemName);
-               setInventoryToOpen(payload.charId); // Armazena a ID para abrir a mochila caso clique
-               setTimeout(() => setItemNotification(null), 8000);
-            }
-         } catch (e) {
-            console.error("Falha ao sincronizar item", e);
-         }
-         return; // Pula o histórico de rolagem de dados
+        try {
+          const payload = JSON.parse(String(event.result));
+          // Sincroniza a ficha para todos da mesa verem a alteração (evita F5)
+          // Atualiza inclusive customItems que vieram do Payload
+          setCharacters((prev) => prev.map(c => c.id === payload.charId ? payload.character : c));
+
+          // Se o ID do dono for o ID de quem recebeu o websocket, lança o Toast verde!
+          if (payload.character.ownerId === data.me.id) {
+            setItemNotification(payload.itemName);
+            setInventoryToOpen(payload.charId); // Armazena a ID para abrir a mochila caso clique
+            setTimeout(() => setItemNotification(null), 8000);
+          }
+        } catch (e) {
+          console.error("Falha ao sincronizar item", e);
+        }
+        return; // Pula o histórico de rolagem de dados
       }
 
       // INTERCEPTA CUTSCENE (Chega aqui stringificada para todos)
       if (attr.startsWith("SYNC_CUTSCENE:")) {
-         const action = attr.split(":")[1];
-         
-         if (action === "PLAY") {
-            try {
-               const c = JSON.parse(String(event.result));
-               setActiveCutscene(c);
-               setActiveSceneIndex(0);
-            } catch (e) {
-               console.error("Falha ao abrir cutscene recebida", e);
-            }
-         } else if (action === "STOP") {
-            setActiveCutscene(null);
-         } else if (action === "SCENE") {
-            setActiveSceneIndex(Number(event.result));
-         }
-         return; // Pula histórico
+        const action = attr.split(":")[1];
+
+        if (action === "PLAY") {
+          try {
+            const c = JSON.parse(String(event.result));
+            setActiveCutscene(c);
+            setActiveSceneIndex(0);
+          } catch (e) {
+            console.error("Falha ao abrir cutscene recebida", e);
+          }
+        } else if (action === "STOP") {
+          setActiveCutscene(null);
+        } else if (action === "SCENE") {
+          setActiveSceneIndex(Number(event.result));
+        }
+        return; // Pula histórico
       }
 
       setHistory((prev) => [{
@@ -1913,10 +1984,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   function handleMoveToken(mapId: string, tokenId: string, x: number, y: number, type: "character" | "creature") {
     setActiveMap(prev => {
-       if (!prev) return prev;
-       const updatedMap = { ...prev, tokens: { ...(prev.tokens || {}), [tokenId]: { x, y, type } } };
-       syncMapsToStorage(savedMaps.map(m => m.id === updatedMap.id ? updatedMap : m));
-       return updatedMap;
+      if (!prev) return prev;
+      const updatedMap = { ...prev, tokens: { ...(prev.tokens || {}), [tokenId]: { x, y, type } } };
+      syncMapsToStorage(savedMaps.map(m => m.id === updatedMap.id ? updatedMap : m));
+      return updatedMap;
     });
 
     apiFetch(`/api/campaigns/${data.campaign.id}/maps`, {
@@ -1926,12 +1997,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   function handlePaintTerrain(mapId: string, tile: TileData) {
     setActiveMap(prev => {
-       if (!prev) return prev;
-       const updatedMap = { ...prev, tiles: { ...prev.tiles, [`${tile.x},${tile.y}`]: tile } };
-       syncMapsToStorage(savedMaps.map(m => m.id === updatedMap.id ? updatedMap : m));
-       return updatedMap;
+      if (!prev) return prev;
+      const updatedMap = { ...prev, tiles: { ...prev.tiles, [`${tile.x},${tile.y}`]: tile } };
+      syncMapsToStorage(savedMaps.map(m => m.id === updatedMap.id ? updatedMap : m));
+      return updatedMap;
     });
-    
+
     apiFetch(`/api/campaigns/${data.campaign.id}/maps`, {
       method: "POST", body: JSON.stringify({ action: "update_terrain", mapId, tileData: tile })
     })
@@ -1947,35 +2018,35 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     // Atualização otimista (Mestre)
     setWeather(w);
     localStorage.setItem(`weather_${data.campaign.id}`, w);
-    
+
     const weatherNames: Record<string, string> = {
       clear: "Céu Limpo", sunny: "Ensolarado", cloudy: "Nublado", fog: "Neblina", rain: "Chuva", blizzard: "Nevasca"
     };
-    
+
     apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-      method: "POST", body: JSON.stringify({ 
-        characterId: 'sys_weather', 
-        characterName: 'Mestre', 
-        playerName: data.me.name, 
-        attribute: `SYNC_WEATHER:${w}`, 
-        result: weatherNames[w] || w 
+      method: "POST", body: JSON.stringify({
+        characterId: 'sys_weather',
+        characterName: 'Mestre',
+        playerName: data.me.name,
+        attribute: `SYNC_WEATHER:${w}`,
+        result: weatherNames[w] || w
       })
     }).catch(console.error);
   }
 
   // === SISTEMA DE CUTSCENES ===
   function saveCutscenes(newCutscenes: Cutscene[]) {
-     setCutscenes(newCutscenes);
-     localStorage.setItem(`cutscenes_${data.campaign.id}`, JSON.stringify(newCutscenes));
+    setCutscenes(newCutscenes);
+    localStorage.setItem(`cutscenes_${data.campaign.id}`, JSON.stringify(newCutscenes));
   }
 
   function syncCutscene(action: "PLAY" | "STOP" | "SCENE", payload?: any) {
-     const attr = `SYNC_CUTSCENE:${action}`;
-     const result = payload ? (typeof payload === 'string' ? payload : JSON.stringify(payload)) : '...';
-     
-     apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-        method: "POST", body: JSON.stringify({ characterId: 'sys_cutscene', characterName: 'Sistema', playerName: 'Mestre', attribute: attr, result })
-     }).catch(console.error);
+    const attr = `SYNC_CUTSCENE:${action}`;
+    const result = payload ? (typeof payload === 'string' ? payload : JSON.stringify(payload)) : '...';
+
+    apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+      method: "POST", body: JSON.stringify({ characterId: 'sys_cutscene', characterName: 'Sistema', playerName: 'Mestre', attribute: attr, result })
+    }).catch(console.error);
   }
 
   const saveCustomNPCsToStorage = (npcs: NPCDraft[]) => {
@@ -2047,15 +2118,24 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       const targetCharacter = characters.find(c => c.id === selectedTargetCharId)
 
       if (gmPanelTab === 'custom') {
-        if (!customItemName || !customItemContent) {
+        if (!customItemName || (!customItemContent && customItemType !== 'app-blueprints')) {
           setSendingLoot(false);
           return alert("Preencha o nome e o conteúdo da Relíquia.");
+        }
+        if (customItemType === 'app-blueprints' && targetCharacter) {
+          // Verifica se o personagem possui a perícia 'Aparelhos' (ti-gadgets)
+          const gadgetsLevel = targetCharacter.skills["ti-gadgets"] || 0;
+
+          if (gadgetsLevel === 0) {
+            setSendingLoot(false);
+            return alert(`O personagem ${targetCharacter.name} não possui a perícia 'Aparelhos' (Classe: Inventor). Não é possível equipar o Almanaque Magitech.`);
+          }
         }
         if (targetCharacter) {
           const newItem: CustomItem = {
             id: Math.random().toString(36).substring(2, 9),
             name: customItemName,
-            type: customItemType,
+            type: customItemType as any,
             content: customItemContent
           };
           const currentCustom = (targetCharacter as any).customItems || [];
@@ -2064,12 +2144,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, {
             method: "PATCH", body: JSON.stringify({ customItems: updatedCustomItems })
           })
-          
+
           // Otimismo imediato com a lista de itens correta
           applyOptimistic({ ...updated, customItems: updatedCustomItems } as any);
           setCustomItemName("")
           setCustomItemContent("")
-          
+
           // ===============================
           // ENVIO DO SOCKET COM A NOTIFICAÇÃO 
           // ===============================
@@ -2118,7 +2198,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       applyOptimistic(updated);
 
       saveNpcLoots(npcLoots.filter(l => l.uid !== selectedDroppedLoot.uid));
-      
+
       // ===============================
       // ENVIO DO SOCKET COM A NOTIFICAÇÃO 
       // ===============================
@@ -2387,30 +2467,30 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           </AnimatePresence>
 
           {/* MANAGER DE CUTSCENES (Mestre) */}
-          <CutsceneManager 
-             isOpen={showCutsceneManager && isGm}
-             onClose={() => setShowCutsceneManager(false)}
-             cutscenes={cutscenes}
-             onSave={saveCutscenes}
-             onPlay={(id) => { 
-                const c = cutscenes.find(x => x.id === id);
-                if (c) {
-                   syncCutscene("PLAY", c); 
-                   setShowCutsceneManager(false);
-                }
-             }}
+          <CutsceneManager
+            isOpen={showCutsceneManager && isGm}
+            onClose={() => setShowCutsceneManager(false)}
+            cutscenes={cutscenes}
+            onSave={saveCutscenes}
+            onPlay={(id) => {
+              const c = cutscenes.find(x => x.id === id);
+              if (c) {
+                syncCutscene("PLAY", c);
+                setShowCutsceneManager(false);
+              }
+            }}
           />
 
           {/* OVERLAY GLOBAL DA CUTSCENE ATIVA (TODOS OS JOGADORES) */}
           <AnimatePresence>
             {activeCutscene && (
-               <CutscenePlayer 
-                  cutscene={activeCutscene} 
-                  sceneIndex={activeSceneIndex} 
-                  isGm={isGm} 
-                  onSyncScene={(idx) => syncCutscene("SCENE", idx.toString())} 
-                  onClose={() => syncCutscene("STOP")} 
-               />
+              <CutscenePlayer
+                cutscene={activeCutscene}
+                sceneIndex={activeSceneIndex}
+                isGm={isGm}
+                onSyncScene={(idx) => syncCutscene("SCENE", idx.toString())}
+                onClose={() => syncCutscene("STOP")}
+              />
             )}
           </AnimatePresence>
 
@@ -2510,54 +2590,57 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     </div>
                     <button onClick={() => setShowGmPanel(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
                   </div>
-                  
+
                   <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1 flex flex-col gap-6">
                     {/* TABS DO BAÚ */}
                     <div className="flex bg-black/40 rounded-lg p-1 border border-white/10 w-full mx-auto">
-                        <button onClick={() => setGmPanelTab('catalog')} className={`flex-1 text-sm py-2 rounded-md transition-colors ${gmPanelTab === 'catalog' ? 'bg-accent text-accent-foreground font-bold' : 'text-muted-foreground hover:text-white'}`}>Itens de Sistema</button>
-                        <button onClick={() => setGmPanelTab('custom')} className={`flex-1 text-sm py-2 rounded-md transition-colors ${gmPanelTab === 'custom' ? 'bg-accent text-accent-foreground font-bold' : 'text-muted-foreground hover:text-white'}`}>Criar Relíquias (Handouts)</button>
+                      <button onClick={() => setGmPanelTab('catalog')} className={`flex-1 text-sm py-2 rounded-md transition-colors ${gmPanelTab === 'catalog' ? 'bg-accent text-accent-foreground font-bold' : 'text-muted-foreground hover:text-white'}`}>Itens de Sistema</button>
+                      <button onClick={() => setGmPanelTab('custom')} className={`flex-1 text-sm py-2 rounded-md transition-colors ${gmPanelTab === 'custom' ? 'bg-accent text-accent-foreground font-bold' : 'text-muted-foreground hover:text-white'}`}>Criar Relíquias (Handouts)</button>
                     </div>
 
                     {gmPanelTab === 'catalog' ? (
-                        <div>
-                          <div className="flex items-center justify-between mb-3 gap-4">
-                            <h5 className="text-xs font-bold uppercase tracking-widest text-primary shrink-0">1. Escolha o Item (Catálogo)</h5>
-                            <div className="relative flex-1 max-w-xs">
-                              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                              <input type="text" placeholder="Buscar item..." value={lootSearchQuery} onChange={(e) => setLootSearchQuery(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-md py-1.5 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-colors" />
-                            </div>
-                          </div>
-                          <div className="grid gap-3 sm:grid-cols-2 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar-sepia border border-border/30 rounded-lg p-2 bg-black/20">
-                            {filteredLoot.map((item) => (
-                              <button key={item.id} onClick={() => setSelectedLoot(item.id)} className={`flex flex-col text-left p-3 rounded-lg border transition-colors ${selectedLoot === item.id ? 'border-accent bg-accent/20' : 'border-border/60 bg-card/40 hover:border-accent/40'}`}>
-                                <div className="flex justify-between items-start w-full gap-2">
-                                  <p className="font-bold text-sm text-foreground">{item.name}{(item as any).purchasable === false && <span className="block w-fit mt-1 text-[8px] bg-purple-500/20 text-purple-400 border border-purple-500/30 px-1 py-0.5 rounded uppercase tracking-wider">Loot Exclusivo</span>}</p>
-                                  <span className="text-[10px] font-mono text-muted-foreground border border-border/60 px-1.5 py-0.5 rounded bg-background/50 shrink-0">Valor: {item.cost}z</span>
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-2 leading-snug"><ItemModifiers text={item.detail} /></div>
-                              </button>
-                            ))}
-                            {filteredLoot.length === 0 && <p className="text-xs text-muted-foreground text-center mt-4 col-span-2">Nenhum item encontrado.</p>}
+                      <div>
+                        <div className="flex items-center justify-between mb-3 gap-4">
+                          <h5 className="text-xs font-bold uppercase tracking-widest text-primary shrink-0">1. Escolha o Item (Catálogo)</h5>
+                          <div className="relative flex-1 max-w-xs">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                            <input type="text" placeholder="Buscar item..." value={lootSearchQuery} onChange={(e) => setLootSearchQuery(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-md py-1.5 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-colors" />
                           </div>
                         </div>
+                        <div className="grid gap-3 sm:grid-cols-2 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar-sepia border border-border/30 rounded-lg p-2 bg-black/20">
+                          {filteredLoot.map((item) => (
+                            <button key={item.id} onClick={() => setSelectedLoot(item.id)} className={`flex flex-col text-left p-3 rounded-lg border transition-colors ${selectedLoot === item.id ? 'border-accent bg-accent/20' : 'border-border/60 bg-card/40 hover:border-accent/40'}`}>
+                              <div className="flex justify-between items-start w-full gap-2">
+                                <p className="font-bold text-sm text-foreground">{item.name}{(item as any).purchasable === false && <span className="block w-fit mt-1 text-[8px] bg-purple-500/20 text-purple-400 border border-purple-500/30 px-1 py-0.5 rounded uppercase tracking-wider">Loot Exclusivo</span>}</p>
+                                <span className="text-[10px] font-mono text-muted-foreground border border-border/60 px-1.5 py-0.5 rounded bg-background/50 shrink-0">Valor: {item.cost}z</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-2 leading-snug"><ItemModifiers text={item.detail} /></div>
+                            </button>
+                          ))}
+                          {filteredLoot.length === 0 && <p className="text-xs text-muted-foreground text-center mt-4 col-span-2">Nenhum item encontrado.</p>}
+                        </div>
+                      </div>
                     ) : (
-                        <div className="flex flex-col gap-4 border border-border/30 rounded-lg p-4 bg-black/20">
-                          <h5 className="text-xs font-bold uppercase tracking-widest text-primary shrink-0 mb-1">1. Forjar Novo Item Útil</h5>
-                          
-                          <input type="text" value={customItemName} onChange={e=>setCustomItemName(e.target.value)} placeholder="Nome do Item (Ex: Carta do Rei)" className="w-full bg-black/40 border border-white/10 rounded-md py-2 px-3 text-sm text-foreground focus:outline-none focus:border-accent/50" />
-                          
-                          <select value={customItemType} onChange={e=>setCustomItemType(e.target.value as any)} className="w-full bg-black/40 border border-white/10 rounded-md py-2 px-3 text-sm text-foreground focus:outline-none focus:border-accent/50">
-                             <option value="text">Pergaminho / Carta (Texto Escrito)</option>
-                             <option value="image">Magia de Fótons (Imagem via URL)</option>
-                             <option value="video">Orbe da Lembrança (Vídeo do YouTube via URL)</option>
-                          </select>
+                      <div className="flex flex-col gap-4 border border-border/30 rounded-lg p-4 bg-black/20">
+                        <h5 className="text-xs font-bold uppercase tracking-widest text-primary shrink-0 mb-1">1. Forjar Novo Item Útil</h5>
 
-                          {customItemType === 'text' ? (
-                             <textarea value={customItemContent} onChange={e=>setCustomItemContent(e.target.value)} placeholder="Escreva o conteúdo da carta aqui..." rows={5} className="w-full bg-black/40 border border-white/10 rounded-md py-2 px-3 text-sm text-foreground focus:outline-none focus:border-accent/50 custom-scrollbar-sepia" />
-                          ) : (
-                             <input type="text" value={customItemContent} onChange={e=>setCustomItemContent(e.target.value)} placeholder={`Cole a URL ${customItemType === 'video' ? 'do Youtube' : 'da Imagem'} aqui...`} className="w-full bg-black/40 border border-white/10 rounded-md py-2 px-3 text-sm text-foreground focus:outline-none focus:border-accent/50" />
-                          )}
-                        </div>
+                        <input type="text" value={customItemName} onChange={e => setCustomItemName(e.target.value)} placeholder="Nome do Item (Ex: Carta do Rei)" className="w-full bg-black/40 border border-white/10 rounded-md py-2 px-3 text-sm text-foreground focus:outline-none focus:border-accent/50" />
+
+                        <select value={customItemType} onChange={e => setCustomItemType(e.target.value as any)} className="w-full bg-black/40 border border-white/10 rounded-md py-2 px-3 text-sm text-foreground focus:outline-none focus:border-accent/50">
+                          <option value="text">Pergaminho / Carta (Texto Escrito)</option>
+                          <option value="image">Magia de Fótons (Imagem via URL)</option>
+                          <option value="video">Orbe da Lembrança (Vídeo do YouTube via URL)</option>
+                          <option value="app-blueprints">Interface: Almanaque Magitech (Inventor)</option>
+                        </select>
+
+                        {customItemType === 'text' ? (
+                          <textarea value={customItemContent} onChange={e => setCustomItemContent(e.target.value)} placeholder="Escreva o conteúdo da carta aqui..." rows={5} className="w-full bg-black/40 border border-white/10 rounded-md py-2 px-3 text-sm text-foreground focus:outline-none focus:border-accent/50 custom-scrollbar-sepia" />
+                        ) : customItemType === 'app-blueprints' ? (
+                          <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-md text-xs text-blue-200">Este item instalará um mini-aplicativo interativo na mochila do jogador. O conteúdo não é necessário.</div>
+                        ) : (
+                          <input type="text" value={customItemContent} onChange={e => setCustomItemContent(e.target.value)} placeholder={`Cole a URL ${customItemType === 'video' ? 'do Youtube' : 'da Imagem'} aqui...`} className="w-full bg-black/40 border border-white/10 rounded-md py-2 px-3 text-sm text-foreground focus:outline-none focus:border-accent/50" />
+                        )}
+                      </div>
                     )}
 
                     <div>
@@ -2758,17 +2841,17 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 <div className="relative w-full max-w-4xl mx-auto my-auto pt-10 pb-10">
                   <button onClick={() => setSelectedCombatCharId(null)} className="absolute top-0 right-0 p-2 bg-white/10 hover:bg-white/20 rounded-full z-10"><X className="size-6 text-white" /></button>
                   {characters.filter(c => c.id === selectedCombatCharId).map(c => (
-                    <CharacterSheet 
-                       key={c.id} 
-                       character={c} 
-                       editable={isGm || c.ownerId === data.me.id} 
-                       isGm={isGm} 
-                       campaignMembers={data.members} 
-                       onOptimistic={applyOptimistic} 
-                       onRoll={(attr: string, res: number | string) => handleBroadcastRoll(c.name, attr, res)} 
-                       onKill={isGm ? handleKillNPC : undefined} 
-                       shouldOpenInventory={inventoryToOpen === c.id}
-                       onClearInventoryRequest={() => setInventoryToOpen(null)}
+                    <CharacterSheet
+                      key={c.id}
+                      character={c}
+                      editable={isGm || c.ownerId === data.me.id}
+                      isGm={isGm}
+                      campaignMembers={data.members}
+                      onOptimistic={applyOptimistic}
+                      onRoll={(attr: string, res: number | string) => handleBroadcastRoll(c.name, attr, res)}
+                      onKill={isGm ? handleKillNPC : undefined}
+                      shouldOpenInventory={inventoryToOpen === c.id}
+                      onClearInventoryRequest={() => setInventoryToOpen(null)}
                     />
                   ))}
                 </div>
@@ -2818,30 +2901,30 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       {mounted && createPortal(
         <AnimatePresence>
           {itemNotification && (
-            <motion.div 
-              initial={{ opacity: 0, y: 50, scale: 0.9, x: "-50%" }} 
-              animate={{ opacity: 1, y: 0, scale: 1, x: "-50%" }} 
-              exit={{ opacity: 0, y: 20, scale: 0.9, x: "-50%" }} 
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9, x: "-50%" }}
+              animate={{ opacity: 1, y: 0, scale: 1, x: "-50%" }}
+              exit={{ opacity: 0, y: 20, scale: 0.9, x: "-50%" }}
               className="fixed bottom-10 left-1/2 z-[400] flex items-center gap-4 bg-green-600/95 border-2 border-green-400 text-white px-6 py-4 rounded-2xl shadow-[0_0_40px_rgba(34,197,94,0.6)] backdrop-blur-md cursor-pointer"
               onClick={() => {
-                 // Ao clicar no Toast, abrimos a ficha principal e marcamos para abrir a mochila
-                 if (inventoryToOpen) {
-                    setSelectedCombatCharId(inventoryToOpen);
-                    setItemNotification(null);
-                 }
-              }} 
+                // Ao clicar no Toast, abrimos a ficha principal e marcamos para abrir a mochila
+                if (inventoryToOpen) {
+                  setSelectedCombatCharId(inventoryToOpen);
+                  setItemNotification(null);
+                }
+              }}
             >
               <Gift className="size-8 animate-bounce text-green-100" />
               <div className="flex flex-col pr-6">
-                 <span className="font-black text-base uppercase tracking-widest text-green-100">Item Recebido!</span>
-                 <span className="text-sm font-medium">O mestre enviou: <strong>{itemNotification}</strong></span>
-                 <span className="text-[10px] opacity-80 mt-0.5">Clique aqui para abrir sua mochila.</span>
+                <span className="font-black text-base uppercase tracking-widest text-green-100">Item Recebido!</span>
+                <span className="text-sm font-medium">O mestre enviou: <strong>{itemNotification}</strong></span>
+                <span className="text-[10px] opacity-80 mt-0.5">Clique aqui para abrir sua mochila.</span>
               </div>
-              <button 
-                 onClick={(e) => { e.stopPropagation(); setItemNotification(null); }} 
-                 className="absolute top-2 right-2 hover:bg-white/20 p-1 rounded-full transition-colors"
+              <button
+                onClick={(e) => { e.stopPropagation(); setItemNotification(null); }}
+                className="absolute top-2 right-2 hover:bg-white/20 p-1 rounded-full transition-colors"
               >
-                 <X className="size-4" />
+                <X className="size-4" />
               </button>
             </motion.div>
           )}
@@ -2982,7 +3065,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           character={c}
                           editable={true}
                           isGm={isGm}
-                          campaignMembers={data.members} 
+                          campaignMembers={data.members}
                           onOptimistic={applyOptimistic}
                           onRoll={(attr: string, res: number | string) => handleBroadcastRoll(c.name, attr, res)}
                           onKill={isGm ? handleKillNPC : undefined}
@@ -3004,7 +3087,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           character={c}
                           editable={isGm}
                           isGm={isGm}
-                          campaignMembers={data.members} 
+                          campaignMembers={data.members}
                           onOptimistic={applyOptimistic}
                           onRoll={(attr: string, res: number | string) => handleBroadcastRoll(c.name, attr, res)}
                           onKill={isGm ? handleKillNPC : undefined}
@@ -3064,7 +3147,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 <div className="mt-4 pt-4 border-t border-accent/20">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Clima Dinâmico</p>
-                    <button onClick={() => handleSetWeather(weather)} className="text-[10px] text-primary hover:text-primary/80 uppercase font-bold flex items-center gap-1" title="Forçar clima para quem acabou de entrar"><RefreshCw className="size-3"/> Sincronizar</button>
+                    <button onClick={() => handleSetWeather(weather)} className="text-[10px] text-primary hover:text-primary/80 uppercase font-bold flex items-center gap-1" title="Forçar clima para quem acabou de entrar"><RefreshCw className="size-3" /> Sincronizar</button>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     <Button size="sm" onClick={() => handleSetWeather("clear")} className={`h-8 w-full p-0 flex items-center justify-center ${weather === 'clear' ? 'bg-yellow-500 hover:bg-yellow-600 text-black' : 'bg-transparent text-muted-foreground border border-border hover:bg-white/5 hover:text-white'}`} title="Céu Limpo"><Sun className="size-3.5" /></Button>

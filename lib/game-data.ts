@@ -188,7 +188,7 @@ export const CLASSES: GameClass[] = [
       { id: "or-condemn", name: "Condenar", maxLevel: 6, description: "Teste oposto de Int + Von. Causa perda de PM e deixa o alvo Abalado ou Atordoado.", action: { cost: 5, resource: "mp" } },
       { id: "or-encourage", name: "Encorajar", maxLevel: 6, description: "Restaura PV de um aliado e aumenta o tamanho do dado de um atributo dele.", action: { cost: 5, resource: "mp" } },
       { id: "or-trust", name: "Minha Confiança em Você", maxLevel: 2, description: "Gaste Ponto de Fabula para ajudar aliados; eles curam [Nível x 10] PM se vocês tiverem Elos." },
-      { id: "or-persuasive", name: "Persuasivo", maxLevel: 2, description: "Gaste PM em testes sociais para avançar ou atrasar Relógios adicionais." },
+      { id: "or-persuasive", name: "Persuasivo", maxLevel: 2, description: "Gaste [Nível da Perícia x 2] PM em testes sociais para convencer alguém." },
       { id: "or-ally", name: "Aliado Inesperado", maxLevel: 1, description: "Gaste Ponto de Fabula para convencer um NPC neutro a ajudar a equipe." },
     ],
   },
@@ -202,7 +202,7 @@ export const CLASSES: GameClass[] = [
     primaryAttribute: "ins",
     skills: [
       { id: "ti-emergency", name: "Item de Emergência", maxLevel: 1, description: "Uma vez por conflito, se estiver em Crise, você pode usar uma Ação de Inventário extra." },
-      { id: "ti-gadgets", name: "Aparelhos", maxLevel: 5, description: "Desbloqueia projetos avançados de Magiesferas, Alquimia ou Armamento." },
+      { id: "ti-gadgets", name: "Aparelhos", maxLevel: 5, description: "Desbloqueia projetos de construção nível [Nível da Perícia]." },
       { id: "ti-potion", name: "Chuva de Poções", maxLevel: 2, description: "Ao criar poções, você pode gastar PM para afetar múltiplos alvos em área." },
       { id: "ti-formula", name: "Fórmula Secreta", maxLevel: 5, description: "Aumenta a eficácia das suas poções curativas ou bombas elementais." },
       { id: "ti-visionary", name: "Visionário", maxLevel: 5, description: "Ao criar Projetos, você economiza Zênites e agiliza o tempo de criação." },
@@ -393,7 +393,7 @@ export const CLASSES: GameClass[] = [
     mpPerLevel: 4,
     primaryAttribute: "wlp",
     skills: [
-      { id: "me-expire", name: "Data de Validade", maxLevel: 3, description: "Corrompe curas criadas por você, causando dano de veneno de [metade do Nível + (NP x 10)]." },
+      { id: "me-expire", name: "Data de Validade", maxLevel: 3, description: "Corrompe curas criadas por você, causando dano de veneno de [metade do Nível + (Nível x 10)]." },
       { id: "me-heard", name: "Já Ouvi Falar!", maxLevel: 3, description: "Gaste 1 Ponto de Comércio para dar +[Nível x 2] em Exames sobre criaturas e lugares." },
       { id: "me-stock", name: "Estoque Privado", maxLevel: 3, description: "Permite gastar Pontos de Comércio para ignorar [Nível + 2] custos de PI." },
       { id: "me-treas", name: "Tesouro Real", maxLevel: 3, description: "Ao lutar contra a corrupção de grandes líderes, recebe +[Nível + 1] Pontos de Comércio." },
