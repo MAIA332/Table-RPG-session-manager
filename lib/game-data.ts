@@ -495,6 +495,49 @@ export const CLASSES: GameClass[] = [
       { id: "sy-connect", name: "Conexão Simbólica", maxLevel: 1, description: "Radar Rúnico absoluto da própria guilda; Rastrei um indivíduo traidor ou em perigo sob seus sigilos em dias de viagem." },
       { id: "sy-symbolism", name: "Simbolismo", maxLevel: 5, description: "Invoca os totens na rodada de preparação; cria [Nível + 1] Símbolos de Ligação, Medo ou Crescimento nos escudos da party." }
     ]
+  },
+  {
+    id: "cleric",
+    name: "Clérigo",
+    archetype: "Curandeiro Primário",
+    description: "Servos devotos e guardiões da vida que utilizam os poderes da fé e compaixão para restaurar ferimentos e proteger aliados do fim iminente.",
+    hpPerLevel: 4,
+    mpPerLevel: 5,
+    primaryAttribute: "wlp",
+    skills: [
+      { 
+        id: "cl-aura", 
+        name: "Aura Curativa", 
+        maxLevel: 5, 
+        description: "Sempre que restaurar os PV de um ou mais aliados através de magias ou habilidades, eles recuperam [Nível da Perícia x 2] PV adicionais." 
+      },
+      { 
+        id: "cl-purify", 
+        name: "Mãos Purificadoras", 
+        maxLevel: 3, 
+        description: "Ao aplicar um efeito de cura em um aliado, você pode remover até [Nível da Perícia] condições de status negativas dele sem nenhum custo de PM adicional." 
+      },
+      { 
+        id: "cl-sanctuary", 
+        name: "Santuário", 
+        maxLevel: 4, 
+        description: "Enquanto você não estiver em Crise, você e os aliados com os quais tem um Elo recuperam [Nível da Perícia x 5] PV automaticamente no início do seu turno." 
+      },
+      { 
+        id: "cl-breath", 
+        name: "Sopro de Vida", 
+        maxLevel: 1, 
+        description: "Uma vez por cena, se um aliado for reduzido a 0 PV, você pode gastar 20 PM como uma reação imediata para evitar que ele caia, restaurando-o com metade dos PV máximos dele.", 
+        action: { cost: 20, resource: "mp" } 
+      },
+      { 
+        id: "cl-martyr", 
+        name: "Martírio Compassivo", 
+        maxLevel: 5, 
+        description: "Gaste uma ação para perder voluntariamente até [Nível x 10] PV (este dano não pode ser reduzido). Distribua o dobro do valor perdido como cura de PV entre qualquer número de aliados que você possa ver.", 
+        action: { cost: 0, resource: "hp" } 
+      }
+    ]
   }
 ];
 
@@ -503,9 +546,7 @@ export function getClass(id: string): GameClass | undefined {
 }
 
 export const INVENTORY_ACTIONS = [
-  { id: "inv-potion", name: "Remédio", cost: 3, description: "Recupera 50 Pontos de Vida (PV).", effectResource: "hp", effectValue: 50 },
-  { id: "inv-elixir", name: "Elixir", cost: 3, description: "Recupera 50 Pontos de Mente (PM).", effectResource: "mp", effectValue: 50 },
-  { id: "inv-tent", name: "Tenda Mágica", cost: 4, description: "Permite que o grupo descanse, recuperando tudo." },
+  
 ]
 
 export const EQUIPMENT: EquipmentItem[] = [
@@ -515,15 +556,24 @@ export const EQUIPMENT: EquipmentItem[] = [
   { id: "eq-bow", name: "Arco Curto", category: "weapon", cost: 200, purchasable: true, detail: "Arma à distância. Dano físico.\n[MODIFICADOR: Precisão usa DES + DES]" },
   { id: "eq-staff", name: "Cajado Arcano", category: "weapon", cost: 100, purchasable: true, detail: "Foco mágico. Dano mágico.\n[MODIFICADOR: Precisão usa VON + VON]" },
   { id: "eq-spear", name: "Lança Leve", category: "weapon", cost: 200, purchasable: true, detail: "Arma de Haste. Dano físico.\n[MODIFICADOR: Precisão usa DES + VIG]" },
+  
+  // NOVAS ARMAS (Adicionadas da Narrativa)
+  { id: "eq-crossbow", name: "Arco Balestra", category: "weapon", cost: 250, purchasable: true, detail: "Arma à distância mecânica pesada. Dano físico perfurante.\n[MODIFICADOR: Precisão usa DES + INS]" },
+
   { id: "eq-travel", name: "Traje de Viagem", category: "armor", cost: 100, purchasable: true, detail: "Armadura Leve.\n[MODIFICADOR: Defesa = DES + 1]" },
   { id: "eq-brigandine", name: "Brigantina", category: "armor", cost: 150, purchasable: true, detail: "Armadura Marcial.\n[MODIFICADOR: Defesa fixa em 10]" },
   { id: "eq-plate", name: "Placa de Bronze", category: "armor", cost: 200, purchasable: true, detail: "Armadura Pesada. Reduz Inic.\n[MODIFICADOR: Defesa fixa em 11]" },
   { id: "eq-buckler", name: "Escudo de Bronze", category: "shield", cost: 100, purchasable: true, detail: "Escudo Leve.\n[MODIFICADOR: +2 Defesa]" },
   { id: "eq-shield", name: "Escudo Rúnico", category: "shield", cost: 150, purchasable: true, detail: "Escudo Marcial.\n[MODIFICADOR: +2 Defesa e DefM]" },
   
+  // ACESSÓRIOS E UTILITÁRIOS (Adicionados da Narrativa)
+  { id: "eq-lantern", name: "Lamparina", category: "accessory", cost: 50, purchasable: true, detail: "Fonte de luz confiável movida a óleo. Essencial para explorar cavernas obscuras." },
+  { id: "eq-wet-twine", name: "Fios de Barbante Molhados", category: "accessory", cost: 5, purchasable: false, detail: "Um punhado de barbantes encharcados. Fragilizados pela umidade, mas podem quebrar um galho em armadilhas simples." },
+  { id: "eq-quiver-20", name: "Aljava (20 Flechas)", category: "accessory", cost: 30, purchasable: true, detail: "Recipiente de couro contendo munição suficiente para um longo combate à distância." },
+
   // ITENS EXCLUSIVOS DO MESTRE (Não aparecem na loja)
   { id: "eq-excalibur", name: "Excalibur Maldita", category: "weapon", cost: 1000, purchasable: false, detail: "Artefato Ancião. Dano físico massivo.\n[MODIFICADOR: Precisão VIG + VIG, +5 Dano]" },
-  { id: "eq-dragon-scale", name: "Escamas do Dragão", category: "armor", cost: 1500, purchasable: false, detail: "Armadura Lendária. Resistência a Fogo.\n[MODIFICADOR: Defesa fixa em 13]" },
+  { id: "eq-dragon-scale", name: "Escamas do Dragão", category: "armor", cost: 1500, purchasable: false, detail: "Armadura Lendária. Resistência a Fogo.\n[MODIFICADOR: Defesa fixa em 13]" }
 ]
 
 export function getEquipment(id: string): EquipmentItem | undefined {
@@ -717,6 +767,89 @@ export const BESTIARY: Creature[] = [
       { name: "Sopro de Fogo", attributes: ["dex", "ins"], damage: 25, type: "fogo", description: "Atinge todos os inimigos na área." }
     ],
     spells: ["Rugido Aterrador: Gaste 20 PM. Todos os alvos fazem teste de VON. Se falharem, ficam Abalados e Enfraquecidos."],
+    equipment: []
+  },
+  {
+    id: "cr-javali-selvagem",
+    name: "Javali Selvagem",
+    imageUrl: "http://zipline.sinapselabs.com.br/u/QI9AoJ.png",
+    level: 5,
+    species: "Besta",
+    attributes: { dex: "d8", ins: "d6", mig: "d10", wlp: "d6" },
+    maxHp: 40,
+    maxMp: 0,
+    def: 10,
+    mdef: 8,
+    affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "RS", fire: "VU", ice: "none", light: "none", poison: "none" },
+    basicAttacks: [
+      { name: "Investida com Presas", attributes: ["mig", "mig"], damage: 8, type: "físico", description: "Pode derrubar o alvo na lama se ele falhar num teste médio." }
+    ],
+    spells: [
+      "Frenesi da Chuva: A criatura ignora penalidades de terreno difícil causadas por lama ou água."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-lobo-emboscador",
+    name: "Lobo da Tempestade",
+    imageUrl: "http://zipline.sinapselabs.com.br/u/IVt6mA.jpg",
+    level: 6,
+    species: "Besta",
+    attributes: { dex: "d10", ins: "d8", mig: "d8", wlp: "d6" },
+    maxHp: 35,
+    maxMp: 10,
+    def: 11,
+    mdef: 9,
+    affinities: { physical: "none", air: "none", bolt: "none", dark: "RS", earth: "none", fire: "VU", ice: "none", light: "none", poison: "none" },
+    basicAttacks: [
+      { name: "Mordida Feroz", attributes: ["dex", "mig"], damage: 6, type: "físico" }
+    ],
+    spells: [
+      "Salto das Sombras (Passiva): Se o grupo falhar no Teste de Percepção (15), o lobo ataca de surpresa causando incríveis 20 de dano e derrubando o alvo na lama."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-marionete",
+    name: "A Marionete (O Caçador da Coroa)",
+    imageUrl: "http://zipline.sinapselabs.com.br/u/fjKpL1.png",
+    level: 15,
+    species: "Aberração",
+    attributes: { dex: "d12", ins: "d6", mig: "d8", wlp: "d8" },
+    maxHp: 100,
+    maxMp: 20,
+    def: 12,
+    mdef: 10,
+    affinities: { physical: "RS", air: "none", bolt: "none", dark: "none", earth: "none", fire: "VU", ice: "none", light: "none", poison: "IM" },
+    basicAttacks: [
+      { name: "Lâmina Enferrujada/Garras", attributes: ["dex", "mig"], damage: 10, type: "físico", description: "Ataca em ângulos impossíveis graças aos ossos quebrados." }
+    ],
+    spells: [
+      "Fios do Titereiro (Passiva): Não pode ser morto por meios normais. Se o HP chegar a zero, no turno seguinte os filamentos injetam gosma e ele revive com metade da vida.",
+      "Mirar na Nuca: Jogadores podem fazer um ataque com Desvantagem focando nos filamentos brancos. Acertar destrói o vínculo, matando a criatura instantaneamente e transformando-a em esporos."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-nucleo-praga",
+    name: "O Núcleo (A Praga Encarnada)",
+    imageUrl: "https://zipline.sinapselabs.com.br/u/NBU5u2.png",
+    level: 25,
+    species: "Aberração",
+    attributes: { dex: "d12", ins: "d6", mig: "d12", wlp: "d12" },
+    maxHp: 160,
+    maxMp: 60,
+    def: 15,
+    mdef: 14,
+    affinities: { physical: "RS", air: "none", bolt: "none", dark: "AB", earth: "RS", fire: "VU", ice: "none", light: "VU", poison: "IM" },
+    basicAttacks: [
+      { name: "Chicote de Tentáculo Pálido", attributes: ["mig", "mig"], damage: 14, type: "físico", description: "Tenta agarrar e esmagar os inimigos." }
+    ],
+    spells: [
+      "Hospedeiro Perfeito (Passiva): Um jogador é engolido parcialmente e possuído. Atacar a massa principal repassa o dano ao jogador! Para vencer, é necessário mirar nos 4 tentáculos de sustentação (cada um possui 40 HP).",
+      "Conflito Mental: No início do turno, o jogador possuído rola Vontade. Sucesso: Retoma o controle, dando Vantagem aos aliados no próximo ataque. Falha: O Núcleo domina e realiza um ataque extra usando as habilidades do personagem.",
+      "Colapso da Caverna: 15 PM. O núcleo puxa o teto. Causa 15 de dano de Terra em área."
+    ],
     equipment: []
   }
 ]

@@ -274,8 +274,16 @@ function TextField({ label, value, onChange, placeholder }: any) {
 function SuggestField({ label, hint, value, onChange, suggestions }: any) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="flex items-baseline gap-2"><span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span><span className="text-[11px] text-muted-foreground/70">{hint}</span></span>
-      <input value={value} onChange={(e) => onChange(e.target.value)} className="rounded-md border border-input bg-background/60 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+      <span className="flex items-baseline gap-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+        <span className="text-[11px] text-muted-foreground/70">{hint}</span>
+      </span>
+      {/* Transformado em textarea para textos longos */}
+      <textarea 
+        value={value} 
+        onChange={(e) => onChange(e.target.value)} 
+        className="rounded-md border border-input bg-background/60 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary min-h-[80px] resize-y custom-scrollbar-sepia" 
+      />
       <div className="flex flex-wrap gap-1.5 mt-1">
         {suggestions.map((s: string) => (
           <button key={s} type="button" onClick={() => onChange(s)} className="rounded-full border border-border/60 bg-card/40 px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary">

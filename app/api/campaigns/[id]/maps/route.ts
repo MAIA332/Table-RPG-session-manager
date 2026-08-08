@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 }
 
-// Função para criar, mover tokens ou pintar terreno
+// Função para criar, mover tokens, pintar terreno, deletar e RENOMEAR mapas
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     // 1. Resolve a promise obrigatória no Next.js 15+
@@ -34,6 +34,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       store.maps.set(newMap.id, newMap);
       publish(campaignId, { type: "map:created", map: newMap } as any);
       return NextResponse.json({ success: true, map: newMap });
+    }
+
+    if (body.action === "rename") {
+      const map = store.maps.get(body.mapId);
+      if (!map) return NextResponse.json({ error: "Mapa não encontrado" }, { status: 404 });
+      
+      map.name = body.name; // Atualiza o nome
+      publish(campaignId, { type: "map:renamed", mapId: body.mapId, name: body.name } as any);
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "delete") {
+      store.maps.delete(body.mapId);
+      publish(campaignId, { type: "map:deleted", mapId: body.mapId } as any);
+      return NextResponse.json({ success: true });
     }
 
     if (body.action === "update_tokens") {
