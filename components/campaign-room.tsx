@@ -19,6 +19,8 @@ import {
   type NPCDraft // Interface importada para não dar conflito
 } from "@/components/character-sheet"
 
+import { NpcNursery } from "./npc-nursery"
+
 import {
   EQUIPMENT,
   BESTIARY,
@@ -32,7 +34,7 @@ import {
   Send, Skull, Target, Heart, Zap, Package, Info, Loader2, Store, Coins,
   Inbox, Sun, CloudRain, CloudSnow, CloudFog, Cloud, SunMedium, Grid3X3,
   BarChart2, Clock, Trash2, CheckCircle2, Save, UserPlus, Mic, RefreshCw,
-  Clapperboard, Search, Pencil
+  Clapperboard, Search, Pencil, Eye, Image as ImageIconLucide,ChevronDown
 } from "lucide-react"
 
 import { GameMap, TileData } from "@/lib/map-types"
@@ -44,6 +46,8 @@ import { CutsceneManager } from "./cutscene-manager"
 import { CutscenePlayer } from "./cutscene-player"
 import type { Cutscene } from "./cutscene-types"
 
+
+import { Imagepad, SharedImage } from "./imagepad"
 // ==========================================
 // TIPAGENS & CONSTANTES GLOBAIS DA SALA
 // ==========================================
@@ -266,6 +270,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [activeCutscene, setActiveCutscene] = useState<Cutscene | null>(null)
   const [activeSceneIndex, setActiveSceneIndex] = useState(0)
 
+  const [showImagepad, setShowImagepad] = useState(false)
+  const [activeFullscreenImage, setActiveFullscreenImage] = useState<string | null>(null)
+  const [galleryImages, setGalleryImages] = useState<SharedImage[]>([])
+
+
   const isGm = data.role === "gm"
 
   // Montagem & Carregar Storage
@@ -274,6 +283,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     if (typeof window !== "undefined") {
       const savedDrafts = localStorage.getItem(`drafts_${data.campaign.id}`)
       if (savedDrafts) { try { setDraftPolls(JSON.parse(savedDrafts)) } catch (e) { } }
+
+      const savedGallery = localStorage.getItem(`images_${data.campaign.id}`)
+      if (savedGallery) { try { setGalleryImages(JSON.parse(savedGallery)) } catch (e) { } }
 
       const savedNPCs = localStorage.getItem(`custom_npcs_${data.campaign.id}`)
       if (savedNPCs) { try { setCustomNPCs(JSON.parse(savedNPCs)) } catch (e) { } }
@@ -288,9 +300,66 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       if (savedCutscenesStr) { try { setCutscenes(JSON.parse(savedCutscenesStr)) } catch (e) { } }
 
       const localSavedMaps = localStorage.getItem(`maps_${data.campaign.id}`)
-      if (localSavedMaps) { try { setSavedMaps(JSON.parse(localSavedMaps)) } catch (e) { } }
+      const lastActiveMapId = localStorage.getItem(`last_active_map_${data.campaign.id}`)
+
+      if (localSavedMaps) {
+        try {
+          const parsedMaps = JSON.parse(localSavedMaps);
+          setSavedMaps(parsedMaps);
+
+          // Se o jogador tinha um mapa aberto, reabre ele instantaneamente!
+          if (lastActiveMapId) {
+            const mapToRestore = parsedMaps.find((m: GameMap) => m.id === lastActiveMapId);
+            if (mapToRestore) setActiveMap(mapToRestore);
+          }
+        } catch (e) { }
+      }
     }
   }, [data.campaign.id])
+
+  // ==========================================
+  // PROTEÇÃO ANTI-CHEAT (Bloqueia F12 e Inspecionar para jogadores)
+  // ==========================================
+  useEffect(() => {
+    // Se for o mestre, não bloqueia nada
+    if (isGm) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Bloqueia F12
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+      }
+      // Bloqueia Ctrl+Shift+I / Cmd+Option+I (Inspecionar)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+        e.preventDefault();
+      }
+      // Bloqueia Ctrl+Shift+J / Cmd+Option+J (Console)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'J' || e.key === 'j')) {
+        e.preventDefault();
+      }
+      // Bloqueia Ctrl+Shift+C / Cmd+Option+C (Seletor de Elemento)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+        e.preventDefault();
+      }
+      // Bloqueia Ctrl+U / Cmd+U (Ver código-fonte)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
+        e.preventDefault();
+      }
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      // Bloqueia o botão direito do mouse (evita "Inspecionar Elemento" pelo menu)
+      e.preventDefault();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [isGm]);
 
   // Timer da Enquete
   useEffect(() => {
@@ -303,12 +372,41 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   useEffect(() => {
     apiFetch<{ maps: GameMap[] }>(`/api/campaigns/${data.campaign.id}/maps`)
       .then(res => {
-        const uniqueMaps = Array.from(new Map((res.maps || []).map(m => [m.id, m])).values());
-        setSavedMaps(uniqueMaps);
-        localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(uniqueMaps));
+        if (res && res.maps) {
+          if (res.maps.length > 0) {
+            // Se veio mapas do servidor, usamos eles para sincronizar
+            const uniqueMaps = Array.from(new Map(res.maps.map(m => [m.id, m])).values());
+            setSavedMaps(uniqueMaps);
+            localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(uniqueMaps));
+
+            // Atualiza os detalhes do mapa ativo se a API trouxe uma versão mais recente
+            setActiveMap(prev => {
+              if (prev) {
+                const updated = uniqueMaps.find(m => m.id === prev.id);
+                return updated ? updated : prev;
+              }
+              return prev;
+            });
+          } else if (isGm) {
+            // Se for o mestre e veio vazio, então a campanha não tem nenhum mapa criado ainda.
+            setSavedMaps([]);
+            localStorage.setItem(`maps_${data.campaign.id}`, "[]");
+          }
+          // ATENÇÃO: Se for jogador e a API retornar [], não fazemos nada! 
+          // Isso preserva os mapas cacheados recebidos por WebSocket.
+        }
       })
       .catch(() => { })
-  }, [data.campaign.id])
+  }, [data.campaign.id, isGm])
+
+  // Persiste no LocalStorage qual mapa está aberto para reabrir em caso de reload
+  useEffect(() => {
+    if (activeMap) {
+      localStorage.setItem(`last_active_map_${data.campaign.id}`, activeMap.id);
+    } else {
+      localStorage.removeItem(`last_active_map_${data.campaign.id}`);
+    }
+  }, [activeMap?.id, data.campaign.id]);
 
   // Sincroniza savedMaps localmente se houver edição
   const syncMapsToStorage = useCallback((maps: GameMap[]) => {
@@ -316,6 +414,19 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     setSavedMaps(uniqueMaps);
     localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(uniqueMaps));
   }, [data.campaign.id]);
+
+  function handleImageClick(url: string) {
+    if (isGm) {
+      // Se for o mestre, força a imagem tela cheia na cara de todo mundo
+      apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+        method: "POST", body: JSON.stringify({ characterId: 'sys_image', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_IMAGE:SHOW`, result: url })
+      }).catch(console.error);
+      setShowImagepad(false);
+    } else {
+      // Se for jogador, apenas abre a imagem localmente para ele ver melhor
+      setActiveFullscreenImage(url);
+    }
+  }
 
   // Verificador de Expiração da Enquete
   useEffect(() => {
@@ -391,7 +502,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       return;
     }
 
-    // Mapa Renomeado
+
+
     // Mapa Renomeado
     if (event.type === "map:renamed") {
       setSavedMaps(prev => {
@@ -400,7 +512,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         return next;
       });
 
-      // Correção do TypeScript: Garantindo que prev não é nulo antes do spread
       setActiveMap(prev => {
         if (prev && prev.id === event.mapId) {
           return { ...prev, name: event.name };
@@ -512,6 +623,14 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         return;
       }
 
+      if (attr.startsWith("SYNC_IMAGE:")) {
+        const action = attr.split(":")[1];
+        if (action === "SHOW") {
+          setActiveFullscreenImage(String(event.result));
+        }
+        return;
+      }
+
       if (attr.startsWith("SYNC_CUTSCENE:")) {
         const action = attr.split(":")[1];
 
@@ -528,6 +647,32 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         } else if (action === "SCENE") {
           setActiveSceneIndex(Number(event.result));
         }
+        return;
+      }
+
+      if (attr.startsWith("SYNC_MAP:")) {
+        const action = attr.split(":")[1];
+        if (action === "SHOW") {
+          const mapId = String(event.result);
+          // CORREÇÃO: Lendo diretamente do LocalStorage para evitar conflito de State no React
+          const localMaps = localStorage.getItem(`maps_${data.campaign.id}`);
+          if (localMaps) {
+            try {
+              const parsed = JSON.parse(localMaps);
+              const mapToShow = parsed.find((m: any) => m.id === mapId);
+              if (mapToShow) setActiveMap(mapToShow);
+            } catch (e) { }
+          }
+        }
+        return;
+      }
+
+      if (attr === "SYNC_GALLERY:UPDATE") {
+        try {
+          const synced = JSON.parse(String(event.result));
+          setGalleryImages(synced);
+          localStorage.setItem(`images_${data.campaign.id}`, JSON.stringify(synced));
+        } catch (e) { }
         return;
       }
 
@@ -558,7 +703,18 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     setCharacters((prev) => {
       switch (event.type) {
         case "character:created": return prev.some((c) => c.id === event.character.id) ? prev : [...prev, event.character]
-        case "character:updated": return prev.map((c) => (c.id === event.character.id ? event.character : c))
+        case "character:updated":
+          return prev.map((c) => {
+            if (c.id === event.character.id) {
+              // CORREÇÃO: Defesa extra. Se a API devolver a ficha sem os itens, mantemos os locais!
+              return {
+                ...event.character,
+                customItems: (event.character as any).customItems || (c as any).customItems || [],
+                customModifiers: (event.character as any).customModifiers || (c as any).customModifiers || []
+              };
+            }
+            return c;
+          });
         case "character:deleted": return prev.filter((c) => c.id !== event.characterId)
         default: return prev
       }
@@ -567,7 +723,17 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   useRealtime(data.campaign.id, handleEvent)
 
-  const applyOptimistic = useCallback((c: Character) => setCharacters((prev) => prev.map((x) => (x.id === c.id ? c : x))), [])
+  const applyOptimistic = useCallback((c: Character) => setCharacters((prev) => prev.map((x) => {
+    if (x.id === c.id) {
+      // CORREÇÃO: Defesa na atualização otimista (quando gasta MP/HP)
+      return {
+        ...c,
+        customItems: (c as any).customItems || (x as any).customItems || [],
+        customModifiers: (c as any).customModifiers || (x as any).customModifiers || []
+      };
+    }
+    return x;
+  })), [])
 
   async function handleCreateMap(newMap: GameMap) {
     newMap.campaignId = data.campaign.id;
@@ -592,7 +758,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     const updatedMaps = savedMaps.map(m => m.id === mapId ? { ...m, name: trimmedName } : m);
     syncMapsToStorage(updatedMaps);
 
-    // Correção do TypeScript: Se o mapa ativo for este, atualiza o nome dele também
     setActiveMap(prev => {
       if (prev && prev.id === mapId) {
         return { ...prev, name: trimmedName };
@@ -606,7 +771,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       });
     } catch (err) {
       console.error("Erro ao renomear mapa", err);
-      // Se der erro reverte (opcional, ou apenas exibe alerta)
       alert("Falha ao renomear mapa.");
     }
   }
@@ -662,6 +826,54 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     }).catch(console.error)
   }
 
+  async function handleArchiveCharacter(character: Character) {
+    if (!character || !character.id) return;
+
+    // Confirmação para evitar cliques acidentais se você não tem o Modal
+    if (!confirm(`Deseja realmente arquivar ${character.name} no Berçário e removê-lo do jogo?`)) return;
+
+    // 1. Converte o personagem em um rascunho de NPC (NPCDraft)
+    const draft: NPCDraft = {
+      id: "npc-" + Math.random().toString(36).substring(2, 9),
+      name: character.name,
+      avatarUrl: character.avatarUrl || "",
+      origin: character.origin || "Herói Caído/Aposentado",
+      identity: character.identity || "",
+      theme: character.theme || "",
+      classes: character.classes || [],
+      skills: character.skills || {},
+      attributes: character.attributes,
+      equipment: character.equipment || []
+    };
+
+    try {
+      // 2. Deleta da base de dados PRIMEIRO. 
+      // Se falhar aqui, não removemos da tela nem salvamos no Berçário para evitar inconsistências.
+      await apiFetch(`/api/characters/${character.id}`, { method: "DELETE" });
+
+      // 3. Se a exclusão no banco for um sucesso, salva o NPC no Berçário local
+      const updatedNPCs = [draft, ...customNPCs];
+      saveCustomNPCsToStorage(updatedNPCs);
+
+      // 4. Remove da tela atual otimisticamente
+      setCharacters(prev => prev.filter(c => c.id !== character.id));
+      if (selectedCombatCharId === character.id) setSelectedCombatCharId(null);
+
+      alert(`O personagem ${character.name} foi arquivado e agora está disponível no Berçário de NPCs!`);
+
+    } catch (err: any) {
+      console.error("Falha ao arquivar o personagem.", err);
+      // Se o erro for de que o personagem não existe, a gente força a limpeza da tela 
+      // para resolver a dessincronização fantasma.
+      if (err.message && err.message.includes("nao encontrado")) {
+        setCharacters(prev => prev.filter(c => c.id !== character.id));
+        alert(`Este personagem já não existia mais no banco de dados. Ele foi removido da tela.`);
+      } else {
+        alert(`Erro ao tentar arquivar o personagem: ${err.message || "Erro desconhecido"}`);
+      }
+    }
+  }
+
   function handleSetWeather(w: WeatherType) {
     setWeather(w);
     localStorage.setItem(`weather_${data.campaign.id}`, w);
@@ -692,6 +904,15 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
     apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
       method: "POST", body: JSON.stringify({ characterId: 'sys_cutscene', characterName: 'Sistema', playerName: 'Mestre', attribute: attr, result })
+    }).catch(console.error);
+  }
+
+  function handleForceSyncMap(mapId: string) {
+    const mapToShow = savedMaps.find(m => m.id === mapId);
+    if (mapToShow) setActiveMap(mapToShow);
+
+    apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+      method: "POST", body: JSON.stringify({ characterId: 'sys_map', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_MAP:SHOW`, result: mapId })
     }).catch(console.error);
   }
 
@@ -1040,66 +1261,17 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             )}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {showNursery && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden">
-                <motion.div variants={modalVariants} className="relative w-full max-w-6xl h-full bg-zinc-950 border border-destructive/50 rounded-xl shadow-2xl flex flex-col overflow-hidden">
-
-                  <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
-                    <div>
-                      <h4 className="font-serif text-2xl font-black text-destructive flex items-center gap-2"><UserPlus className="size-6" /> Berçário de NPCs</h4>
-                      <p className="text-sm text-muted-foreground mt-1">Forje novas ameaças usando o sistema completo de classes e atributos.</p>
-                    </div>
-                    <button onClick={() => setShowNursery(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
-                  </div>
-
-                  <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-
-                    <div className="lg:w-1/3 border-r border-border/40 p-6 flex flex-col gap-4 bg-black/20 overflow-y-auto custom-scrollbar-sepia">
-                      <h5 className="text-xs font-bold uppercase tracking-widest text-destructive border-b border-white/10 pb-2 flex items-center gap-2"><Save className="size-3" /> Prontos para Invocação</h5>
-
-                      <div className="flex flex-col gap-3">
-                        {customNPCs.length === 0 && <p className="text-sm text-muted-foreground italic text-center mt-4">Nenhum NPC no berçário.</p>}
-                        {customNPCs.map(npc => (
-                          <div key={npc.id} className="flex flex-col gap-3 p-4 rounded-xl border border-border/40 bg-card/20 group">
-                            <div className="flex items-center gap-3">
-                              <div className="relative size-12 rounded border border-destructive/30 overflow-hidden shrink-0">
-                                <Image src={npc.avatarUrl} alt={npc.name} fill className="object-cover" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-bold text-foreground truncate">{npc.name}</p>
-                                <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-widest">NPC • {npc.origin}</p>
-                              </div>
-                            </div>
-
-                            <div className="flex gap-2 w-full mt-2">
-                              <Button size="sm" className="flex-1 bg-destructive/10 border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => spawnNPC(npc)}>
-                                <Target className="size-3 mr-1.5" /> Invocar
-                              </Button>
-                              <Button size="sm" variant="outline" className="px-3 border-border/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteCustomNPC(npc.id)}>
-                                <Trash2 className="size-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="lg:w-2/3 p-6 overflow-y-auto custom-scrollbar-sepia flex justify-center">
-                      <NPCCreator
-                        onCreated={(newNpc) => {
-                          saveCustomNPCsToStorage([newNpc, ...customNPCs]);
-                          alert(`${newNpc.name} foi adicionado ao Berçário!`);
-                        }}
-                        onCancel={() => setShowNursery(false)}
-                      />
-                    </div>
-
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <NpcNursery
+            isOpen={showNursery}
+            onClose={() => setShowNursery(false)}
+            customNPCs={customNPCs}
+            onSpawn={spawnNPC}
+            onDelete={handleDeleteCustomNPC}
+            onCreated={(newNpc) => {
+              saveCustomNPCsToStorage([newNpc, ...customNPCs]);
+              alert(`${newNpc.name} foi adicionado ao Berçário!`);
+            }}
+          />
 
           {/* MANAGER DE CUTSCENES (Mestre) */}
           <CutsceneManager
@@ -1216,94 +1388,215 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
           <AnimatePresence>
             {showGmPanel && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-                <motion.div variants={modalVariants} className="relative w-full max-w-3xl h-full max-h-[85vh] rounded-xl border border-accent/50 bg-zinc-950 shadow-2xl flex flex-col">
-                  <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 overflow-hidden">
+                <motion.div variants={modalVariants} className="relative w-full max-w-4xl h-full max-h-[90vh] rounded-2xl border border-accent/30 bg-[#0a0a0a] shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden">
+                  
+                  {/* HEADER */}
+                  <div className="flex justify-between items-center p-6 border-b border-white/5 bg-black/60 shrink-0 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent/50 to-transparent"></div>
                     <div>
-                      <h4 className="font-serif text-2xl font-black text-accent flex items-center gap-2"><Gift className="size-6" /> Baú do Mestre</h4>
-                      <p className="text-sm text-muted-foreground mt-1">Conceda itens e crie relíquias para jogadores.</p>
+                      <h4 className="font-serif text-2xl font-black text-accent flex items-center gap-3">
+                        <Gift className="size-6" /> Baú do Mestre
+                      </h4>
+                      <p className="text-sm text-muted-foreground mt-1">Forje relíquias ou distribua itens do compêndio para o grupo.</p>
                     </div>
-                    <button onClick={() => setShowGmPanel(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
+                    <button onClick={() => setShowGmPanel(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors border border-white/5"><X className="size-5 text-muted-foreground hover:text-white" /></button>
                   </div>
 
-                  <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1 flex flex-col gap-6">
+                  <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1 flex flex-col gap-8 relative">
+                    
                     {/* TABS DO BAÚ */}
-                    <div className="flex bg-black/40 rounded-lg p-1 border border-white/10 w-full mx-auto">
-                      <button onClick={() => setGmPanelTab('catalog')} className={`flex-1 text-sm py-2 rounded-md transition-colors ${gmPanelTab === 'catalog' ? 'bg-accent text-accent-foreground font-bold' : 'text-muted-foreground hover:text-white'}`}>Itens de Sistema</button>
-                      <button onClick={() => setGmPanelTab('custom')} className={`flex-1 text-sm py-2 rounded-md transition-colors ${gmPanelTab === 'custom' ? 'bg-accent text-accent-foreground font-bold' : 'text-muted-foreground hover:text-white'}`}>Criar Relíquias (Handouts)</button>
+                    <div className="flex bg-black/50 rounded-xl p-1.5 border border-white/5 w-full mx-auto max-w-md shrink-0 shadow-inner">
+                      <button onClick={() => { setGmPanelTab('catalog'); setSelectedLoot(null); }} className={`flex-1 text-sm py-2.5 rounded-lg transition-all duration-300 font-semibold ${gmPanelTab === 'catalog' ? 'bg-accent text-black shadow-md' : 'text-muted-foreground hover:text-white hover:bg-white/5'}`}>Itens de Sistema</button>
+                      <button onClick={() => { setGmPanelTab('custom'); setSelectedLoot(null); }} className={`flex-1 text-sm py-2.5 rounded-lg transition-all duration-300 font-semibold ${gmPanelTab === 'custom' ? 'bg-accent text-black shadow-md' : 'text-muted-foreground hover:text-white hover:bg-white/5'}`}>Criar Relíquia (Custom)</button>
                     </div>
 
-                    {gmPanelTab === 'catalog' ? (
-                      <div>
-                        <div className="flex items-center justify-between mb-3 gap-4">
-                          <h5 className="text-xs font-bold uppercase tracking-widest text-primary shrink-0">1. Escolha o Item (Catálogo)</h5>
-                          <div className="relative flex-1 max-w-xs">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                            <input type="text" placeholder="Buscar item..." value={lootSearchQuery} onChange={(e) => setLootSearchQuery(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-md py-1.5 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-colors" />
+                    <div className="flex flex-col gap-6">
+                      {/* PASSO 1: O QUÊ? */}
+                      <div className="flex flex-col gap-3">
+                        <h5 className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-2">
+                          <span className="bg-accent text-black size-5 flex items-center justify-center rounded-full">1</span> 
+                          {gmPanelTab === 'catalog' ? "Escolha o Item" : "Forjar Nova Relíquia"}
+                        </h5>
+
+                        {gmPanelTab === 'catalog' ? (
+                          <div className="bg-black/40 border border-white/5 rounded-xl p-4 shadow-inner">
+                            <div className="relative mb-4">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                              <input type="text" placeholder="Buscar no compêndio..." value={lootSearchQuery} onChange={(e) => setLootSearchQuery(e.target.value)} className="w-full bg-[#111] border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all" />
+                            </div>
+                            
+                            <div className="grid gap-3 sm:grid-cols-2 max-h-[320px] overflow-y-auto pr-2 custom-scrollbar-sepia">
+                              {filteredLoot.map((item) => {
+                                const isSelected = selectedLoot === item.id;
+                                return (
+                                  <button
+                                    key={item.id}
+                                    // AQUI ESTÁ A CORREÇÃO DO TOGGLE:
+                                    onClick={() => setSelectedLoot(isSelected ? null : item.id)}
+                                    className={`flex flex-col text-left p-4 rounded-xl border transition-all duration-300 overflow-hidden group ${
+                                      isSelected
+                                        ? 'border-accent bg-accent/5 shadow-[0_0_20px_rgba(var(--accent-rgb, 212,175,55),0.1)]'
+                                        : 'border-white/5 bg-[#161616] hover:border-white/20 hover:bg-[#1a1a1a]'
+                                    }`}
+                                  >
+                                    <div className="flex justify-between items-start w-full gap-2">
+                                      <div className="flex flex-col items-start gap-1.5">
+                                        <p className={`font-bold text-sm transition-colors ${isSelected ? 'text-accent' : 'text-foreground group-hover:text-accent/80'}`}>
+                                          {item.name}
+                                        </p>
+                                        <div className="flex items-center gap-1.5">
+                                          {(item as any).type && (
+                                            <span className="text-[9px] bg-black/60 text-muted-foreground px-2 py-0.5 rounded-full border border-white/5 uppercase tracking-widest">
+                                              {(item as any).type}
+                                            </span>
+                                          )}
+                                          {(item as any).purchasable === false && (
+                                            <span className="text-[9px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold">
+                                              Exclusivo
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <span className="text-[10px] font-mono text-accent/80 border border-accent/20 px-2 py-1 rounded-md bg-accent/5">
+                                          {item.cost}z
+                                        </span>
+                                        <ChevronDown className={`size-4 text-muted-foreground transition-transform duration-300 ${isSelected ? 'rotate-180 text-accent' : ''}`} />
+                                      </div>
+                                    </div>
+
+                                    <AnimatePresence>
+                                      {isSelected && (
+                                        <motion.div
+                                          initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                          animate={{ opacity: 1, height: "auto", marginTop: 16 }}
+                                          exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                          className="border-t border-accent/20 pt-4 flex flex-col gap-3 w-full"
+                                        >
+                                          <p className="text-xs text-muted-foreground leading-relaxed">
+                                            {(item as any).detail || "Sem descrição."}
+                                          </p>
+
+                                          <div className="flex flex-wrap gap-2 mt-1">
+                                            {(item as any).damage && <span className="text-[10px] font-mono bg-destructive/10 text-red-300 px-2 py-1 rounded border border-destructive/20">Dano: {(item as any).damage}</span>}
+                                            {(item as any).defense && <span className="text-[10px] font-mono bg-blue-500/10 text-blue-300 px-2 py-1 rounded border border-blue-500/20">DEF: {(item as any).defense}</span>}
+                                            {(item as any).mdef && <span className="text-[10px] font-mono bg-indigo-500/10 text-indigo-300 px-2 py-1 rounded border border-indigo-500/20">M.DEF: {(item as any).mdef}</span>}
+                                            {(item as any).bonus && <span className="text-[10px] font-mono bg-green-500/10 text-green-300 px-2 py-1 rounded border border-green-500/20">Bônus: {(item as any).bonus}</span>}
+                                            {(item as any).effect && <span className="text-[10px] font-mono bg-amber-500/10 text-amber-300 px-2 py-1 rounded border border-amber-500/20">Efeito: {(item as any).effect}</span>}
+                                          </div>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </button>
+                                );
+                              })}
+                              {filteredLoot.length === 0 && (
+                                <div className="col-span-2 py-8 flex flex-col items-center justify-center text-muted-foreground border border-dashed border-white/5 rounded-xl">
+                                  <Package className="size-8 opacity-20 mb-2" />
+                                  <p className="text-sm">Nenhum item encontrado no compêndio.</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar-sepia border border-border/30 rounded-lg p-2 bg-black/20">
-                          {filteredLoot.map((item) => (
-                            <button key={item.id} onClick={() => setSelectedLoot(item.id)} className={`flex flex-col text-left p-3 rounded-lg border transition-colors ${selectedLoot === item.id ? 'border-accent bg-accent/20' : 'border-border/60 bg-card/40 hover:border-accent/40'}`}>
-                              <div className="flex justify-between items-start w-full gap-2">
-                                <p className="font-bold text-sm text-foreground">{item.name}{(item as any).purchasable === false && <span className="block w-fit mt-1 text-[8px] bg-purple-500/20 text-purple-400 border border-purple-500/30 px-1 py-0.5 rounded uppercase tracking-wider">Loot Exclusivo</span>}</p>
-                                <span className="text-[10px] font-mono text-muted-foreground border border-border/60 px-1.5 py-0.5 rounded bg-background/50 shrink-0">Valor: {item.cost}z</span>
-                              </div>
-                            </button>
-                          ))}
-                          {filteredLoot.length === 0 && <p className="text-xs text-muted-foreground text-center mt-4 col-span-2">Nenhum item encontrado.</p>}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-4 border border-border/30 rounded-lg p-4 bg-black/20">
-                        <h5 className="text-xs font-bold uppercase tracking-widest text-primary shrink-0 mb-1">1. Forjar Novo Item Útil</h5>
-
-                        <input type="text" value={customItemName} onChange={e => setCustomItemName(e.target.value)} placeholder="Nome do Item (Ex: Carta do Rei)" className="w-full bg-black/40 border border-white/10 rounded-md py-2 px-3 text-sm text-foreground focus:outline-none focus:border-accent/50" />
-
-                        <select value={customItemType} onChange={e => setCustomItemType(e.target.value as any)} className="w-full bg-black/40 border border-white/10 rounded-md py-2 px-3 text-sm text-foreground focus:outline-none focus:border-accent/50">
-                          <option value="text">Pergaminho / Carta (Texto Escrito)</option>
-                          <option value="image">Magia de Fótons (Imagem via URL)</option>
-                          <option value="video">Orbe da Lembrança (Vídeo do YouTube via URL)</option>
-                          <option value="app-blueprints">Interface: Almanaque Magitech (Inventor)</option>
-                        </select>
-
-                        {customItemType === 'text' ? (
-                          <textarea value={customItemContent} onChange={e => setCustomItemContent(e.target.value)} placeholder="Escreva o conteúdo da carta aqui..." rows={5} className="w-full bg-black/40 border border-white/10 rounded-md py-2 px-3 text-sm text-foreground focus:outline-none focus:border-accent/50 custom-scrollbar-sepia" />
-                        ) : customItemType === 'app-blueprints' ? (
-                          <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-md text-xs text-blue-200">Este item instalará um mini-aplicativo interativo na mochila do jogador. O conteúdo não é necessário.</div>
                         ) : (
-                          <input type="text" value={customItemContent} onChange={e => setCustomItemContent(e.target.value)} placeholder={`Cole a URL ${customItemType === 'video' ? 'do Youtube' : 'da Imagem'} aqui...`} className="w-full bg-black/40 border border-white/10 rounded-md py-2 px-3 text-sm text-foreground focus:outline-none focus:border-accent/50" />
+                          <div className="flex flex-col gap-4 border border-white/5 rounded-xl p-5 bg-black/40 shadow-inner">
+                            <input type="text" value={customItemName} onChange={e => setCustomItemName(e.target.value)} placeholder="Nome do Item (Ex: Carta do Rei)" className="w-full bg-[#111] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all" />
+
+                            <select value={customItemType} onChange={e => setCustomItemType(e.target.value as any)} className="w-full bg-[#111] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-foreground focus:outline-none focus:border-accent/50 transition-all">
+                              <option value="text">Pergaminho / Carta (Texto Escrito)</option>
+                              <option value="image">Magia de Fótons (Imagem via URL)</option>
+                              <option value="video">Orbe da Lembrança (Vídeo do YouTube)</option>
+                              <option value="app-blueprints">Interface: Almanaque Magitech</option>
+                            </select>
+
+                            {customItemType === 'text' ? (
+                              <textarea value={customItemContent} onChange={e => setCustomItemContent(e.target.value)} placeholder="Escreva o conteúdo da carta aqui..." rows={4} className="w-full bg-[#111] border border-white/10 rounded-lg py-3 px-4 text-sm text-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all custom-scrollbar-sepia resize-none" />
+                            ) : customItemType === 'app-blueprints' ? (
+                              <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg text-xs text-blue-200 flex gap-3 items-center">
+                                <Info className="size-5 shrink-0 text-blue-400" />
+                                Este item instalará um mini-aplicativo na mochila do jogador. Necessita da classe Inventor.
+                              </div>
+                            ) : (
+                              <input type="text" value={customItemContent} onChange={e => setCustomItemContent(e.target.value)} placeholder={`Cole a URL ${customItemType === 'video' ? 'do Youtube' : 'da Imagem'} aqui...`} className="w-full bg-[#111] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all" />
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
 
-                    <div>
-                      <h5 className="text-xs font-bold uppercase tracking-widest text-primary mb-3">2. Destinatário (Inventário)</h5>
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {characters.map((c) => {
-                          const owner = data.members.find(m => m.userId === c.ownerId)
-                          return (
-                            <button key={c.id} onClick={() => setSelectedTargetCharId(c.id)} className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-colors ${selectedTargetCharId === c.id ? 'border-primary bg-primary/20' : 'border-border/60 bg-card/40 hover:border-primary/40'}`}>
-                              <p className="font-serif font-bold text-foreground text-center">{c.name}</p>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Jogador: {owner?.name || "Desconhecido"}</p>
+                      {/* PASSO 2: PARA QUEM? */}
+                      <div className={`flex flex-col gap-3 transition-opacity duration-300 ${(selectedLoot || gmPanelTab === 'custom') ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                        <h5 className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-2">
+                          <span className="bg-accent text-black size-5 flex items-center justify-center rounded-full">2</span> 
+                          Destinatário (Inventário)
+                        </h5>
+                        
+                        <div className="grid gap-3 sm:grid-cols-3 bg-black/40 border border-white/5 rounded-xl p-4 shadow-inner max-h-[200px] overflow-y-auto custom-scrollbar-sepia">
+                          {characters.map((c) => {
+                            const owner = data.members.find(m => m.userId === c.ownerId);
+                            const isSelected = selectedTargetCharId === c.id;
+                            return (
+                              <button
+                                key={c.id}
+                                onClick={() => setSelectedTargetCharId(c.id)}
+                                className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 ${
+                                  isSelected
+                                    ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.15)]'
+                                    : 'border-white/5 bg-[#161616] hover:border-white/20 hover:bg-[#1a1a1a]'
+                                }`}
+                              >
+                                <div className={`size-10 rounded-full border overflow-hidden shrink-0 ${isSelected ? 'border-primary' : 'border-white/10'}`}>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={c.avatarUrl || "/mystic-adventurer-portrait.png"} alt="" className="w-full h-full object-cover" />
+                                </div>
+                                <div className="flex flex-col items-start min-w-0">
+                                  <p className="font-serif font-bold text-sm text-foreground truncate w-full text-left">{c.name}</p>
+                                  <p className="text-[9px] text-muted-foreground uppercase tracking-widest mt-0.5 truncate w-full text-left">{owner?.name || "Desconhecido"}</p>
+                                </div>
+                              </button>
+                            );
+                          })}
+                          
+                          {/* Criaturas (apenas para itens de catálogo) */}
+                          {gmPanelTab === 'catalog' && activeCreatures.map((c) => (
+                            <button
+                              key={c.instanceId}
+                              onClick={() => setSelectedTargetCharId(c.instanceId)}
+                              className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 ${
+                                selectedTargetCharId === c.instanceId
+                                  ? 'border-destructive bg-destructive/10 shadow-[0_0_15px_rgba(255,0,0,0.15)]'
+                                  : 'border-white/5 bg-[#161616] hover:border-destructive/30 hover:bg-[#1a1a1a]'
+                              }`}
+                            >
+                               <div className={`size-10 rounded-full border overflow-hidden shrink-0 ${selectedTargetCharId === c.instanceId ? 'border-destructive' : 'border-white/10'}`}>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={c.imageUrl || "/mystic-adventurer-portrait.png"} alt="" className="w-full h-full object-cover grayscale" />
+                                </div>
+                                <div className="flex flex-col items-start min-w-0">
+                                  <p className="font-serif font-bold text-sm text-destructive truncate w-full text-left">{c.name}</p>
+                                  <p className="text-[9px] text-destructive/60 uppercase tracking-widest mt-0.5 truncate w-full text-left">Na Mesa</p>
+                                </div>
                             </button>
-                          )
-                        })}
-                        {gmPanelTab === 'catalog' && activeCreatures.map((c) => (
-                          <button key={c.instanceId} onClick={() => setSelectedTargetCharId(c.instanceId)} className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-colors ${selectedTargetCharId === c.instanceId ? 'border-destructive bg-destructive/20' : 'border-destructive/30 bg-destructive/5 hover:border-destructive/50'}`}>
-                            <p className="font-serif font-bold text-destructive text-center">{c.name}</p>
-                            <p className="text-[10px] text-destructive/70 uppercase tracking-widest mt-1">Criatura na Mesa</p>
-                          </button>
-                        ))}
+                          ))}
+                        </div>
                       </div>
+
                     </div>
                   </div>
-                  <div className="p-6 border-t border-border/50 bg-black/40 flex justify-end gap-3 shrink-0">
-                    <Button variant="ghost" onClick={() => setShowGmPanel(false)}>Cancelar</Button>
-                    <Button className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90" disabled={(!selectedLoot && gmPanelTab === 'catalog') || !selectedTargetCharId || sendingLoot} onClick={handleGiveLoot}>
-                      {sendingLoot ? <span className="animate-pulse">Enviando...</span> : <><Send className="size-4" /> {gmPanelTab === 'custom' ? "Enviar Relíquia" : "Enviar para Inventário"}</>}
+
+                  {/* FOOTER */}
+                  <div className="p-6 border-t border-white/5 bg-black/60 flex justify-between gap-4 shrink-0 relative overflow-hidden">
+                    <Button variant="ghost" className="text-muted-foreground hover:text-white" onClick={() => setShowGmPanel(false)}>Cancelar</Button>
+                    <Button 
+                      size="lg"
+                      className="gap-2 bg-accent text-black hover:bg-accent/90 font-bold px-8 shadow-[0_0_20px_rgba(var(--accent-rgb, 212,175,55),0.3)] transition-all disabled:opacity-50 disabled:shadow-none" 
+                      disabled={(!selectedLoot && gmPanelTab === 'catalog') || !selectedTargetCharId || sendingLoot} 
+                      onClick={handleGiveLoot}
+                    >
+                      {sendingLoot ? <span className="animate-pulse flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Enviando...</span> : <><Send className="size-4" /> {gmPanelTab === 'custom' ? "Entregar Relíquia" : "Entregar Item"}</>}
                     </Button>
                   </div>
+
                 </motion.div>
               </motion.div>
             )}
@@ -1485,6 +1778,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       onKill={isGm ? handleKillNPC : undefined}
                       shouldOpenInventory={inventoryToOpen === c.id}
                       onClearInventoryRequest={() => setInventoryToOpen(null)}
+                      onArchive={isGm ? handleArchiveCharacter : undefined}
                     />
                   ))}
                 </div>
@@ -1621,7 +1915,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                             <span className="text-[10px] font-bold text-[color:var(--hp)]">HP</span>
                             {isGm ? (
                               <div className="flex items-center gap-2">
-                                <button onClick={() => updateCreatureVital(creature.instanceId, { currentHp: creature.currentHp - 5 })} className="text-muted-foreground hover:text-white">-</button>
+                                <button onClick={() => updateCreatureVital(creature.instanceId, { currentHp: creature.currentHp - 1 })} className="text-muted-foreground hover:text-white">-</button>
                                 <span className="font-mono text-sm text-[color:var(--hp)] font-bold">{creature.currentHp}/{creature.maxHp}</span>
                                 <button onClick={() => updateCreatureVital(creature.instanceId, { currentHp: creature.currentHp + 5 })} className="text-muted-foreground hover:text-white">+</button>
                               </div>
@@ -1703,6 +1997,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           onKill={isGm ? handleKillNPC : undefined}
                           shouldOpenInventory={inventoryToOpen === c.id}
                           onClearInventoryRequest={() => setInventoryToOpen(null)}
+                          // GARANTA QUE ESSA LINHA ESTÁ AQUI
+                          onArchive={isGm ? handleArchiveCharacter : undefined}
                         />
                       ))}
                     </div>
@@ -1725,6 +2021,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           onKill={isGm ? handleKillNPC : undefined}
                           shouldOpenInventory={inventoryToOpen === c.id}
                           onClearInventoryRequest={() => setInventoryToOpen(null)}
+                          // GARANTA QUE ESSA LINHA ESTÁ AQUI TAMBÉM
+                          onArchive={isGm ? handleArchiveCharacter : undefined}
                         />
                       ))}
                     </div>
@@ -1744,6 +2042,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 <div className="flex flex-col gap-2">
                   <Button variant="outline" className="w-full justify-start gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground" onClick={() => setShowCutsceneManager(true)}>
                     <Clapperboard className="size-4" /> Cenas e Cutscenes
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground" onClick={() => setShowImagepad(true)}>
+                    <ImageIconLucide className="size-4" /> Galeria Arcana (Imagens)
                   </Button>
                   <Button variant="outline" className="w-full justify-start gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground" onClick={() => setShowSoundpad(true)}>
                     <Mic className="size-4" /> Efeitos Sonoros (Soundpad)
@@ -1766,9 +2067,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   <div className="flex flex-col gap-2">
                     {Array.from(new Map(savedMaps.map(m => [m.id, m])).values()).map(m => (
                       <div key={m.id} className="flex gap-2 w-full">
-                        <Button size="sm" variant="outline" className="flex-1 justify-start text-xs border-green-500/50 text-green-400 hover:bg-green-500/10 hover:text-green-300 overflow-hidden text-left" onClick={() => setActiveMap(m)}>
+                        {/* Botão de abrir só pro mestre preparar */}
+                        <Button size="sm" variant="outline" className="flex-1 justify-start text-xs border-green-500/50 text-green-400 hover:bg-green-500/10 hover:text-green-300 overflow-hidden text-left" onClick={() => setActiveMap(m)} title="Abrir para você (Preparação)">
                           <Grid3X3 className="size-3 mr-2 shrink-0" /> <span className="truncate">{m.name}</span>
                         </Button>
+
+                        {/* NOVO BOTÃO: Forçar mapa na tela dos jogadores */}
+                        <Button size="sm" variant="outline" className="w-9 px-0 shrink-0 border-purple-500/50 text-purple-400 hover:bg-purple-500/10" onClick={() => handleForceSyncMap(m.id)} title="Transmitir este mapa para todos os jogadores">
+                          <Eye className="size-3" />
+                        </Button>
+
                         <Button size="sm" variant="outline" className="w-9 px-0 shrink-0 border-blue-500/50 text-blue-400 hover:bg-blue-500/10" onClick={() => handleRenameMap(m.id, m.name)} title="Renomear mapa">
                           <Pencil className="size-3" />
                         </Button>
@@ -1809,6 +2117,33 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               </div>
             )}
 
+            {/* PAINEL DE MAPAS PARA JOGADORES */}
+            {!isGm && savedMaps.length > 0 && (
+              <div className="panel rounded-xl border border-primary/40 p-4 bg-primary/5 shrink-0 backdrop-blur-sm">
+                <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary"><Grid3X3 className="size-4" /> Mapas da Campanha</h2>
+                <div className="flex flex-col gap-2">
+                  {Array.from(new Map(savedMaps.map(m => [m.id, m])).values()).map(m => (
+                    <Button key={m.id} size="sm" variant="outline" className="w-full justify-start text-xs border-primary/50 text-primary hover:bg-primary/10 hover:text-primary-foreground overflow-hidden text-left" onClick={() => setActiveMap(m)}>
+                      <Grid3X3 className="size-3 mr-2 shrink-0" /> <span className="truncate">{m.name}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* GALERIA ARCANA PARA JOGADORES */}
+            {!isGm && galleryImages.filter(img => img.isPublic).length > 0 && (
+              <div className="panel flex flex-col rounded-xl border border-blue-400/40 p-4 bg-blue-400/5 shrink-0 backdrop-blur-sm">
+                <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-blue-400"><ImageIconLucide className="size-4" /> Galeria Arcana</h2>
+                <div className="flex flex-col gap-2">
+                  <Button size="sm" variant="outline" className="w-full justify-start text-xs border-blue-400/50 text-blue-400 hover:bg-blue-400/10 hover:text-blue-300 text-left" onClick={() => setShowImagepad(true)}>
+                    <ImageIconLucide className="size-3 mr-2 shrink-0" /> Abrir Acervo Visual
+                  </Button>
+                </div>
+              </div>
+            )}
+            {/* ----------------------------------- */}
+
             {/* WIDGET DA ENQUETE ATIVA FICA AQUI TAMBÉM */}
             <AnimatePresence>
               {activePoll && (
@@ -1840,6 +2175,49 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       )
                     })}
                   </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* 1. OVERLAY GLOBAL DA IMAGEM EM TELA CHEIA (TODOS OS JOGADORES) */}
+            <AnimatePresence>
+              {activeFullscreenImage && (
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed inset-0 z-[400] flex items-center justify-center bg-black/95 backdrop-blur-lg p-4 md:p-12">
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <button onClick={() => setActiveFullscreenImage(null)} className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full z-10 transition-colors"><X className="size-8 text-white" /></button>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={activeFullscreenImage} className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-xl border border-white/10" alt="Visualização Expandida" />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* 2. MODAL DA GALERIA ARCANA */}
+            <AnimatePresence>
+              {showImagepad && (
+                <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 sm:p-8 overflow-hidden">
+                  <motion.div variants={modalVariants} className="relative w-full max-w-6xl h-[85vh] min-h-[600px] flex flex-col bg-transparent">
+                    <div className="flex-1 w-full h-full rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/10">
+
+                      {/* ---> ATUALIZE O IMAGEPAD COM AS NOVAS PROPRIEDADES <--- */}
+                      <Imagepad
+                        isGm={isGm}
+                        images={galleryImages}
+                        onUpdateImages={(newImages) => {
+                          setGalleryImages(newImages);
+                          localStorage.setItem(`images_${data.campaign.id}`, JSON.stringify(newImages));
+                          if (isGm) {
+                            apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+                              method: "POST", body: JSON.stringify({ characterId: 'sys_gallery', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_GALLERY:UPDATE`, result: JSON.stringify(newImages) })
+                            }).catch(console.error);
+                          }
+                        }}
+                        onShowImage={handleImageClick}
+                        onClose={() => setShowImagepad(false)}
+                      />
+
+                    </div>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>

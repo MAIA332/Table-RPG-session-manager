@@ -6,7 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  allowedDevOrigins: ['jrpg.slip.io'],
+  allowedDevOrigins: ['jrpg.slip.io','app-mortemagica.sinapselabs.com.br'],
 }
 
 export default nextConfig

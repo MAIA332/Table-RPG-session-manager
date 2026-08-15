@@ -12,5 +12,26 @@
     "name": "BETA",
     "passwordHash": "67517cad033d5439:85227db93d092fd38d021639fbab69b1a4a1aa6f98551dce815b13d87344840f",
     "createdAt": 1785362875526
+  },
+  {
+    "id": "user_gybabf5mmskx7a24",
+    "email": "mirella.cunh@gmail.com",
+    "name": "Miih",
+    "passwordHash": "2c2d01dfb69ea734:8309a4fff3c668999ace0b5f28b0445473f007543de19f197b86730351a944a0",
+    "createdAt": 1786226605996
+  },
+  {
+    "id": "user_0bhp2ga3msl1uk6h",
+    "email": "victorssferraz@gmail.com",
+    "name": "Tito",
+    "passwordHash": "642e25176a10de50:c38aa963c81d8be6089d6d5f9cf74ba3f646ce1bb94d84f4b6e8151e5516e075",
+    "createdAt": 1786234410665
+  },
+  {
+    "id": "user_gd68ua63msnua1nb",
+    "email": "paidezoologico@gmail.com",
+    "name": "Mateus Lopes de Deus",
+    "passwordHash": "c18e107986816aee:98b1395c00d8d7bdf2d555652390f06d0986aa13bd05c59e3fa5801698d50287",
+    "createdAt": 1786403094743
   }
 ]

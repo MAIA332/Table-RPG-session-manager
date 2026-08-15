@@ -505,40 +505,550 @@ export const CLASSES: GameClass[] = [
     mpPerLevel: 5,
     primaryAttribute: "wlp",
     skills: [
-      { 
-        id: "cl-aura", 
-        name: "Aura Curativa", 
-        maxLevel: 5, 
-        description: "Sempre que restaurar os PV de um ou mais aliados através de magias ou habilidades, eles recuperam [Nível da Perícia x 2] PV adicionais." 
+      {
+        id: "cl-aura",
+        name: "Aura Curativa",
+        maxLevel: 5,
+        description: "Sempre que restaurar os PV de um ou mais aliados através de magias ou habilidades, eles recuperam [Nível da Perícia x 2] PV adicionais."
       },
-      { 
-        id: "cl-purify", 
-        name: "Mãos Purificadoras", 
-        maxLevel: 3, 
-        description: "Ao aplicar um efeito de cura em um aliado, você pode remover até [Nível da Perícia] condições de status negativas dele sem nenhum custo de PM adicional." 
+      {
+        id: "cl-purify",
+        name: "Mãos Purificadoras",
+        maxLevel: 3,
+        description: "Ao aplicar um efeito de cura em um aliado, você pode remover até [Nível da Perícia] condições de status negativas dele sem nenhum custo de PM adicional."
       },
-      { 
-        id: "cl-sanctuary", 
-        name: "Santuário", 
-        maxLevel: 4, 
-        description: "Enquanto você não estiver em Crise, você e os aliados com os quais tem um Elo recuperam [Nível da Perícia x 5] PV automaticamente no início do seu turno." 
+      {
+        id: "cl-sanctuary",
+        name: "Santuário",
+        maxLevel: 4,
+        description: "Enquanto você não estiver em Crise, você e os aliados com os quais tem um Elo recuperam [Nível da Perícia x 5] PV automaticamente no início do seu turno."
       },
-      { 
-        id: "cl-breath", 
-        name: "Sopro de Vida", 
-        maxLevel: 1, 
-        description: "Uma vez por cena, se um aliado for reduzido a 0 PV, você pode gastar 20 PM como uma reação imediata para evitar que ele caia, restaurando-o com metade dos PV máximos dele.", 
-        action: { cost: 20, resource: "mp" } 
+      {
+        id: "cl-breath",
+        name: "Sopro de Vida",
+        maxLevel: 1,
+        description: "Uma vez por cena, se um aliado for reduzido a 0 PV, você pode gastar 20 PM como uma reação imediata para evitar que ele caia, restaurando-o com metade dos PV máximos dele.",
+        action: { cost: 20, resource: "mp" }
       },
-      { 
-        id: "cl-martyr", 
-        name: "Martírio Compassivo", 
-        maxLevel: 5, 
-        description: "Gaste uma ação para perder voluntariamente até [Nível x 10] PV (este dano não pode ser reduzido). Distribua o dobro do valor perdido como cura de PV entre qualquer número de aliados que você possa ver.", 
-        action: { cost: 0, resource: "hp" } 
+      {
+        id: "cl-martyr",
+        name: "Martírio Compassivo",
+        maxLevel: 5,
+        description: "Gaste uma ação para perder voluntariamente até [Nível x 10] PV (este dano não pode ser reduzido). Distribua o dobro do valor perdido como cura de PV entre qualquer número de aliados que você possa ver.",
+        action: { cost: 0, resource: "hp" }
       }
     ]
-  }
+  },
+  {
+    id: "monk",
+    name: "Monge",
+    archetype: "Artista Marcial",
+    description: "Lutadores disciplinados que dispensam armamentos, canalizando sua própria energia vital (Ki) para transcender os limites do corpo físico.",
+    hpPerLevel: 5,
+    mpPerLevel: 3,
+    primaryAttribute: "dex",
+    skills: [
+      { id: "mk-ironfist", name: "Punhos de Ferro", maxLevel: 5, description: "Seus ataques desarmados passam a ser considerados armas da categoria Briga. Eles causam [Nível da Perícia x 2] de dano físico extra." },
+      { id: "mk-chakra", name: "Chakra", maxLevel: 4, description: "Gaste uma ação para canalizar seu Ki. Você cura [Nível x 10] PV e pode remover as condições Enfraquecido ou Lento de si mesmo.", action: { cost: 5, resource: "mp" } },
+      { id: "mk-flurry", name: "Rajada de Golpes", maxLevel: 3, description: "Gaste 10 PM. Ao realizar um ataque desarmado, você ataca duas vezes. O segundo ataque causa metade do dano normal e não aplica efeitos adicionais.", action: { cost: 10, resource: "mp" } },
+      { id: "mk-windstep", name: "Passo do Vento", maxLevel: 1, description: "Enquanto não estiver vestindo armaduras marciais ou escudos, você ganha Resistência a dano de ataques à distância." },
+      { id: "mk-flow", name: "Fluxo Contínuo", maxLevel: 5, description: "Sempre que você acerta um ataque crítico ou reduz um inimigo a 0 PV, você recupera [Nível da Perícia x 3] Pontos de Mente." }
+    ]
+  },
+  {
+    id: "paladin",
+    name: "Paladino",
+    archetype: "Cavaleiro Sagrado",
+    description: "Guerreiros da luz que combinam proeza marcial com milagres divinos para expurgar o mal, liderando sempre na linha de frente.",
+    hpPerLevel: 6,
+    mpPerLevel: 3,
+    primaryAttribute: "mig",
+    skills: [
+      { id: "pl-smite", name: "Golpe Divino", maxLevel: 5, description: "Quando você acertar um ataque corpo a corpo, você pode gastar 10 PM para causar [Nível da Perícia x 5] de dano de luz (Luz/Sagrado) adicional.", action: { cost: 10, resource: "mp" } },
+      { id: "pl-aegis", name: "Égide Sagrada", maxLevel: 4, description: "Você emana uma aura de proteção. Aliados sem condições negativas próximos a você ganham +[Nível da Perícia] em Defesa Mágica." },
+      { id: "pl-vow", name: "Voto de Proteção", maxLevel: 1, description: "No início da cena, escolha um aliado. Enquanto ele estiver em Crise, você ganha +2 em todos os Testes de Precisão contra quem o feriu." },
+      { id: "pl-layhands", name: "Imposição de Mãos", maxLevel: 4, description: "Gaste uma ação para curar [Nível x 10] PV de um aliado. Se ele estiver envenenado, o veneno é curado imediatamente.", action: { cost: 5, resource: "mp" } },
+      { id: "pl-bastion", name: "Bastião da Luz", maxLevel: 1, description: "Enquanto estiver com seus Pontos de Vida máximos, você é imune a todas as condições de status negativas." }
+    ]
+  },
+  {
+    id: "ninja",
+    name: "Ninja",
+    archetype: "Assassino das Sombras",
+    description: "Especialistas em espionagem, combinam agilidade extrema, lâminas ocultas e artes místicas ilusionistas (Ninjutsu) para abater seus inimigos.",
+    hpPerLevel: 4,
+    mpPerLevel: 4,
+    primaryAttribute: "dex",
+    skills: [
+      { id: "nj-ninjutsu", name: "Ninjutsu", maxLevel: 5, description: "Desbloqueia pergaminhos ninja elementais. Você pode realizar Rituais de ilusão, movimento e fumaça rapidamente rolando [DES + INT]." },
+      { id: "nj-ambush", name: "Ataque Surpresa", maxLevel: 5, description: "Você causa [Nível da Perícia x 4] de dano extra contra inimigos que ainda não agiram na primeira rodada do combate." },
+      { id: "nj-clone", name: "Clone das Sombras", maxLevel: 3, description: "Gaste 15 PM como uma ação livre. O próximo ataque ou feitiço de alvo único que atingiria você automaticamente erra e destrói o clone.", action: { cost: 15, resource: "mp" } },
+      { id: "nj-dualwield", name: "Lâminas Gêmeas", maxLevel: 1, description: "Permite empunhar duas armas da categoria Adaga ou Espada de uma mão simultaneamente, ganhando multi (2) em ataques básicos mas perdendo seu bônus de escudo." },
+      { id: "nj-shuriken", name: "Chuva de Estrelas", maxLevel: 4, description: "Quando usar a ação Atacar com uma arma de arremesso, gaste 5 PM para atingir [Nível da Perícia] alvos adicionais com metade do dano.", action: { cost: 5, resource: "mp" } }
+    ]
+  },
+  {
+    id: "geomancer",
+    name: "Geomante",
+    archetype: "Mago do Terreno",
+    description: "Sintonizam-se com as linhas de força da própria terra, alterando o campo de batalha para subjugar inimigos e extrair magia do ambiente.",
+    hpPerLevel: 4,
+    mpPerLevel: 5,
+    primaryAttribute: "ins",
+    skills: [
+      { id: "ge-leyline", name: "Linhas de Ley", maxLevel: 5, description: "Gaste 10 PM. Altere a afinidade de uma zona do campo. Magias lançadas por você dessa afinidade causam [Nível x 3] de dano extra até o fim da cena.", action: { cost: 10, resource: "mp" } },
+      { id: "ge-prison", name: "Prisão de Terra", maxLevel: 3, description: "Força o terreno a prender o inimigo. O alvo rola [MIG + DES]; falhas infligem a condição Lento e vulnerabilidade a ataques físicos por [Nível] rodadas.", action: { cost: 10, resource: "mp" } },
+      { id: "ge-seismic", name: "Sentido Sísmico", maxLevel: 1, description: "Enquanto seus pés tocarem a terra firme ou pedra, você nunca pode ser pego de surpresa e ignora penalidades para atingir alvos invisíveis." },
+      { id: "ge-absorb", name: "Absorção Ambiental", maxLevel: 4, description: "Uma vez por turno, se você ou um aliado receber dano elemental correspondente ao ambiente (ex: fogo num vulcão), o dano é reduzido em [Nível x 5]." },
+      { id: "ge-nature", name: "Revolta da Natureza", maxLevel: 3, description: "Transforma o bioma ao seu favor. Ganhe +[Nível] na Defesa em florestas, +[Nível] na Defesa Mágica em cavernas, ou +[Nível] de Velocidade em planícies." }
+    ]
+  },
+  {
+    id: "dragoon",
+    name: "Cavaleiro Dragão",
+    archetype: "Lanceiro dos Céus",
+    description: "Guerreiros aéreos lendários. Suas pernas incrivelmente poderosas permitem que saltem além das nuvens e caiam como meteoros sobre os inimigos.",
+    hpPerLevel: 5,
+    mpPerLevel: 3,
+    primaryAttribute: "mig",
+    skills: [
+      { id: "dr-jump", name: "Salto", maxLevel: 5, description: "Gaste 10 PM. Você sai de combate e não pode ser alvejado. No início do seu próximo turno, você cai causando um ataque com [Nível da Perícia x 5] de dano extra.", action: { cost: 10, resource: "mp" } },
+      { id: "dr-dragonblood", name: "Sangue de Dragão", maxLevel: 3, description: "Recebe Resistência passiva a um elemento de sua escolha (Fogo, Gelo ou Raio). Ao sofrer dano desse elemento, recupere [Nível x 3] PM." },
+      { id: "dr-spear", name: "Maestria com Lanças", maxLevel: 4, description: "Quando empunhar uma arma da categoria Lança ou Haste, você ganha +[Nível] de bônus na Precisão e ignora penalidades contra alvos voadores." },
+      { id: "dr-dive", name: "Mergulho Explosivo", maxLevel: 1, description: "Quando você executar o 'Salto', você pode escolher espalhar a onda de choque. O ataque atinge todos os inimigos, mas o dano extra não é aplicado." },
+      { id: "dr-pierce", name: "Perfuração Celeste", maxLevel: 5, description: "Quando você atinge um alvo que possui resistência física a dano cortante ou perfurante, você ignora [Nível x 2] pontos da Armadura ou Defesa dele." }
+    ]
+  },
+  {
+  id: "hemomancer",
+  name: "Hemomante",
+  archetype: "Mago de Sangue",
+  description: "Magos que transformam o próprio sangue em combustível arcano, sacrificando a própria vitalidade para produzir efeitos sobrenaturais devastadores.",
+  hpPerLevel: 4,
+  mpPerLevel: 5,
+  primaryAttribute: "wlp",
+  skills: [
+    {
+      id: "he-bloodfuel",
+      name: "Sangue como Combustível",
+      maxLevel: 5,
+      description: "Ao lançar uma magia, você pode pagar até [Nível da Perícia x 2] PM usando PV. Cada 2 PV gastos reduz o custo da magia em 1 PM."
+    },
+    {
+      id: "he-coagulation",
+      name: "Coagulação",
+      maxLevel: 4,
+      description: "Gaste 5 PM para criar uma barreira de sangue que absorve [Nível da Perícia x 5] de dano até o início do seu próximo turno.",
+      action: { cost: 5, resource: "mp" }
+    },
+    {
+      id: "he-transfusion",
+      name: "Transfusão",
+      maxLevel: 5,
+      description: "Gaste uma ação e até [Nível da Perícia x 5] PV para curar um aliado. Para cada 2 PV sacrificados, o alvo recupera 3 PV."
+    },
+    {
+      id: "he-hemorrhage",
+      name: "Hemorragia",
+      maxLevel: 5,
+      description: "Uma vez por turno, quando causar dano com um ataque ou magia, você pode gastar 5 PM para aplicar Sangramento. Alvos Sangrando sofrem [Nível da Perícia] de dano adicional sempre que sofrerem dano físico."
+    },
+    {
+      id: "he-redheart",
+      name: "Coração Vermelho",
+      maxLevel: 1,
+      description: "Enquanto estiver em Crise, suas magias custam 5 PM a menos, mínimo 1 PM. Sempre que usar esse benefício, você perde 5 PV após a magia."
+    }
+  ]
+},
+
+{
+  id: "trickster",
+  name: "Trapaceiro",
+  archetype: "Manipulador de Probabilidade",
+  description: "Especialistas em blefes, truques e coincidências impossíveis que parecem sempre encontrar uma maneira de quebrar as regras.",
+  hpPerLevel: 4,
+  mpPerLevel: 4,
+  primaryAttribute: "dex",
+  skills: [
+    {
+      id: "tr-tricks",
+      name: "Trapaça",
+      maxLevel: 5,
+      description: "Você possui [Nível da Perícia] Pontos de Trapaça por cena. Gaste 1 ponto após uma rolagem para adicionar ou subtrair 2 do resultado."
+    },
+    {
+      id: "tr-bluff",
+      name: "Blefe Impossível",
+      maxLevel: 4,
+      description: "Após falhar em um Teste social, de Furtividade ou Enganação, gaste 5 PM para transformar a falha em um sucesso parcial. O Mestre determina uma complicação."
+    },
+    {
+      id: "tr-markedcard",
+      name: "Carta Marcada",
+      maxLevel: 3,
+      description: "No início da cena, escolha um número entre 1 e 10. Uma vez por rodada, quando você ou um inimigo rolar esse número em um dado, você pode gastar 5 PM para repetir esse dado."
+    },
+    {
+      id: "tr-notthere",
+      name: "Isso Não Estava Aí",
+      maxLevel: 2,
+      description: "Gaste 10 PM para declarar que possui um pequeno item comum que poderia razoavelmente ter carregado. O item desaparece ou deixa de ser útil ao final da cena.",
+      action: { cost: 10, resource: "mp" }
+    },
+    {
+      id: "tr-plotarmor",
+      name: "O Roteiro Me Ama",
+      maxLevel: 1,
+      description: "Gaste 1 Ponto de Fábula para transformar uma falha crítica em um sucesso normal. O Mestre pode impor uma consequência narrativa significativa."
+    }
+  ]
+},
+
+{
+  id: "warlock",
+  name: "Bruxo",
+  archetype: "Pactuário Sobrenatural",
+  description: "Mortais que obtiveram poder através de pactos com entidades sobrenaturais, pagando lentamente o preço de seus dons.",
+  hpPerLevel: 4,
+  mpPerLevel: 5,
+  primaryAttribute: "wlp",
+  skills: [
+    {
+      id: "wo-pact",
+      name: "Pacto",
+      maxLevel: 1,
+      description: "Escolha uma entidade patrona. Você recebe um Dom de Pacto definido com o Mestre, como visão sobrenatural, resistência elemental, arma espiritual ou uma pequena magia."
+    },
+    {
+      id: "wo-debt",
+      name: "Dívida Sobrenatural",
+      maxLevel: 5,
+      description: "Você possui [Nível da Perícia] Pontos de Dívida por cena. Gaste 1 Ponto de Dívida para reduzir em 5 PM o custo de uma habilidade do Bruxo. Cada Dívida não paga concede uma pequena complicação determinada pelo Mestre."
+    },
+    {
+      id: "wo-eldritch",
+      name: "Manifestação Profana",
+      maxLevel: 5,
+      description: "Gaste 10 PM para manifestar parcialmente seu patrono durante uma cena. Receba +[Nível da Perícia] em Testes de Magia e seus ataques causam [Nível da Perícia] de dano sobrenatural extra.",
+      action: { cost: 10, resource: "mp" }
+    },
+    {
+      id: "wo-bargain",
+      name: "Barganha",
+      maxLevel: 4,
+      description: "Uma vez por cena, após falhar em um teste, você pode aceitar uma complicação do patrono para receber +[Nível da Perícia] no teste."
+    },
+    {
+      id: "wo-possession",
+      name: "Possessão",
+      maxLevel: 1,
+      description: "Uma vez por cena, permita que seu patrono controle parcialmente seu corpo durante uma ação. A ação recebe +5 de bônus e causa +10 de dano ou produz um efeito sobrenatural equivalente."
+    }
+  ]
+},
+
+{
+  id: "alchemist",
+  name: "Alquimista",
+  archetype: "Químico Arcano",
+  description: "Especialistas em transformar ingredientes, monstros e materiais mágicos em poções, bombas e compostos impossíveis.",
+  hpPerLevel: 4,
+  mpPerLevel: 4,
+  primaryAttribute: "ins",
+  skills: [
+    {
+      id: "al-reagents",
+      name: "Reagentes",
+      maxLevel: 5,
+      description: "Após cada descanso, você recebe [Nível da Perícia + 1] Reagentes. Cada reagente pode possuir uma propriedade: Fogo, Gelo, Raio, Veneno, Vida ou Morte."
+    },
+    {
+      id: "al-mixture",
+      name: "Mistura Instável",
+      maxLevel: 5,
+      description: "Gaste 5 PM e dois Reagentes para criar um composto. Combinações elementais causam [Nível da Perícia x 3] de dano adicional ou aplicam uma condição relacionada."
+    },
+    {
+      id: "al-catalyst",
+      name: "Catalisador",
+      maxLevel: 4,
+      description: "Quando criar uma poção ou bomba, pode gastar 5 PM para aumentar seu efeito em [Nível da Perícia x 5]."
+    },
+    {
+      id: "al-transmutation",
+      name: "Transmutação",
+      maxLevel: 3,
+      description: "Uma vez por cena, transforme um material comum em outro material de valor semelhante ou crie temporariamente uma ferramenta simples."
+    },
+    {
+      id: "al-forbidden",
+      name: "Fórmula Proibida",
+      maxLevel: 1,
+      description: "Uma vez por cena, misture três Reagentes para produzir um efeito extraordinário. Depois do efeito, você perde 10 PV e fica Abalado."
+    }
+  ]
+},
+
+{
+  id: "prophet",
+  name: "Profeta",
+  archetype: "Vidente do Futuro",
+  description: "Místicos capazes de enxergar fragmentos do futuro e manipular acontecimentos através de presságios e previsões.",
+  hpPerLevel: 3,
+  mpPerLevel: 5,
+  primaryAttribute: "ins",
+  skills: [
+    {
+      id: "pr-omens",
+      name: "Presságios",
+      maxLevel: 5,
+      description: "No início de uma cena, receba [Nível da Perícia] Presságios. Gaste 1 Presságio para adicionar +2 a uma rolagem sua ou de um aliado."
+    },
+    {
+      id: "pr-premonition",
+      name: "Premonição",
+      maxLevel: 5,
+      description: "Gaste 5 PM para receber +[Nível da Perícia] em Defesa ou Defesa Mágica contra o próximo ataque de uma criatura que você possa ver.",
+      action: { cost: 5, resource: "mp" }
+    },
+    {
+      id: "pr-vision",
+      name: "Visão Fragmentada",
+      maxLevel: 3,
+      description: "Gaste 10 PM para fazer ao Mestre uma pergunta sobre algo que provavelmente acontecerá nos próximos minutos. A resposta pode ser simbólica ou incompleta.",
+      action: { cost: 10, resource: "mp" }
+    },
+    {
+      id: "pr-warning",
+      name: "Eu Avisei",
+      maxLevel: 4,
+      description: "Quando um aliado falhar em um teste que você possa perceber, gaste 5 PM para permitir que ele repita a rolagem. O novo resultado deve ser usado."
+    },
+    {
+      id: "pr-apocalypse",
+      name: "Apocalipse Anunciado",
+      maxLevel: 1,
+      description: "Uma vez por cena, declare um acontecimento futuro plausível. O Mestre deve incorporá-lo à narrativa, mas pode determinar uma consequência ou custo significativo."
+    }
+  ]
+},
+
+{
+  id: "exorcist",
+  name: "Exorcista",
+  archetype: "Caçador de Entidades",
+  description: "Especialistas em enfrentar possessões, maldições e criaturas sobrenaturais que não pertencem ao mundo material.",
+  hpPerLevel: 5,
+  mpPerLevel: 3,
+  primaryAttribute: "wlp",
+  skills: [
+    {
+      id: "ex-mark",
+      name: "Marca Profana",
+      maxLevel: 5,
+      description: "Ao atingir uma criatura sobrenatural, você pode marcá-la por [Nível da Perícia] rodadas. Você recebe +[Nível da Perícia] em Testes de Precisão e Magia contra ela."
+    },
+    {
+      id: "ex-banishing",
+      name: "Banimento",
+      maxLevel: 5,
+      description: "Gaste 10 PM ao acertar uma criatura marcada para ignorar até [Nível da Perícia x 2] pontos de Resistência sobrenatural nesse ataque.",
+      action: { cost: 10, resource: "mp" }
+    },
+    {
+      id: "ex-seal",
+      name: "Selo de Contenção",
+      maxLevel: 4,
+      description: "Gaste 10 PM para selar temporariamente uma habilidade sobrenatural de uma criatura marcada. O alvo pode realizar um teste de VON para resistir.",
+      action: { cost: 10, resource: "mp" }
+    },
+    {
+      id: "ex-purification",
+      name: "Purificação",
+      maxLevel: 5,
+      description: "Gaste 5 PM para remover [Nível da Perícia] condições sobrenaturais de uma criatura ou reduzir uma possessão, corrupção ou maldição em um estágio."
+    },
+    {
+      id: "ex-you-dont-belong",
+      name: "Você Não Pertence Aqui",
+      maxLevel: 1,
+      description: "Uma vez por cena, uma entidade sobrenatural marcada deve realizar um Teste de VON. Em caso de falha, ela é expulsa temporariamente de seu hospedeiro ou perde suas habilidades sobrenaturais por 1 rodada."
+    }
+  ]
+},
+
+{
+  id: "puppeteer",
+  name: "Marionetista",
+  archetype: "Mestre dos Fios",
+  description: "Controladores sobrenaturais que conectam fios espirituais a criaturas e objetos, transformando o campo de batalha em um palco.",
+  hpPerLevel: 4,
+  mpPerLevel: 4,
+  primaryAttribute: "ins",
+  skills: [
+    {
+      id: "pu-thread",
+      name: "Fio Espiritual",
+      maxLevel: 5,
+      description: "Gaste 5 PM para conectar um Fio a uma criatura que você possa ver. Você pode manter [Nível da Perícia] Fios simultaneamente."
+    },
+    {
+      id: "pu-pull",
+      name: "Puxar",
+      maxLevel: 5,
+      description: "Enquanto possuir um Fio conectado, gaste 5 PM para mover o alvo até [Nível da Perícia x 2] metros, se ele falhar em um teste de MIG ou DES."
+    },
+    {
+      id: "pu-hands",
+      name: "Mãos Invisíveis",
+      maxLevel: 4,
+      description: "Gaste 5 PM para manipular remotamente um objeto conectado ou realizar uma tarefa física simples através de um Fio."
+    },
+    {
+      id: "pu-dance",
+      name: "Dançar Conforme Minha Música",
+      maxLevel: 4,
+      description: "Gaste 10 PM. Uma criatura conectada deve realizar um movimento ou ação simples escolhida por você caso falhe em um Teste de VON.",
+      action: { cost: 10, resource: "mp" }
+    },
+    {
+      id: "pu-master",
+      name: "Mestre das Marionetes",
+      maxLevel: 1,
+      description: "Uma vez por cena, gaste 20 PM para controlar parcialmente uma criatura conectada durante uma rodada. A criatura recebe um novo Teste de VON no final da rodada.",
+      action: { cost: 20, resource: "mp" }
+    }
+  ]
+},
+
+{
+  id: "predator",
+  name: "Predador",
+  archetype: "Caçador Apex",
+  description: "Caçadores especializados em estudar uma presa, descobrir suas fraquezas e transformar cada confronto em uma execução planejada.",
+  hpPerLevel: 5,
+  mpPerLevel: 3,
+  primaryAttribute: "ins",
+  skills: [
+    {
+      id: "prx-prey",
+      name: "Presa",
+      maxLevel: 1,
+      description: "No início de uma cena, escolha uma criatura como sua Presa. Você recebe +1 em testes para rastreá-la, estudá-la ou descobrir informações sobre ela."
+    },
+    {
+      id: "prx-track",
+      name: "Rastrear Presa",
+      maxLevel: 5,
+      description: "Após estudar sua Presa, você recebe +[Nível da Perícia] em testes de Percepção, Sobrevivência e Investigação relacionados a ela."
+    },
+    {
+      id: "prx-weakness",
+      name: "Conhecer Fraqueza",
+      maxLevel: 5,
+      description: "Após estudar sua Presa, seus ataques contra ela ignoram [Nível da Perícia] pontos de Resistência."
+    },
+    {
+      id: "prx-killer",
+      name: "Golpe Mortal",
+      maxLevel: 4,
+      description: "Contra sua Presa, seus ataques causam [Nível da Perícia x 2] de dano extra quando ela estiver abaixo de metade dos PV."
+    },
+    {
+      id: "prx-trophy",
+      name: "Caçador de Monstros",
+      maxLevel: 1,
+      description: "Ao derrotar uma criatura especial, escolha uma característica dela. Uma vez por cena futura, você pode manifestar uma versão limitada dessa característica durante 1 rodada."
+    }
+  ]
+},
+
+{
+  id: "parasite",
+  name: "Parasita",
+  archetype: "Simbionte Monstruoso",
+  description: "Hospedeiros de organismos sobrenaturais que vivem dentro de seus corpos e concedem mutações poderosas em troca de influência crescente.",
+  hpPerLevel: 6,
+  mpPerLevel: 3,
+  primaryAttribute: "mig",
+  skills: [
+    {
+      id: "pa-mutation",
+      name: "Mutação",
+      maxLevel: 5,
+      description: "Escolha uma Mutação: Armadura Óssea, Garras, Tentáculos, Olho Extra, Veneno ou Regeneração. Você pode trocar sua Mutação após um descanso."
+    },
+    {
+      id: "pa-instinct",
+      name: "Instinto do Parasita",
+      maxLevel: 4,
+      description: "Quando estiver em Crise, recebe +[Nível da Perícia] em testes físicos e seus ataques causam [Nível da Perícia] de dano extra."
+    },
+    {
+      id: "pa-symbiosis",
+      name: "Simbiose",
+      maxLevel: 5,
+      description: "Gaste 5 PM para ativar uma Mutação durante uma cena. Cada Mutação recebe um efeito adicional baseado no nível desta Perícia."
+    },
+    {
+      id: "pa-regeneration",
+      name: "Regeneração",
+      maxLevel: 4,
+      description: "Uma vez por turno, quando estiver abaixo da metade dos PV, você pode gastar 5 PM para recuperar [Nível da Perícia x 3] PV."
+    },
+    {
+      id: "pa-monster",
+      name: "Forma Monstruosa",
+      maxLevel: 1,
+      description: "Uma vez por cena, gaste 15 PM para assumir sua forma monstruosa por 3 rodadas. Você recebe +2 de Precisão, +2 de Defesa e causa +5 de dano em ataques físicos. Ao terminar, fica Enfraquecido.",
+      action: { cost: 15, resource: "mp" }
+    }
+  ]
+},
+
+{
+  id: "reaper",
+  name: "Ceifador",
+  archetype: "Executor da Morte",
+  description: "Guerreiros que transformam o enfraquecimento dos inimigos em sentenças de morte inevitáveis.",
+  hpPerLevel: 5,
+  mpPerLevel: 3,
+  primaryAttribute: "mig",
+  skills: [
+    {
+      id: "re-sentence",
+      name: "Sentença",
+      maxLevel: 5,
+      description: "Ao atingir uma criatura, você pode marcá-la com uma Sentença. Contra criaturas Sentenciadas abaixo da metade dos PV, seus ataques causam [Nível da Perícia] de dano extra."
+    },
+    {
+      id: "re-reap",
+      name: "Ceifar",
+      maxLevel: 5,
+      description: "Contra uma criatura Sentenciada, cause [Nível da Perícia x 2] de dano extra para cada condição negativa que ela possuir, até o máximo de [Nível da Perícia x 4]."
+    },
+    {
+      id: "re-soulcut",
+      name: "Corte da Alma",
+      maxLevel: 4,
+      description: "Gaste 5 PM para que seu próximo ataque ignore [Nível da Perícia x 2] pontos de Armadura ou Resistência física.",
+      action: { cost: 5, resource: "mp" }
+    },
+    {
+      id: "re-lastbreath",
+      name: "Último Suspiro",
+      maxLevel: 5,
+      description: "Quando uma criatura Sentenciada morrer, recupere [Nível da Perícia] PM. Se ela estiver abaixo de 25% dos PV máximos, recupere o dobro."
+    },
+    {
+      id: "re-inevitable",
+      name: "Morte Inevitável",
+      maxLevel: 1,
+      description: "Uma vez por cena, marque uma criatura como Condenada. Se ela entrar em Crise durante a cena, você pode realizar imediatamente um ataque gratuito contra ela."
+    }
+  ]
+}
 ];
 
 export function getClass(id: string): GameClass | undefined {
@@ -546,35 +1056,915 @@ export function getClass(id: string): GameClass | undefined {
 }
 
 export const INVENTORY_ACTIONS = [
-  
+
 ]
 
 export const EQUIPMENT: EquipmentItem[] = [
-  { id: "eq-dagger", name: "Adaga de Aço", category: "weapon", cost: 150, purchasable: true, detail: "Arma Leve. Dano físico.\n[MODIFICADOR: Precisão usa DES + AST]" },
-  { id: "eq-sword", name: "Espada de Bronze", category: "weapon", cost: 200, purchasable: true, detail: "Arma Marcial. Dano físico.\n[MODIFICADOR: Precisão usa DES + VIG]" },
-  { id: "eq-greatsword", name: "Montante", category: "weapon", cost: 200, purchasable: true, detail: "Arma Pesada. Dano físico alto.\n[MODIFICADOR: Precisão usa DES + VIG]" },
-  { id: "eq-bow", name: "Arco Curto", category: "weapon", cost: 200, purchasable: true, detail: "Arma à distância. Dano físico.\n[MODIFICADOR: Precisão usa DES + DES]" },
-  { id: "eq-staff", name: "Cajado Arcano", category: "weapon", cost: 100, purchasable: true, detail: "Foco mágico. Dano mágico.\n[MODIFICADOR: Precisão usa VON + VON]" },
-  { id: "eq-spear", name: "Lança Leve", category: "weapon", cost: 200, purchasable: true, detail: "Arma de Haste. Dano físico.\n[MODIFICADOR: Precisão usa DES + VIG]" },
-  
-  // NOVAS ARMAS (Adicionadas da Narrativa)
-  { id: "eq-crossbow", name: "Arco Balestra", category: "weapon", cost: 250, purchasable: true, detail: "Arma à distância mecânica pesada. Dano físico perfurante.\n[MODIFICADOR: Precisão usa DES + INS]" },
 
-  { id: "eq-travel", name: "Traje de Viagem", category: "armor", cost: 100, purchasable: true, detail: "Armadura Leve.\n[MODIFICADOR: Defesa = DES + 1]" },
-  { id: "eq-brigandine", name: "Brigantina", category: "armor", cost: 150, purchasable: true, detail: "Armadura Marcial.\n[MODIFICADOR: Defesa fixa em 10]" },
-  { id: "eq-plate", name: "Placa de Bronze", category: "armor", cost: 200, purchasable: true, detail: "Armadura Pesada. Reduz Inic.\n[MODIFICADOR: Defesa fixa em 11]" },
-  { id: "eq-buckler", name: "Escudo de Bronze", category: "shield", cost: 100, purchasable: true, detail: "Escudo Leve.\n[MODIFICADOR: +2 Defesa]" },
-  { id: "eq-shield", name: "Escudo Rúnico", category: "shield", cost: 150, purchasable: true, detail: "Escudo Marcial.\n[MODIFICADOR: +2 Defesa e DefM]" },
-  
-  // ACESSÓRIOS E UTILITÁRIOS (Adicionados da Narrativa)
-  { id: "eq-lantern", name: "Lamparina", category: "accessory", cost: 50, purchasable: true, detail: "Fonte de luz confiável movida a óleo. Essencial para explorar cavernas obscuras." },
-  { id: "eq-wet-twine", name: "Fios de Barbante Molhados", category: "accessory", cost: 5, purchasable: false, detail: "Um punhado de barbantes encharcados. Fragilizados pela umidade, mas podem quebrar um galho em armadilhas simples." },
-  { id: "eq-quiver-20", name: "Aljava (20 Flechas)", category: "accessory", cost: 30, purchasable: true, detail: "Recipiente de couro contendo munição suficiente para um longo combate à distância." },
+  // ==========================================================
+  // ARMAS CORPO A CORPO
+  // ==========================================================
 
-  // ITENS EXCLUSIVOS DO MESTRE (Não aparecem na loja)
-  { id: "eq-excalibur", name: "Excalibur Maldita", category: "weapon", cost: 1000, purchasable: false, detail: "Artefato Ancião. Dano físico massivo.\n[MODIFICADOR: Precisão VIG + VIG, +5 Dano]" },
-  { id: "eq-dragon-scale", name: "Escamas do Dragão", category: "armor", cost: 1500, purchasable: false, detail: "Armadura Lendária. Resistência a Fogo.\n[MODIFICADOR: Defesa fixa em 13]" }
-]
+  {
+    id: "eq-dagger",
+    name: "Adaga de Aço",
+    category: "weapon",
+    cost: 150,
+    purchasable: true,
+    detail:
+      "Arma Leve (Adaga). Dano físico. Fácil de ocultar e rápida de sacar.\n[BÔNUS: Nenhum]\n[MODIFICADOR: Precisão usa DES + INS]"
+  },
+
+  {
+    id: "eq-knuckles",
+    name: "Manoplas de Ferro",
+    category: "weapon",
+    cost: 150,
+    purchasable: true,
+    detail:
+      "Arma Leve (Briga). Não ocupa as mãos para itens. Permite lutar mantendo as mãos parcialmente livres.\n[BÔNUS: Não ocupa as mãos para itens; +1 em testes de Briga quando desarmado]\n[MODIFICADOR: Precisão usa DES + VIG]"
+  },
+
+  {
+    id: "eq-whip",
+    name: "Chicote de Espinhos",
+    category: "weapon",
+    cost: 150,
+    purchasable: true,
+    detail:
+      "Arma Leve (Flexível). Pode atacar alvos voadores e alcançar inimigos à distância curta.\n[BÔNUS: Pode atingir alvos voadores sem penalidade]\n[MODIFICADOR: Precisão usa DES + INS]"
+  },
+
+  {
+    id: "eq-sword",
+    name: "Espada de Bronze",
+    category: "weapon",
+    cost: 200,
+    purchasable: true,
+    detail:
+      "Arma Marcial (Espada de 1 Mão). Uma arma equilibrada para combate ofensivo e defensivo.\n[BÔNUS: Nenhum]\n[MODIFICADOR: Precisão usa DES + VIG]"
+  },
+
+  {
+    id: "eq-katana",
+    name: "Lâmina Curva",
+    category: "weapon",
+    cost: 250,
+    purchasable: true,
+    detail:
+      "Arma Marcial (Espada de 2 Mãos). Lâmina curva, rápida e precisa, favorecendo golpes técnicos.\n[BÔNUS: +1 em testes para aparar ou realizar manobras com a arma]\n[MODIFICADOR: Precisão usa DES + INS]"
+  },
+
+  {
+    id: "eq-greatsword",
+    name: "Montante",
+    category: "weapon",
+    cost: 300,
+    purchasable: true,
+    detail:
+      "Arma Pesada (Espada de 2 Mãos). Uma lâmina enorme capaz de produzir golpes devastadores.\n[BÔNUS: +2 Dano físico; -1 em Iniciativa]\n[MODIFICADOR: Precisão usa DES + VIG]"
+  },
+
+  {
+    id: "eq-battleaxe",
+    name: "Machado de Batalha",
+    category: "weapon",
+    cost: 250,
+    purchasable: true,
+    detail:
+      "Arma Pesada (1 Mão). Lenta, porém brutal. Pode ser utilizada com escudo.\n[BÔNUS: +1 Dano físico]\n[MODIFICADOR: Precisão usa VIG + VIG]"
+  },
+
+  {
+    id: "eq-warhammer",
+    name: "Martelo de Guerra",
+    category: "weapon",
+    cost: 300,
+    purchasable: true,
+    detail:
+      "Arma Pesada (2 Mãos). Cabeça metálica projetada para esmagar armaduras e ossos.\n[BÔNUS: +2 Dano físico; ignora resistências físicas leves]\n[MODIFICADOR: Precisão usa VIG + VIG]"
+  },
+
+  {
+    id: "eq-spear",
+    name: "Lança Leve",
+    category: "weapon",
+    cost: 200,
+    purchasable: true,
+    detail:
+      "Arma Marcial (Haste). Permite manter inimigos afastados e atingir criaturas em posições elevadas.\n[BÔNUS: Atinge alvos voadores sem penalidade; +1 em testes para manter distância]\n[MODIFICADOR: Precisão usa DES + VIG]"
+  },
+
+  {
+    id: "eq-halberd",
+    name: "Alabarda",
+    category: "weapon",
+    cost: 300,
+    purchasable: true,
+    detail:
+      "Arma Pesada (Haste de 2 Mãos). Possui lâmina, gancho e ponta de lança, permitindo ataques versáteis.\n[BÔNUS: +1 Dano físico; pode realizar ataques de puxar ou derrubar]\n[MODIFICADOR: Precisão usa VIG + VIG]"
+  },
+
+
+  // ==========================================================
+  // ARMAS À DISTÂNCIA
+  // ==========================================================
+
+  {
+    id: "eq-bow",
+    name: "Arco Curto",
+    category: "weapon",
+    cost: 200,
+    purchasable: true,
+    detail:
+      "Arma à Distância (2 Mãos). Leve e prática para viagens e combates em espaços abertos.\n[BÔNUS: Nenhum]\n[MODIFICADOR: Precisão usa DES + DES]"
+  },
+
+  {
+    id: "eq-longbow",
+    name: "Arco Longo",
+    category: "weapon",
+    cost: 300,
+    purchasable: true,
+    detail:
+      "Arma à Distância (2 Mãos). Arco de grande alcance capaz de produzir disparos potentes.\n[BÔNUS: +1 Dano à distância; alcance superior ao Arco Curto]\n[MODIFICADOR: Precisão usa DES + DES]"
+  },
+
+  {
+    id: "eq-crossbow",
+    name: "Balestra",
+    category: "weapon",
+    cost: 250,
+    purchasable: true,
+    detail:
+      "Arma à Distância (2 Mãos). Mecanismo de disparo mecânico, preciso e perfurante.\n[BÔNUS: +1 Dano contra armaduras médias; pode permanecer carregada]\n[MODIFICADOR: Precisão usa DES + INS]"
+  },
+
+  {
+    id: "eq-pistol",
+    name: "Revólver Magitech",
+    category: "weapon",
+    cost: 350,
+    purchasable: true,
+    detail:
+      "Arma de Fogo (1 Mão). Dispara projéteis infundidos com energia mágica.\n[BÔNUS: +1 Dano mágico; ignora cobertura leve]\n[MODIFICADOR: Precisão usa DES + INS]"
+  },
+
+  {
+    id: "eq-shuriken",
+    name: "Estrelas Ninja",
+    category: "weapon",
+    cost: 150,
+    purchasable: true,
+    detail:
+      "Arma de Arremesso (1 Mão). Pequenas lâminas equilibradas para ataques rápidos.\n[BÔNUS: Pode ser utilizada com escudo equipado; +1 em ataques de surpresa]\n[MODIFICADOR: Precisão usa DES + INS]"
+  },
+
+
+  // ==========================================================
+  // ARMAS MÁGICAS
+  // ==========================================================
+
+  {
+    id: "eq-staff",
+    name: "Cajado Arcano",
+    category: "weapon",
+    cost: 100,
+    purchasable: true,
+    detail:
+      "Arma Arcana (2 Mãos). Canaliza e dispara projéteis puros de magia.\n[BÔNUS: +1 Dano mágico quando utilizado para conjuração ofensiva]\n[MODIFICADOR: Precisão usa VON + VON]"
+  },
+
+  {
+    id: "eq-tome",
+    name: "Grimório Antigo",
+    category: "weapon",
+    cost: 200,
+    purchasable: true,
+    detail:
+      "Arma Arcana (1 Mão). Contém fórmulas complexas que podem ser consultadas rapidamente durante o combate.\n[BÔNUS: +1 em testes de conjuração envolvendo fórmulas conhecidas; permite conjurar mantendo a outra mão livre]\n[MODIFICADOR: Precisão usa INS + VON]"
+  },
+
+  {
+    id: "eq-orb",
+    name: "Esfera de Cristal",
+    category: "weapon",
+    cost: 200,
+    purchasable: true,
+    detail:
+      "Arma Arcana (1 Mão). Cristal especializado em canalizar energias mentais e mágicas.\n[BÔNUS: +1 em testes para detectar ou manipular energia mágica]\n[MODIFICADOR: Precisão usa INS + INS]"
+  },
+
+
+  // ==========================================================
+  // ARMADURAS LEVES
+  // ==========================================================
+
+  {
+    id: "eq-travel",
+    name: "Traje de Viagem",
+    category: "armor",
+    cost: 100,
+    purchasable: true,
+    detail:
+      "Armadura Leve. Roupas resistentes projetadas para aventureiros, viajantes e exploradores.\n[BÔNUS: +1 Defesa; +1 DefM]\n[MODIFICADOR: Defesa = DES + 1 / DefM = INS + 1]"
+  },
+
+  {
+    id: "eq-leather",
+    name: "Colete de Couro",
+    category: "armor",
+    cost: 150,
+    purchasable: true,
+    detail:
+      "Armadura Leve. Couro reforçado que oferece proteção sem comprometer muito a mobilidade.\n[BÔNUS: +2 Defesa; +1 DefM]\n[MODIFICADOR: Defesa = DES + 2 / DefM = INS + 1]"
+  },
+
+  {
+    id: "eq-silk-robe",
+    name: "Túnica de Seda",
+    category: "armor",
+    cost: 150,
+    purchasable: true,
+    detail:
+      "Armadura Leve. Fios encantados dissipam parcialmente energias místicas.\n[BÔNUS: +2 DefM; +1 em testes para resistir a efeitos mágicos]\n[MODIFICADOR: Defesa = DES / DefM = INS + 2]"
+  },
+
+  {
+    id: "eq-ninja-garb",
+    name: "Traje Furtivo",
+    category: "armor",
+    cost: 250,
+    purchasable: true,
+    detail:
+      "Armadura Leve. Tecido escuro e silencioso projetado para infiltração.\n[BÔNUS: +1 Defesa; +1 DefM; bônus em Furtividade]\n[MODIFICADOR: Defesa = DES + 1 / DefM = INS + 1]"
+  },
+
+
+  // ==========================================================
+  // ARMADURAS MARCIAIS
+  // ==========================================================
+
+  {
+    id: "eq-brigandine",
+    name: "Brigantina",
+    category: "armor",
+    cost: 150,
+    purchasable: true,
+    detail:
+      "Armadura Marcial. Pequenas placas de metal rebitadas sobre couro resistente.\n[BÔNUS: Defesa Fixa 10; proteção equilibrada]\n[MODIFICADOR: Defesa Fixa 10 / DefM = INS]"
+  },
+
+  {
+    id: "eq-chainmail",
+    name: "Cota de Malha",
+    category: "armor",
+    cost: 200,
+    purchasable: true,
+    detail:
+      "Armadura Marcial. Anéis metálicos entrelaçados oferecem excelente proteção contra cortes.\n[BÔNUS: Defesa Fixa 11; +1 resistência contra dano cortante]\n[MODIFICADOR: Defesa Fixa 11 / DefM = INS / -2 na Iniciativa]"
+  },
+
+  {
+    id: "eq-plate",
+    name: "Placa de Bronze",
+    category: "armor",
+    cost: 250,
+    purchasable: true,
+    detail:
+      "Armadura Marcial Pesada. Placas rígidas transformam o usuário em uma fortaleza móvel.\n[BÔNUS: Defesa Fixa 12; resistência a empurrões e quedas]\n[MODIFICADOR: Defesa Fixa 12 / DefM = INS / -3 na Iniciativa]"
+  },
+
+  {
+    id: "eq-magitech-armor",
+    name: "Traje Magitech",
+    category: "armor",
+    cost: 400,
+    purchasable: true,
+    detail:
+      "Armadura Marcial Especial. Tecnologia avançada gera um escudo de força constante ao redor do usuário.\n[BÔNUS: Defesa Fixa 11; DefM Fixa 11; +1 resistência contra dano mágico]\n[MODIFICADOR: Defesa Fixa 11 / DefM Fixa 11 / -2 na Iniciativa]"
+  },
+
+
+  // ==========================================================
+  // ESCUDOS
+  // ==========================================================
+
+  {
+    id: "eq-buckler",
+    name: "Broquel de Madeira",
+    category: "shield",
+    cost: 100,
+    purchasable: true,
+    detail:
+      "Escudo Leve. Pequeno e fácil de manusear, ideal para aparar ataques rápidos.\n[BÔNUS: +1 Defesa; não impõe penalidade de Iniciativa]"
+  },
+
+  {
+    id: "eq-shield",
+    name: "Escudo Rúnico",
+    category: "shield",
+    cost: 150,
+    purchasable: true,
+    detail:
+      "Escudo Marcial. Escudo reforçado com glifos de proteção mágica.\n[BÔNUS: +1 Defesa; +1 DefM; -1 na Iniciativa]"
+  },
+
+  {
+    id: "eq-tower-shield",
+    name: "Escudo de Torre",
+    category: "shield",
+    cost: 250,
+    purchasable: true,
+    detail:
+      "Escudo Marcial Pesado. Uma enorme placa metálica capaz de bloquear grandes áreas.\n[BÔNUS: +2 Defesa; +1 resistência contra ataques à distância; -2 na Iniciativa]"
+  },
+
+
+  // ==========================================================
+  // ACESSÓRIOS E UTILITÁRIOS
+  // ==========================================================
+
+  {
+    id: "eq-lantern",
+    name: "Lamparina",
+    category: "accessory",
+    cost: 50,
+    purchasable: true,
+    detail:
+      "Fonte de luz confiável movida a óleo. Essencial para explorar cavernas obscuras.\n[BÔNUS: Permite enxergar em áreas escuras; não concede bônus direto de combate]"
+  },
+
+  {
+    id: "eq-quiver-20",
+    name: "Aljava (20 Flechas)",
+    category: "accessory",
+    cost: 30,
+    purchasable: true,
+    detail:
+      "Aljava contendo 20 flechas comuns.\n[BÔNUS: Fornece munição para armas de arco; não concede bônus de ataque]"
+  },
+
+  {
+    id: "eq-ruby-ring",
+    name: "Anel de Rubi",
+    category: "accessory",
+    cost: 300,
+    purchasable: true,
+    detail:
+      "Joia incandescente que retém uma pequena quantidade de energia elemental.\n[BÔNUS: Resistência a dano de Fogo]"
+  },
+
+  {
+    id: "eq-silver-amulet",
+    name: "Amuleto de Prata",
+    category: "accessory",
+    cost: 250,
+    purchasable: true,
+    detail:
+      "Amuleto abençoado por um antigo clérigo. A prata reage contra toxinas sobrenaturais.\n[BÔNUS: Imunidade à condição Envenenado]"
+  },
+
+  {
+    id: "eq-speed-boots",
+    name: "Botas de Hermes",
+    category: "accessory",
+    cost: 400,
+    purchasable: true,
+    detail:
+      "Botas encantadas com pequenas asas tecidas nos tornozelos.\n[BÔNUS: +2 Iniciativa; +2 em Testes de Velocidade]"
+  },
+
+  {
+    id: "eq-potion-belt",
+    name: "Cinto de Poções",
+    category: "accessory",
+    cost: 150,
+    purchasable: true,
+    detail:
+      "Bandoleira com compartimentos de acesso rápido para frascos e poções.\n[BÔNUS: Usar uma poção curativa durante o combate custa apenas meia ação]"
+  },
+
+
+  // ==========================================================
+  // ITENS NARRATIVOS — MORTE MÁGICA
+  // ==========================================================
+
+  {
+    id: "eq-ravenkhar-pendant",
+    name: "Colar de Ravenkhar",
+    category: "accessory",
+    cost: 40,
+    purchasable: false,
+    detail:
+      "Pequeno círculo de madeira atravessado por um X. Artesanato tradicional encontrado em comunidades de Ravenkhar.\n[BÔNUS: Nenhum]\n[LORE: O símbolo pode ser reconhecido por comerciantes familiarizados com Ravenkhar. Não possui função mágica conhecida.]"
+  },
+
+  {
+    id: "eq-broken-ravenkhar-pendant",
+    name: "Fragmento de Colar de Ravenkhar",
+    category: "accessory",
+    cost: 10,
+    purchasable: false,
+    detail:
+      "Fragmento de um colar circular de madeira contendo parte do símbolo de Ravenkhar.\n[BÔNUS: Nenhum]\n[LORE: Pode ser identificado como parte de um Colar de Ravenkhar. É uma pista relacionada ao cadáver encontrado em Vanaheim.]"
+  },
+
+  {
+    id: "eq-marionette-thread",
+    name: "Fio da Marionete",
+    category: "accessory",
+    cost: 1,
+    purchasable: false,
+    detail:
+      "Fragmento de um tentáculo fino, pálido e úmido encontrado após o confronto com uma Marionete.\n[BÔNUS: Nenhum]\n[LORE: Quando exposto ao calor, apresenta pequenos movimentos involuntários. Sua estrutura não corresponde completamente a nenhum tecido conhecido.]"
+  },
+
+  {
+    id: "eq-dried-marionette-thread",
+    name: "Fio Ressecado",
+    category: "accessory",
+    cost: 1,
+    purchasable: false,
+    detail:
+      "Antigo fragmento dos fios que conectam uma Marionete ao seu hospedeiro.\n[BÔNUS: Nenhum]\n[LORE: Após separado da criatura, perde grande parte de sua atividade, mas permanece anormalmente resistente.]"
+  },
+
+  {
+    id: "eq-marionette-flesh",
+    name: "Tecido da Praga",
+    category: "accessory",
+    cost: 5,
+    purchasable: false,
+    detail:
+      "Amostra de tecido retirada de uma Marionete. Parece carne humana, mas apresenta fibras desconhecidas entrelaçadas aos músculos.\n[BÔNUS: Nenhum]\n[LORE: A amostra reage fracamente à presença de seres vivos.]"
+  },
+
+  {
+    id: "eq-empty-shell",
+    name: "Fragmento da Casca Vazia",
+    category: "accessory",
+    cost: 1,
+    purchasable: false,
+    detail:
+      "Pequeno pedaço de tecido retirado de um hospedeiro após a separação dos fios.\n[BÔNUS: Nenhum]\n[LORE: A carne perdeu completamente sua vitalidade sem apresentar sinais convencionais de decomposição.]"
+  },
+
+  {
+    id: "eq-infected-claw",
+    name: "Unha da Marionete",
+    category: "accessory",
+    cost: 5,
+    purchasable: false,
+    detail:
+      "Fragmento de unha pertencente a um hospedeiro infectado.\n[BÔNUS: Nenhum]\n[LORE: Sua composição sofreu alterações incompatíveis com a anatomia humana comum.]"
+  },
+
+  {
+    id: "eq-ravenkhar-travel-record",
+    name: "Registro de Viagem de Ravenkhar",
+    category: "accessory",
+    cost: 15,
+    purchasable: false,
+    detail:
+      "Documento parcialmente danificado pertencente a um viajante de Ravenkhar.\n[BÔNUS: Nenhum]\n[LORE: Registra rotas comerciais próximas à Floresta dos Sussurros Brancos. Algumas páginas foram arrancadas.]"
+  },
+
+  {
+    id: "eq-dead-man-letter",
+    name: "Carta do Homem Afogado",
+    category: "accessory",
+    cost: 5,
+    purchasable: false,
+    detail:
+      "Carta encontrada entre os pertences do cadáver trazido pelo mar. A maior parte da tinta foi destruída pela água.\n[BÔNUS: Nenhum]\n[LORE: Restam palavras como 'Ravenkhar', 'floresta', 'não estamos sozinhos' e 'não deixe que ele aprenda'.]"
+  },
+
+  {
+    id: "eq-strange-logbook",
+    name: "Diário do Viajante",
+    category: "accessory",
+    cost: 10,
+    purchasable: false,
+    detail:
+      "Diário de um viajante que percorreu a estrada entre Vanaheim e Ravenkhar.\n[BÔNUS: Nenhum]\n[LORE: Nas últimas páginas, a caligrafia muda várias vezes, como se diferentes pessoas tivessem escrito no mesmo diário.]"
+  },
+
+  {
+    id: "eq-village-key",
+    name: "Chave do Vilarejo Abandonado",
+    category: "accessory",
+    cost: 5,
+    purchasable: false,
+    detail:
+      "Chave simples encontrada em uma das casas do vilarejo abandonado de Ravenkhar.\n[BÔNUS: Nenhum]\n[LORE: Pertencia a uma residência aparentemente abandonada às pressas. A porta correspondente ainda está trancada.]"
+  },
+
+  {
+    id: "eq-village-photograph",
+    name: "Retrato do Vilarejo",
+    category: "accessory",
+    cost: 10,
+    purchasable: false,
+    detail:
+      "Antigo retrato dos moradores de um vilarejo de Ravenkhar.\n[BÔNUS: Nenhum]\n[LORE: Um dos moradores possui exatamente o mesmo rosto do homem encontrado sozinho no vilarejo, apesar de a fotografia ser antiga.]"
+  },
+
+  {
+    id: "eq-village-family-record",
+    name: "Livro de Registros do Vilarejo",
+    category: "accessory",
+    cost: 20,
+    purchasable: false,
+    detail:
+      "Livro contendo nomes, nascimentos, mortes e famílias de um pequeno vilarejo de Ravenkhar.\n[BÔNUS: Nenhum]\n[LORE: As últimas páginas registram desaparecimentos em massa. O nome da primeira Marionete aparece entre os moradores.]"
+  },
+
+  {
+    id: "eq-village-child-drawing",
+    name: "Desenho Infantil dos Fios",
+    category: "accessory",
+    cost: 2,
+    purchasable: false,
+    detail:
+      "Desenho infantil encontrado em uma casa abandonada.\n[BÔNUS: Nenhum]\n[LORE: Representa pessoas conectadas por fios a uma enorme figura subterrânea. O símbolo de Ravenkhar aparece no canto da folha.]"
+  },
+
+  {
+    id: "eq-village-carved-symbol",
+    name: "Símbolo Entalhado em Madeira",
+    category: "accessory",
+    cost: 5,
+    purchasable: false,
+    detail:
+      "Pequena placa de madeira contendo o símbolo do círculo atravessado por um X.\n[BÔNUS: Nenhum]\n[LORE: Diferentemente dos colares comuns de Ravenkhar, este símbolo foi entalhado de maneira grosseira e parece ter sido feito às pressas.]"
+  },
+
+  {
+    id: "eq-marionette-collar",
+    name: "Colar da Primeira Marionete",
+    category: "accessory",
+    cost: 10,
+    purchasable: false,
+    detail:
+      "Colar de madeira encontrado no corpo do primeiro hospedeiro confrontado pelos aventureiros.\n[BÔNUS: Nenhum]\n[LORE: É idêntico ao colar encontrado no cadáver trazido pelo mar, conectando os dois acontecimentos.]"
+  },
+
+  {
+    id: "eq-marionette-memory-fragment",
+    name: "Fragmento de Memória",
+    category: "accessory",
+    cost: 1,
+    purchasable: false,
+    detail:
+      "Estranho resíduo cristalino encontrado entre os restos de uma Marionete.\n[BÔNUS: Nenhum]\n[LORE: Ao ser segurado, provoca breves sensações que não pertencem ao portador: uma floresta, vozes desconhecidas e a sensação de estar sendo observado.]"
+  },
+
+  {
+    id: "eq-infected-eye",
+    name: "Olho da Casca",
+    category: "accessory",
+    cost: 2,
+    purchasable: false,
+    detail:
+      "Olho retirado de um hospedeiro após sua transformação.\n[BÔNUS: Nenhum]\n[LORE: A íris possui ramificações esbranquiçadas e reage à magia contraindo-se como uma pupila viva.]"
+  },
+
+  {
+    id: "eq-white-whispers-bark",
+    name: "Casca da Floresta dos Sussurros Brancos",
+    category: "accessory",
+    cost: 10,
+    purchasable: false,
+    detail:
+      "Pedaço de casca retirado de uma árvore próxima ao epicentro da Praga.\n[BÔNUS: Nenhum]\n[LORE: Possui veios brancos semelhantes a fibras musculares. Ao toque, transmite uma vibração quase imperceptível.]"
+  },
+
+  {
+    id: "eq-white-whispers-root",
+    name: "Raiz Pálida",
+    category: "accessory",
+    cost: 15,
+    purchasable: false,
+    detail:
+      "Fragmento de uma raiz encontrada profundamente enterrada na Floresta dos Sussurros Brancos.\n[BÔNUS: Nenhum]\n[LORE: Sua estrutura se assemelha parcialmente a um nervo ou tentáculo. Parece crescer na direção de fontes de calor.]"
+  },
+
+  {
+    id: "eq-biological-spore",
+    name: "Esporo Bioluminescente",
+    category: "accessory",
+    cost: 5,
+    purchasable: false,
+    detail:
+      "Pequeno organismo luminoso encontrado nas cavernas abaixo da Floresta dos Sussurros Brancos.\n[BÔNUS: Nenhum]\n[LORE: Sua luz pulsa lentamente. Alguns exemplares reagem à presença dos fios da Praga.]"
+  },
+
+  {
+    id: "eq-nucleus-fragment",
+    name: "Fragmento do Núcleo",
+    category: "accessory",
+    cost: 50,
+    purchasable: false,
+    detail:
+      "Fragmento de tecido cristalizado retirado do epicentro da Praga.\n[BÔNUS: Nenhum]\n[LORE: Sua existência desafia conhecimentos conhecidos de anatomia, magia e alquimia. Apresenta atividade mental residual.]"
+  },
+
+
+  // ==========================================================
+  // ITENS DA PRISÃO — GANCHO PARA A PRÓXIMA TEMPORADA
+  // ==========================================================
+
+  {
+    id: "eq-prisoners-notes",
+    name: "Anotações do Louco da Prisão",
+    category: "accessory",
+    cost: 5,
+    purchasable: false,
+    detail:
+      "Páginas escritas por um prisioneiro considerado insano.\n[BÔNUS: Nenhum]\n[LORE: Falam sobre 'fios que atravessam o céu', 'mundos do outro lado' e uma presença que não pertence a este mundo.]"
+  },
+
+  {
+    id: "eq-prison-wall-symbol",
+    name: "Fragmento da Parede da Prisão",
+    category: "accessory",
+    cost: 1,
+    purchasable: false,
+    detail:
+      "Pedaço de pedra retirado da cela de um prisioneiro considerado louco.\n[BÔNUS: Nenhum]\n[LORE: O símbolo do círculo atravessado por um X foi repetido dezenas de vezes junto a desenhos de formas impossíveis.]"
+  },
+
+  {
+    id: "eq-impossible-crystal",
+    name: "Fragmento Impossível",
+    category: "accessory",
+    cost: 100,
+    purchasable: false,
+    detail:
+      "Pequeno fragmento de matéria encontrado após a destruição do Núcleo.\n[BÔNUS: Nenhum]\n[LORE: Não se comporta como pedra, metal, cristal ou tecido orgânico. Sua superfície parece mudar conforme o ângulo de observação.]"
+  },
+
+  {
+    id: "eq-dimensional-shard",
+    name: "Estilhaço da Ruptura",
+    category: "accessory",
+    cost: 200,
+    purchasable: false,
+    detail:
+      "Fragmento de substância desconhecida encontrado nas profundezas do epicentro.\n[BÔNUS: Nenhum]\n[LORE: Em determinados ângulos parece apresentar uma segunda superfície sobreposta à realidade. Observá-lo por muito tempo provoca vertigem.]"
+  },
+
+
+  // ==========================================================
+  // EVIDÊNCIAS E PISTAS
+  // ==========================================================
+
+  {
+    id: "eq-three-scratch-mark",
+    name: "Marca dos Três Arranhões",
+    category: "accessory",
+    cost: 1,
+    purchasable: false,
+    detail:
+      "Três marcas paralelas encontradas em portas, árvores e paredes próximas aos locais relacionados à Praga.\n[BÔNUS: Nenhum]\n[LORE: Não se sabe se são deixadas pelas criaturas ou pelos próprios sobreviventes.]"
+  },
+
+  {
+    id: "eq-white-thread-clump",
+    name: "Emaranhado de Fios Brancos",
+    category: "accessory",
+    cost: 3,
+    purchasable: false,
+    detail:
+      "Pequeno emaranhado de fibras brancas encontrado em uma casa abandonada.\n[BÔNUS: Nenhum]\n[LORE: À primeira vista parece cabelo ou teia. Quando aproximado de um hospedeiro da Praga, as fibras se contraem levemente.]"
+  },
+
+  {
+    id: "eq-empty-shell-tooth",
+    name: "Dente da Casca Vazia",
+    category: "accessory",
+    cost: 2,
+    purchasable: false,
+    detail:
+      "Dente retirado de uma das criaturas transformadas em Casca Vazia.\n[BÔNUS: Nenhum]\n[LORE: A raiz apresenta pequenas ramificações semelhantes às encontradas nos fios da Marionete.]"
+  },
+
+  {
+    id: "eq-strange-map",
+    name: "Mapa Incompleto de Ravenkhar",
+    category: "accessory",
+    cost: 15,
+    purchasable: false,
+    detail:
+      "Mapa antigo das rotas entre Ravenkhar e Nazir.\n[BÔNUS: Nenhum]\n[LORE: Regiões da Floresta dos Sussurros Brancos foram riscadas diversas vezes. Uma rota subterrânea aparece desenhada apesar de não existir em mapas oficiais.]"
+  },
+
+  {
+    id: "eq-bloodstained-journal",
+    name: "Diário Manchado de Sangue",
+    category: "accessory",
+    cost: 10,
+    purchasable: false,
+    detail:
+      "Diário encontrado próximo a uma antiga estrada de Ravenkhar.\n[BÔNUS: Nenhum]\n[LORE: As últimas páginas descrevem uma pessoa que 'voltou diferente'. A última frase termina abruptamente: 'Ele não está dentro dela. Ele está...'.]"
+  },
+
+  {
+    id: "eq-ravenkhar-trader-token",
+    name: "Ficha do Comerciante de Ravenkhar",
+    category: "accessory",
+    cost: 10,
+    purchasable: false,
+    detail:
+      "Pequena ficha de madeira utilizada por comerciantes que percorrem a rota entre Vanaheim e Ravenkhar.\n[BÔNUS: Nenhum]\n[LORE: Pertencia ao comerciante responsável por um dos carregamentos de colares encontrados em Vanaheim.]"
+  },
+
+
+  // ==========================================================
+  // ARTEFATOS DA PRAGA
+  // ==========================================================
+
+  {
+    id: "eq-puppet-heart",
+    name: "Coração da Marionete",
+    category: "accessory",
+    cost: 100,
+    purchasable: false,
+    detail:
+      "Estrutura orgânica encontrada dentro de um hospedeiro após sua morte.\n[BÔNUS: Nenhum]\n[LORE: Não possui anatomia semelhante a um coração comum. Mesmo separado do corpo, apresenta atividade rítmica durante alguns minutos.]"
+  },
+
+  {
+    id: "eq-colony-node",
+    name: "Nó da Mente-Colônia",
+    category: "accessory",
+    cost: 150,
+    purchasable: false,
+    detail:
+      "Pequeno aglomerado orgânico encontrado próximo ao Núcleo.\n[BÔNUS: Nenhum]\n[LORE: Parece funcionar como ponto de conexão entre diferentes partes da Praga. Quando aproximado de outro fragmento, ambos vibram simultaneamente.]"
+  },
+
+  {
+    id: "eq-puppet-memory-core",
+    name: "Núcleo de Memória da Marionete",
+    category: "accessory",
+    cost: 200,
+    purchasable: false,
+    detail:
+      "Estrutura rara criada pela Praga a partir das memórias absorvidas de seus hospedeiros.\n[BÔNUS: +1 em testes de INS realizados para reconhecer memórias ou habilidades previamente absorvidas pela Praga]\n[LORE: Contém ecos fragmentados de habilidades, rostos e experiências que não pertencem a uma única pessoa.]"
+  },
+
+  {
+    id: "eq-dimensional-organ",
+    name: "Órgão de Origem Desconhecida",
+    category: "accessory",
+    cost: 300,
+    purchasable: false,
+    detail:
+      "Órgão encontrado no interior mais profundo do Núcleo.\n[BÔNUS: Nenhum]\n[LORE: Sua existência desafia anatomia e magia conhecidas. Parece pertencer a algo muito maior do que a criatura encontrada em Ravenkhar.]"
+  },
+
+
+  // ==========================================================
+  // ITENS EXCLUSIVOS DA NARRATIVA / MESTRE — LOOT RARO
+  // ==========================================================
+
+  {
+    id: "eq-wet-twine",
+    name: "Fios de Barbante Molhados",
+    category: "accessory",
+    cost: 5,
+    purchasable: false,
+    detail:
+      "Um punhado de barbantes encharcados. Fragilizados pela umidade, mas úteis em situações improvisadas.\n[BÔNUS: Nenhum]\n[UTILIDADE: Podem ser usados para armadilhas simples, amarrações ou improvisos]"
+  },
+
+  {
+    id: "eq-excalibur",
+    name: "Excalibur Maldita",
+    category: "weapon",
+    cost: 1000,
+    purchasable: false,
+    detail:
+      "Artefato Ancião de Escuridão. Uma espada envolta por uma energia sombria que parece consumir a luz ao redor.\n[BÔNUS: +5 Dano Extra Sombrio]\n[MODIFICADOR: Precisão usa VIG + VIG]"
+  },
+
+  {
+    id: "eq-dragon-scale",
+    name: "Escamas do Dragão Rei",
+    category: "armor",
+    cost: 1500,
+    purchasable: false,
+    detail:
+      "Armadura lendária forjada a partir das escamas de um Dragão Rei.\n[BÔNUS: Imunidade a dano de Fogo]\n[MODIFICADOR: Defesa Fixa 13 / DefM Fixa 10]"
+  },
+
+  {
+    id: "eq-wind-spear",
+    name: "Gáe Bolg, Lança do Vento",
+    category: "weapon",
+    cost: 1200,
+    purchasable: false,
+    detail:
+      "Arma Marcial Aérea (Haste). Uma lança lendária envolta por correntes constantes de vento.\n[BÔNUS: Sempre ataca como se o alvo estivesse vulnerável a Ar; +1 Dano de Ar]\n[MODIFICADOR: Precisão usa DES + DES]"
+  },
+
+  {
+    id: "eq-mad-crown",
+    name: "Coroa do Rei Louco",
+    category: "accessory",
+    cost: 2000,
+    purchasable: false,
+    detail:
+      "Artefato da mente fraturada. A coroa amplia drasticamente a capacidade mágica do usuário, cobrando um preço físico permanente.\n[BÔNUS: +20 PM Máximos]\n[PENALIDADE: -10 HP Máximos enquanto equipado]"
+  },
+  // ==========================================================
+  // ITENS NARRATIVOS — O NEXIDIUM E AS RELÍQUIAS DICOTÔMICAS
+  // ==========================================================
+
+  {
+    id: "eq-nexidium",
+    name: "O Nexidium",
+    category: "accessory",
+    cost: 0,
+    purchasable: false,
+    detail: "O Códice das Portas Tortas. Suas páginas são feitas da essência residual de hospedeiros consumidos e a capa é de um metal escuro e fosco, com oito reentrâncias geométricas.\n[BÔNUS: Quando equipado, o portador sente a direção geral da relíquia dicotômica mais próxima.]\n[LORE: O único artefato capaz de manipular a fenda do Marionetista. Sem suas chaves, é apenas um peso frio e silencioso.]"
+  },
+
+  {
+    id: "eq-weaver-needle-silver",
+    name: "Agulha da Tecelã (Prata Pura)",
+    category: "accessory",
+    cost: 500,
+    purchasable: false,
+    detail: "Uma agulha do tamanho de uma adaga, forjada em prata impecável que nunca oxida.\n[BÔNUS: +1 em testes para remover condições ou curar venenos físicos]\n[LORE: Metade do primeiro par necessário para o Nexidium. Capaz de 'descosturar' a influência física do Marionetista sobre a carne.]"
+  },
+
+  {
+    id: "eq-weaver-needle-bone",
+    name: "Agulha da Tecelã (Osso Escurecido)",
+    category: "accessory",
+    cost: 500,
+    purchasable: false,
+    detail: "Uma agulha letal esculpida a partir de um osso humano escurecido pelo tempo e pela dor.\n[BÔNUS: +1 de Dano Sombrio ao realizar ataques corpo a corpo básicos]\n[LORE: A segunda metade do primeiro par do Nexidium. Serve para 'descosturar' o vínculo espiritual entre a Praga e o hospedeiro.]"
+  },
+
+  {
+    id: "eq-seer-eye-clouded",
+    name: "Olho do Vidente (Vidro Turvo)",
+    category: "accessory",
+    cost: 500,
+    purchasable: false,
+    detail: "Uma prótese ocular de vidro turvo. Olhar através dela revela o mundo com um filtro acinzentado, porém cristalino.\n[BÔNUS: Imunidade à condição Cego]\n[LORE: Metade do segundo par do Nexidium. Pertenceu ao primeiro hospedeiro sobrevivente e representa a âncora com o mundo físico.]"
+  },
+
+  {
+    id: "eq-seer-eye-smoke",
+    name: "Olho do Vidente (Fumaça Abissal)",
+    category: "accessory",
+    cost: 500,
+    purchasable: false,
+    detail: "Uma prótese ocular contendo uma fumaça escura que se contorce perpetuamente em sua íris de vidro.\n[BÔNUS: +1 em testes de INS para detectar ilusões ou presenças mágicas ocultas]\n[LORE: A segunda metade do segundo par do Nexidium. Mostra vislumbres perturbadores do vazio e de múltiplas dimensões.]"
+  },
+
+  {
+    id: "eq-boatman-coin-vanaheim",
+    name: "Metade da Moeda (A Coroa de Vanaheim)",
+    category: "accessory",
+    cost: 500,
+    purchasable: false,
+    detail: "Metade de uma pesada moeda de bronze antigo. O rosto cunhado nela pertence a um rei esquecido de Vanaheim. A borda partida é afiada.\n[BÔNUS: +10% em recompensas financeiras ao negociar com mercadores que respeitam a antiguidade.]\n[LORE: Metade do terceiro par do Nexidium. Representa a passagem entre os vivos, o pagamento terreno.]"
+  },
+
+  {
+    id: "eq-boatman-coin-nazir",
+    name: "Metade da Moeda (O Sangue de Nazir)",
+    category: "accessory",
+    cost: 500,
+    purchasable: false,
+    detail: "A outra metade da pesada moeda de bronze. Esta parte está permanentemente manchada de sangue seco que não pode ser limpo.\n[BÔNUS: +5 HP Máximo enquanto equipada]\n[LORE: A segunda metade do terceiro par do Nexidium. Representa a passagem para as Cascas Vazias, o pedágio do submundo.]"
+  },
+
+  {
+    id: "eq-trickster-dice-fate",
+    name: "Dado de Marfim (O Destino Fixo)",
+    category: "accessory",
+    cost: 500,
+    purchasable: false,
+    detail: "Um dado irregular de marfim. Não importa como seja rolado, ele sempre para mostrando o símbolo de uma ampulheta travada.\n[BÔNUS: Uma vez por sessão, o usuário pode ignorar uma falha crítica (1) em um teste, tratando como um resultado normal.]\n[LORE: Metade do quarto e último par do Nexidium. Representa a ordem imutável do universo, algo que o Marionetista ameaça destruir.]"
+  },
+
+  {
+    id: "eq-trickster-dice-chaos",
+    name: "Dado de Marfim (O Caos Irreversível)",
+    category: "accessory",
+    cost: 500,
+    purchasable: false,
+    detail: "Um dado irregular de marfim que vibra levemente na palma da mão. O símbolo que cai sempre forma o desenho de um tentáculo fragmentado.\n[BÔNUS: Uma vez por sessão, após causar dano mágico, o usuário pode forçar um inimigo a rerrolar um teste de defesa e ficar com o pior resultado.]\n[LORE: A segunda metade do quarto par do Nexidium. A essência encapsulada do caos extradimensional.]"
+  }
+
+];
 
 export function getEquipment(id: string): EquipmentItem | undefined {
   return EQUIPMENT.find((e) => e.id === id)
@@ -583,7 +1973,7 @@ export function getEquipment(id: string): EquipmentItem | undefined {
 export const STARTING_ZENIT = 500
 export const STARTING_LEVEL = 5
 export const BASE_MAX_IP = 6
-export const BASE_HP = 40 
+export const BASE_HP = 40
 export const BASE_MP = 20
 
 export const ORIGIN_SUGGESTIONS = [
@@ -613,45 +2003,9 @@ export const DIFFICULTY_LEVELS = [
 
 export const BESTIARY: Creature[] = [
   {
-    id: "cr-goblin",
-    name: "Goblin Saqueador",
-    imageUrl: "https://images.unsplash.com/photo-1605806616949-1e87b487cb2a?q=80&w=400&auto=format&fit=crop",
-    level: 5,
-    species: "Humanóide",
-    attributes: { dex: "d10", ins: "d8", mig: "d6", wlp: "d6" },
-    maxHp: 30,
-    maxMp: 10,
-    def: 11,
-    mdef: 9,
-    affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "VU", ice: "none", light: "none", poison: "RS" },
-    basicAttacks: [
-      { name: "Adaga Enferrujada", attributes: ["dex", "mig"], damage: 4, type: "físico" }
-    ],
-    spells: ["Roubar Item: O Goblin rouba 10z de um alvo."],
-    equipment: []
-  },
-  {
-    id: "cr-slime",
-    name: "Lodo Tóxico",
-    imageUrl: "https://images.unsplash.com/photo-1500367215255-0e0b258c40fa?q=80&w=400&auto=format&fit=crop",
-    level: 5,
-    species: "Monstro",
-    attributes: { dex: "d6", ins: "d6", mig: "d10", wlp: "d8" },
-    maxHp: 45,
-    maxMp: 10,
-    def: 8,
-    mdef: 10,
-    affinities: { physical: "RS", air: "none", bolt: "VU", dark: "none", earth: "none", fire: "VU", ice: "none", light: "none", poison: "IM" },
-    basicAttacks: [
-      { name: "Tentáculo Ácido", attributes: ["mig", "mig"], damage: 6, type: "veneno", description: "Pode infligir [Envenenado] no alvo." }
-    ],
-    spells: ["Divisão Celular: Se sofrer dano cortante, cria uma cópia com metade do HP atual."],
-    equipment: []
-  },
-  {
     id: "cr-wolf",
-    name: "Lobo Cárgico",
-    imageUrl: "https://images.unsplash.com/photo-1590422730036-79133bd40049?q=80&w=400&auto=format&fit=crop",
+    name: "Lobo Zumbi",
+    imageUrl: "https://preview.redd.it/the-zombie-virus-spread-to-wildlife-ex-wolves-birds-bears-v0-ry0uc5mpm82c1.jpg?width=640&crop=smart&auto=webp&s=593110ee26508e4e81b5bcd3bb56ddc2112a549a",
     level: 10,
     species: "Besta",
     attributes: { dex: "d10", ins: "d8", mig: "d8", wlp: "d6" },
@@ -669,7 +2023,7 @@ export const BESTIARY: Creature[] = [
   {
     id: "cr-knight",
     name: "Cavaleiro Caído",
-    imageUrl: "https://images.unsplash.com/photo-1601662998394-4360e2ce1f3d?q=80&w=400&auto=format&fit=crop",
+    imageUrl: "https://img.freepik.com/vetores-premium/cavaleiro-caido-ajoelhado-com-a-espada-na-mao_559117-339.jpg",
     level: 15,
     species: "Morto-vivo",
     attributes: { dex: "d8", ins: "d6", mig: "d10", wlp: "d8" },
@@ -690,7 +2044,7 @@ export const BESTIARY: Creature[] = [
   {
     id: "cr-fire-elem",
     name: "Elemental das Chamas",
-    imageUrl: "https://images.unsplash.com/photo-1497906539264-eb74442e37a9?q=80&w=400&auto=format&fit=crop",
+    imageUrl: "https://i.redd.it/elemental-support-and-kineticist-vs-sorcerer-vs-oracle-non-v0-t7j21g3ba91g1.jpg?width=800&format=pjpg&auto=webp&s=a5d2262c5b7aa31453584360d717599cce157ddc",
     level: 20,
     species: "Elemental",
     attributes: { dex: "d10", ins: "d8", mig: "d6", wlp: "d10" },
@@ -711,7 +2065,7 @@ export const BESTIARY: Creature[] = [
   {
     id: "cr-golem",
     name: "Golem de Ferro",
-    imageUrl: "https://images.unsplash.com/photo-1616422285623-13ff0162193c?q=80&w=400&auto=format&fit=crop",
+    imageUrl: "https://pic2-cdn.creality.com/crealityCloud/upload/0c28d2e74a306db6494f21df08e6491d.png?x-oss-process=image/resize,h_600,w_800,m_fill/ignore-error,1",
     level: 25,
     species: "Construto",
     attributes: { dex: "d6", ins: "d6", mig: "d12", wlp: "d10" },
@@ -731,7 +2085,7 @@ export const BESTIARY: Creature[] = [
   {
     id: "cr-archmage",
     name: "Arquimago Corrompido",
-    imageUrl: "https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?q=80&w=400&auto=format&fit=crop",
+    imageUrl: "https://static.wikia.nocookie.net/rpg-rise-of-the-titans/images/7/7b/The_lich.jpg/revision/latest?cb=20191020041653&path-prefix=pt-br",
     level: 30,
     species: "Humanóide",
     attributes: { dex: "d8", ins: "d12", mig: "d6", wlp: "d12" },
@@ -753,7 +2107,7 @@ export const BESTIARY: Creature[] = [
   {
     id: "cr-dragon",
     name: "Dragão Vermelho Ancião",
-    imageUrl: "https://images.unsplash.com/photo-1577493341514-63cb53531fb5?q=80&w=400&auto=format&fit=crop",
+    imageUrl: "https://wallpapercave.com/wp/wp10067023.jpg",
     level: 40,
     species: "Fera Mitológica",
     attributes: { dex: "d8", ins: "d8", mig: "d12", wlp: "d10" },
@@ -851,5 +2205,301 @@ export const BESTIARY: Creature[] = [
       "Colapso da Caverna: 15 PM. O núcleo puxa o teto. Causa 15 de dano de Terra em área."
     ],
     equipment: []
+  },
+  {
+    id: "cr-cultista-cego",
+    name: "Cultista do Abismo Pálido",
+    imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRo0B9i_GQc6qIthJ1TinVsR3olPZxJrZZ9uIpwuOoQSJsIzJ06JxJFsjif&s=10",
+    level: 12,
+    species: "Humanóide",
+    attributes: { dex: "d10", ins: "d8", mig: "d8", wlp: "d10" },
+    maxHp: 65,
+    maxMp: 30,
+    def: 12,
+    mdef: 11,
+    affinities: { physical: "none", air: "none", bolt: "none", dark: "RS", earth: "none", fire: "none", ice: "none", light: "VU", poison: "none" },
+    basicAttacks: [
+      { name: "Lâmina Cerimonial Torta", attributes: ["dex", "mig"], damage: 10, type: "físico", description: "Fere não apenas a carne, mas drena a vontade de lutar." }
+    ],
+    spells: [
+      "Vislumbre da Loucura: 10 PM. O cultista arranca a própria venda. Teste Oposto de VON. Falha deixa o jogador [Abalado] e [Enfraquecido].",
+      "Sacrifício Profano (Passiva): Se o Cultista for reduzido a 0 HP, seu corpo explode em tentáculos sombrios curando a Aberração aliada mais próxima em 30 HP."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-amalgama",
+    name: "Texugo do Mel",
+    imageUrl: "http://zipline.sinapselabs.com.br/u/N8UcX2.png",
+    level: 22,
+    species: "Morto-vivo",
+    attributes: { dex: "d6", ins: "d6", mig: "d12", wlp: "d10" },
+    maxHp: 180,
+    maxMp: 40,
+    def: 10,
+    mdef: 9,
+    affinities: { physical: "RS", air: "none", bolt: "none", dark: "AB", earth: "none", fire: "VU", ice: "none", light: "VU", poison: "IM" },
+    basicAttacks: [
+      { name: "Dezenas de Braços Quebrados", attributes: ["mig", "mig"], damage: 16, type: "físico", description: "Agarra e esmaga. Multi(2) se o alvo estiver com status negativo." },
+      { name: "Vômito Necrótico", attributes: ["dex", "mig"], damage: 12, type: "veneno", description: "Ácido negro que derrete armaduras." }
+    ],
+    spells: [
+      "Gritos Multidimensionais: 15 PM. Todos os rostos da criatura gritam com vozes de vítimas passadas. Causa 10 de dano Escuro a todo o grupo e drena 10 PM de cada um.",
+      "Assimilar a Presa (Passiva): Qualquer dano corpo-a-corpo recebido pela massa respinga ácido no atacante, causando 5 de dano de Veneno automático.",
+      "Mortalha Expansiva: A criatura cresce durante a batalha. Quando chega a 50% de HP, sua Defesa cai para 8, mas ela ganha 1 ação extra por rodada."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-leviata-cosmico",
+    name: "O Que Devora as Estrelas",
+    imageUrl: "http://zipline.sinapselabs.com.br/u/41qr7X.png",
+    level: 50,
+    species: "Fera Mitológica",
+    attributes: { dex: "d6", ins: "d12", mig: "d12", wlp: "d12" },
+    maxHp: 400,
+    maxMp: 300,
+    def: 16,
+    mdef: 18,
+    affinities: { physical: "RS", air: "RS", bolt: "RS", dark: "AB", earth: "IM", fire: "none", ice: "IM", light: "VU", poison: "IM" },
+    basicAttacks: [
+      { name: "Mordida Gravitacional", attributes: ["mig", "mig"], damage: 25, type: "físico", description: "Esmaga o espaço ao redor do alvo, impossível de evadir convencionalmente." },
+      { name: "Sopro da Entropia", attributes: ["ins", "wlp"], damage: 20, type: "escuro", description: "Uma rajada de puro nada que envelhece o que toca." }
+    ],
+    spells: [
+      "Colapso de Supernova: 50 PM. Uma explosão massiva de radiação cósmica. Causa 40 de Dano de Fogo e 40 de Dano Escuro a todo o grupo. Ignora defesas.",
+      "Gravidade Esmagadora: 20 PM. Muda o terreno da batalha. Pelas próximas 3 rodadas, nenhum personagem pode realizar ataques corpo-a-corpo que necessitem sair do lugar. Todos os atributos DES do grupo operam no máximo como d6.",
+      "Céu Sem Estrelas (Passiva Chefe Mítico): Ao perder a primeira barra de HP (200 HP), O Devorador suga o cenário para dentro de si. A sala escurece e ele cura 100 de HP. Pontos de Fabula custam o dobro para serem ativados até o fim do combate."
+    ],
+    equipment: []
+  },
+  {
+    "id": "cr-babuino-comum",
+    "name": "Babuíno Comum",
+    "imageUrl": "https://i.pinimg.com/1200x/31/cd/43/31cd43cc103bd783353855cf92ed691c.jpg",
+    "level": 5,
+    "species": "Besta",
+    "attributes": { "dex": "d10", "ins": "d8", "mig": "d8", "wlp": "d6" },
+    "maxHp": 40,
+    "maxMp": 10,
+    "def": 11,
+    "mdef": 8,
+    "affinities": { "physical": "none", "air": "none", "bolt": "none", "dark": "none", "earth": "none", "fire": "VU", "ice": "none", "light": "none", "poison": "none" },
+    "basicAttacks": [
+      {
+        "name": "Mordida Violenta",
+        "attributes": ["dex", "mig"],
+        "damage": 8,
+        "type": "físico",
+        "description": "Uma mordida rápida com presas afiadas."
+      },
+      {
+        "name": "Arremesso de Entulhos",
+        "attributes": ["dex", "ins"],
+        "damage": 6,
+        "type": "físico",
+        "description": "Joga pedras ou galhos de uma distância segura."
+      }
+    ],
+    "spells": [
+      "Fúria do Bando (Passiva): Se houver pelo menos um aliado da espécie Besta ativo no combate, o Babuíno ganha +2 nos testes de Precisão."
+    ],
+    "equipment": []
+  },
+  {
+    id: "cr-bandido-capanga",
+    name: "Mercenário",
+    imageUrl: "https://i.pinimg.com/236x/57/c8/33/57c8337c51b17ef9c75536bb58c736c8.jpg",
+    level: 5,
+    species: "Humanóide",
+    attributes: { dex: "d8", ins: "d6", mig: "d10", wlp: "d6" },
+    maxHp: 45,
+    maxMp: 15,
+    def: 12,
+    mdef: 8,
+    affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "VU" },
+    basicAttacks: [
+      { 
+        name: "Clava Cheia de Pregos", 
+        attributes: ["mig", "mig"], 
+        damage: 10, 
+        type: "físico", 
+        description: "Um ataque bruto que foca em esmagar ossos." 
+      }
+    ],
+    spells: [
+      "Golpe Baixo: Gaste 5 PM após acertar um ataque. O alvo deve fazer um Teste de Vigor (MIG + MIG) ou sofrerá [Enfraquecido].",
+      "Sangue Frio (Passiva): Quando o HP deste capanga cai pela metade (Crise), ele ganha +2 em Testes de Precisão."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-bandido-atirador",
+    name: "Caçador de Recompensas",
+    imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTOLjukFeGmBkJT-nmfzWoZVPiZe8f-86f2E5P3EkHIQ8M5eivrJ7U8aARs&s=10",
+    level: 6,
+    species: "Humanóide",
+    attributes: { dex: "d10", ins: "d8", mig: "d6", wlp: "d6" },
+    maxHp: 35,
+    maxMp: 20,
+    def: 11,
+    mdef: 9,
+    affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "VU", ice: "none", light: "none", poison: "RS" },
+    basicAttacks: [
+      { 
+        name: "Besta de Mão", 
+        attributes: ["dex", "ins"], 
+        damage: 8, 
+        type: "físico", 
+        description: "Dispara virotes de uma distância segura." 
+      },
+      { 
+        name: "Faca Escondida", 
+        attributes: ["dex", "mig"], 
+        damage: 4, 
+        type: "físico", 
+        description: "Usado apenas se o inimigo chegar muito perto." 
+      }
+    ],
+    spells: [
+      "Virote Envenenado (Passiva): Se o HR (Dado Maior) do ataque com a Besta for 8 ou mais, o alvo sofre [Envenenado].",
+      "Fuga Tática: 10 PM. Como reação ao ser atacado corpo-a-corpo, ele pode recuar, impondo Desvantagem no ataque do inimigo."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-bandido-ocultista",
+    name: "Ocultista",
+    imageUrl: "https://i.pinimg.com/236x/40/58/f8/4058f8f739045583174deec606a782ac.jpg",
+    level: 8,
+    species: "Humanóide",
+    attributes: { dex: "d6", ins: "d8", mig: "d6", wlp: "d10" },
+    maxHp: 40,
+    maxMp: 45,
+    def: 9,
+    mdef: 12,
+    affinities: { physical: "none", air: "none", bolt: "none", dark: "RS", earth: "none", fire: "none", ice: "none", light: "VU", poison: "none" },
+    basicAttacks: [
+      { 
+        name: "Cajado de Madeira Quebrada", 
+        attributes: ["ins", "wlp"], 
+        damage: 6, 
+        type: "físico", 
+        description: "Um ataque mágico simples com o cajado." 
+      }
+    ],
+    spells: [
+      "Ordem do Chefe: 10 PM. Um aliado humanoide à sua escolha pode realizar uma Ação de Ataque básico imediatamente.",
+      "Esfera de Sombras: 15 PM. Causa 15 de dano Escuro a um alvo e, se acertar, o alvo sofre [Abalado].",
+      "Curandeiro Clandestino: 10 PM. Restaura 20 de HP de um aliado (mas ele não curará aliados a não ser que estejam à beira da morte)."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-guarda-balestra",
+    name: "Guarda da Cidade (Balestra)",
+    imageUrl: "https://i.pinimg.com/736x/59/13/49/591349c95a543ca29b6c8c3ae39591b1.jpg",
+    level: 5,
+    species: "Humanóide",
+    attributes: { dex: "d10", ins: "d8", mig: "d6", wlp: "d6" },
+    maxHp: 35,
+    maxMp: 20,
+    def: 11,
+    mdef: 9,
+    affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" },
+    basicAttacks: [
+      { 
+        name: "Balestra Pesada", 
+        attributes: ["dex", "ins"], 
+        damage: 10, 
+        type: "físico", 
+        description: "Dispara um poderoso virote perfurante a longas distâncias." 
+      }
+    ],
+    spells: [
+      "Tiro de Cobertura (Reação): Gaste 10 PM. Quando um aliado do Guarda for atacado, ele dispara um virote que impõe Desvantagem no teste de Precisão do atacante inimigo."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-guarda-lanca",
+    name: "Guarda da Cidade (Lança)",
+    imageUrl: "https://i.pinimg.com/1200x/17/13/28/171328217c8602b2c8be1d6854035e92.jpg",
+    level: 6,
+    species: "Humanóide",
+    attributes: { dex: "d8", ins: "d6", mig: "d10", wlp: "d6" },
+    maxHp: 50,
+    maxMp: 15,
+    def: 12,
+    mdef: 8,
+    affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" },
+    basicAttacks: [
+      { 
+        name: "Lança Longa", 
+        attributes: ["dex", "mig"], 
+        damage: 9, 
+        type: "físico", 
+        description: "Uma estocada de longo alcance. Pode atingir alvos Inalcançáveis ou Voadores." 
+      }
+    ],
+    spells: [
+      "Manter a Linha (Passiva): Enquanto houver pelo menos um outro Guarda aliado vivo na batalha, este guarda ganha +1 na Defesa Física e Defesa Mágica."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-guarda-cavalo",
+    name: "Guarda da Cidade (Montado)",
+    imageUrl: "https://i.pinimg.com/736x/9c/d2/ec/9cd2ec1050aeb139da23854ee23c1df9.jpg",
+    level: 8,
+    species: "Humanóide",
+    attributes: { dex: "d8", ins: "d8", mig: "d10", wlp: "d6" },
+    maxHp: 65,
+    maxMp: 25,
+    def: 13,
+    mdef: 9,
+    affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" },
+    basicAttacks: [
+      { 
+        name: "Investida Pesada", 
+        attributes: ["mig", "mig"], 
+        damage: 12, 
+        type: "físico", 
+        description: "O peso do cavalo e a arma do cavaleiro atacam como um só." 
+      }
+    ],
+    spells: [
+      "Pisoteio: 15 PM. Causa 15 de dano Físico a todos os inimigos que não estiverem voando. Inimigos atingidos devem passar em um Teste de Vigor ou ficarão com o status [Lento].",
+      "Mobilidade Superior (Passiva): O Guarda Montado ignora terrenos difíceis e penalidades de movimento de clima ou lama."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-guarda-espada",
+    name: "Guarda da Cidade (Espada e Escudo)",
+    imageUrl: "https://i.pinimg.com/736x/15/ce/ac/15ceacefdc00b8f6cb0b86948d698d8f.jpg",
+    level: 7,
+    species: "Humanóide",
+    attributes: { dex: "d8", ins: "d6", mig: "d8", wlp: "d8" },
+    maxHp: 55,
+    maxMp: 20,
+    def: 14,
+    mdef: 10,
+    affinities: { physical: "RS", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" },
+    basicAttacks: [
+      { 
+        name: "Corte Disciplinado", 
+        attributes: ["dex", "mig"], 
+        damage: 9, 
+        type: "físico", 
+        description: "Um ataque marcial limpo, focado em precisão." 
+      }
+    ],
+    spells: [
+      "Bloqueio com Escudo (Passiva): Possui escudo pesado, concedendo-lhe Resistência (RS) a dano físico normal.",
+      "Proteger Cidadão/Aliado (Reação): 5 PM. Quando um aliado (ou um civil) for sofrer dano físico, este Guarda toma a frente do golpe e sofre apenas metade daquele dano em si mesmo, protegendo o alvo original."
+    ],
+    equipment: []
   }
+
 ]

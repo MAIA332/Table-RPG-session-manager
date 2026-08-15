@@ -28,7 +28,7 @@ export async function PATCH(
   if (body.resources) character.resources = { ...character.resources, ...body.resources }
   if (body.skills) character.skills = body.skills
   if (body.attributes) character.attributes = body.attributes
-  if (body.classes) character.classes = body.classes // Agora salvamos as classes que o frontend nos mandar!
+  if (body.classes) character.classes = body.classes
 
   const patchRes = body?.resources ?? {}
 
@@ -47,27 +47,35 @@ export async function PATCH(
     }
   }
 
+  // --- AQUI ESTÁ A CORREÇÃO PRINCIPAL ---
   const nextSkills = body?.skills !== undefined ? body.skills : (character as any).skills || {}
   const nextClasses = body?.classes !== undefined ? body.classes : character.classes || []
   const nextEquipment = body?.equipment !== undefined ? body.equipment : character.equipment
   const nextZenit = body?.zenit !== undefined ? body.zenit : (character as any).zenit
+  const nextCustomModifiers = body?.customModifiers !== undefined ? body.customModifiers : (character as any).customModifiers || [] // <-- Pega as condições
+  const nextCustomItems = body?.customItems !== undefined ? body.customItems : (character as any).customItems || [] // <-- Pega os itens costumizados
 
   const updatedData = { 
     ...character, 
     resources: nextRes, 
     skills: nextSkills,
-    classes: nextClasses, // Usa as classes atualizadas
+    classes: nextClasses,
     equipment: nextEquipment,
     zenit: nextZenit,
+    customModifiers: nextCustomModifiers, // <-- Salva no objeto novo
+    customItems: nextCustomItems,         // <-- Salva no objeto novo
     updatedAt: Date.now() 
   } as unknown as Character
 
   const updated = normalizeResources(updatedData)
   
+  // Garantir que os campos que não existem estritamente na tipagem original do normalize sejam passados adiante
   ;(updated as any).skills = nextSkills;
   ;(updated as any).zenit = nextZenit;
   ;(updated as any).resources.xp = nextRes.xp;
-  
+  ;(updated as any).customModifiers = nextCustomModifiers; // <-- Garante as condições
+  ;(updated as any).customItems = nextCustomItems;         // <-- Garante os itens
+
   // Clampa o HP e MP dentro do limite seguro
   updated.resources.hp = Math.min(nextRes.hp, updated.resources.maxHp);
   updated.resources.mp = Math.min(nextRes.mp, updated.resources.maxMp);

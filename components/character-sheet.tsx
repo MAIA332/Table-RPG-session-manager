@@ -23,11 +23,13 @@ import { formatSkillDescription, EssenceStep, ClassesStep, EquipmentStep } from 
 import { AttributesStep } from "@/components/attributes-step"
 import type { AttributeKey, Character, Role, DieSize, ClassLevel } from "@/lib/types"
 
-import { 
-  Heart, Zap, Backpack, Sparkles, Minus, Plus, Dices, Package, TrendingUp, 
-  X, Store, Coins, Info, Loader2, BookOpenText, UserPlus, Shield, Skull, 
+import {
+  Heart, Zap, Backpack, Sparkles, Minus, Plus, Dices, Package, TrendingUp,
+  X, Store, Coins, Info, Loader2, BookOpenText, UserPlus, Shield, Skull,
   ScrollText, ImageIcon, Film, Lock, Trash2, Search, Activity, Save,
-  ArrowLeft, ArrowRight, Check, Swords, ChevronDown
+  ArrowLeft, ArrowRight, Check, Swords, ChevronDown,
+  Sword, Gem, Eye, SearchX, ShoppingCart, PackageOpen, BookOpen, PenTool,
+  AlertTriangle, Archive
 } from "lucide-react"
 
 // ==========================================
@@ -54,17 +56,17 @@ export interface Member {
   name: string;
 }
 
-export interface NPCDraft { 
-  id: string; 
-  name: string; 
-  avatarUrl: string; 
-  origin: string; 
-  identity: string; 
-  theme: string; 
-  classes: ClassLevel[]; 
-  skills: Record<string, number>; 
-  attributes: Record<AttributeKey, DieSize>; 
-  equipment: string[]; 
+export interface NPCDraft {
+  id: string;
+  name: string;
+  avatarUrl: string;
+  origin: string;
+  identity: string;
+  theme: string;
+  classes: ClassLevel[];
+  skills: Record<string, number>;
+  attributes: Record<AttributeKey, DieSize>;
+  equipment: string[];
 }
 
 const ATTR_KEYS: AttributeKey[] = ["dex", "ins", "mig", "wlp"]
@@ -81,40 +83,120 @@ const modalVariants = {
   visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.3 } },
   exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } }
 } as any
-
 export const PRESET_CHECKS = [
+  // --- PERCEPÇÃO E INVESTIGAÇÃO ---
   { id: "c1", name: "Percepção", attrs: ["ins", "dex"], desc: "Notar detalhes, movimentos sutis, armadilhas, emboscadas ou objetos escondidos." },
-  { id: "c2", name: "Investigação", attrs: ["ins", "wlp"], desc: "Reconstruir acontecimentos, interpretar pistas e ligar informações complexas." },
-  { id: "c3", name: "Sobrevivência", attrs: ["ins", "mig"], desc: "Encontrar alimento, rastrear criaturas, orientar-se na natureza e prever perigos naturais." },
-  { id: "c4", name: "Sentir Éter", attrs: ["ins", "wlp"], desc: "Detectar magia, perturbações espirituais, maldições ou presenças sobrenaturais." },
-  { id: "c5", name: "Furtividade", attrs: ["dex", "ins"], desc: "Esconder-se, mover-se sem fazer ruído e infiltrar-se." },
-  { id: "c6", name: "Prestidigitação", attrs: ["dex", "ins"], desc: "Roubar bolsos, manipular pequenos objetos, abrir fechaduras delicadas ou truques rápidos." },
-  { id: "c7", name: "Acrobacia", attrs: ["dex", "mig"], desc: "Saltar, escalar, equilibrar-se, correr por superfícies difíceis e realizar manobras físicas." },
-  { id: "c8", name: "Reflexos", attrs: ["dex", "ins"], desc: "Reagir rapidamente a ataques, armadilhas ou mudanças repentinas no ambiente." },
-  { id: "c9", name: "Precisão", attrs: ["dex", "ins"], desc: "Realizar disparos difíceis, lançar objetos ou acertar pontos específicos." },
-  { id: "c10", name: "Atletismo", attrs: ["mig", "dex"], desc: "Escalar, nadar, correr longas distâncias, empurrar ou puxar objetos em movimento." },
-  { id: "c11", name: "Força Bruta", attrs: ["mig", "mig"], desc: "Quebrar portas, erguer peso, arrombar obstáculos e dominar fisicamente um alvo." },
-  { id: "c14", name: "Diplomacia", attrs: ["wlp", "ins"], desc: "Convencer, negociar e resolver conflitos através do diálogo." },
-  { id: "c15", name: "Intimidação", attrs: ["wlp", "mig"], desc: "Coagir utilizando presença física, postura e determinação." },
-  { id: "c20", name: "Enganação", attrs: ["wlp", "dex"], desc: "Mentir de forma convincente utilizando linguagem corporal e improvisação." },
-  { id: "c22", name: "Medicina", attrs: ["ins", "dex"], desc: "Tratar ferimentos, realizar cirurgias, aplicar remédios e primeiros socorros." },
-  { id: "c25", name: "Ocultismo", attrs: ["ins", "wlp"], desc: "Conhecimento sobre entidades, rituais, maldições e magia antiga." }
-]
+  { id: "c2", name: "Investigação", attrs: ["ins", "wlp"], desc: "Reconstruir acontecimentos em uma cena, interpretar pistas e ligar informações." },
+  { id: "c3", name: "Empatia", attrs: ["ins", "wlp"], desc: "Ler emoções, identificar blefes, nervosismo e compreender as reais intenções de alguém." },
+  { id: "c4", name: "Avaliação", attrs: ["ins", "ins"], desc: "Estimar o valor financeiro de mercadorias, reconhecer antiguidades e identificar falsificações." },
+  { id: "c5", name: "Interrogatório", attrs: ["wlp", "ins"], desc: "Extrair informações de prisioneiros ou suspeitos através de pressão psicológica ou blefe tático." },
+
+  // --- SOBREVIVÊNCIA E EXPLORAÇÃO ---
+  { id: "c6", name: "Sobrevivência Selvagem", attrs: ["ins", "mig"], desc: "Encontrar alimento, preparar abrigos rudimentares e prever tempestades ou perigos naturais." },
+  { id: "c7", name: "Rastreamento", attrs: ["ins", "dex"], desc: "Identificar e seguir pegadas, rastros de sangue e sinais de passagem de animais ou pessoas." },
+  { id: "c8", name: "Orientação", attrs: ["ins", "ins"], desc: "Ler mapas terrestres ou astrais, guiar o grupo e evitar que se percam durante viagens." },
+  { id: "c9", name: "Sobrevivência Urbana", attrs: ["ins", "wlp"], desc: "Encontrar rotas seguras em becos, localizar o mercado negro e entender as regras não ditas das ruas." },
+  { id: "c10", name: "Vigília", attrs: ["ins", "mig"], desc: "Manter-se alerta durante o turno de guarda, lutando contra o sono para proteger o grupo." },
+
+  // --- INTELECTO E CIÊNCIA MUNDANA ---
+  { id: "c11", name: "Medicina", attrs: ["ins", "dex"], desc: "Realizar cirurgias de emergência, suturar feridas, estabilizar aliados e aplicar primeiros socorros." },
+  { id: "c12", name: "Botânica e Venenos", attrs: ["ins", "ins"], desc: "Identificar plantas seguras, extrair toxinas, fabricar antídotos naturais e unguentos." },
+  { id: "c13", name: "História e Cultura", attrs: ["ins", "ins"], desc: "Lembrar fatos antigos, reconhecer brasões de nobreza, leis locais e costumes regionais." },
+  { id: "c14", name: "Engenharia e Mecânica", attrs: ["ins", "dex"], desc: "Desarmar armadilhas complexas, compreender maquinários, relógios e construir engenhocas." },
+  { id: "c15", name: "Criptografia", attrs: ["ins", "wlp"], desc: "Decodificar mensagens secretas, traduzir dialetos mortos e resolver enigmas lógicos." },
+  { id: "c16", name: "Estratégia", attrs: ["wlp", "ins"], desc: "Planejar táticas de batalha, prever a movimentação inimiga e vencer jogos de tabuleiro." },
+
+  // --- FURTIVIDADE E CRIME ---
+  { id: "c17", name: "Furtividade", attrs: ["dex", "ins"], desc: "Esconder-se nas sombras, mover-se sem fazer ruído e infiltrar-se em áreas vigiadas." },
+  { id: "c18", name: "Prestidigitação", attrs: ["dex", "ins"], desc: "Bater carteiras, esconder itens pequenos nas mangas ou realizar truques de mãos rápidos." },
+  { id: "c19", name: "Arrombamento", attrs: ["dex", "ins"], desc: "Usar gazuas para abrir fechaduras de portas, baús ou destrancar algemas silenciosamente." },
+  { id: "c20", name: "Enganação", attrs: ["wlp", "dex"], desc: "Mentir de forma convincente, usar disfarces, forjar sotaques e improvisar histórias." },
+  { id: "c21", name: "Falsificação", attrs: ["dex", "ins"], desc: "Criar cópias exatas de documentos, assinaturas, selos oficiais e passaportes." },
+
+  // --- MOBILIDADE E REFLEXOS ---
+  { id: "c22", name: "Acrobacia", attrs: ["dex", "mig"], desc: "Saltar entre telhados, amortecer quedas, equilibrar-se em cordas e rolar durante o combate." },
+  { id: "c23", name: "Reflexos", attrs: ["dex", "ins"], desc: "Reagir a ataques surpresa, segurar objetos caindo ou acionar alavancas sob pressão extrema." },
+  { id: "c24", name: "Precisão", attrs: ["dex", "ins"], desc: "Fazer arremessos difíceis, atirar facas em alvos pequenos ou acertar pontos fracos." },
+  { id: "c25", name: "Condução", attrs: ["dex", "ins"], desc: "Manobrar carroças em alta velocidade, pilotar barcos ou montar a cavalo em terrenos difíceis." },
+  { id: "c26", name: "Contorcionismo", attrs: ["dex", "dex"], desc: "Escapar de amarras de corda, espremer-se em tubulações e passar por grades estreitas." },
+
+  // --- FÍSICO E COMBATE CORPORAL ---
+  { id: "c27", name: "Atletismo", attrs: ["mig", "dex"], desc: "Escalar paredões, nadar contra a correnteza, correr em disparada e empurrar pedras pesadas." },
+  { id: "c28", name: "Força Bruta", attrs: ["mig", "mig"], desc: "Quebrar portas de madeira, erguer pesos descomunais, dobrar barras de ferro e intimidar fisicamente." },
+  { id: "c29", name: "Resistência", attrs: ["mig", "wlp"], desc: "Suportar marchas forçadas, ignorar a dor crônica, resistir ao frio/calor e aguentar tortura." },
+  { id: "c30", name: "Fôlego", attrs: ["mig", "mig"], desc: "Prender a respiração por longos minutos debaixo d'água ou em ambientes com gás tóxico." },
+  { id: "c31", name: "Briga", attrs: ["mig", "dex"], desc: "Entrar em combate corpo a corpo desarmado, imobilizar adversários e aplicar chaves de braço." },
+
+  // --- SOCIAL E RELAÇÕES ---
+  { id: "c32", name: "Diplomacia", attrs: ["wlp", "ins"], desc: "Convencer, apaziguar ânimos, negociar pagamentos justos e resolver conflitos sem violência." },
+  { id: "c33", name: "Intimidação", attrs: ["wlp", "mig"], desc: "Amedrontar usando tom de voz agressivo, ameaças verbais e postura corporal hostil." },
+  { id: "c34", name: "Liderança", attrs: ["wlp", "ins"], desc: "Inspirar coragem nos aliados, coordenar pessoas em pânico e dar ordens claras sob fogo inimigo." },
+  { id: "c35", name: "Etiqueta", attrs: ["wlp", "ins"], desc: "Portar-se em eventos da alta nobreza, usar os talheres certos e falar com a realeza sem ofender." },
+  { id: "c36", name: "Atuação", attrs: ["wlp", "dex"], desc: "Chamar a atenção de uma multidão, dançar, cantar ou atuar para criar uma distração perfeita." },
+  { id: "c37", name: "Trato com Animais", attrs: ["ins", "wlp"], desc: "Acalmar cães de guarda, adestrar montarias e entender o comportamento de feras selvagens." },
+  { id: "c38", name: "Foco e Vontade", attrs: ["wlp", "wlp"], desc: "Manter a mente fria diante do horror, resistir a provocações e focar em uma tarefa durante o caos." },
+
+  // --- TRABALHO MANUAL E ACAMPAMENTO ---
+  { id: "c39", name: "Ofícios e Forja", attrs: ["dex", "ins"], desc: "Consertar armaduras rachadas, afiar lâminas, costurar couro e criar ferramentas improvisadas." },
+  { id: "c40", name: "Culinária", attrs: ["ins", "dex"], desc: "Limpar e preparar carne de caça, racionar mantimentos e cozinhar refeições que recuperam o ânimo." }
+];
 
 // ==========================================
 // FUNÇÕES AUXILIARES
 // ==========================================
 
 export function ItemModifiers({ text }: { text: string }) {
-  if (!text.includes("[MODIFICADOR:")) return <span>{text}</span>;
-  const [desc, modPart] = text.split("[MODIFICADOR:");
+  if (!text) return null;
+
+  const descMatch = text.split(/\[(?:BÔNUS|BONUS|MODIFICADOR|LORE|PENALIDADE|UTILIDADE)\s*:/i)[0];
+  const desc = descMatch ? descMatch.trim() : text;
+
+  const extractTag = (tagPattern: string) => {
+    const regex = new RegExp(`\\[(?:${tagPattern})\\s*:\\s*([^\\]]+)\\]`, 'i');
+    const match = text.match(regex);
+    return match ? match[1].trim() : null;
+  };
+
+  const bonus = extractTag("BÔNUS|BONUS");
+  const modificador = extractTag("MODIFICADOR");
+  const lore = extractTag("LORE");
+  const penalidade = extractTag("PENALIDADE");
+  const utilidade = extractTag("UTILIDADE");
+
   return (
-    <span className="flex flex-col gap-1.5 items-start mt-1">
-      <span className="opacity-80">{desc.trim()}</span>
-      <span className="inline-flex items-center gap-1.5 bg-accent/15 text-accent border border-accent/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(var(--accent),0.1)]">
-        <Zap className="size-3" /> {modPart.replace("]", "").trim()}
-      </span>
-    </span>
+    <div className="flex flex-col gap-2 items-start mt-1">
+      <div className="opacity-80 whitespace-pre-wrap leading-relaxed">{desc}</div>
+
+      {(bonus || modificador || penalidade || lore || utilidade) && (
+        <div className="flex flex-col gap-1.5 mt-2 w-full">
+          {bonus && bonus.toLowerCase() !== "nenhum" && (
+            <div className="inline-flex items-center gap-1.5 bg-green-500/15 text-green-400 border border-green-500/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(34,197,94,0.1)] w-fit">
+              <Plus className="size-3" /> {bonus}
+            </div>
+          )}
+          {modificador && modificador.toLowerCase() !== "nenhum" && (
+            <div className="inline-flex items-center gap-1.5 bg-accent/15 text-accent border border-accent/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(var(--accent),0.1)] w-fit">
+              <Zap className="size-3" /> {modificador}
+            </div>
+          )}
+          {penalidade && penalidade.toLowerCase() !== "nenhum" && (
+            <div className="inline-flex items-center gap-1.5 bg-red-500/15 text-red-400 border border-red-500/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.1)] w-fit">
+              <AlertTriangle className="size-3" /> {penalidade}
+            </div>
+          )}
+          {lore && lore.toLowerCase() !== "nenhum" && (
+            <div className="inline-flex items-center gap-1.5 bg-purple-500/15 text-purple-400 border border-purple-500/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(168,85,247,0.1)] w-fit">
+              <BookOpen className="size-3 shrink-0" /> <div className="text-left">{lore}</div>
+            </div>
+          )}
+          {utilidade && utilidade.toLowerCase() !== "nenhum" && (
+            <div className="inline-flex items-center gap-1.5 bg-blue-500/15 text-blue-400 border border-blue-500/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(59,130,246,0.1)] w-fit">
+              <PenTool className="size-3 shrink-0" /> <div className="text-left">{utilidade}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -175,18 +257,18 @@ function CombinedChecksPanel({ character, onRoll, rollingAttr, disabled }: any) 
               <div className="flex justify-between items-center w-full">
                 <span className="font-bold text-foreground group-hover:text-primary transition-colors">{check.name}</span>
                 <div className="flex gap-1.5">
-                  {check.attrs.map((attr, i) => (
+                  {check.attrs.map((attr: any, i: number) => (
                     <span key={i} className="text-[10px] bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded font-mono uppercase font-bold">
                       {attr} <span className="opacity-50">({character.attributes[attr]})</span>
                     </span>
                   ))}
                 </div>
               </div>
-              <span className="text-xs font-normal opacity-60 text-left whitespace-normal leading-snug">{check.desc}</span>
+              <div className="text-xs font-normal opacity-60 text-left whitespace-normal leading-snug">{check.desc}</div>
             </div>
           </Button>
         ))}
-        {filtered.length === 0 && <p className="text-sm text-muted-foreground italic text-center col-span-2 py-8">Nenhum teste encontrado com esse nome.</p>}
+        {filtered.length === 0 && <div className="text-sm text-muted-foreground italic text-center col-span-2 py-8">Nenhum teste encontrado com esse nome.</div>}
       </div>
     </div>
   )
@@ -226,7 +308,7 @@ function ModifiersPanel({ character, isGm, onUpdate }: any) {
           <Activity className="size-4" /> Condições Ativas
         </h3>
         {mods.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic text-center py-4 border border-dashed border-border/30 rounded-lg">Personagem saudável. Nenhuma condição afeta seus testes.</p>
+          <div className="text-sm text-muted-foreground italic text-center py-4 border border-dashed border-border/30 rounded-lg">Personagem saudável. Nenhuma condição afeta seus testes.</div>
         ) : (
           <div className="flex flex-col gap-2">
             {mods.map(mod => (
@@ -315,14 +397,14 @@ function BlueprintApp({ character, editable, onSpendMp }: any) {
 
   function handleCraft(bp: any) {
     if (!editable) return;
-    
+
     if (currentMp < bp.mpCost) return alert(`Sua Mente (MP) é insuficiente. Necessário: ${bp.mpCost}.`);
-    
+
     if (bp.ipCost > 0) {
       if (currentIp < bp.ipCost) return alert(`Pontos de Inventário insuficientes. Necessário: ${bp.ipCost} IP.`);
       onSpendMp(bp.mpCost);
       alert(`[${bp.name}] criado com sucesso usando ${bp.mpCost} MP e ${bp.ipCost} IP!`);
-    } 
+    }
     else if (bp.reqItem) {
       const itemIndex = character.equipment.findIndex((itemId: string) => itemId.includes(bp.reqItem));
       if (itemIndex === -1) return alert(`Falta material: Você precisa ter o item [${bp.reqItemName}] no equipamento para construir isto.`);
@@ -337,7 +419,7 @@ function BlueprintApp({ character, editable, onSpendMp }: any) {
         <p className="text-sm text-primary font-bold">Nível da Perícia 'Aparelhos': {skillLvl}</p>
         <p className="text-xs text-muted-foreground mt-1">Sua mochila possui: <span className="font-bold text-white">{currentIp} IP</span>.</p>
       </div>
-      
+
       {blueprints.map(bp => {
         const unlocked = skillLvl >= bp.level;
         let hasItem = false;
@@ -352,17 +434,17 @@ function BlueprintApp({ character, editable, onSpendMp }: any) {
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
               <div className="flex-1 pr-4">
                 <h4 className={`font-bold ${unlocked ? "text-foreground" : "text-destructive"} flex items-center gap-2 flex-wrap`}>
-                  {bp.name} 
+                  {bp.name}
                   <span className="text-[10px] bg-background border border-border px-1.5 py-0.5 rounded text-muted-foreground uppercase tracking-widest">Req: Nv. {bp.level}</span>
                 </h4>
                 <p className="text-xs text-muted-foreground mt-1.5 leading-snug">{bp.desc}</p>
-                
+
                 {unlocked && (
-                   <div className="mt-2 text-[10px] font-mono flex gap-2">
-                     <span className={currentMp >= bp.mpCost ? 'text-blue-400' : 'text-red-400'}>-{bp.mpCost} MP</span>
-                     {bp.ipCost > 0 && <span className={currentIp >= bp.ipCost ? 'text-green-400' : 'text-red-400'}>-{bp.ipCost} IP</span>}
-                     {bp.reqItem && <span className={hasItem ? 'text-green-400' : 'text-red-400'}>Req: {bp.reqItemName} {hasItem ? '(Na Mochila)' : '(Falta)'}</span>}
-                   </div>
+                  <div className="mt-2 text-[10px] font-mono flex gap-2">
+                    <span className={currentMp >= bp.mpCost ? 'text-blue-400' : 'text-red-400'}>-{bp.mpCost} MP</span>
+                    {bp.ipCost > 0 && <span className={currentIp >= bp.ipCost ? 'text-green-400' : 'text-red-400'}>-{bp.ipCost} IP</span>}
+                    {bp.reqItem && <span className={hasItem ? 'text-green-400' : 'text-red-400'}>Req: {bp.reqItemName} {hasItem ? '(Na Mochila)' : '(Falta)'}</span>}
+                  </div>
                 )}
               </div>
 
@@ -534,7 +616,7 @@ export function CreatureSheet({ creature, isGm, onUpdate, onRoll, onKill }: { cr
     if (!isGm) return;
     const act = (INVENTORY_ACTIONS as any[]).find((a: any) => a.id === actionId);
     if (!act) return;
-    
+
     if (currentIp < act.cost) {
       alert("Pontos de Inventário (IP) insuficientes na mochila da criatura!");
       return;
@@ -542,7 +624,7 @@ export function CreatureSheet({ creature, isGm, onUpdate, onRoll, onKill }: { cr
     const updates: any = { currentIp: currentIp - act.cost };
     if (act.effectResource === "hp") updates.currentHp = Math.min(creature.maxHp, currentHp + (act.effectValue || 0));
     if (act.effectResource === "mp") updates.currentMp = Math.min(creature.maxMp, currentMp + (act.effectValue || 0));
-    
+
     onUpdate(creature.instanceId, updates);
     setShowInventory(false);
   }
@@ -708,9 +790,13 @@ export function CreatureSheet({ creature, isGm, onUpdate, onRoll, onKill }: { cr
 // ==========================================
 // FICHA DO PERSONAGEM (JOGADORES)
 // ==========================================
-export function CharacterSheet({ character, editable, isGm, campaignMembers = [], onOptimistic, onRoll, onKill, shouldOpenInventory, onClearInventoryRequest }: any) {
+export function CharacterSheet({ character, editable, isGm, campaignMembers = [], onOptimistic, onRoll, onKill, shouldOpenInventory, onClearInventoryRequest, onArchive, defaultExpanded = false }: any) {
   const [mounted, setMounted] = useState(false)
   const [pending, setPending] = useState(false)
+  
+  // NOTE: State initialized from prop, but we will ONLY use it after mounting to avoid hydration mismatch
+  const [isExpanded, setIsExpanded] = useState(false) 
+  
   const [rollingAttr, setRollingAttr] = useState<string | null>(null)
   const [rollResult, setRollResult] = useState<{ attr: string; value: number | string } | null>(null)
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null)
@@ -718,17 +804,28 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
   const [showInventory, setShowInventory] = useState(false)
   const [showStore, setShowStore] = useState(false)
   const [showLore, setShowLore] = useState(false)
-  
+
   const [sheetTab, setSheetTab] = useState<"main" | "checks" | "modifiers">("main")
   const [viewingItem, setViewingItem] = useState<any | null>(null)
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [transferUserId, setTransferUserId] = useState<string>("")
+  const [storeSearch, setStoreSearch] = useState("")
+  const [storeCategory, setStoreCategory] = useState("all")
+  const [selectedStoreItem, setSelectedStoreItem] = useState<any>(null)
 
-  useEffect(() => setMounted(true), [])
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
+  const [archiving, setArchiving] = useState(false)
+
+  useEffect(() => {
+    setMounted(true);
+    // Hydration Fix: Set default expansion ONLY after mount so server HTML is always uniform
+    if (defaultExpanded) setIsExpanded(true);
+  }, [defaultExpanded])
 
   useEffect(() => {
     if (shouldOpenInventory) {
       setShowInventory(true);
+      setIsExpanded(true);
       if (onClearInventoryRequest) onClearInventoryRequest();
     }
   }, [shouldOpenInventory, onClearInventoryRequest])
@@ -753,6 +850,33 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
     if (die === "d12") return acc + 4;
     return acc;
   }, 0) as number;
+
+  const filteredStoreItems = EQUIPMENT.filter((item: any) => {
+    if (item.purchasable === false) return false
+
+    const search = storeSearch.toLowerCase().trim()
+
+    const matchesSearch =
+      !search ||
+      item.name.toLowerCase().includes(search) ||
+      item.detail.toLowerCase().includes(search)
+
+    const matchesCategory =
+      storeCategory === "all" ||
+      item.category === storeCategory
+
+    return matchesSearch && matchesCategory
+  })
+
+  const getCategoryLabel = (category: string) => {
+    switch (category) {
+      case "weapon": return "Arma"
+      case "armor": return "Armadura"
+      case "shield": return "Escudo"
+      case "accessory": return "Acessório"
+      default: return "Item"
+    }
+  }
 
   const spentAttrPoints = currentAttrPoints - 8;
   const earnedAttrPoints = Math.floor((charLevel - 5) / 10);
@@ -853,24 +977,23 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
     } finally { setPending(false) }
   }
 
-  // --- NOVA FUNÇÃO PARA O MESTRE REMOVER ITENS ---
   async function removeEquipmentItem(index: number) {
     if (!isGm) return;
     if (!confirm("Tem certeza que deseja remover este item da mochila do jogador?")) return;
-    
+
     const newEquipment = [...character.equipment];
     newEquipment.splice(index, 1);
-    
+
     onOptimistic({ ...character, equipment: newEquipment });
     setPending(true);
     try {
       const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, {
-        method: "PATCH", 
+        method: "PATCH",
         body: JSON.stringify({ equipment: newEquipment })
       });
       onOptimistic(updated);
-    } finally { 
-      setPending(false); 
+    } finally {
+      setPending(false);
     }
   }
 
@@ -898,7 +1021,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
 
       setRollResult({ attr: attrLabel, value: finalResult });
       if (onRoll) onRoll(detailStr, finalResult);
-      
+
       setRollingAttr(null);
       setTimeout(() => setRollResult(null), 3000);
     }, 800);
@@ -948,8 +1071,10 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
       const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, {
         method: "PATCH", body: JSON.stringify({ customModifiers: newMods })
       });
-      onOptimistic(updated);
-    } finally { setPending(false); }
+      onOptimistic({ ...updated, customModifiers: newMods });
+    } finally {
+      setPending(false);
+    }
   }
 
   function useSkill(skill: any) {
@@ -1000,8 +1125,21 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
     } finally { setPending(false); }
   }
 
+  if (!mounted) {
+    return (
+      <div className="panel border-glow relative rounded-xl border p-4 flex items-center gap-4 w-full bg-zinc-950/40 min-h-[100px] animate-pulse">
+        <div className="size-14 sm:size-16 rounded-lg bg-white/5 shrink-0" />
+        <div className="flex-1 space-y-3">
+          <div className="h-5 w-1/3 bg-white/5 rounded" />
+          <div className="h-3 w-1/4 bg-white/5 rounded" />
+        </div>
+        <div className="size-8 rounded-md bg-white/5 shrink-0" />
+      </div>
+    )
+  }
+
   return (
-    <div className="panel border-glow relative rounded-xl border p-5 sm:p-6 flex flex-col w-full h-full bg-zinc-950/40">
+    <div className={`panel border-glow relative rounded-xl border flex flex-col w-full bg-zinc-950/40 transition-all duration-300 ${isExpanded ? 'p-5 sm:p-6 shadow-[0_0_30px_rgba(var(--primary),0.1)] border-primary/50' : 'p-4 border-border/40 hover:border-primary/30'}`}>
       {mounted && createPortal(
         <>
           <AnimatePresence>
@@ -1031,7 +1169,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
                                 <div key={s.id} className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 p-3 rounded-lg bg-card/40 border border-border/40 hover:border-primary/30 transition-colors">
                                   <div className="pr-4">
                                     <p className="text-sm text-primary font-bold">{s.name} <span className="text-xs text-muted-foreground ml-1">Nv.{lvl}</span></p>
-                                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{formatSkillDescription(s.description, lvl + 1)}</p>
+                                    <div className="text-xs text-muted-foreground mt-1 leading-relaxed">{formatSkillDescription(s.description, lvl + 1)}</div>
                                   </div>
                                   <Button size="sm" className="shrink-0 self-end sm:self-auto" onClick={() => saveNewSkillPoint(s.id)}>Aprender</Button>
                                 </div>
@@ -1049,61 +1187,228 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
 
           <AnimatePresence>
             {showStore && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden">
-                <motion.div variants={modalVariants} className="relative w-full max-w-5xl h-full bg-zinc-950 border border-accent/30 rounded-xl shadow-2xl flex flex-col overflow-hidden">
-                  <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/40 shrink-0">
-                    <h4 className="font-serif text-2xl md:text-3xl font-black text-accent flex items-center gap-3"><Store className="size-6 md:size-8" /> Mercado & Forja</h4>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2 bg-background px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-border shadow-inner"><Coins className="size-4 md:size-5 text-accent" /><span className="font-mono font-bold text-sm md:text-lg text-foreground">{currentZenit} z</span></div>
-                      <button onClick={() => setShowStore(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 md:size-6 text-muted-foreground hover:text-white" /></button>
+              <motion.div
+                variants={overlayVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 md:p-6 overflow-hidden"
+              >
+                <motion.div
+                  variants={modalVariants}
+                  className="relative w-full max-w-7xl h-full max-h-[95vh] bg-zinc-950 border border-accent/30 rounded-xl shadow-2xl flex flex-col overflow-hidden"
+                >
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 p-5 md:p-6 border-b border-white/10 bg-black/50 shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-accent/10 border border-accent/20">
+                        <Store className="size-6 md:size-7 text-accent" />
+                      </div>
+                      <div>
+                        <h4 className="font-serif text-xl md:text-2xl font-black text-accent">
+                          Mercado & Forja
+                        </h4>
+                        <p className="text-[10px] md:text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                          Equipamentos • Relíquias • Suprimentos
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between md:justify-end gap-3">
+                      <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-full border border-accent/20 shadow-inner">
+                        <Coins className="size-4 text-accent" />
+                        <span className="font-mono font-bold text-sm md:text-base text-foreground">
+                          {currentZenit} z
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setShowStore(false)}
+                        className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"
+                      >
+                        <X className="size-5 text-muted-foreground hover:text-white" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6 md:p-10 flex flex-col lg:flex-row gap-10 custom-scrollbar-sepia">
-                    <section className="flex-1 space-y-4">
-                      <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground border-b border-white/10 pb-2">Seu Equipamento (Vender)</h5>
-                      {character.equipment.length === 0 ? (
-                        <div className="p-8 text-center rounded-lg border border-dashed border-border/40 bg-card/20"><p className="text-sm text-muted-foreground italic">Mochila vazia.</p></div>
-                      ) : (
-                        <div className="flex flex-col gap-3">
-                          {character.equipment.map((id: string, index: number) => {
-                            const item = getEquipment(id)
-                            if (!item) return null
-                            const sellPrice = Math.floor(item.cost / 2)
-                            return (
-                              <div key={`${id}-${index}`} className="flex justify-between items-start p-3 rounded-lg bg-card border border-border/50 hover:border-accent/30 transition-colors">
-                                <div>
-                                  <p className="font-bold text-sm text-foreground">{item.name}</p>
-                                  <div className="text-[11px] text-muted-foreground mt-1"><ItemModifiers text={item.detail} /></div>
-                                </div>
-                                <Button size="sm" variant="outline" disabled={!editable} className="text-accent border-accent/50 hover:bg-accent hover:text-accent-foreground shrink-0 ml-2" onClick={() => sellItem(item.id, index)}>
-                                  Vender (+{sellPrice} z)
-                                </Button>
-                              </div>
-                            )
-                          })}
+
+                  <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
+                    <aside className="lg:w-[260px] xl:w-[300px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20 flex flex-col">
+                      <div className="p-4 border-b border-white/10">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h5 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sua Mochila</h5>
+                            <p className="text-[10px] text-muted-foreground mt-1">Venda seus equipamentos</p>
+                          </div>
+                          <span className="text-[10px] font-mono text-muted-foreground">{character.equipment.length} itens</span>
                         </div>
-                      )}
-                    </section>
-                    <section className="flex-[1.5] space-y-4">
-                      <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground border-b border-white/10 pb-2">Catálogo (Comprar)</h5>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {EQUIPMENT.filter((i: any) => i.purchasable !== false).map((item: any) => {
-                          const canAfford = currentZenit >= item.cost
-                          return (
-                            <div key={item.id} className={`flex flex-col justify-between p-4 rounded-xl border ${canAfford ? 'border-border/60 bg-card hover:border-accent/40' : 'border-destructive/20 bg-destructive/5 opacity-60'} transition-colors`}>
-                              <div className="mb-4">
-                                <p className="font-bold text-sm text-foreground">{item.name}</p>
-                                <div className="text-xs text-muted-foreground mt-1.5"><ItemModifiers text={item.detail} /></div>
-                              </div>
-                              <Button size="sm" disabled={!canAfford || !editable} onClick={() => buyItem(item.id)} className={`w-full flex-col h-auto py-1.5 gap-0.5 ${canAfford ? 'bg-accent text-accent-foreground hover:bg-accent/90' : 'bg-destructive/20 text-destructive'}`}>
-                                <span className="font-bold">{canAfford ? "Comprar" : "Sem Zenit"}</span>
-                                <span className="text-[10px] font-mono opacity-80">{item.cost} z</span>
-                              </Button>
-                            </div>
-                          )
-                        })}
                       </div>
-                    </section>
+
+                      <div className="flex-1 overflow-y-auto p-3 custom-scrollbar-sepia">
+                        {character.equipment.length === 0 ? (
+                          <div className="h-full min-h-[120px] flex items-center justify-center">
+                            <div className="text-center p-6">
+                              <PackageOpen className="size-8 mx-auto text-muted-foreground/30 mb-2" />
+                              <p className="text-xs text-muted-foreground italic">Mochila vazia.</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {character.equipment.map((id: string, index: number) => {
+                              const item = getEquipment(id)
+                              if (!item) return null
+                              const sellPrice = Math.floor(item.cost / 2)
+                              return (
+                                <div key={`${id}-${index}`} className="group flex items-center gap-3 p-3 rounded-lg bg-card/60 border border-border/50 hover:border-accent/40 hover:bg-card transition-all">
+                                  <div className="size-9 shrink-0 rounded-md bg-black/40 border border-white/10 flex items-center justify-center">
+                                    <Package className="size-4 text-accent/70" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-bold text-xs text-foreground truncate">{item.name}</p>
+                                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{item.category}</p>
+                                  </div>
+                                  <Button size="sm" variant="ghost" disabled={!editable} className="text-accent hover:bg-accent/10 shrink-0 px-2" onClick={() => sellItem(item.id, index)}>
+                                    +{sellPrice}z
+                                  </Button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </aside>
+
+                    <main className="flex-1 min-w-0 flex flex-col">
+                      <div className="p-4 md:p-5 border-b border-white/10 bg-black/20">
+                        <div className="flex flex-col md:flex-row gap-3">
+                          <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                            <input type="text" value={storeSearch} onChange={(e) => setStoreSearch(e.target.value)} placeholder="Pesquisar equipamentos, armas, armaduras..." className="w-full h-10 pl-10 pr-4 rounded-lg bg-background border border-border focus:border-accent/60 focus:outline-none text-sm" />
+                          </div>
+                          <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar-sepia">
+                            {[
+                              ["all", "Todos"],
+                              ["weapon", "Armas"],
+                              ["armor", "Armaduras"],
+                              ["shield", "Escudos"],
+                              ["accessory", "Acessórios"],
+                            ].map(([id, label]) => (
+                              <button
+                                key={id}
+                                onClick={() => setStoreCategory(id)}
+                                className={`px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider font-bold whitespace-nowrap border transition-all ${storeCategory === id ? "bg-accent text-accent-foreground border-accent" : "bg-white/5 text-muted-foreground border-white/10 hover:border-accent/30 hover:text-foreground"}`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 custom-scrollbar-sepia">
+                        <div className="mb-4 flex items-end justify-between">
+                          <div>
+                            <h5 className="font-serif text-lg font-bold text-foreground">Vitrine</h5>
+                            <p className="text-xs text-muted-foreground">Selecione um item para examinar seus detalhes.</p>
+                          </div>
+                          <span className="text-[10px] font-mono text-muted-foreground">{filteredStoreItems.length} resultados</span>
+                        </div>
+
+                        {filteredStoreItems.length === 0 ? (
+                          <div className="h-48 flex flex-col items-center justify-center text-center">
+                            <SearchX className="size-8 text-muted-foreground/30 mb-3" />
+                            <p className="text-sm text-muted-foreground">Nenhum item encontrado.</p>
+                            <button onClick={() => { setStoreSearch(""); setStoreCategory("all") }} className="mt-2 text-xs text-accent hover:underline">Limpar filtros</button>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                            {filteredStoreItems.map((item: any) => {
+                              const canAfford = currentZenit >= item.cost
+                              const selected = selectedStoreItem?.id === item.id
+                              return (
+                                <motion.button
+                                  layout
+                                  key={item.id}
+                                  onClick={() => setSelectedStoreItem(item)}
+                                  className={`text-left group relative p-4 rounded-xl border transition-all duration-200 ${selected ? "border-accent bg-accent/10 shadow-lg shadow-accent/5" : canAfford ? "border-border/60 bg-card/50 hover:border-accent/40 hover:bg-card" : "border-destructive/20 bg-destructive/5 opacity-60"}`}
+                                >
+                                  <div className="absolute top-3 right-3">
+                                    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-mono font-bold ${canAfford ? "bg-accent/10 text-accent" : "bg-destructive/10 text-destructive"}`}>
+                                      <Coins className="size-3" /> {item.cost}z
+                                    </div>
+                                  </div>
+                                  <div className="size-14 mb-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center group-hover:border-accent/30 transition-colors">
+                                    {item.category === "weapon" && <Sword className="size-7 text-accent/70" />}
+                                    {item.category === "armor" && <Shield className="size-7 text-accent/70" />}
+                                    {item.category === "shield" && <Shield className="size-7 text-accent/70" />}
+                                    {item.category === "accessory" && <Gem className="size-7 text-accent/70" />}
+                                  </div>
+                                  <div className="pr-16">
+                                    <p className="font-bold text-sm text-foreground">{item.name}</p>
+                                    <p className="mt-1 text-[9px] uppercase tracking-widest text-accent/70">{getCategoryLabel(item.category)}</p>
+                                  </div>
+                                  <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+                                    <span className="text-[10px] text-muted-foreground">Clique para examinar</span>
+                                    <Eye className="size-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
+                                  </div>
+                                </motion.button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </main>
+
+                    <AnimatePresence mode="wait">
+                      {selectedStoreItem && (
+                        <motion.aside initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="w-full lg:w-[340px] xl:w-[380px] shrink-0 border-t lg:border-t-0 lg:border-l border-white/10 bg-black/40 flex flex-col">
+                          <div className="p-5 border-b border-white/10">
+                            <div className="flex justify-between items-start gap-3">
+                              <div>
+                                <p className="text-[9px] uppercase tracking-[0.2em] text-accent mb-1">Inspecionando</p>
+                                <h5 className="font-serif text-xl font-bold text-foreground">{selectedStoreItem.name}</h5>
+                              </div>
+                              <button onClick={() => setSelectedStoreItem(null)} className="p-1.5 rounded-md hover:bg-white/10"><X className="size-4 text-muted-foreground" /></button>
+                            </div>
+                          </div>
+                          <div className="p-6">
+                            <div className="aspect-square max-h-[180px] rounded-xl bg-gradient-to-br from-accent/10 via-black/30 to-black/60 border border-accent/20 flex items-center justify-center">
+                              {selectedStoreItem.category === "weapon" && <Sword className="size-24 text-accent/40" />}
+                              {selectedStoreItem.category === "armor" && <Shield className="size-24 text-accent/40" />}
+                              {selectedStoreItem.category === "shield" && <Shield className="size-24 text-accent/40" />}
+                              {selectedStoreItem.category === "accessory" && <Gem className="size-24 text-accent/40" />}
+                            </div>
+                          </div>
+                          <div className="flex-1 overflow-y-auto px-5 pb-5 custom-scrollbar-sepia">
+                            <div className="space-y-5">
+                              <div>
+                                <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Descrição</p>
+                                <div className="text-sm leading-relaxed text-muted-foreground"><ItemModifiers text={selectedStoreItem.detail} /></div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="p-3 rounded-lg bg-card border border-border/50">
+                                  <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Categoria</p>
+                                  <p className="mt-1 text-xs font-bold text-foreground">{getCategoryLabel(selectedStoreItem.category)}</p>
+                                </div>
+                                <div className="p-3 rounded-lg bg-card border border-border/50">
+                                  <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Valor</p>
+                                  <p className="mt-1 text-xs font-bold text-accent font-mono">{selectedStoreItem.cost} z</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-5 border-t border-white/10 bg-black/30">
+                            {currentZenit >= selectedStoreItem.cost ? (
+                              <Button disabled={!editable} onClick={() => { buyItem(selectedStoreItem.id); setSelectedStoreItem(null) }} className="w-full h-11 bg-accent text-accent-foreground hover:bg-accent/90 font-bold">
+                                <ShoppingCart className="size-4 mr-2" /> Comprar por {selectedStoreItem.cost} z
+                              </Button>
+                            ) : (
+                              <div className="text-center p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                                <p className="text-xs font-bold text-destructive">Zenit insuficiente</p>
+                                <p className="text-[10px] text-muted-foreground mt-1">Faltam {selectedStoreItem.cost - currentZenit} z</p>
+                              </div>
+                            )}
+                          </div>
+                        </motion.aside>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </motion.div>
               </motion.div>
@@ -1163,8 +1468,8 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
                                   key={item.id}
                                   onClick={() => !isLockedForThisChar && setViewingItem(item)}
                                   className={`flex items-center justify-between p-3 rounded-lg bg-card border transition-colors text-left ${isLockedForThisChar
-                                      ? 'border-destructive/30 opacity-50 cursor-not-allowed'
-                                      : 'border-border/50 hover:border-primary/50'
+                                    ? 'border-destructive/30 opacity-50 cursor-not-allowed'
+                                    : 'border-border/50 hover:border-primary/50'
                                     }`}
                                   disabled={isLockedForThisChar}
                                 >
@@ -1189,7 +1494,6 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
                           </div>
                         </div>
                       )}
-
                     </section>
                     <section className="flex-1 space-y-4">
                       <div className="flex justify-between items-center border-b border-white/10 pb-2">
@@ -1241,6 +1545,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
                     )}
                     {viewingItem.type === 'image' && (
                       <div className="flex justify-center items-center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={viewingItem.content} alt={viewingItem.name} className="max-w-full h-auto rounded-lg shadow-lg" />
                       </div>
                     )}
@@ -1318,6 +1623,42 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
             )}
           </AnimatePresence>
 
+          {/* NOVO MODAL DE ARQUIVAR */}
+          <AnimatePresence>
+            {showArchiveConfirm && isGm && (
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                <motion.div variants={modalVariants} className="w-full max-w-md rounded-xl border border-destructive/50 bg-zinc-950 p-6 shadow-2xl relative">
+                  <button onClick={() => setShowArchiveConfirm(false)} className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
+                  <h4 className="font-serif text-xl font-bold text-destructive mb-2 flex items-center gap-2">
+                    <Archive className="size-5" /> Arquivar Personagem
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Você está prestes a arquivar <strong>{character.name}</strong>.
+                  </p>
+                  <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-xs text-destructive mb-6 leading-relaxed">
+                    <strong>O que acontece agora?</strong><br />
+                    - O jogador perderá o acesso a esta ficha permanentemente.<br />
+                    - O personagem se transformará em um <strong>NPC</strong> e será guardado no seu <strong>Berçário de NPCs</strong>.<br />
+                    - Você poderá invocá-lo na mesa para combater ou interagir a qualquer momento.
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <Button variant="ghost" onClick={() => setShowArchiveConfirm(false)}>Cancelar</Button>
+                    <Button
+                      onClick={() => {
+                        setArchiving(true);
+                        onArchive(character);
+                      }}
+                      disabled={archiving}
+                      className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                    >
+                      {archiving ? <Loader2 className="size-4 animate-spin" /> : "Confirmar e Arquivar"}
+                    </Button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <AnimatePresence>
             {showLore && (
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
@@ -1332,24 +1673,24 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
                   </div>
                   <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar-sepia space-y-6 font-serif">
                     <div>
-                      <h5 className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2">
+                      <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2">
                         <BookOpenText className="size-4" /> Origem
-                      </h5>
-                      <p className="text-lg leading-relaxed whitespace-pre-wrap">{character.origin || "Desconhecida"}</p>
+                      </div>
+                      <div className="text-lg leading-relaxed whitespace-pre-wrap">{character.origin || "Desconhecida"}</div>
                     </div>
                     <div className="w-full h-px bg-[#d4af37]/30" />
                     <div>
-                      <h5 className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2">
+                      <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2">
                         <Shield className="size-4" /> Identidade
-                      </h5>
-                      <p className="text-lg leading-relaxed whitespace-pre-wrap">{character.identity || "Nenhuma"}</p>
+                      </div>
+                      <div className="text-lg leading-relaxed whitespace-pre-wrap">{character.identity || "Nenhuma"}</div>
                     </div>
                     <div className="w-full h-px bg-[#d4af37]/30" />
                     <div>
-                      <h5 className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2">
+                      <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2">
                         <Sparkles className="size-4" /> Tema
-                      </h5>
-                      <p className="text-xl leading-relaxed italic text-[#4e342e]">"{character.theme || "Nenhum"}"</p>
+                      </div>
+                      <div className="text-xl leading-relaxed italic text-[#4e342e]">"{character.theme || "Nenhum"}"</div>
                     </div>
                   </div>
                 </motion.div>
@@ -1361,211 +1702,254 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
         document.body
       )}
 
-      {/* HEADER DA FICHA */}
-      <div className="flex items-start justify-between gap-4 w-full mb-4 relative z-50">
+      {/* HEADER COMPACTO/EXPANDIDO DA FICHA */}
+      <div className="flex items-start justify-between gap-4 w-full relative z-50">
         <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
-          <div className="relative size-14 sm:size-16 shrink-0 overflow-hidden rounded-lg border border-primary/40 shadow-md">
+          <div className="relative size-14 sm:size-16 shrink-0 overflow-hidden rounded-lg border border-primary/40 shadow-md cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
             <Image src={character.avatarUrl || "/mystic-adventurer-portrait.png"} alt="Retrato" fill className="object-cover" sizes="64px" />
           </div>
-          <div className="flex-1 min-w-0 flex flex-col items-start">
-            <h3 className="font-serif text-lg sm:text-xl md:text-2xl font-bold text-foreground leading-tight truncate w-full">
-              {character.name} <span className="text-primary text-sm sm:text-base md:text-lg whitespace-nowrap">(Nv. {charLevel})</span>
-            </h3>
-            <p className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 leading-snug line-clamp-2 w-full break-words">
-              {[character.identity, character.origin].filter(Boolean).join(" · ") || "Aventureiro"}
-            </p>
-            <Button size="sm" variant="ghost" className="h-6 px-2 mt-1.5 text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0" onClick={() => setShowLore(true)}>
-              <ScrollText className="size-3 mr-1.5 shrink-0" /> Ler História Completa
-            </Button>
+          <div className="flex-1 min-w-0 flex flex-col items-start cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+            <div className="flex justify-between items-start w-full">
+              <h3 className="font-serif text-lg sm:text-xl md:text-2xl font-bold text-foreground leading-tight truncate">
+                {character.name} <span className="text-primary text-sm sm:text-base md:text-lg whitespace-nowrap">(Nv. {charLevel})</span>
+              </h3>
+            </div>
+
+            {!isExpanded ? (
+              // VIEW COMPACTA
+              <div className="flex flex-col gap-1 mt-1 w-full">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-widest truncate w-full">
+                  {[character.identity, character.origin].filter(Boolean).join(" · ") || "Aventureiro"}
+                </div>
+                <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest mt-1">
+                  <span className="text-[color:var(--hp)] font-bold">HP: {character.resources.hp}/{character.resources.maxHp}</span>
+                  <span className="text-[color:var(--mp)] font-bold">MP: {character.resources.mp}/{character.resources.maxMp}</span>
+                </div>
+              </div>
+            ) : (
+              // VIEW EXPANDIDA
+              <>
+                <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 leading-snug line-clamp-2 w-full break-words">
+                  {[character.identity, character.origin].filter(Boolean).join(" · ") || "Aventureiro"}
+                </div>
+                <Button size="sm" variant="ghost" className="h-6 px-2 mt-1.5 text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0" onClick={(e) => { e.stopPropagation(); setShowLore(true); }}>
+                  <ScrollText className="size-3 mr-1.5 shrink-0" /> Ler História Completa
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
         <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-full border border-border/60 shadow-sm">
-            <Coins className="size-3.5 text-accent" />
-            <span className="font-mono text-xs font-bold text-foreground">{currentZenit} z</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-full border border-border/60 shadow-sm">
+              <Coins className="size-3.5 text-accent" />
+              <span className="font-mono text-xs font-bold text-foreground">{currentZenit} z</span>
+            </div>
+            <button onClick={() => setIsExpanded(!isExpanded)} className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground">
+              <ChevronDown className={`size-5 transition-transform duration-300 ${isExpanded ? "rotate-180 text-primary" : ""}`} />
+            </button>
           </div>
-          {editable && (
-            <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 border-primary/40 text-primary hover:bg-primary/10 transition-colors" onClick={() => setShowTransferModal(true)}>
-              <UserPlus className="size-3 mr-1.5" /> Ceder Controle
-            </Button>
-          )}
+
+          <div className="flex gap-2">
+            {editable && (
+              <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 border-primary/40 text-primary hover:bg-primary/10 transition-colors" onClick={() => setShowTransferModal(true)}>
+                <UserPlus className="size-3 mr-1.5" /> Ceder Controle
+              </Button>
+            )}
+            {/* O BOTÃO ARQUIVAR FICA AQUI */}
+            {isGm && onArchive && (
+              <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors" onClick={() => setShowArchiveConfirm(true)}>
+                <Archive className="size-3 mr-1.5" /> Arquivar
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ABAS */}
-      <div className="flex bg-black/40 rounded-lg p-1 border border-border/40 w-full mb-5 relative z-50">
-        <button onClick={() => setSheetTab('main')} className={`flex-1 text-xs py-2 rounded-md transition-colors ${sheetTab === 'main' ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'text-muted-foreground hover:text-white'}`}>Principal</button>
-        <button onClick={() => setSheetTab('checks')} className={`flex-1 text-xs py-2 rounded-md transition-colors ${sheetTab === 'checks' ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'text-muted-foreground hover:text-white'}`}>Testes e Perícias</button>
-        <button onClick={() => setSheetTab('modifiers')} className={`flex-1 text-xs py-2 rounded-md transition-colors ${sheetTab === 'modifiers' ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'text-muted-foreground hover:text-white flex items-center justify-center gap-1'}`}>
-          Condições {(character as any).customModifiers?.length > 0 && <span className="flex size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold">{(character as any).customModifiers.length}</span>}
-        </button>
-      </div>
-
-      {/* CONTEÚDO DAS ABAS */}
-      {sheetTab === 'main' && (
-        <div className="animate-in fade-in zoom-in-95 duration-200">
-          <div className="bg-black/40 rounded-lg p-3 sm:p-4 border border-border/40">
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest">Experiência (XP)</p>
-              <p className="text-xs sm:text-sm text-primary font-mono font-bold">{currentLevelXp} / {xpRequired}</p>
-            </div>
-            <div className="w-full bg-zinc-800/80 rounded-full h-1.5 sm:h-2 mb-3 sm:mb-4 overflow-hidden">
-              <div className="bg-primary h-1.5 sm:h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${(currentLevelXp / xpRequired) * 100}%` }}></div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {unspentPoints > 0 ? (
-                <Button size="sm" variant="default" disabled={!editable} className="h-8 text-xs animate-pulse bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 shrink-0" onClick={() => setShowLevelUp(true)}>
-                  <TrendingUp className="size-3.5 mr-1.5" /> Classes ({unspentPoints})
-                </Button>
-              ) : <div />}
-              {isGm && (
-                <div className="flex gap-1.5 ml-auto shrink-0">
-                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", -1)}>-1</Button>
-                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 1)}>+1</Button>
-                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 5)}>+5</Button>
-                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 10)}>+10</Button>
-                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 50)}>+50</Button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-5 grid grid-cols-4 gap-2">
-            {ATTR_KEYS.map((k: AttributeKey) => {
-              const isRolling = rollingAttr === k
-              const canUpgradeAttribute = editable && unspentAttrPoints > 0 && character.attributes[k] !== "d12"
-
-              return (
-                <div key={k} className="relative">
-                  <button disabled={!editable || isRolling} onClick={() => rollDice(k, character.attributes[k])} className={`w-full rounded-lg border py-3 text-center transition-all duration-300 ${isRolling ? "animate-bounce border-primary bg-primary/20" : "border-border/60 bg-card/40 hover:-translate-y-1 hover:border-primary/50 hover:bg-card"}`}>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">{ATTRIBUTE_META[k].short}</p>
-                    <p className="font-serif text-xl sm:text-2xl font-black text-primary drop-shadow-sm">{character.attributes[k]}</p>
-                  </button>
-
-                  {canUpgradeAttribute && (
-                    <button onClick={(e) => { e.stopPropagation(); handleUpgradeAttribute(k); }} className="absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md hover:scale-110 transition-transform z-10" title={`Evoluir Atributo (${unspentAttrPoints} sobrando)`}>
-                      <TrendingUp className="size-3" />
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="mt-6 flex flex-col gap-4">
-            <ResourceBar label="Vida" short="HP" icon={<Heart className="size-4" />} current={character.resources.hp} max={character.resources.maxHp} colorVar="--hp" editable={editable} onChange={(d) => patchResource("hp", d)} />
-            <ResourceBar label="Mente" short="MP" icon={<Zap className="size-4" />} current={character.resources.mp} max={character.resources.maxMp} colorVar="--mp" editable={editable} onChange={(d) => patchResource("mp", d)} />
-            <ResourceBar label="Inventario" short="IP" icon={<Backpack className="size-4" />} current={character.resources.ip} max={character.resources.maxIp} colorVar="--ip" editable={editable} onChange={(d) => patchResource("ip", d)} />
-          </div>
-
-          <div className="flex flex-wrap gap-2 mt-5">
-            <div className="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-[color:var(--fp)]/30 bg-[color:var(--fp)]/5 px-3 py-2">
-              <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[color:var(--fp)]"><Sparkles className="size-3.5" /> Fabula</span>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {editable && <button onClick={() => patchResource("fp", -1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-[color:var(--fp)] hover:bg-[color:var(--fp)]/10 transition-colors"><Minus className="size-3" /></button>}
-                <span className="w-5 text-center font-mono text-sm font-bold text-[color:var(--fp)]">{character.resources.fp}</span>
-                {editable && <button onClick={() => patchResource("fp", 1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-[color:var(--fp)] hover:bg-[color:var(--fp)]/10 transition-colors"><Plus className="size-3" /></button>}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden relative z-40">
+            <div className="pt-4 mt-2 border-t border-white/10">
+              
+              {/* ABAS */}
+              <div className="flex bg-black/40 rounded-lg p-1 border border-border/40 w-full mb-5 relative z-50">
+                <button onClick={() => setSheetTab('main')} className={`flex-1 text-xs py-2 rounded-md transition-colors ${sheetTab === 'main' ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'text-muted-foreground hover:text-white'}`}>Principal</button>
+                <button onClick={() => setSheetTab('checks')} className={`flex-1 text-xs py-2 rounded-md transition-colors ${sheetTab === 'checks' ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'text-muted-foreground hover:text-white'}`}>Testes e Perícias</button>
+                <button onClick={() => setSheetTab('modifiers')} className={`flex-1 text-xs py-2 rounded-md transition-colors ${sheetTab === 'modifiers' ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'text-muted-foreground hover:text-white flex items-center justify-center gap-1'}`}>
+                  Condições {(character as any).customModifiers?.length > 0 && <span className="flex size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold">{(character as any).customModifiers.length}</span>}
+                </button>
               </div>
-            </div>
 
-            <div className="flex-1 min-w-[140px] flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors" onClick={() => setShowInventory(true)}>
-                <Package className="size-4 mr-2 shrink-0" /> Mochila
-              </Button>
-
-              <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-accent/30 bg-accent/5 text-accent hover:bg-accent/20 hover:border-accent/50 transition-colors" onClick={() => setShowStore(true)}>
-                <Store className="size-4 mr-2 shrink-0" /> Loja
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-5 border-t border-border/30">
-            <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Habilidades de Classe Ativas</p>
-            <div className="flex flex-col gap-2">
-              {Object.entries(skillsObj).map(([skillId, lvl]) => {
-                const classMatch = CLASSES.find(c => c.skills.some(s => s.id === skillId))
-                const skill = classMatch?.skills.find(s => s.id === skillId)
-                if (!skill || lvl === 0) return null
-
-                const isExpanded = expandedSkillId === skill.id;
-
-                return (
-                  <div key={skill.id} className={`rounded-md border transition-colors overflow-hidden shadow-sm ${isExpanded ? 'border-primary/50 bg-primary/10' : 'border-primary/20 bg-primary/5 hover:border-primary/40'}`}>
-                    <button 
-                      onClick={() => setExpandedSkillId(isExpanded ? null : skill.id)} 
-                      className="flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-primary/5"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-bold transition-colors ${isExpanded ? 'text-primary' : 'text-foreground'}`}>{skill.name}</span>
-                        <span className="opacity-70 font-mono ml-1 text-[10px] text-muted-foreground bg-black/40 px-1.5 py-0.5 rounded">Nv. {lvl as React.ReactNode}</span>
-                      </div>
-                      <ChevronDown className={`size-4 text-muted-foreground transition-transform duration-300 ${isExpanded ? "rotate-180 text-primary" : ""}`} />
-                    </button>
-                    
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <div className="px-3 pb-3 pt-1 border-t border-primary/10 mt-1">
-                            <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                              {formatSkillDescription(skill.description, lvl as number)}
-                            </p>
-                            {skill.action && editable && (
-                              <div className="mt-3 flex justify-end">
-                                <Button size="sm" onClick={() => useSkill(skill)} className="gap-1.5 text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-bold">
-                                  <Zap className="size-3" /> Usar (-{skill.action.cost} {skill.action.resource.toUpperCase()})
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
+              {/* CONTEÚDO DAS ABAS */}
+              {sheetTab === 'main' && (
+                <div className="animate-in fade-in zoom-in-95 duration-200">
+                  <div className="bg-black/40 rounded-lg p-3 sm:p-4 border border-border/40">
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest">Experiência (XP)</p>
+                      <p className="text-xs sm:text-sm text-primary font-mono font-bold">{currentLevelXp} / {xpRequired}</p>
+                    </div>
+                    <div className="w-full bg-zinc-800/80 rounded-full h-1.5 sm:h-2 mb-3 sm:mb-4 overflow-hidden">
+                      <div className="bg-primary h-1.5 sm:h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${(currentLevelXp / xpRequired) * 100}%` }}></div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {unspentPoints > 0 ? (
+                        <Button size="sm" variant="default" disabled={!editable} className="h-8 text-xs animate-pulse bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 shrink-0" onClick={() => setShowLevelUp(true)}>
+                          <TrendingUp className="size-3.5 mr-1.5" /> Classes ({unspentPoints})
+                        </Button>
+                      ) : <div />}
+                      {isGm && (
+                        <div className="flex gap-1.5 ml-auto shrink-0">
+                          <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", -1)}>-1</Button>
+                          <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 1)}>+1</Button>
+                          <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 5)}>+5</Button>
+                          <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 10)}>+10</Button>
+                          <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card" onClick={() => patchResource("xp", 50)}>+50</Button>
+                        </div>
                       )}
-                    </AnimatePresence>
+                    </div>
                   </div>
-                )
-              })}
-              {totalSkillPointsSpent === 0 && (
-                <p className="text-xs text-muted-foreground italic mt-1">Nenhuma habilidade aprendida ainda.</p>
+
+                  <div className="mt-5 grid grid-cols-4 gap-2">
+                    {ATTR_KEYS.map((k: AttributeKey) => {
+                      const isRolling = rollingAttr === k
+                      const canUpgradeAttribute = editable && unspentAttrPoints > 0 && character.attributes[k] !== "d12"
+
+                      return (
+                        <div key={k} className="relative">
+                          <button disabled={!editable || isRolling} onClick={() => rollDice(k, character.attributes[k])} className={`w-full rounded-lg border py-3 text-center transition-all duration-300 ${isRolling ? "animate-bounce border-primary bg-primary/20" : "border-border/60 bg-card/40 hover:-translate-y-1 hover:border-primary/50 hover:bg-card"}`}>
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">{ATTRIBUTE_META[k].short}</p>
+                            <p className="font-serif text-xl sm:text-2xl font-black text-primary drop-shadow-sm">{character.attributes[k]}</p>
+                          </button>
+
+                          {canUpgradeAttribute && (
+                            <button onClick={(e) => { e.stopPropagation(); handleUpgradeAttribute(k); }} className="absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md hover:scale-110 transition-transform z-10" title={`Evoluir Atributo (${unspentAttrPoints} sobrando)`}>
+                              <TrendingUp className="size-3" />
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div className="mt-6 flex flex-col gap-4">
+                    <ResourceBar label="Vida" short="HP" icon={<Heart className="size-4" />} current={character.resources.hp} max={character.resources.maxHp} colorVar="--hp" editable={editable} onChange={(d) => patchResource("hp", d)} />
+                    <ResourceBar label="Mente" short="MP" icon={<Zap className="size-4" />} current={character.resources.mp} max={character.resources.maxMp} colorVar="--mp" editable={editable} onChange={(d) => patchResource("mp", d)} />
+                    <ResourceBar label="Inventario" short="IP" icon={<Backpack className="size-4" />} current={character.resources.ip} max={character.resources.maxIp} colorVar="--ip" editable={editable} onChange={(d) => patchResource("ip", d)} />
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mt-5">
+                    <div className="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-[color:var(--fp)]/30 bg-[color:var(--fp)]/5 px-3 py-2">
+                      <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[color:var(--fp)]"><Sparkles className="size-3.5" /> Fabula</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {editable && <button onClick={() => patchResource("fp", -1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-[color:var(--fp)] hover:bg-[color:var(--fp)]/10 transition-colors"><Minus className="size-3" /></button>}
+                        <span className="w-5 text-center font-mono text-sm font-bold text-[color:var(--fp)]">{character.resources.fp}</span>
+                        {editable && <button onClick={() => patchResource("fp", 1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-[color:var(--fp)] hover:bg-[color:var(--fp)]/10 transition-colors"><Plus className="size-3" /></button>}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 min-w-[140px] flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors" onClick={() => setShowInventory(true)}>
+                        <Package className="size-4 mr-2 shrink-0" /> Mochila
+                      </Button>
+
+                      <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-accent/30 bg-accent/5 text-accent hover:bg-accent/20 hover:border-accent/50 transition-colors" onClick={() => setShowStore(true)}>
+                        <Store className="size-4 mr-2 shrink-0" /> Loja
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 pt-5 border-t border-border/30">
+                    <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Habilidades de Classe Ativas</p>
+                    <div className="flex flex-col gap-2">
+                      {Object.entries(skillsObj).map(([skillId, lvl]) => {
+                        const classMatch = CLASSES.find(c => c.skills.some(s => s.id === skillId))
+                        const skill = classMatch?.skills.find(s => s.id === skillId)
+                        if (!skill || lvl === 0) return null
+
+                        const isExpanded = expandedSkillId === skill.id;
+
+                        return (
+                          <div key={skill.id} className={`rounded-md border transition-colors overflow-hidden shadow-sm ${isExpanded ? 'border-primary/50 bg-primary/10' : 'border-primary/20 bg-primary/5 hover:border-primary/40'}`}>
+                            <button
+                              onClick={() => setExpandedSkillId(isExpanded ? null : skill.id)}
+                              className="flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-primary/5"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={`text-sm font-bold transition-colors ${isExpanded ? 'text-primary' : 'text-foreground'}`}>{skill.name}</span>
+                                <span className="opacity-70 font-mono ml-1 text-[10px] text-muted-foreground bg-black/40 px-1.5 py-0.5 rounded">Nv. {lvl as React.ReactNode}</span>
+                              </div>
+                              <ChevronDown className={`size-4 text-muted-foreground transition-transform duration-300 ${isExpanded ? "rotate-180 text-primary" : ""}`} />
+                            </button>
+
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                >
+                                  <div className="px-3 pb-3 pt-1 border-t border-primary/10 mt-1">
+                                    <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                                      {formatSkillDescription(skill.description, lvl as number)}
+                                    </div>
+                                    {skill.action && editable && (
+                                      <div className="mt-3 flex justify-end">
+                                        <Button size="sm" onClick={() => useSkill(skill)} className="gap-1.5 text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-bold">
+                                          <Zap className="size-3" /> Usar (-{skill.action.cost} {skill.action.resource.toUpperCase()})
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        )
+                      })}
+                      {totalSkillPointsSpent === 0 && (
+                        <p className="text-xs text-muted-foreground italic mt-1">Nenhuma habilidade aprendida ainda.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
+
+              {sheetTab === 'checks' && (
+                <CombinedChecksPanel
+                  character={character}
+                  onRoll={handleCombinedRoll}
+                  rollingAttr={rollingAttr}
+                  disabled={!editable}
+                />
+              )}
+
+              {sheetTab === 'modifiers' && (
+                <ModifiersPanel
+                  character={character}
+                  isGm={isGm}
+                  onUpdate={updateModifiers}
+                />
+              )}
+
+              {isGm && onKill && character.resources.hp <= 0 && (
+                <div className="mt-6 pt-5 border-t border-destructive/50">
+                  <Button
+                    className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2 h-12 text-lg font-bold shadow-[0_0_15px_rgba(255,0,0,0.3)] animate-pulse"
+                    onClick={() => onKill(character)}
+                  >
+                    <Skull className="size-5" /> Confirmar Morte e Recolher Loots
+                  </Button>
+                </div>
+              )}
+
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {sheetTab === 'checks' && (
-        <CombinedChecksPanel
-          character={character}
-          onRoll={handleCombinedRoll}
-          rollingAttr={rollingAttr}
-          disabled={!editable}
-        />
-      )}
-
-      {sheetTab === 'modifiers' && (
-        <ModifiersPanel
-          character={character}
-          isGm={isGm}
-          onUpdate={updateModifiers}
-        />
-      )}
-
-      {isGm && onKill && character.resources.hp <= 0 && (
-        <div className="mt-6 pt-5 border-t border-destructive/50">
-          <Button
-            className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2 h-12 text-lg font-bold shadow-[0_0_15px_rgba(255,0,0,0.3)] animate-pulse"
-            onClick={() => onKill(character)}
-          >
-            <Skull className="size-5" /> Confirmar Morte e Recolher Loots
-          </Button>
-        </div>
-      )}
-
-      {pending && <div className="absolute top-2 right-2 flex items-center gap-2 px-2 py-1 rounded bg-background/80 border border-border/50 backdrop-blur-sm"><Loader2 className="size-3 text-muted-foreground animate-spin" /><span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Sincronizando</span></div>}
+      {pending && <div className="absolute top-0 right-0 rounded-bl-lg rounded-tr-xl flex items-center gap-2 px-3 py-1 bg-primary/20 text-primary border-b border-l border-primary/50 backdrop-blur-sm z-[100]"><Loader2 className="size-3 animate-spin" /><span className="text-[10px] font-bold uppercase tracking-widest">Sincronizando</span></div>}
     </div>
   )
 }
