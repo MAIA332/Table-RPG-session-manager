@@ -248,37 +248,55 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
   )
 }
 
-export function EquipmentStep(props: any) {
-  // Filtramos a lista para exibir apenas itens onde purchasable não seja false
-  const purchasableEquipment = EQUIPMENT.filter((item) => item.purchasable !== false);
+export function EquipmentStep({ equipment, toggle, remaining, spent, isNpc }: any) {
+  // Se for NPC, a lista mostra TUDO. Se for jogador, filtra os itens 'purchasable: false'.
+  const availableEquipment = isNpc 
+    ? EQUIPMENT 
+    : EQUIPMENT.filter((item) => item.purchasable !== false);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h3 className="font-serif text-xl font-bold text-foreground">Equipamento inicial</h3>
-        <span className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${props.remaining < 0 ? "bg-destructive/15 text-destructive" : "bg-accent/15 text-accent"}`}>
-          <Coins className="size-3.5" /> {props.remaining} / {STARTING_ZENIT} zenit
+        
+        {/* Se for NPC, mostra a tag indicando Orçamento Ilimitado com visual vermelho */}
+        <span className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${(remaining < 0 && !isNpc) ? "bg-destructive/15 text-destructive" : (isNpc ? "bg-destructive/15 text-destructive" : "bg-accent/15 text-accent")}`}>
+          <Coins className="size-3.5" /> 
+          {isNpc ? "Mestre (Ilimitado)" : `${remaining} / ${STARTING_ZENIT} zenit`}
         </span>
       </div>
-      {props.remaining < 0 && <p className="text-sm text-destructive">Você ultrapassou o orçamento. Remova algum item.</p>}
+      
+      {/* Alerta de erro de orçamento some se for NPC */}
+      {remaining < 0 && !isNpc && <p className="text-sm text-destructive">Você ultrapassou o orçamento. Remova algum item.</p>}
+      
       <div className="grid gap-2 sm:grid-cols-2">
-        {purchasableEquipment.map((item) => {
-          const selected = props.equipment.includes(item.id)
-          const affordable = selected || props.spent + item.cost <= STARTING_ZENIT
+        {availableEquipment.map((item) => {
+          const selected = equipment.includes(item.id)
+          // Se for NPC, o botão NUNCA é desativado por falta de dinheiro.
+          const affordable = isNpc || selected || spent + item.cost <= STARTING_ZENIT
+          
           return (
             <button 
               key={item.id} 
-              onClick={() => props.toggle(item.id)} 
+              onClick={() => toggle(item.id)} 
               disabled={!affordable} 
-              className={`flex items-center justify-between rounded-sm border p-3 text-left transition-colors disabled:opacity-40 ${selected ? "border-primary bg-primary/10" : "border-border/60 bg-card/40"}`}
+              className={`flex items-center justify-between rounded-sm border p-3 text-left transition-colors disabled:opacity-40 ${selected ? (isNpc ? "border-destructive bg-destructive/10" : "border-primary bg-primary/10") : "border-border/60 bg-card/40 hover:border-primary/50"}`}
             >
               <div>
-                <p className="font-medium text-foreground">{item.name}</p>
-                <p className="text-xs text-muted-foreground">{item.detail}</p>
+                <p className={`font-medium flex items-center gap-2 ${item.purchasable === false ? "text-purple-400" : "text-foreground"}`}>
+                  {item.name}
+                  {/* Etiqueta visual para ajudar o mestre a identificar itens especiais */}
+                  {item.purchasable === false && (
+                    <span className="text-[9px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider font-bold">
+                      Exclusivo
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{item.detail}</p>
               </div>
               <div className="ml-3 flex items-center gap-2 shrink-0">
                 <span className="font-mono text-sm text-accent">{item.cost}z</span>
-                {selected ? <Check className="size-4 text-primary" /> : <span className="size-4" />}
+                {selected ? <Check className={`size-4 ${isNpc ? "text-destructive" : "text-primary"}`} /> : <span className="size-4" />}
               </div>
             </button>
           )
@@ -287,7 +305,6 @@ export function EquipmentStep(props: any) {
     </div>
   )
 }
-
 function TextField({ label, value, onChange, placeholder }: any) {
   return (
     <label className="flex flex-col gap-1.5">
