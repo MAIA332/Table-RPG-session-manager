@@ -122,13 +122,13 @@ export function AttributesStep({ profileId, setProfileId, attributes, customAttr
       {/* Botões dos Perfis + Personalizado */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {ATTRIBUTE_PROFILES.map((p) => (
-          <button key={p.id} onClick={() => setProfileId(p.id)} className={`rounded-lg border p-4 text-left transition-colors ${profileId === p.id ? "border-primary bg-primary/10 border-glow" : "border-border/60 bg-card/40 hover:border-primary/50"}`}>
+          <button key={p.id} onClick={() => setProfileId(p.id)} className={`rounded-sm border-l-2 p-4 text-left transition-colors ${profileId === p.id ? "border-primary bg-primary/10 shadow-inner" : "border-border/60 bg-card/40 hover:border-primary/50"}`}>
             <p className="font-serif font-bold text-foreground">{p.name}</p>
             <p className="mt-1 text-xs text-muted-foreground leading-snug">{p.description}</p>
           </button>
         ))}
         {/* NOVO: Botão Custom */}
-        <button onClick={() => setProfileId("custom")} className={`rounded-lg border p-4 text-left transition-colors ${profileId === "custom" ? "border-primary bg-primary/10 border-glow" : "border-border/60 bg-card/40 hover:border-primary/50"}`}>
+        <button onClick={() => setProfileId("custom")} className={`rounded-sm border-l-2 p-4 text-left transition-colors ${profileId === "custom" ? "border-primary bg-primary/10 shadow-inner" : "border-border/60 bg-card/40 hover:border-primary/50"}`}>
           <p className="font-serif font-bold text-foreground">Personalizado</p>
           <p className="mt-1 text-xs text-muted-foreground leading-snug">Aumente um dado reduzindo outro livremente.</p>
         </button>
@@ -175,7 +175,7 @@ export function AttributesStep({ profileId, setProfileId, attributes, customAttr
         <AnimatePresence>
           {selectedAttr && (
             <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-              <motion.div variants={modalVariants} className="relative w-full max-w-lg rounded-xl border border-primary/40 bg-zinc-950 shadow-2xl flex flex-col overflow-hidden">
+              <motion.div variants={modalVariants} className="rpg-modal relative flex w-full max-w-lg flex-col overflow-hidden border border-primary/40 bg-zinc-950 shadow-2xl">
                 
                 <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
                   <h4 className="font-serif text-2xl font-black text-primary flex items-center gap-3">

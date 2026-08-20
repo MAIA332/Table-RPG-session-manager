@@ -1,79 +1,94 @@
-import { NextResponse } from "next/server";
-import { store, publish } from "@/lib/store";
+import { NextResponse } from "next/server"
+import { getCurrentUser } from "@/lib/auth"
+import { getMemberRole, publish, saveToDisk, store } from "@/lib/store"
 
-// Função para buscar mapas salvos quando a sala carrega
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    // 1. Resolve a promise obrigatória no Next.js 15+
-    const resolvedParams = await params;
-    const campaignId = resolvedParams.id;
-    
-    // 2. Trava de segurança (Hot Reload pode não ter o mapa ainda)
-    if (!store.maps) store.maps = new Map();
+async function getAccess(params: Promise<{ id: string }>) {
+  const user = await getCurrentUser()
+  if (!user) return { error: NextResponse.json({ error: "Não autenticado." }, { status: 401 }) }
 
-    const maps = Array.from(store.maps.values()).filter(m => m.campaignId === campaignId);
-    return NextResponse.json({ maps });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const { id: campaignId } = await params
+  const campaign = store.campaigns.get(campaignId)
+  if (!campaign) return { error: NextResponse.json({ error: "Campanha não encontrada." }, { status: 404 }) }
+
+  const role = getMemberRole(campaign, user.id)
+  if (!role) return { error: NextResponse.json({ error: "Sem acesso à campanha." }, { status: 403 }) }
+
+  return { campaignId, role }
 }
 
-// Função para criar, mover tokens, pintar terreno, deletar e RENOMEAR mapas
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    // 1. Resolve a promise obrigatória no Next.js 15+
-    const resolvedParams = await params;
-    const campaignId = resolvedParams.id;
-    const body = await req.json();
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const access = await getAccess(params)
+  if (access.error) return access.error
 
-    // 2. Trava de segurança contra o erro "Cannot read properties of undefined (reading 'set')"
-    if (!store.maps) store.maps = new Map();
+  const maps = Array.from(store.maps.values()).filter((map) => map.campaignId === access.campaignId)
+  return NextResponse.json({ maps })
+}
 
-    if (body.action === "create") {
-      const newMap = body.map;
-      store.maps.set(newMap.id, newMap);
-      publish(campaignId, { type: "map:created", map: newMap } as any);
-      return NextResponse.json({ success: true, map: newMap });
-    }
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const access = await getAccess(params)
+  if (access.error) return access.error
 
-    if (body.action === "rename") {
-      const map = store.maps.get(body.mapId);
-      if (!map) return NextResponse.json({ error: "Mapa não encontrado" }, { status: 404 });
-      
-      map.name = body.name; // Atualiza o nome
-      publish(campaignId, { type: "map:renamed", mapId: body.mapId, name: body.name } as any);
-      return NextResponse.json({ success: true });
-    }
+  const { campaignId, role } = access
+  const body = await request.json().catch(() => null)
+  const action = String(body?.action ?? "")
 
-    if (body.action === "delete") {
-      store.maps.delete(body.mapId);
-      publish(campaignId, { type: "map:deleted", mapId: body.mapId } as any);
-      return NextResponse.json({ success: true });
-    }
-
-    if (body.action === "update_tokens") {
-      const map = store.maps.get(body.mapId);
-      if (!map) return NextResponse.json({ error: "Mapa não encontrado" }, { status: 404 });
-      
-      if (!map.tokens) map.tokens = {};
-      map.tokens[body.tokenId] = { x: body.x, y: body.y, type: body.tokenType };
-      
-      publish(campaignId, { type: "map:token_moved", mapId: map.id, tokenId: body.tokenId, x: body.x, y: body.y, tokenType: body.tokenType } as any);
-      return NextResponse.json({ success: true });
-    }
-
-    if (body.action === "update_terrain") {
-      const map = store.maps.get(body.mapId);
-      if (!map) return NextResponse.json({ error: "Mapa não encontrado" }, { status: 404 });
-      
-      map.tiles[`${body.tileData.x},${body.tileData.y}`] = body.tileData;
-      publish(campaignId, { type: "map:terrain_updated", mapId: map.id, tileData: body.tileData } as any);
-      return NextResponse.json({ success: true });
-    }
-
-    return NextResponse.json({ error: "Ação inválida" }, { status: 400 });
-  } catch (err: any) {
-    console.error("Erro na API do mapa:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  if (action === "create") {
+    if (role !== "gm") return NextResponse.json({ error: "Apenas o mestre pode importar mapas." }, { status: 403 })
+    if (!body?.map?.id) return NextResponse.json({ error: "Mapa inválido." }, { status: 400 })
+    const newMap = { ...body.map, campaignId }
+    store.maps.set(newMap.id, newMap)
+    saveToDisk(store)
+    publish(campaignId, { type: "map:created", map: newMap } as any)
+    return NextResponse.json({ success: true, map: newMap })
   }
+
+  const map = store.maps.get(String(body?.mapId ?? ""))
+  if (!map || map.campaignId !== campaignId) {
+    return NextResponse.json({ error: "Mapa não encontrado." }, { status: 404 })
+  }
+
+  if (action === "update_tokens") {
+    const tokenId = String(body?.tokenId ?? "")
+    const x = Number(body?.x)
+    const y = Number(body?.y)
+    const tokenType = body?.tokenType
+    if (!tokenId || !Number.isFinite(x) || !Number.isFinite(y) || !["character", "creature"].includes(tokenType)) {
+      return NextResponse.json({ error: "Movimento de token inválido." }, { status: 400 })
+    }
+    if (!map.tokens) map.tokens = {}
+    map.tokens[tokenId] = { x, y, type: tokenType }
+    saveToDisk(store)
+    publish(campaignId, { type: "map:token_moved", mapId: map.id, tokenId, x, y, tokenType } as any)
+    return NextResponse.json({ success: true })
+  }
+
+  if (role !== "gm") return NextResponse.json({ error: "Apenas o mestre pode alterar o mapa." }, { status: 403 })
+
+  if (action === "rename") {
+    map.name = String(body.name ?? "").trim() || map.name
+    saveToDisk(store)
+    publish(campaignId, { type: "map:renamed", mapId: map.id, name: map.name } as any)
+    return NextResponse.json({ success: true })
+  }
+
+  if (action === "delete") {
+    store.maps.delete(map.id)
+    saveToDisk(store)
+    publish(campaignId, { type: "map:deleted", mapId: map.id } as any)
+    return NextResponse.json({ success: true })
+  }
+
+  if (action === "update_terrain") {
+    const tile = body?.tileData
+    if (!tile || !Number.isFinite(Number(tile.x)) || !Number.isFinite(Number(tile.y))) {
+      return NextResponse.json({ error: "Terreno inválido." }, { status: 400 })
+    }
+    if (!map.tiles) map.tiles = {}
+    map.tiles[`${tile.x},${tile.y}`] = tile
+    saveToDisk(store)
+    publish(campaignId, { type: "map:terrain_updated", mapId: map.id, tileData: tile } as any)
+    return NextResponse.json({ success: true })
+  }
+
+  return NextResponse.json({ error: "Ação inválida." }, { status: 400 })
 }

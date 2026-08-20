@@ -22,6 +22,8 @@ export async function POST(
     playerName: body.playerName,
     attribute: body.attribute,
     result: body.result,
+    breakdown: body.breakdown,
+    modifier: body.modifier,
   })
 
   return NextResponse.json({ success: true })

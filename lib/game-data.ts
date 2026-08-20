@@ -1962,6 +1962,188 @@ export const EQUIPMENT: EquipmentItem[] = [
     cost: 500,
     purchasable: false,
     detail: "Um dado irregular de marfim que vibra levemente na palma da mão. O símbolo que cai sempre forma o desenho de um tentáculo fragmentado.\n[BÔNUS: Uma vez por sessão, após causar dano mágico, o usuário pode forçar um inimigo a rerrolar um teste de defesa e ficar com o pior resultado.]\n[LORE: A segunda metade do quarto par do Nexidium. A essência encapsulada do caos extradimensional.]"
+  },
+  {
+    id: "eq-potion-health",
+    name: "Poção de Cura Menor",
+    category: "accessory",
+    cost: 50,
+    purchasable: true,
+    detail:
+      "Um frasco com um líquido vermelho e espesso. Estanca sangramentos e acelera a regeneração celular.\n[BÔNUS: Nenhum]\n[UTILIDADE: Consumível. Restaura 20 HP do alvo ao ser ingerida (ação).]"
+  },
+
+  {
+    id: "eq-potion-mana",
+    name: "Frasco de Éter Purificado",
+    category: "accessory",
+    cost: 50,
+    purchasable: true,
+    detail:
+      "Água da fonte cristalizada misturada com ervas místicas. O líquido brilha suavemente no escuro.\n[BÔNUS: Nenhum]\n[UTILIDADE: Consumível. Restaura 20 MP do alvo ao ser ingerida (ação).]"
+  },
+
+  {
+    id: "eq-potion-insight",
+    name: "Chá de Lótus Focada",
+    category: "accessory",
+    cost: 75,
+    purchasable: true,
+    detail:
+      "Uma infusão amarga que dilata as pupilas e acelera o raciocínio lógico por um curto período.\n[BÔNUS: +2 no próximo teste envolvendo o atributo Intuição (INS)]\n[UTILIDADE: Consumível. O efeito dura até o final da cena.]"
+  },
+
+  {
+    id: "eq-potion-might",
+    name: "Extrato de Sangue de Urso",
+    category: "accessory",
+    cost: 75,
+    purchasable: true,
+    detail:
+      "Poção espessa que ferve levemente. Ao ser bebida, os músculos do usuário incham e a adrenalina dispara.\n[BÔNUS: +2 no próximo teste envolvendo o atributo Vigor (VIG)]\n[UTILIDADE: Consumível. O efeito dura até o final da cena.]"
+  },
+
+  {
+    id: "eq-potion-dexterity",
+    name: "Óleo da Sombra Deslizante",
+    category: "accessory",
+    cost: 75,
+    purchasable: true,
+    detail:
+      "Um líquido acinzentado que deixa os movimentos fluidos, silenciosos e anormalmente precisos.\n[BÔNUS: +2 no próximo teste envolvendo o atributo Destreza (DES)]\n[UTILIDADE: Consumível. O efeito dura até o final da cena.]"
+  },
+
+  {
+    id: "eq-potion-willpower",
+    name: "Vinho de Prata Pura",
+    category: "accessory",
+    cost: 75,
+    purchasable: true,
+    detail:
+      "Uma bebida nobre e raríssima que acalma a mente, afasta o medo e traz clareza absoluta às palavras.\n[BÔNUS: +2 no próximo teste envolvendo o atributo Vontade (VON)]\n[UTILIDADE: Consumível. O efeito dura até o final da cena.]"
+  },
+
+  {
+    id: "eq-panacea",
+    name: "Panaceia Herbal",
+    category: "accessory",
+    cost: 100,
+    purchasable: true,
+    detail:
+      "Um pó verde escuro que deve ser inalado ou misturado em água. Feito de raízes purificadoras.\n[BÔNUS: Nenhum]\n[UTILIDADE: Consumível. Remove imediatamente condições negativas não-mágicas (como Envenenado ou Sangrando).]"
+  },
+
+  // ==========================================================
+  // ARTEFATOS UTILITÁRIOS (Buffs em Testes e Perícias)
+  // ==========================================================
+
+  {
+    id: "eq-art-monocle",
+    name: "Monóculo do Coruja",
+    category: "accessory",
+    cost: 350,
+    purchasable: true,
+    detail:
+      "Uma lente ajustável que destaca impressões digitais, falhas estruturais e fios soltos.\n[BÔNUS: +1 em testes de Investigação e Percepção.]\n[LORE: Muito utilizado pelos detetives particulares e relojoeiros de Vanaheim.]"
+  },
+
+  {
+    id: "eq-art-lucky-coin",
+    name: "Moeda do Falso Tolo",
+    category: "accessory",
+    cost: 300,
+    purchasable: true,
+    detail:
+      "Uma moeda viciada que tem a face do rei dos dois lados, polida repetidas vezes pelas mãos de golpistas.\n[BÔNUS: +1 em testes de Enganação e Prestidigitação.]\n[LORE: O peso e o balanceamento perfeitos facilitam qualquer truque de mão.]"
+  },
+
+  {
+    id: "eq-art-diplomat-brooch",
+    name: "Broche do Embaixador",
+    category: "accessory",
+    cost: 400,
+    purchasable: true,
+    detail:
+      "Um broche elegante forjado com um leve encanto de empatia. Ele faz com que a voz do usuário soe sutilmente mais confiável.\n[BÔNUS: +1 em testes de Diplomacia e Liderança.]\n[LORE: O item básico de qualquer diplomata que preze por resoluções pacíficas (ou manipulações sutis).]"
+  },
+
+  {
+    id: "eq-art-hunter-compass",
+    name: "Bússola de Ossos",
+    category: "accessory",
+    cost: 350,
+    purchasable: true,
+    detail:
+      "Uma bússola estranha onde a agulha repousa sobre um osso polido. Ela não aponta para o Norte, mas para a segurança ou para a caça.\n[BÔNUS: +1 em testes de Orientação e Sobrevivência Selvagem.]\n[LORE: Dizem que as melhores são feitas com ossos de lobos ancestrais.]"
+  },
+
+  {
+    id: "eq-art-iron-grip",
+    name: "Anel da Garra de Ferro",
+    category: "accessory",
+    cost: 300,
+    purchasable: true,
+    detail:
+      "Um anel rústico feito do que parece ser ferro bruto. Ele trava as articulações dos dedos do portador quando é necessário aplicar força.\n[BÔNUS: +1 em testes de Atletismo e Força Bruta.]\n[LORE: Comum entre estivadores, pedreiros e guerreiros de linha de frente.]"
+  },
+
+  {
+    id: "eq-art-healer-gloves",
+    name: "Luvas do Cirurgião",
+    category: "accessory",
+    cost: 350,
+    purchasable: true,
+    detail:
+      "Luvas de couro extremamente finas, tratadas alquimicamente para repelir sujeira e infecções.\n[BÔNUS: +1 em testes de Medicina e Botânica.]\n[LORE: Permite sentir a pulsação e a temperatura do paciente com clareza impecável, ignorando camadas de roupas.]"
+  },
+
+  {
+    id: "eq-art-thief-tools",
+    name: "Gazuas Sincronizadas",
+    category: "accessory",
+    cost: 250,
+    purchasable: true,
+    detail:
+      "Um estojo de ferramentas finas, diapasões de tensão e hastes de torção milimetricamente polidas.\n[BÔNUS: +1 em testes de Arrombamento e Engenharia (ao lidar com armadilhas mecânicas).]"
+  },
+
+  {
+    id: "eq-art-shadow-cloak",
+    name: "Manto das Calçadas",
+    category: "accessory",
+    cost: 450,
+    purchasable: true,
+    detail:
+      "Um capuz com tecido especial que absorve a luz e altera sua textura para se misturar a paredes de pedra e tijolos molhados.\n[BÔNUS: +1 em testes de Furtividade e Sobrevivência Urbana.]\n[LORE: Quando o portador fica imóvel em um beco, ele se torna praticamente uma sombra a mais.]"
+  },
+  {
+    id: "eq-daughter-heart-necklace",
+    name: "Colar de Coração",
+    category: "accessory",
+    cost: 0,
+    purchasable: false,
+    detail:
+      "Um colar delicado de metal escurecido com um pingente em formato de coração. Carrega a lembrança inestimável de uma filha amada.\n[BÔNUS: +3 HP Máximo. O calor dessa lembrança fortalece a vontade de continuar lutando.]\n[LORE: Um artefato pessoal onde o verdadeiro poder não vem da magia, mas do amor que o forjou.]"
+  },
+
+  {
+    id: "eq-heirloom-ruby-ring",
+    name: "Anel de Rubi Escarlate",
+    category: "accessory",
+    cost: 0,
+    purchasable: false,
+    detail:
+      "Um anel elegante com um rubi de corte antigo que parece pulsar sutilmente em repouso.\n[BÔNUS: +1 em testes de Vontade (VON) para resistir a medo, charme ou intimidação.]\n[LORE: Uma joia de herança que concede à mente do portador a mesma dureza e resiliência da pedra.]"
+  },
+
+  {
+    id: "eq-silver-braided-bracelet",
+    name: "Bracelete Trançado",
+    category: "accessory",
+    cost: 0,
+    purchasable: false,
+    detail:
+      "Um bracelete elegante feito de fios de metal puro entrelaçados. Ele se ajusta perfeitamente ao pulso de quem o usa.\n[BÔNUS: +1 Defesa Mágica (DefM). A pureza do material repele passivamente intenções maliciosas.]\n[LORE: Um presente silencioso dado àqueles que precisam trilhar caminhos perigosos sob proteção sutil.]"
   }
 
 ];
@@ -2498,6 +2680,77 @@ export const BESTIARY: Creature[] = [
     spells: [
       "Bloqueio com Escudo (Passiva): Possui escudo pesado, concedendo-lhe Resistência (RS) a dano físico normal.",
       "Proteger Cidadão/Aliado (Reação): 5 PM. Quando um aliado (ou um civil) for sofrer dano físico, este Guarda toma a frente do golpe e sofre apenas metade daquele dano em si mesmo, protegendo o alvo original."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-gorila-infectado",
+    name: "Gorila Infectado",
+    imageUrl: "https://i.redd.it/cordyceps-animals-would-be-terrifying-a-clicker-lion-would-v0-nshid56d3cob1.jpg?width=1170&format=pjpg&auto=webp&s=afad69063ffc28713ebb52fd8d3cf1f98f52d49f",
+    level: 12,
+    species: "Morto-Vivo / Fera",
+    attributes: { dex: "d8", ins: "d6", mig: "d12", wlp: "d10" },
+    maxHp: 95,
+    maxMp: 30,
+    def: 13,
+    mdef: 8,
+    affinities: { physical: "RS", air: "none", bolt: "none", dark: "none", earth: "none", fire: "VU", ice: "none", light: "none", poison: "IM" },
+    basicAttacks: [
+      { 
+        name: "Esmagamento Colossal", 
+        attributes: ["mig", "mig"], 
+        damage: 16, 
+        type: "físico", 
+        description: "Ergue seus braços maciços e golpeia o chão ou o alvo com uma força brutal, ignorando bloqueios leves." 
+      },
+      { 
+        name: "Mordida Fúngica", 
+        attributes: ["dex", "mig"], 
+        damage: 10, 
+        type: "físico", 
+        description: "Morde o alvo com dentes apodrecidos e placas de fungo pulsantes." 
+      }
+    ],
+    spells: [
+      "Blindagem de Cordyceps (Passiva): O fungo endurecido que cobre seu corpo age como uma armadura natural grossa. Ele possui Imunidade (IM) a Veneno e Resistência (RS) a dano Físico, mas é extremamente Vulnerável (VU) a Fogo.",
+      "Nuvem de Esporos: 15 PM. O gorila bate violentamente no próprio peito, liberando uma nuvem de esporos tóxicos. Todos os inimigos próximos sofrem 15 de dano de Veneno e devem passar em um Teste de Vigor (MIG + MIG) ou ficarão com o status [Envenenado].",
+      "Frenesi da Morte (Passiva): Quando o HP desta criatura cai pela metade (Crise), o fungo assume o controle total do sistema nervoso. O Gorila Infectado ganha +5 de dano em todos os ataques básicos, mas sofre -2 em sua Defesa (DEF)."
+    ],
+    equipment: []
+  },
+  {
+    id: "cr-boss-algoz-prisma",
+    name: "O Algoz do Prisma Escuro",
+    imageUrl: "http://zipline.sinapselabs.com.br/u/er4e9c.jpg",
+    level: 15,
+    species: "Monstruosidade / Pesadelo",
+    attributes: { dex: "d6", ins: "d8", mig: "d12", wlp: "d10" },
+    maxHp: 220,
+    maxMp: 60,
+    def: 14,
+    mdef: 10,
+    affinities: { physical: "RS", air: "none", bolt: "none", dark: "IM", earth: "none", fire: "none", ice: "none", light: "VU", poison: "IM" },
+    basicAttacks: [
+      { 
+        name: "Arrastar da Lâmina Colossal", 
+        attributes: ["mig", "mig"], 
+        damage: 20, 
+        type: "físico", 
+        description: "Ele arrasta uma espada grande demais para um humano comum e desfere um golpe horizontal devastador." 
+      },
+      { 
+        name: "Agarrão Sufocante", 
+        attributes: ["mig", "wlp"], 
+        damage: 12, 
+        type: "físico", 
+        description: "Avança com a mão livre para erguer o alvo pelo pescoço." 
+      }
+    ],
+    spells: [
+      "Inexorável (Passiva de Chefe): O Algoz não conhece a pressa ou a fadiga. Ele possui Imunidade a [Envenenado] e [Lento], e **realiza 2 Ações completas por turno**.",
+      "Presença Opressora: 10 PM. O som do metal arrastando e a geometria impossível do seu capacete distorcem a mente. Todos os jogadores devem fazer um Teste de Vontade (WLP + WLP) Dificuldade 11. Quem falhar sofre o status [Abalado] (impede uso de feitiços complexos ou penaliza rolagens mentais).",
+      "Julgamento de Ferro: 20 PM. O Algoz levanta a espada acima da cabeça de forma antinatural e a desce partindo o chão. Causa 25 de dano Físico a um alvo. Se o alvo estiver [Abalado], este golpe ignora qualquer DEF e Resistência (RS) a dano físico da armadura.",
+      "O Peso da Culpa (Passiva de Fase 2): Quando seu HP cai pela metade (Crise - 110 HP), a pressão psicológica atinge o ápice. O Algoz arranca o próprio avental de metal pesado. Sua Defesa Física (DEF) cai para 11, sua Destreza (DEX) muda temporariamente para d10, e todos os seus ataques físicos causam +5 de dano pelo resto do combate."
     ],
     equipment: []
   }

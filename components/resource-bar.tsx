@@ -31,8 +31,8 @@ export function ResourceBar({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between text-sm">
-        <span className="flex items-center gap-1.5 font-medium" style={{ color: `var(${colorVar})` }}>
-          {icon}
+        <span className="flex items-center gap-1.5 font-medium text-foreground">
+          <span className="flex" style={{ color: `var(${colorVar})` }}>{icon}</span>
           {label}
         </span>
         <span className="font-mono tabular-nums text-foreground">
@@ -48,13 +48,12 @@ export function ResourceBar({
           </StepBtn>
         )}
 
-        <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-muted">
+        <div className="rpg-resource-track relative h-3 flex-1 overflow-hidden bg-muted">
           <div
-            className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-out"
+            className="rpg-resource-fill absolute inset-y-0 left-0 transition-[width] duration-300 ease-out"
             style={{
               width: `${pct}%`,
               backgroundColor: `var(${colorVar})`,
-              boxShadow: `0 0 12px var(${colorVar})`,
             }}
           />
         </div>
@@ -83,7 +82,7 @@ function StepBtn({
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground transition-colors hover:border-primary hover:text-primary"
+      className="flex size-6 shrink-0 items-center justify-center rounded-sm border border-border bg-card text-foreground transition-colors hover:border-primary hover:bg-primary/10 hover:text-accent"
     >
       {children}
     </button>

@@ -138,7 +138,7 @@ export function NPCCreator({ onCreated, onCancel }: NPCCreatorProps) {
         ))}
       </div>
 
-      <div className="panel border-glow min-h-[360px] rounded-xl border border-destructive/30 p-6 relative">
+      <div className="panel border-glow relative min-h-[360px] rounded-md border border-destructive/30 p-5 sm:p-6">
         {step === 0 && (
           <EssenceStep name={name} setName={setName} avatarUrl={avatarUrl} setAvatarUrl={setAvatarUrl} origin={origin} setOrigin={setOrigin} identity={identity} setIdentity={setIdentity} theme={theme} setTheme={setTheme} />
         )}

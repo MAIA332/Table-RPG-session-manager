@@ -48,19 +48,19 @@ export function CutsceneManager({ isOpen, onClose, cutscenes, onSave, onPlay }: 
     <AnimatePresence>
       {isOpen && (
         <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden">
-          <motion.div variants={modalVariants} className="relative w-full max-w-4xl h-full max-h-[85vh] rounded-xl border border-primary/50 bg-zinc-950 shadow-2xl flex flex-col">
+          <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col border border-primary/50 bg-zinc-950 shadow-2xl">
             
-            <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/40 shrink-0">
+            <div className="rpg-modal-header flex shrink-0 items-center justify-between border-b border-white/10 p-6">
               <div>
-                <h4 className="font-serif text-2xl font-black text-primary flex items-center gap-2"><Clapperboard className="size-6" /> Gerenciar Cutscenes</h4>
+                <h4 className="font-serif text-2xl font-black flex items-center gap-2"><Clapperboard className="size-6 text-primary" /> <span className="text-foreground">Gerenciar cenas</span></h4>
                 <p className="text-sm text-muted-foreground mt-1">Crie sequências de texto, imagens ou vídeos para narrativa visual.</p>
               </div>
               <button onClick={handleClose} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
             </div>
 
-            <div className="flex-1 overflow-hidden flex">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
                {/* Lista de Cutscenes */}
-               <div className="w-1/3 border-r border-white/10 bg-black/20 p-4 flex flex-col gap-3 overflow-y-auto custom-scrollbar-sepia">
+               <div className="flex max-h-[34%] w-full flex-col gap-3 overflow-y-auto border-b border-white/10 bg-black/20 p-4 custom-scrollbar-sepia md:max-h-none md:w-1/3 md:border-b-0 md:border-r">
                   <Button variant="outline" className="w-full gap-2 border-dashed border-primary/50 text-primary hover:bg-primary/10 h-10" onClick={handleCreateCutscene}>
                      <Plus className="size-4" /> Criar Cutscene
                   </Button>
@@ -86,7 +86,7 @@ export function CutsceneManager({ isOpen, onClose, cutscenes, onSave, onPlay }: 
                {/* Editor de Cenas */}
                <div className="flex-1 p-6 overflow-y-auto custom-scrollbar-sepia">
                   {!editingCutscene ? (
-                     <div className="h-full flex items-center justify-center text-muted-foreground italic text-sm border border-dashed border-white/10 rounded-xl bg-black/20">
+                     <div className="rpg-empty flex h-full items-center justify-center border border-dashed border-white/10 bg-black/20 text-sm italic text-muted-foreground">
                         Selecione uma cutscene para editar.
                      </div>
                   ) : (
@@ -102,7 +102,7 @@ export function CutsceneManager({ isOpen, onClose, cutscenes, onSave, onPlay }: 
                            </div>
                            
                            {editingCutscene.scenes.map((scene, sIdx) => (
-                              <div key={scene.id} className="bg-black/30 border border-white/10 rounded-xl p-4 flex flex-col gap-3 relative group">
+                              <div key={scene.id} className="group relative flex flex-col gap-3 rounded-sm border border-white/10 bg-black/30 p-4">
                                  <button onClick={() => {
                                     const newScenes = editingCutscene.scenes.filter((_, i) => i !== sIdx);
                                     handleUpdateEditing({ ...editingCutscene, scenes: newScenes });

@@ -144,7 +144,7 @@ export function CharacterCreator({ campaignId, onCreated, onCancel }: Props) {
         ))}
       </div>
 
-      <div className="panel border-glow min-h-[360px] rounded-xl border p-6 relative">
+      <div className="panel border-glow relative min-h-[360px] rounded-md border p-5 sm:p-6">
         {step === 0 && (
           <EssenceStep name={name} setName={setName} avatarUrl={avatarUrl} setAvatarUrl={setAvatarUrl} origin={origin} setOrigin={setOrigin} identity={identity} setIdentity={setIdentity} theme={theme} setTheme={setTheme} />
         )}
@@ -159,7 +159,7 @@ export function CharacterCreator({ campaignId, onCreated, onCancel }: Props) {
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-4 rounded-lg border border-border/60 bg-card/40 px-4 py-3 text-sm">
+      <div className="mt-4 flex flex-wrap items-center gap-4 rounded-sm border border-border/60 bg-card/60 px-4 py-3 text-sm shadow-inner">
         <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Previsao</span>
         <span className="flex items-center gap-1.5 text-[color:var(--hp)]"><Heart className="size-4" /> {preview.maxHp} HP</span>
         <span className="flex items-center gap-1.5 text-[color:var(--mp)]"><Zap className="size-4" /> {preview.maxMp} MP</span>

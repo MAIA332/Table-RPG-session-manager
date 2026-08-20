@@ -3,8 +3,9 @@
 import { useState, useEffect, useMemo } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Check, Info, Coins, BookOpenText, ChevronDown, Search, X, Sparkles } from "lucide-react"
+import { Check, Info, Coins, BookOpenText, ChevronDown, Search, X, Sparkles, Heart, Zap, Swords, Save, ArrowLeft, ArrowRight, Loader2 } from "lucide-react"
 import { CLASSES, EQUIPMENT, ORIGIN_SUGGESTIONS, IDENTITY_SUGGESTIONS, THEME_SUGGESTIONS, getEquipment, STARTING_ZENIT, GameClass } from "@/lib/game-data"
+import { Button } from "./ui/button"
 
 const overlayVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 }, exit: { opacity: 0, transition: { duration: 0.2 } } } as any
 const modalVariants = { hidden: { opacity: 0, scale: 0.95, y: 20 }, visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.3 } }, exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } } } as any
@@ -47,12 +48,15 @@ export function EssenceStep(props: any) {
   )
 }
 
-export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels, chosenCount }: any) {
+export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels, chosenCount, isNpc }: any) {
   const [mounted, setMounted] = useState(false)
-  const remaining = 5 - totalLevels
-  const valid = chosenCount >= 2 && chosenCount <= 3 && totalLevels === 5
   
-  const [viewClass, setViewClass] = useState<GameClass | null>(null)
+  // REGRAS DINÂMICAS: NPCs possuem níveis ilimitados; Jogadores seguem a regra do livro.
+  // remaining será 999 se for NPC, evitando que a matemática trave o jogador.
+  const remaining = isNpc ? 999 : 5 - totalLevels
+  const valid = isNpc ? totalLevels > 0 : (chosenCount >= 2 && chosenCount <= 3 && totalLevels === 5)
+  
+  const [viewClass, setViewClass] = useState<any | null>(null)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -76,11 +80,15 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
       <div className="shrink-0 space-y-1">
         <div className="flex items-center justify-between">
           <h3 className="font-serif text-xl font-bold text-foreground">Invista em Habilidades</h3>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${valid ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-            {totalLevels}/5 níveis gastos
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${valid ? (isNpc ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary") : "bg-muted text-muted-foreground"}`}>
+            {isNpc ? `${totalLevels} Nível(is) Gasto(s)` : `${totalLevels}/5 níveis gastos`}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground">Distribua exatamente 5 níveis (máx 3 classes diferentes).</p>
+        <p className="text-sm text-muted-foreground">
+          {isNpc 
+            ? "Mestre, adicione quantos níveis e classes quiser para moldar o poder desta criatura." 
+            : "Distribua exatamente 5 níveis (máx 3 classes diferentes)."}
+        </p>
       </div>
 
       {/* BARRA DE PESQUISA INTELIGENTE */}
@@ -91,7 +99,7 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
           placeholder="Pesquisar classe, arquétipo, habilidade ou efeito..." 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full rounded-lg border border-border/50 bg-black/40 py-2.5 pl-9 pr-10 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-1 focus:ring-primary/50 shadow-inner"
+          className={`w-full rounded-lg border border-border/50 bg-black/40 py-2.5 pl-9 pr-10 text-sm text-foreground outline-none transition-all shadow-inner ${isNpc ? "focus:border-destructive/50 focus:ring-1 focus:ring-destructive/50" : "focus:border-primary/50 focus:ring-1 focus:ring-primary/50"}`}
         />
         {searchQuery && (
           <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
@@ -103,7 +111,7 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
       {/* LISTA SANFONA COM SCROLL */}
       <div className="flex-1 overflow-y-auto custom-scrollbar-sepia pr-2 pb-4 space-y-3 min-h-0">
         {filteredClasses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-muted-foreground border border-dashed border-border/40 rounded-xl bg-card/20">
+          <div className="rpg-empty flex flex-col items-center justify-center border border-dashed border-border/40 bg-card/20 py-10 text-muted-foreground">
             <Search className="size-8 mb-2 opacity-50" />
             <p className="text-sm italic">Nenhuma classe ou habilidade encontrada para "{searchQuery}".</p>
           </div>
@@ -111,14 +119,17 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
           filteredClasses.map((c) => {
             const cLevel = classLevels[c.id] || 0
             const isExpanded = expandedRow === c.id
-            const canAddHere = remaining > 0 && (cLevel > 0 || chosenCount < 3)
+            
+            // CORREÇÃO CRUCIAL:
+            // Se for NPC, sempre pode adicionar habilidades independentemente do total ou do limite de 3 classes.
+            const canAddHere = isNpc ? true : (remaining > 0 && (cLevel > 0 || chosenCount < 3))
 
             return (
-              <div key={c.id} className={`rounded-xl border transition-all duration-200 ${cLevel > 0 ? "border-primary/50 bg-primary/5 shadow-[0_0_15px_rgba(var(--primary),0.05)]" : "border-border/60 bg-card/40 hover:border-primary/30"}`}>
+              <div key={c.id} className={`rounded-sm border-l-2 transition-all duration-200 ${cLevel > 0 ? (isNpc ? "border-destructive bg-destructive/10 shadow-inner" : "border-primary bg-primary/10 shadow-inner") : "border-border/60 bg-card/40 hover:border-primary/50"}`}>
                 <div className="w-full flex items-center justify-between p-4">
                   <button type="button" onClick={() => setViewClass(c as any)} className="text-left group flex-1 pr-4">
-                    <p className="font-serif font-bold text-lg text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
-                      {c.name} {cLevel > 0 && <span className="text-primary text-sm tracking-widest uppercase ml-1">(Nv. {cLevel})</span>}
+                    <p className={`font-serif font-bold text-lg text-foreground transition-colors flex items-center gap-2 ${isNpc ? "group-hover:text-destructive" : "group-hover:text-primary"}`}>
+                      {c.name} {cLevel > 0 && <span className={`${isNpc ? "text-destructive" : "text-primary"} text-sm tracking-widest uppercase ml-1`}>(Nv. {cLevel})</span>}
                       <Info className="size-4 opacity-40 group-hover:opacity-100 transition-opacity" />
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5 uppercase tracking-widest">{c.archetype}</p>
@@ -137,9 +148,9 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
                           return (
                             <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3.5 rounded-lg bg-card/60 border border-border/30 hover:border-border/60 transition-colors">
                               <div className="flex-1 min-w-0">
-                                <p className="font-bold text-sm text-primary flex items-center gap-2">
+                                <p className={`font-bold text-sm flex items-center gap-2 ${isNpc ? "text-destructive" : "text-primary"}`}>
                                   {s.name} 
-                                  {s.action && <span className="text-[9px] uppercase bg-accent/15 text-accent border border-accent/30 px-1.5 py-0.5 rounded tracking-widest">{s.action.cost} {s.action.resource}</span>}
+                                  {s.action && <span className={`text-[9px] uppercase border px-1.5 py-0.5 rounded tracking-widest ${isNpc ? "bg-destructive/15 text-destructive border-destructive/30" : "bg-accent/15 text-accent border-accent/30"}`}>{s.action.cost} {s.action.resource}</span>}
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
                                   {formatSkillDescription(s.description, sLvl)}
@@ -148,7 +159,14 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
                               <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto bg-background/80 p-1 rounded-lg border border-border/50">
                                 <StepButton disabled={sLvl === 0} onClick={() => setSkillLvl(s.id, sLvl - 1, s.maxLevel)}>−</StepButton>
                                 <span className="w-6 text-center font-mono font-bold text-sm">{sLvl}/{s.maxLevel}</span>
-                                <StepButton disabled={sLvl >= s.maxLevel || !canAddHere} onClick={() => setSkillLvl(s.id, sLvl + 1, s.maxLevel)}>+</StepButton>
+                                
+                                {/* BOTÃO '+' DESTRAVADO SE FOR NPC E NÃO EXCEDER O MÁXIMO DA SKILL EM SI */}
+                                <StepButton 
+                                  disabled={sLvl >= s.maxLevel || !canAddHere} 
+                                  onClick={() => setSkillLvl(s.id, sLvl + 1, s.maxLevel)}
+                                >
+                                  +
+                                </StepButton>
                               </div>
                             </div>
                           )
@@ -166,11 +184,11 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
       {mounted && typeof document !== "undefined" && createPortal(
         <AnimatePresence>
           {viewClass && (
-            <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-              <motion.div variants={modalVariants} className="relative w-full max-w-2xl h-full max-h-[85vh] rounded-2xl border border-primary/40 bg-zinc-950 shadow-2xl flex flex-col overflow-hidden">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+              <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} transition={{ duration: 0.3 }} className={`rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden border bg-zinc-950 shadow-2xl ${isNpc ? "border-destructive/40" : "border-primary/40"}`}>
                 <div className="flex justify-between items-center p-6 border-b border-white/5 bg-black/60 shrink-0">
                   <div>
-                    <h2 className="font-serif text-3xl font-black text-primary flex items-center gap-3">
+                    <h2 className={`font-serif text-3xl font-black flex items-center gap-3 ${isNpc ? "text-destructive" : "text-primary"}`}>
                       <BookOpenText className="size-7" /> {viewClass.name}
                     </h2>
                     <p className="text-xs font-bold tracking-widest text-muted-foreground uppercase mt-2">{viewClass.archetype}</p>
@@ -181,33 +199,33 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
                 </div>
 
                 <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar-sepia flex-1">
-                  <p className="text-sm text-foreground/90 bg-white/5 p-4 rounded-xl border border-white/10 leading-relaxed italic">
+                  <p className="rounded-sm border border-white/10 bg-white/5 p-4 text-sm italic leading-relaxed text-foreground/90">
                     "{viewClass.description}"
                   </p>
                   
                   <div className="grid grid-cols-2 gap-3 mt-2">
-                     <div className="bg-black/30 border border-white/5 p-3 rounded-xl text-center">
+                     <div className="rounded-sm border border-white/5 bg-black/30 p-3 text-center">
                         <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Base de HP</span>
                         <p className="text-lg font-mono font-black text-[color:var(--hp)] mt-1">+{viewClass.hpPerLevel} <span className="text-[10px] text-muted-foreground font-sans">/nível</span></p>
                      </div>
-                     <div className="bg-black/30 border border-white/5 p-3 rounded-xl text-center">
+                     <div className="rounded-sm border border-white/5 bg-black/30 p-3 text-center">
                         <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Base de MP</span>
                         <p className="text-lg font-mono font-black text-[color:var(--mp)] mt-1">+{viewClass.mpPerLevel} <span className="text-[10px] text-muted-foreground font-sans">/nível</span></p>
                      </div>
                   </div>
 
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-primary pt-4 pb-2 border-b border-white/5 flex items-center gap-2">
+                  <h3 className={`text-xs font-bold uppercase tracking-widest pt-4 pb-2 border-b border-white/5 flex items-center gap-2 ${isNpc ? "text-destructive" : "text-primary"}`}>
                      <Sparkles className="size-4" /> Todas as Habilidades
                   </h3>
                   <div className="flex flex-col gap-3">
-                    {viewClass.skills.map(skill => (
-                      <div key={skill.id} className="rounded-xl border border-border/40 bg-card/30 p-4 relative overflow-hidden group hover:border-primary/30 transition-colors">
+                    {viewClass.skills.map((skill: any) => (
+                      <div key={skill.id} className={`group relative overflow-hidden rounded-sm border-l-2 bg-card/30 p-4 transition-colors ${isNpc ? "border-destructive/30 hover:border-destructive/60" : "border-primary/30 hover:border-primary/60"}`}>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
                           <h4 className="font-serif font-bold text-foreground text-lg">{skill.name}</h4>
                           <div className="flex items-center gap-2 shrink-0">
                              <span className="text-[10px] font-mono font-bold border border-border/80 px-2 py-0.5 rounded text-muted-foreground">Máx Nv. {skill.maxLevel}</span>
                              {skill.action && (
-                               <span className="text-[10px] font-mono font-bold bg-accent/15 text-accent border border-accent/30 px-2 py-0.5 rounded uppercase tracking-widest">
+                               <span className={`text-[10px] font-mono font-bold border px-2 py-0.5 rounded uppercase tracking-widest ${isNpc ? "bg-destructive/15 text-destructive border-destructive/30" : "bg-accent/15 text-accent border-accent/30"}`}>
                                  {skill.action.cost} {skill.action.resource}
                                </span>
                              )}
@@ -231,6 +249,9 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
 }
 
 export function EquipmentStep(props: any) {
+  // Filtramos a lista para exibir apenas itens onde purchasable não seja false
+  const purchasableEquipment = EQUIPMENT.filter((item) => item.purchasable !== false);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -239,19 +260,24 @@ export function EquipmentStep(props: any) {
           <Coins className="size-3.5" /> {props.remaining} / {STARTING_ZENIT} zenit
         </span>
       </div>
-      {props.remaining < 0 && <p className="text-sm text-destructive">Você ultrapassou o orcamento. Remova algum item.</p>}
+      {props.remaining < 0 && <p className="text-sm text-destructive">Você ultrapassou o orçamento. Remova algum item.</p>}
       <div className="grid gap-2 sm:grid-cols-2">
-        {EQUIPMENT.map((item) => {
+        {purchasableEquipment.map((item) => {
           const selected = props.equipment.includes(item.id)
           const affordable = selected || props.spent + item.cost <= STARTING_ZENIT
           return (
-            <button key={item.id} onClick={() => props.toggle(item.id)} disabled={!affordable} className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors disabled:opacity-40 ${selected ? "border-primary bg-primary/10" : "border-border/60 bg-card/40"}`}>
+            <button 
+              key={item.id} 
+              onClick={() => props.toggle(item.id)} 
+              disabled={!affordable} 
+              className={`flex items-center justify-between rounded-sm border p-3 text-left transition-colors disabled:opacity-40 ${selected ? "border-primary bg-primary/10" : "border-border/60 bg-card/40"}`}
+            >
               <div>
                 <p className="font-medium text-foreground">{item.name}</p>
                 <p className="text-xs text-muted-foreground">{item.detail}</p>
               </div>
-              <div className="ml-3 flex items-center gap-2">
-                <span className="font-mono text-sm text-accent">{item.cost}</span>
+              <div className="ml-3 flex items-center gap-2 shrink-0">
+                <span className="font-mono text-sm text-accent">{item.cost}z</span>
                 {selected ? <Check className="size-4 text-primary" /> : <span className="size-4" />}
               </div>
             </button>
@@ -286,7 +312,7 @@ function SuggestField({ label, hint, value, onChange, suggestions }: any) {
       />
       <div className="flex flex-wrap gap-1.5 mt-1">
         {suggestions.map((s: string) => (
-          <button key={s} type="button" onClick={() => onChange(s)} className="rounded-full border border-border/60 bg-card/40 px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary">
+          <button key={s} type="button" onClick={() => onChange(s)} className="rounded-sm border border-border/60 bg-card/40 px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary">
             {s}
           </button>
         ))}

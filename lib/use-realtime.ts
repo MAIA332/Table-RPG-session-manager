@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import type { RealtimeEvent } from "./types"
 
 // Conecta ao stream SSE da campanha e chama o callback a cada evento recebido.
@@ -8,9 +8,24 @@ export function useRealtime(
   campaignId: string | undefined,
   onEvent: (event: RealtimeEvent) => void,
 ) {
+  const [status, setStatus] = useState<"connecting" | "live" | "reconnecting">("connecting")
+
   useEffect(() => {
     if (!campaignId) return
-    const source = new EventSource(`/api/realtime/${campaignId}`)
+    setStatus("connecting")
+    const connectionId = crypto.randomUUID()
+    const url = `/api/realtime/${campaignId}?connectionId=${encodeURIComponent(connectionId)}`
+    const source = new EventSource(url)
+    let released = false
+
+    const release = () => {
+      if (released) return
+      released = true
+      source.close()
+      void fetch(url, { method: "DELETE", keepalive: true }).catch(() => {})
+    }
+
+    source.onopen = () => setStatus("live")
 
     source.onmessage = (e) => {
       try {
@@ -24,9 +39,15 @@ export function useRealtime(
     }
 
     source.onerror = () => {
-      // o navegador reconecta automaticamente
+      setStatus((current) => current === "live" ? "reconnecting" : "connecting")
     }
 
-    return () => source.close()
+    window.addEventListener("pagehide", release)
+    return () => {
+      window.removeEventListener("pagehide", release)
+      release()
+    }
   }, [campaignId, onEvent])
+
+  return status
 }

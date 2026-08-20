@@ -6,7 +6,7 @@ export default async function CampaignsPage() {
   const user = await getCurrentUser()
   if (!user) redirect("/")
   return (
-    <main className="min-h-dvh">
+    <main className="rpg-page min-h-dvh">
       <CampaignsDashboard userName={user.name} />
     </main>
   )

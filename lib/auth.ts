@@ -1,6 +1,6 @@
 import { cookies } from "next/headers"
 import { createHash, randomBytes } from "crypto"
-import { genId, store } from "./store"
+import { genId, saveToDisk, store } from "./store"
 import type { User } from "./types"
 
 const COOKIE_NAME = "vtt_session"
@@ -22,6 +22,7 @@ export function verifyPassword(password: string, stored: string): boolean {
 export function createSession(userId: string): string {
   const token = genId("sess")
   store.sessions.set(token, { token, userId, createdAt: Date.now() })
+  saveToDisk(store)
   return token
 }
 

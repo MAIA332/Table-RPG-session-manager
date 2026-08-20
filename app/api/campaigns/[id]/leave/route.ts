@@ -1,6 +1,6 @@
 // app/api/campaigns/[id]/leave/route.ts
 import { NextResponse } from "next/server"
-import { store } from "@/lib/store"
+import { deleteCharacterFromStore, saveToDisk, store } from "@/lib/store"
 import { getCurrentUser } from "@/lib/auth"
 
 export async function POST(
@@ -27,7 +27,7 @@ export async function POST(
     // (Opcional) Limpa os personagens associados a essa campanha para não pesar a memória
     for (const [charId, char] of store.characters.entries()) {
       if (char.campaignId === id) {
-        store.characters.delete(charId)
+        deleteCharacterFromStore(charId)
       }
     }
   } else {
@@ -37,10 +37,11 @@ export async function POST(
     // Deleta os personagens desse jogador nesta campanha
     for (const [charId, char] of store.characters.entries()) {
       if (char.campaignId === id && char.ownerId === user.id) {
-        store.characters.delete(charId)
+        deleteCharacterFromStore(charId)
       }
     }
   }
 
+  saveToDisk(store)
   return NextResponse.json({ success: true })
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
@@ -10,13 +10,16 @@ import { apiFetch } from "@/lib/client"
 import { useRealtime } from "@/lib/use-realtime"
 import { CharacterCreator } from "@/components/character-creator"
 import { Button } from "@/components/ui/button"
+import { CharacterPortrait } from "@/components/character-portrait"
+import { DiceRollPresentation, HandRaisePresentation, formatRollLabel, getDiceFromLabel, type DicePresentation, type DiceRollDetails, type HandPresentation } from "@/components/session-effects"
+import { GmPanel } from "@/components/gm-panel"
 
-// IMPORTAÇÕES DO COMPONENTE DE FICHAS (Tudo consolidado!)
+// IMPORTAÇÕES DO COMPONENTE DE FICHAS
 import {
   CharacterSheet,
   CreatureSheet,
   NPCCreator,
-  type NPCDraft // Interface importada para não dar conflito
+  type NPCDraft
 } from "@/components/character-sheet"
 
 import { NpcNursery } from "./npc-nursery"
@@ -32,9 +35,10 @@ import type { Character, Role, Creature, ActiveCreature, AttributeKey, ActivePol
 import {
   ArrowLeft, Crown, Plus, Radio, Shield, Users, DoorOpen, Dices, Gift, X,
   Send, Skull, Target, Heart, Zap, Package, Info, Loader2, Store, Coins,
-  Inbox, Sun, CloudRain, CloudSnow, CloudFog, Cloud, SunMedium, Grid3X3,
+  Inbox, Sun, CloudSun, CloudRainWind, CloudSnow, Cloudy, CloudFog, Sparkles, Grid3X3,
   BarChart2, Clock, Trash2, CheckCircle2, Save, UserPlus, Mic, RefreshCw,
-  Clapperboard, Search, Pencil, Eye, Image as ImageIconLucide,ChevronDown
+  Clapperboard, Search, Pencil, Eye, Image as ImageIcon, ChevronDown,
+  Hand, Volume2, Music, Speaker, BookOpen
 } from "lucide-react"
 
 import { GameMap, TileData } from "@/lib/map-types"
@@ -46,8 +50,9 @@ import { CutsceneManager } from "./cutscene-manager"
 import { CutscenePlayer } from "./cutscene-player"
 import type { Cutscene } from "./cutscene-types"
 
-
 import { Imagepad, SharedImage } from "./imagepad"
+import { Lorebook, type LoreEntry } from "./lorebook"
+
 // ==========================================
 // TIPAGENS & CONSTANTES GLOBAIS DA SALA
 // ==========================================
@@ -81,13 +86,136 @@ type WeatherType = "clear" | "sunny" | "cloudy" | "fog" | "rain" | "blizzard"
 
 const overlayVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 }, exit: { opacity: 0, transition: { duration: 0.2 } } } as any
 const modalVariants = { hidden: { opacity: 0, scale: 0.95, y: 20 }, visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.3 } }, exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } } } as any
+let handRaiseAudioContext: AudioContext | null = null
+
+function clampVolume(value: number) {
+  if (!Number.isFinite(value)) return 0
+  return Math.max(0, Math.min(1, value))
+}
+
+function storeJsonWhenIdle(key: string, value: unknown) {
+  if (typeof window === "undefined") return
+  const write = () => localStorage.setItem(key, JSON.stringify(value))
+  if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(write, { timeout: 800 })
+  else window.setTimeout(write, 0)
+}
+
+function getHandRaiseAudioContext() {
+  if (typeof window === "undefined") return null
+  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+  if (!AudioContextClass) return null
+  if (!handRaiseAudioContext) handRaiseAudioContext = new AudioContextClass()
+  return handRaiseAudioContext
+}
+
+function playHandRaiseSound(volume = 1) {
+  const ctx = getHandRaiseAudioContext()
+  if (!ctx) return
+  if (ctx.state === "suspended") void ctx.resume()
+  const safeVolume = clampVolume(volume)
+  if (safeVolume <= 0) return
+  const now = ctx.currentTime
+
+  const playNote = (start: number, frequency: number, duration: number, peak: number) => {
+    const osc = ctx.createOscillator()
+    const harmonic = ctx.createOscillator()
+    const gain = ctx.createGain()
+    const filter = ctx.createBiquadFilter()
+    osc.type = "triangle"
+    harmonic.type = "sine"
+    filter.type = "lowpass"
+    filter.frequency.setValueAtTime(3600, start)
+    osc.frequency.setValueAtTime(frequency, start)
+    harmonic.frequency.setValueAtTime(frequency * 2, start)
+    gain.gain.setValueAtTime(0.0001, start)
+    gain.gain.exponentialRampToValueAtTime(peak * safeVolume, start + 0.018)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration)
+    osc.connect(filter)
+    harmonic.connect(filter)
+    filter.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start(start)
+    harmonic.start(start)
+    osc.stop(start + duration + 0.02)
+    harmonic.stop(start + duration + 0.02)
+  }
+
+  playNote(now, 880, 0.16, 0.18)
+  playNote(now + 0.14, 1174.66, 0.22, 0.15)
+}
+
+function playDiceRollSound(volume = 1) {
+  const ctx = getHandRaiseAudioContext()
+  if (!ctx) return
+  if (ctx.state === "suspended") void ctx.resume()
+  const safeVolume = clampVolume(volume)
+  if (safeVolume <= 0) return
+  const now = ctx.currentTime
+  const duration = 0.9
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate)
+  const data = buffer.getChannelData(0)
+
+  for (let index = 0; index < data.length; index += 1) {
+    const progress = index / data.length
+    const tumble = 0.3 + Math.abs(Math.sin(progress * 42)) * 0.7
+    data[index] = (Math.random() * 2 - 1) * tumble * Math.pow(1 - progress, 0.7)
+  }
+
+  const source = ctx.createBufferSource()
+  const highpass = ctx.createBiquadFilter()
+  const lowpass = ctx.createBiquadFilter()
+  const gain = ctx.createGain()
+  highpass.type = "highpass"
+  highpass.frequency.setValueAtTime(180, now)
+  lowpass.type = "lowpass"
+  lowpass.frequency.setValueAtTime(2600, now)
+  lowpass.frequency.exponentialRampToValueAtTime(850, now + duration)
+  gain.gain.setValueAtTime(0.0001, now)
+  gain.gain.exponentialRampToValueAtTime(0.15 * safeVolume, now + 0.025)
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration)
+  source.buffer = buffer
+  source.connect(highpass)
+  highpass.connect(lowpass)
+  lowpass.connect(gain)
+  gain.connect(ctx.destination)
+  source.start(now)
+
+    ;[0.08, 0.2, 0.34, 0.51, 0.67, 0.8].forEach((offset, index) => {
+      const click = ctx.createOscillator()
+      const clickGain = ctx.createGain()
+      click.type = "triangle"
+      click.frequency.setValueAtTime(230 - index * 18, now + offset)
+      clickGain.gain.setValueAtTime(0.0001, now + offset)
+      clickGain.gain.exponentialRampToValueAtTime((0.075 - index * 0.007) * safeVolume, now + offset + 0.006)
+      clickGain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.055)
+      click.connect(clickGain)
+      clickGain.connect(ctx.destination)
+      click.start(now + offset)
+      click.stop(now + offset + 0.06)
+    })
+}
 
 // ==========================================
 // COMPONENTE DE CLIMA
 // ==========================================
-const WeatherOverlay = ({ weather }: { weather: WeatherType }) => {
+const rainParticles = Array.from({ length: 96 }, (_, index) => ({
+  left: (index * 37 + 11) % 101,
+  delay: -((index * 19) % 90) / 18,
+  duration: 0.48 + ((index * 7) % 24) / 100,
+  opacity: 0.28 + ((index * 13) % 50) / 100,
+}))
+
+const snowParticles = Array.from({ length: 136 }, (_, index) => ({
+  left: (index * 43 + 7) % 101,
+  delay: -((index * 23) % 140) / 20,
+  duration: 3.2 + ((index * 11) % 28) / 10,
+  size: 3 + ((index * 5) % 7),
+  drift: -18 + ((index * 17) % 37),
+}))
+
+const WeatherOverlay = ({ weather, effectsVolume }: { weather: WeatherType; effectsVolume: number }) => {
   useEffect(() => {
-    if (weather === "clear") return;
+    if (weather === "clear") return
 
     const audioUrls: Record<string, string> = {
       rain: "https://raw.githubusercontent.com/photonstorm/phaser3-examples/master/public/assets/audio/weather/rain.mp3",
@@ -95,102 +223,74 @@ const WeatherOverlay = ({ weather }: { weather: WeatherType }) => {
       sunny: "https://raw.githubusercontent.com/photonstorm/phaser3-examples/master/public/assets/audio/ambiences/outdoor.mp3",
       cloudy: "https://raw.githubusercontent.com/photonstorm/phaser3-examples/master/public/assets/audio/weather/wind.mp3",
       fog: "https://raw.githubusercontent.com/photonstorm/phaser3-examples/master/public/assets/audio/ambiences/cave.mp3"
-    };
+    }
 
-    const url = audioUrls[weather];
-    if (!url) return;
+    const url = audioUrls[weather]
+    if (!url) return
 
-    const audio = new Audio(url);
-    audio.loop = true;
-    audio.volume = (weather === "fog" || weather === "sunny") ? 0.3 : 0.15;
-    audio.play().catch(() => console.log("Interação necessária para áudio de clima tocar."));
+    const audio = new Audio(url)
+    audio.loop = true
+    audio.preload = "auto"
+    const weatherLevel = weather === "rain" || weather === "blizzard" ? 0.22 : 0.14
+    audio.volume = clampVolume(effectsVolume) * weatherLevel
+    void audio.play().catch(() => undefined)
 
     return () => {
-      audio.pause();
-    };
-  }, [weather]);
-
-  if (weather === "clear") return null;
+      audio.pause()
+      audio.src = ""
+    }
+  }, [effectsVolume, weather])
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[5] overflow-hidden">
-      <div className={`absolute inset-0 transition-colors duration-1000 ${weather === "blizzard" ? "bg-slate-200/10" :
-        weather === "fog" ? "bg-zinc-500/30" :
-          weather === "sunny" ? "bg-orange-500/10 mix-blend-overlay" :
-            weather === "cloudy" ? "bg-blue-900/10" :
-              weather === "rain" ? "bg-blue-950/20" : "bg-transparent"
-        }`} />
+    <div className="weather-screen" data-weather={weather} aria-hidden="true">
+      <div className="weather-color-grade" />
 
       {weather === "sunny" && (
-        <motion.div
-          className="absolute -top-[20%] -left-[10%] w-[80vw] h-[80vw] max-w-[800px] max-h-[800px] rounded-full bg-yellow-300/10 blur-[100px]"
-          animate={{ opacity: [0.5, 0.9, 0.5], scale: [1, 1.05, 1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        />
+        <>
+          <div className="weather-sunlight">
+            {Array.from({ length: 5 }, (_, index) => <span key={index} style={{ animationDelay: `${index * -1.3}s` }} />)}
+          </div>
+          <div className="weather-dust-field">
+            {Array.from({ length: 18 }, (_, index) => <span key={index} style={{ left: `${(index * 31 + 9) % 100}%`, top: `${(index * 47 + 13) % 92}%`, animationDelay: `${index * -0.7}s`, animationDuration: `${7 + (index % 6)}s` }} />)}
+          </div>
+        </>
       )}
 
       {weather === "cloudy" && (
-        <>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <motion.div
-              key={`cloud-${i}`}
-              className="absolute w-[400px] h-[120px] bg-white/10 rounded-full blur-[40px]"
-              style={{ top: `${15 + (i * 20)}%` }}
-              initial={{ x: "-100vw" }}
-              animate={{ x: "100vw" }}
-              transition={{ duration: 60 + Math.random() * 40, repeat: Infinity, ease: "linear", delay: i * 5 }}
-            />
-          ))}
-        </>
+        <div className="weather-cloud-field">
+          {Array.from({ length: 5 }, (_, index) => <span key={index} style={{ top: `${8 + index * 18}%`, animationDelay: `${index * -7}s`, animationDuration: `${34 + index * 4}s` }} />)}
+        </div>
       )}
 
       {weather === "fog" && (
-        <>
-          <motion.div
-            className="absolute bottom-0 left-0 w-full h-[60%] bg-zinc-300/10 blur-[60px]"
-            animate={{ x: ["-10%", "10%", "-10%"] }}
-            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <motion.div
-            className="absolute bottom-0 right-0 w-full h-[50%] bg-zinc-400/10 blur-[50px]"
-            animate={{ x: ["10%", "-10%", "10%"] }}
-            transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-          />
-        </>
+        <div className="weather-fog-field">
+          {Array.from({ length: 7 }, (_, index) => <span key={index} style={{ top: `${index * 15 - 8}%`, animationDelay: `${index * -2.1}s`, animationDuration: `${11 + index * 1.4}s` }} />)}
+        </div>
       )}
 
       {weather === "rain" && (
         <>
-          {Array.from({ length: 60 }).map((_, i) => (
-            <motion.div
-              key={`drop-${i}`}
-              className="absolute bg-blue-300/40 w-[2px] h-12 rounded-full"
-              style={{ left: `${Math.random() * 100}%`, top: `-10%` }}
-              animate={{ top: "110%" }}
-              transition={{ duration: 0.3 + Math.random() * 0.3, repeat: Infinity, ease: "linear", delay: Math.random() }}
-            />
-          ))}
-          <motion.div
-            animate={{ opacity: [0, 0, 0.8, 0, 0, 0] }}
-            transition={{ repeat: Infinity, duration: 15, times: [0, 0.9, 0.92, 0.95, 0.98, 1] }}
-            className="absolute inset-0 bg-white/40 mix-blend-overlay"
-          />
+          <div className="weather-cloud-field is-storm">
+            {Array.from({ length: 4 }, (_, index) => <span key={index} style={{ top: `${-2 + index * 11}%`, animationDelay: `${index * -11}s`, animationDuration: `${38 + index * 5}s` }} />)}
+          </div>
+          <div className="weather-rain-field">
+            {rainParticles.map((particle, index) => <span key={index} style={{ left: `${particle.left}%`, opacity: particle.opacity, animationDelay: `${particle.delay}s`, animationDuration: `${particle.duration}s` }} />)}
+            <i className="weather-lightning" />
+          </div>
         </>
       )}
 
       {weather === "blizzard" && (
         <>
-          {Array.from({ length: 100 }).map((_, i) => (
-            <motion.div
-              key={`snow-${i}`}
-              className="absolute bg-white/90 rounded-full"
-              style={{ left: `${Math.random() * 100}%`, top: `-10%`, width: Math.random() * 4 + 2, height: Math.random() * 4 + 2 }}
-              animate={{ top: "110%", left: `+=${Math.random() * 40 - 20}vw` }}
-              transition={{ duration: 1.5 + Math.random() * 2, repeat: Infinity, ease: "linear", delay: Math.random() * 2 }}
-            />
-          ))}
+          <div className="weather-wind-field">
+            {Array.from({ length: 10 }, (_, index) => <span key={index} style={{ top: `${5 + index * 10}%`, animationDelay: `${index * -0.9}s`, animationDuration: `${2.7 + (index % 4) * 0.5}s` }} />)}
+          </div>
+          <div className="weather-snow-field">
+            {snowParticles.map((particle, index) => <span key={index} style={{ left: `${particle.left}%`, width: particle.size, height: particle.size, animationDelay: `${particle.delay}s`, animationDuration: `${particle.duration}s`, "--weather-drift": `${particle.drift}vw` } as any} />)}
+          </div>
         </>
       )}
+      <div className="weather-vignette" />
     </div>
   )
 }
@@ -204,26 +304,19 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [data, setData] = useState(initial)
   const [characters, setCharacters] = useState<Character[]>(initial.characters)
   const [creating, setCreating] = useState(false)
-  const [live, setLive] = useState(false)
+  const [expandedCharacterId, setExpandedCharacterId] = useState<string | null>(null)
   const [leaving, setLeaving] = useState(false)
   const [activeMap, setActiveMap] = useState<GameMap | null>(null)
   const [showMapImporter, setShowMapImporter] = useState(false)
+  const [showBattleGrid, setShowBattleGrid] = useState(false)
 
   // Clima
   const [weather, setWeather] = useState<WeatherType>("clear")
 
-  // Painel de Loot (Catálogo)
+  // Painel de Loot (Catálogo, Custom e Zenits)
   const [showGmPanel, setShowGmPanel] = useState(false)
-  const [gmPanelTab, setGmPanelTab] = useState<"catalog" | "custom">("catalog")
-  const [selectedLoot, setSelectedLoot] = useState<string | null>(null)
-  const [selectedTargetCharId, setSelectedTargetCharId] = useState<string | null>(null)
-  const [sendingLoot, setSendingLoot] = useState(false)
-  const [lootSearchQuery, setLootSearchQuery] = useState("")
 
   // Criador de Itens Úteis (Handouts)
-  const [customItemName, setCustomItemName] = useState("")
-  const [customItemType, setCustomItemType] = useState<"text" | "image" | "video" | "app-blueprints">("text")
-  const [customItemContent, setCustomItemContent] = useState("")
   const [itemNotification, setItemNotification] = useState<string | null>(null)
   const [inventoryToOpen, setInventoryToOpen] = useState<string | null>(null)
 
@@ -263,6 +356,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   // SOUNDPAD STATES
   const [showSoundpad, setShowSoundpad] = useState(false)
   const [activeSounds, setActiveSounds] = useState<ActiveSound[]>([])
+  const [showVolumeMixer, setShowVolumeMixer] = useState(false)
+  const [musicVolume, setMusicVolume] = useState(0.5)
+  const [effectsVolume, setEffectsVolume] = useState(0.75)
+  const [handRaiseCooldown, setHandRaiseCooldown] = useState(false)
+  const [dicePresentations, setDicePresentations] = useState<DicePresentation[]>([])
+  const [handPresentation, setHandPresentation] = useState<HandPresentation | null>(null)
+  const volumeMixerRef = useRef<HTMLDivElement | null>(null)
+  const mapsLoadedFromApiRef = useRef(false)
+  const loreLoadedFromApiRef = useRef(false)
+  const lastActiveMapIdRef = useRef<string | null>(null)
 
   // === CUTSCENES STATES ===
   const [showCutsceneManager, setShowCutsceneManager] = useState(false)
@@ -270,9 +373,18 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [activeCutscene, setActiveCutscene] = useState<Cutscene | null>(null)
   const [activeSceneIndex, setActiveSceneIndex] = useState(0)
 
+  // === GALERIA ARCANA ===
   const [showImagepad, setShowImagepad] = useState(false)
   const [activeFullscreenImage, setActiveFullscreenImage] = useState<string | null>(null)
   const [galleryImages, setGalleryImages] = useState<SharedImage[]>([])
+
+  // === LOREBOOK ===
+  const [showLorebook, setShowLorebook] = useState(false)
+  const [loreEntries, setLoreEntries] = useState<LoreEntry[]>([])
+
+  const [selectedTargetCharId, setSelectedTargetCharId] = useState<string | null>(null)
+  const [sendingLoot, setSendingLoot] = useState(false)
+  const [lootSearchQuery, setLootSearchQuery] = useState("")
 
 
   const isGm = data.role === "gm"
@@ -281,41 +393,99 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   useEffect(() => {
     setMounted(true)
     if (typeof window !== "undefined") {
-      const savedDrafts = localStorage.getItem(`drafts_${data.campaign.id}`)
-      if (savedDrafts) { try { setDraftPolls(JSON.parse(savedDrafts)) } catch (e) { } }
+      lastActiveMapIdRef.current = localStorage.getItem(`last_active_map_${data.campaign.id}`)
+      const loadStoredState = () => {
+        const savedDrafts = localStorage.getItem(`drafts_${data.campaign.id}`)
+        if (savedDrafts) { try { setDraftPolls(JSON.parse(savedDrafts)) } catch (e) { } }
 
-      const savedGallery = localStorage.getItem(`images_${data.campaign.id}`)
-      if (savedGallery) { try { setGalleryImages(JSON.parse(savedGallery)) } catch (e) { } }
+        const savedGallery = localStorage.getItem(`images_${data.campaign.id}`)
+        if (savedGallery) { try { setGalleryImages(JSON.parse(savedGallery)) } catch (e) { } }
 
-      const savedNPCs = localStorage.getItem(`custom_npcs_${data.campaign.id}`)
-      if (savedNPCs) { try { setCustomNPCs(JSON.parse(savedNPCs)) } catch (e) { } }
+        const savedLore = localStorage.getItem(`lore_${data.campaign.id}`)
+        if (savedLore && !loreLoadedFromApiRef.current) { try { setLoreEntries(JSON.parse(savedLore)) } catch (e) { } }
 
-      const savedLoots = localStorage.getItem(`npc_loots_${data.campaign.id}`)
-      if (savedLoots) { try { setNpcLoots(JSON.parse(savedLoots)) } catch (e) { } }
+        const savedNPCs = localStorage.getItem(`custom_npcs_${data.campaign.id}`)
+        if (savedNPCs) { try { setCustomNPCs(JSON.parse(savedNPCs)) } catch (e) { } }
 
-      const savedWeather = localStorage.getItem(`weather_${data.campaign.id}`)
-      if (savedWeather) { setWeather(savedWeather as WeatherType) }
+        const savedLoots = localStorage.getItem(`npc_loots_${data.campaign.id}`)
+        if (savedLoots) { try { setNpcLoots(JSON.parse(savedLoots)) } catch (e) { } }
 
-      const savedCutscenesStr = localStorage.getItem(`cutscenes_${data.campaign.id}`)
-      if (savedCutscenesStr) { try { setCutscenes(JSON.parse(savedCutscenesStr)) } catch (e) { } }
+        const savedWeather = localStorage.getItem(`weather_${data.campaign.id}`)
+        if (savedWeather) { setWeather(savedWeather as WeatherType) }
 
-      const localSavedMaps = localStorage.getItem(`maps_${data.campaign.id}`)
-      const lastActiveMapId = localStorage.getItem(`last_active_map_${data.campaign.id}`)
+        const savedCutscenesStr = localStorage.getItem(`cutscenes_${data.campaign.id}`)
+        if (savedCutscenesStr) { try { setCutscenes(JSON.parse(savedCutscenesStr)) } catch (e) { } }
 
-      if (localSavedMaps) {
-        try {
-          const parsedMaps = JSON.parse(localSavedMaps);
-          setSavedMaps(parsedMaps);
+        const savedMixerStr = localStorage.getItem(`audio_mixer_${data.campaign.id}`)
+        if (savedMixerStr) {
+          try {
+            const savedMixer = JSON.parse(savedMixerStr)
+            if (typeof savedMixer.music === "number") setMusicVolume(clampVolume(savedMixer.music))
+            if (typeof savedMixer.effects === "number") setEffectsVolume(clampVolume(savedMixer.effects))
+          } catch (e) { }
+        }
 
-          // Se o jogador tinha um mapa aberto, reabre ele instantaneamente!
-          if (lastActiveMapId) {
-            const mapToRestore = parsedMaps.find((m: GameMap) => m.id === lastActiveMapId);
-            if (mapToRestore) setActiveMap(mapToRestore);
-          }
-        } catch (e) { }
+        const localSavedMaps = localStorage.getItem(`maps_${data.campaign.id}`)
+
+        if (localSavedMaps && !mapsLoadedFromApiRef.current) {
+          try {
+            const parsedMaps = JSON.parse(localSavedMaps);
+            setSavedMaps(parsedMaps);
+
+            if (lastActiveMapIdRef.current) {
+              const mapToRestore = parsedMaps.find((m: GameMap) => m.id === lastActiveMapIdRef.current);
+              if (mapToRestore) setActiveMap(mapToRestore);
+            }
+          } catch (e) { }
+        }
       }
+
+      if (typeof window.requestIdleCallback === "function") {
+        const idleId = window.requestIdleCallback(loadStoredState, { timeout: 350 })
+        return () => window.cancelIdleCallback(idleId)
+      }
+
+      const timeoutId = window.setTimeout(loadStoredState, 0)
+      return () => window.clearTimeout(timeoutId)
     }
   }, [data.campaign.id])
+
+  useEffect(() => {
+    if (!mounted || typeof window === "undefined") return
+    localStorage.setItem(`audio_mixer_${data.campaign.id}`, JSON.stringify({ music: musicVolume, effects: effectsVolume }))
+  }, [mounted, data.campaign.id, musicVolume, effectsVolume])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const unlockAudio = () => {
+      const ctx = getHandRaiseAudioContext()
+      if (ctx && ctx.state === "suspended") void ctx.resume()
+    }
+    window.addEventListener("pointerdown", unlockAudio, { once: true })
+    window.addEventListener("keydown", unlockAudio, { once: true })
+    return () => {
+      window.removeEventListener("pointerdown", unlockAudio)
+      window.removeEventListener("keydown", unlockAudio)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!showVolumeMixer) return
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null
+      if (target && volumeMixerRef.current?.contains(target)) return
+      setShowVolumeMixer(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowVolumeMixer(false)
+    }
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [showVolumeMixer])
 
   // ==========================================
   // PROTEÇÃO ANTI-CHEAT (Bloqueia F12 e Inspecionar para jogadores)
@@ -373,11 +543,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     apiFetch<{ maps: GameMap[] }>(`/api/campaigns/${data.campaign.id}/maps`)
       .then(res => {
         if (res && res.maps) {
+          mapsLoadedFromApiRef.current = true
           if (res.maps.length > 0) {
             // Se veio mapas do servidor, usamos eles para sincronizar
             const uniqueMaps = Array.from(new Map(res.maps.map(m => [m.id, m])).values());
             setSavedMaps(uniqueMaps);
-            localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(uniqueMaps));
+            storeJsonWhenIdle(`maps_${data.campaign.id}`, uniqueMaps);
 
             // Atualiza os detalhes do mapa ativo se a API trouxe uma versão mais recente
             setActiveMap(prev => {
@@ -385,7 +556,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 const updated = uniqueMaps.find(m => m.id === prev.id);
                 return updated ? updated : prev;
               }
-              return prev;
+              return lastActiveMapIdRef.current ? uniqueMaps.find(m => m.id === lastActiveMapIdRef.current) ?? null : null;
             });
           } else if (isGm) {
             // Se for o mestre e veio vazio, então a campanha não tem nenhum mapa criado ainda.
@@ -394,6 +565,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           }
           // ATENÇÃO: Se for jogador e a API retornar [], não fazemos nada! 
           // Isso preserva os mapas cacheados recebidos por WebSocket.
+        }
+      })
+      .catch(() => { })
+
+    apiFetch<{ lore: LoreEntry[] }>(`/api/campaigns/${data.campaign.id}/lore`)
+      .then(res => {
+        if (res && res.lore && res.lore.length > 0) {
+          loreLoadedFromApiRef.current = true
+          setLoreEntries(res.lore);
+          storeJsonWhenIdle(`lore_${data.campaign.id}`, res.lore);
         }
       })
       .catch(() => { })
@@ -472,10 +653,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     apiFetch(`/api/campaigns/${data.campaign.id}/sound`, { method: "POST", body: JSON.stringify({ action: "stop_all" }) });
   }, [data.campaign.id]);
 
-
   const handleEvent = useCallback((event: any) => {
-    setLive(true)
-
     // Clima Persistente
     if (event.type === "weather:change" || event.eventType === "weather:change" || event.action === "weather:change") {
       const w = event.weather;
@@ -501,8 +679,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       });
       return;
     }
-
-
 
     // Mapa Renomeado
     if (event.type === "map:renamed") {
@@ -590,6 +766,18 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     if (event.type === "dice:roll") {
       const attr = String(event.attribute || "");
 
+      if (attr === "PLAYER_HAND_RAISED") {
+        const playerName = event.playerName || event.characterName || "Jogador";
+        const characterName = event.characterName || playerName;
+        const noticeId = String(event.result || `${event.playerName}-${Date.now()}`);
+        setHandPresentation({ id: noticeId, characterName, playerName });
+        window.setTimeout(() => {
+          setHandPresentation(current => current?.id === noticeId ? null : current);
+        }, 3600);
+        if (isGm) playHandRaiseSound(effectsVolume);
+        return;
+      }
+
       if (attr.startsWith("SYNC_WEATHER:")) {
         const newWeather = attr.split(":")[1] as WeatherType;
         setWeather(newWeather);
@@ -676,12 +864,56 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         return;
       }
 
+      if (attr === "SYNC_LORE:UPDATE") {
+        try {
+          const synced = JSON.parse(String(event.result));
+          setLoreEntries(synced);
+          localStorage.setItem(`lore_${data.campaign.id}`, JSON.stringify(synced));
+        } catch (e) { }
+        return;
+      }
+
+      if (attr.includes("SYNC_GALLERY:UPDATE")) {
+        try {
+          const synced = JSON.parse(String(event.result));
+          setGalleryImages(synced);
+          localStorage.setItem(`images_${data.campaign.id}`, JSON.stringify(synced));
+        } catch (e) { }
+        return;
+      }
+
+      if (attr.includes("SYNC_LORE:UPDATE")) {
+        try {
+          const synced = JSON.parse(String(event.result));
+          setLoreEntries(synced);
+          localStorage.setItem(`lore_${data.campaign.id}`, JSON.stringify(synced));
+        } catch (e) { }
+        return;
+      }
+
+      const effectId = `${event.characterId || "roll"}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      playDiceRollSound(effectsVolume);
+      const presentation: DicePresentation = {
+        id: effectId,
+        characterName: event.characterName || "Rolagem",
+        playerName: event.playerName || "Jogador",
+        attribute: attr,
+        result: event.result,
+        dice: getDiceFromLabel(attr),
+        breakdown: event.breakdown,
+        modifier: event.modifier
+      };
+      setDicePresentations((prev) => [...prev, presentation].slice(-2));
+      window.setTimeout(() => {
+        setDicePresentations((prev) => prev.filter((effect) => effect.id !== effectId));
+      }, 4300);
+
       setHistory((prev) => [{
-        id: Math.random().toString(36).substring(7),
+        id: effectId,
         type: "roll" as const,
         title: event.characterName,
         subtitle: event.playerName,
-        detail: event.attribute,
+        detail: `${event.attribute}${event.breakdown ? ` ${event.breakdown}` : ""}${event.modifier ? ` · Mod: ${event.modifier > 0 ? "+" : ""}${event.modifier}` : ""}`,
         result: event.result,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }, ...prev].slice(0, 50));
@@ -719,9 +951,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         default: return prev
       }
     })
-  }, [data.campaign.id, data.me.id])
+  }, [data.campaign.id, data.me.id, effectsVolume, isGm])
 
-  useRealtime(data.campaign.id, handleEvent)
+  const realtimeStatus = useRealtime(data.campaign.id, handleEvent)
+  const live = realtimeStatus === "live"
 
   const applyOptimistic = useCallback((c: Character) => setCharacters((prev) => prev.map((x) => {
     if (x.id === c.id) {
@@ -820,9 +1053,30 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     })
   }
 
-  function handleBroadcastRoll(characterOrCreatureName: string, attrName: string, result: number | string) {
+  function handleBroadcastRoll(characterOrCreatureName: string, attrName: string, result: number | string, details?: DiceRollDetails) {
     apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-      method: "POST", body: JSON.stringify({ characterId: 'sys', characterName: characterOrCreatureName, playerName: data.me.name, attribute: attrName, result })
+      method: "POST", body: JSON.stringify({ characterId: 'sys', characterName: characterOrCreatureName, playerName: data.me.name, attribute: attrName, result, breakdown: details?.breakdown, modifier: details?.modifier })
+    }).catch(console.error)
+  }
+
+  function handleRaiseHand() {
+    if (isGm || handRaiseCooldown) return
+    const noticeId = `${data.me.id}-${Date.now()}`
+    const characterName = characters.find((character) => character.ownerId === data.me.id)?.name || data.me.name
+    playHandRaiseSound(effectsVolume)
+    setHandPresentation({ id: noticeId, characterName, playerName: data.me.name })
+    setHandRaiseCooldown(true)
+    window.setTimeout(() => setHandPresentation(current => current?.id === noticeId ? null : current), 3600)
+    window.setTimeout(() => setHandRaiseCooldown(false), 5000)
+    apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+      method: "POST",
+      body: JSON.stringify({
+        characterId: data.me.id,
+        characterName,
+        playerName: data.me.name,
+        attribute: "PLAYER_HAND_RAISED",
+        result: noticeId
+      })
     }).catch(console.error)
   }
 
@@ -859,7 +1113,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       setCharacters(prev => prev.filter(c => c.id !== character.id));
       if (selectedCombatCharId === character.id) setSelectedCombatCharId(null);
 
-      alert(`O personagem ${character.name} foi arquivado e agora está disponível no Berçário de NPCs!`);
+      alert(`O personagem ${character.name} foi arquivado e agora está disponível no Berçário!`);
 
     } catch (err: any) {
       console.error("Falha ao arquivar o personagem.", err);
@@ -977,72 +1231,64 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     }
   }
 
-  async function handleGiveLoot() {
-    if (!selectedTargetCharId) return alert("Selecione um alvo.");
+  const handleGiveZenits = async (targetId: string, amount: number) => {
+    const targetCharacter = characters.find(c => c.id === targetId);
+    if (!targetCharacter) return;
+    const newZenit = (targetCharacter.zenit || 0) + amount;
 
-    setSendingLoot(true)
-    try {
-      const targetCharacter = characters.find(c => c.id === selectedTargetCharId)
+    const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, {
+      method: "PATCH", body: JSON.stringify({ zenit: newZenit })
+    });
+    applyOptimistic(updated);
 
-      if (gmPanelTab === 'custom') {
-        if (!customItemName || (!customItemContent && customItemType !== 'app-blueprints')) {
-          setSendingLoot(false);
-          return alert("Preencha o nome e o conteúdo da Relíquia.");
-        }
-        if (customItemType === 'app-blueprints' && targetCharacter) {
-          const gadgetsLevel = targetCharacter.skills["ti-gadgets"] || 0;
+    apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+      method: "POST", body: JSON.stringify({
+        characterId: 'sys_zenits', characterName: targetCharacter.name,
+        playerName: 'Mestre', attribute: `RECEBEU ZENITS`, result: `+${amount}z`
+      })
+    }).catch(console.error);
+  }
 
-          if (gadgetsLevel === 0) {
-            setSendingLoot(false);
-            return alert(`O personagem ${targetCharacter.name} não possui a perícia 'Aparelhos' (Classe: Inventor). Não é possível equipar o Almanaque Magitech.`);
-          }
-        }
-        if (targetCharacter) {
-          const newItem: CustomItem = {
-            id: Math.random().toString(36).substring(2, 9),
-            name: customItemName,
-            type: customItemType as any,
-            content: customItemContent
-          };
-          const currentCustom = (targetCharacter as any).customItems || [];
-          const updatedCustomItems = [...currentCustom, newItem];
+  const handleGiveCustomItem = async (targetId: string, name: string, type: string, content: string) => {
+    const targetCharacter = characters.find(c => c.id === targetId);
+    if (!targetCharacter) return;
 
-          const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, {
-            method: "PATCH", body: JSON.stringify({ customItems: updatedCustomItems })
-          })
+    const newItem: CustomItem = { id: Math.random().toString(36).substring(2, 9), name, type: type as any, content };
+    const updatedCustomItems = [...((targetCharacter as any).customItems || []), newItem];
 
-          applyOptimistic({ ...updated, customItems: updatedCustomItems } as any);
-          setCustomItemName("")
-          setCustomItemContent("")
+    const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, {
+      method: "PATCH", body: JSON.stringify({ customItems: updatedCustomItems })
+    });
+    applyOptimistic({ ...updated, customItems: updatedCustomItems } as any);
 
-          apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-            method: "POST", body: JSON.stringify({ characterId: 'sys_item', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_ITEM_GIVEN`, result: JSON.stringify({ charId: targetCharacter.id, character: { ...updated, customItems: updatedCustomItems }, itemName: newItem.name }) })
-          }).catch(console.error);
+    apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+      method: "POST", body: JSON.stringify({
+        characterId: 'sys_item', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_ITEM_GIVEN`,
+        result: JSON.stringify({ charId: targetCharacter.id, character: { ...updated, customItems: updatedCustomItems }, itemName: newItem.name })
+      })
+    }).catch(console.error);
+  }
 
-        }
-      } else {
-        if (!selectedLoot) {
-          setSendingLoot(false);
-          return alert("Selecione um item do catálogo.");
-        }
-        const targetCreature = activeCreatures.find(c => c.instanceId === selectedTargetCharId)
-        if (targetCharacter) {
-          const newEquipment = [...targetCharacter.equipment, selectedLoot]
-          const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, { method: "PATCH", body: JSON.stringify({ equipment: newEquipment }) })
-          applyOptimistic(updated)
+  const handleGiveSystemItem = async (targetId: string, itemId: string) => {
+    const targetCharacter = characters.find(c => c.id === targetId);
+    const targetCreature = activeCreatures.find(c => c.instanceId === targetId);
 
-          const itemObj = getEquipment(selectedLoot);
-          apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-            method: "POST", body: JSON.stringify({ characterId: 'sys_item', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_ITEM_GIVEN`, result: JSON.stringify({ charId: targetCharacter.id, character: updated, itemName: itemObj?.name || 'Novo Equipamento' }) })
-          }).catch(console.error);
+    if (targetCharacter) {
+      const newEquipment = [...targetCharacter.equipment, itemId];
+      const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, { method: "PATCH", body: JSON.stringify({ equipment: newEquipment }) });
+      applyOptimistic(updated);
 
-        } else if (targetCreature) {
-          const newEquipment = [...((targetCreature as any).equipment || []), selectedLoot]
-          updateCreatureVital(targetCreature.instanceId, { equipment: newEquipment } as any)
-        }
-        setSelectedLoot(null)
-      }
-    } catch (err) { alert("Erro ao enviar.") } finally { setSendingLoot(false) }
+      const itemObj = getEquipment(itemId);
+      apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+        method: "POST", body: JSON.stringify({
+          characterId: 'sys_item', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_ITEM_GIVEN`,
+          result: JSON.stringify({ charId: targetCharacter.id, character: updated, itemName: itemObj?.name || 'Novo Equipamento' })
+        })
+      }).catch(console.error);
+    } else if (targetCreature) {
+      const newEquipment = [...((targetCreature as any).equipment || []), itemId];
+      updateCreatureVital(targetCreature.instanceId, { equipment: newEquipment } as any);
+    }
   }
 
   async function handleGiveDroppedLoot() {
@@ -1198,6 +1444,36 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     } catch (err) { setLeaving(false) }
   }
 
+  const handleSaveLoreEntries = useCallback(async (newEntries: LoreEntry[]) => {
+    // 1. Atualiza estado e LocalStorage para resposta imediata
+    setLoreEntries(newEntries);
+    localStorage.setItem(`lore_${data.campaign.id}`, JSON.stringify(newEntries));
+
+    if (isGm) {
+      // 2. Avisa os jogadores online via WebSocket (o que você já tinha)
+      apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+        method: "POST",
+        body: JSON.stringify({
+          characterId: 'sys_lore',
+          characterName: 'Sistema',
+          playerName: 'Mestre',
+          attribute: `SYNC_LORE:UPDATE`,
+          result: JSON.stringify(newEntries)
+        })
+      }).catch(console.error);
+
+      // 3. NOVO: Salva definitivamente no banco de dados!
+      try {
+        await apiFetch(`/api/campaigns/${data.campaign.id}/lore`, {
+          method: "POST",
+          body: JSON.stringify({ entries: newEntries })
+        });
+      } catch (err) {
+        console.error("Erro ao persistir Lorebook no banco de dados", err);
+      }
+    }
+  }, [data.campaign.id, isGm]);
+
   const myCharacters = characters.filter((c) => c.ownerId === data.me.id)
   const otherCharacters = characters.filter((c) => c.ownerId !== data.me.id)
   const isCombatActive = activeCreatures.length > 0;
@@ -1212,19 +1488,22 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     c.species.toLowerCase().includes(bestiarySearchQuery.toLowerCase())
   )
 
-  if (creating) {
-    return (
-      <div className="mx-auto max-w-4xl px-6 py-8">
-        <h1 className="mb-6 font-serif text-2xl font-black text-foreground">Forjar seu Heroi</h1>
-        <CharacterCreator campaignId={data.campaign.id} onCancel={() => setCreating(false)} onCreated={(c) => { setCharacters((prev) => prev.some((x) => x.id === c.id) ? prev : [...prev, c]); setCreating(false) }} />
-      </div>
-    )
-  }
-
   return (
-    <div className="mx-auto max-w-[1500px] px-4 md:px-6 py-8 h-screen flex flex-col">
+    <div className="rpg-page mx-auto flex min-h-dvh max-w-[1680px] flex-col px-3 py-4 sm:px-4 md:h-screen md:px-6 md:py-6">
       {mounted && createPortal(
         <>
+          <AnimatePresence initial={false}>
+            {creating && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="fixed inset-0 z-[500] overflow-y-auto bg-background/95 backdrop-blur-sm">
+                <div className="rpg-page mx-auto max-w-4xl px-5 py-8 sm:px-6">
+                  <span className="rpg-kicker mb-3">Registro de viajante</span>
+                  <h1 className="rpg-title mb-6 text-2xl font-black">Forjar viajante</h1>
+                  <CharacterCreator campaignId={data.campaign.id} onCancel={() => setCreating(false)} onCreated={(c) => { setCharacters((prev) => prev.some((x) => x.id === c.id) ? prev : [...prev, c]); setCreating(false) }} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {activeMap && (
             <BattlemapEngine
               mapData={activeMap}
@@ -1249,7 +1528,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             )}
           </AnimatePresence>
 
-          <WeatherOverlay weather={weather} />
+          <WeatherOverlay weather={weather} effectsVolume={effectsVolume} />
 
           <AnimatePresence>
             {hoveredImage && (
@@ -1304,11 +1583,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           <AnimatePresence>
             {showPollModal && (
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-                <motion.div variants={modalVariants} className="relative w-full max-w-lg h-full max-h-[85vh] rounded-xl border border-primary/50 bg-zinc-950 shadow-2xl flex flex-col">
+                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-lg flex-col border border-primary/50 bg-zinc-950 shadow-2xl">
 
                   <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
                     <div>
-                      <h4 className="font-serif text-2xl font-black text-primary flex items-center gap-2"><BarChart2 className="size-6" /> Gerenciar Enquetes</h4>
+                      <h4 className="font-serif text-2xl font-black flex items-center gap-2"><BarChart2 className="size-6 text-primary" /> <span className="text-foreground">Gerenciar enquetes</span></h4>
                       <p className="text-sm text-muted-foreground mt-1">Crie votações ou lance enquetes salvas para o grupo.</p>
                     </div>
                     <button onClick={() => setShowPollModal(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
@@ -1386,230 +1665,25 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             )}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {showGmPanel && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 overflow-hidden">
-                <motion.div variants={modalVariants} className="relative w-full max-w-4xl h-full max-h-[90vh] rounded-2xl border border-accent/30 bg-[#0a0a0a] shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden">
-                  
-                  {/* HEADER */}
-                  <div className="flex justify-between items-center p-6 border-b border-white/5 bg-black/60 shrink-0 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent/50 to-transparent"></div>
-                    <div>
-                      <h4 className="font-serif text-2xl font-black text-accent flex items-center gap-3">
-                        <Gift className="size-6" /> Baú do Mestre
-                      </h4>
-                      <p className="text-sm text-muted-foreground mt-1">Forje relíquias ou distribua itens do compêndio para o grupo.</p>
-                    </div>
-                    <button onClick={() => setShowGmPanel(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors border border-white/5"><X className="size-5 text-muted-foreground hover:text-white" /></button>
-                  </div>
-
-                  <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1 flex flex-col gap-8 relative">
-                    
-                    {/* TABS DO BAÚ */}
-                    <div className="flex bg-black/50 rounded-xl p-1.5 border border-white/5 w-full mx-auto max-w-md shrink-0 shadow-inner">
-                      <button onClick={() => { setGmPanelTab('catalog'); setSelectedLoot(null); }} className={`flex-1 text-sm py-2.5 rounded-lg transition-all duration-300 font-semibold ${gmPanelTab === 'catalog' ? 'bg-accent text-black shadow-md' : 'text-muted-foreground hover:text-white hover:bg-white/5'}`}>Itens de Sistema</button>
-                      <button onClick={() => { setGmPanelTab('custom'); setSelectedLoot(null); }} className={`flex-1 text-sm py-2.5 rounded-lg transition-all duration-300 font-semibold ${gmPanelTab === 'custom' ? 'bg-accent text-black shadow-md' : 'text-muted-foreground hover:text-white hover:bg-white/5'}`}>Criar Relíquia (Custom)</button>
-                    </div>
-
-                    <div className="flex flex-col gap-6">
-                      {/* PASSO 1: O QUÊ? */}
-                      <div className="flex flex-col gap-3">
-                        <h5 className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-2">
-                          <span className="bg-accent text-black size-5 flex items-center justify-center rounded-full">1</span> 
-                          {gmPanelTab === 'catalog' ? "Escolha o Item" : "Forjar Nova Relíquia"}
-                        </h5>
-
-                        {gmPanelTab === 'catalog' ? (
-                          <div className="bg-black/40 border border-white/5 rounded-xl p-4 shadow-inner">
-                            <div className="relative mb-4">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                              <input type="text" placeholder="Buscar no compêndio..." value={lootSearchQuery} onChange={(e) => setLootSearchQuery(e.target.value)} className="w-full bg-[#111] border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all" />
-                            </div>
-                            
-                            <div className="grid gap-3 sm:grid-cols-2 max-h-[320px] overflow-y-auto pr-2 custom-scrollbar-sepia">
-                              {filteredLoot.map((item) => {
-                                const isSelected = selectedLoot === item.id;
-                                return (
-                                  <button
-                                    key={item.id}
-                                    // AQUI ESTÁ A CORREÇÃO DO TOGGLE:
-                                    onClick={() => setSelectedLoot(isSelected ? null : item.id)}
-                                    className={`flex flex-col text-left p-4 rounded-xl border transition-all duration-300 overflow-hidden group ${
-                                      isSelected
-                                        ? 'border-accent bg-accent/5 shadow-[0_0_20px_rgba(var(--accent-rgb, 212,175,55),0.1)]'
-                                        : 'border-white/5 bg-[#161616] hover:border-white/20 hover:bg-[#1a1a1a]'
-                                    }`}
-                                  >
-                                    <div className="flex justify-between items-start w-full gap-2">
-                                      <div className="flex flex-col items-start gap-1.5">
-                                        <p className={`font-bold text-sm transition-colors ${isSelected ? 'text-accent' : 'text-foreground group-hover:text-accent/80'}`}>
-                                          {item.name}
-                                        </p>
-                                        <div className="flex items-center gap-1.5">
-                                          {(item as any).type && (
-                                            <span className="text-[9px] bg-black/60 text-muted-foreground px-2 py-0.5 rounded-full border border-white/5 uppercase tracking-widest">
-                                              {(item as any).type}
-                                            </span>
-                                          )}
-                                          {(item as any).purchasable === false && (
-                                            <span className="text-[9px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold">
-                                              Exclusivo
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-2 shrink-0">
-                                        <span className="text-[10px] font-mono text-accent/80 border border-accent/20 px-2 py-1 rounded-md bg-accent/5">
-                                          {item.cost}z
-                                        </span>
-                                        <ChevronDown className={`size-4 text-muted-foreground transition-transform duration-300 ${isSelected ? 'rotate-180 text-accent' : ''}`} />
-                                      </div>
-                                    </div>
-
-                                    <AnimatePresence>
-                                      {isSelected && (
-                                        <motion.div
-                                          initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                                          animate={{ opacity: 1, height: "auto", marginTop: 16 }}
-                                          exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                                          className="border-t border-accent/20 pt-4 flex flex-col gap-3 w-full"
-                                        >
-                                          <p className="text-xs text-muted-foreground leading-relaxed">
-                                            {(item as any).detail || "Sem descrição."}
-                                          </p>
-
-                                          <div className="flex flex-wrap gap-2 mt-1">
-                                            {(item as any).damage && <span className="text-[10px] font-mono bg-destructive/10 text-red-300 px-2 py-1 rounded border border-destructive/20">Dano: {(item as any).damage}</span>}
-                                            {(item as any).defense && <span className="text-[10px] font-mono bg-blue-500/10 text-blue-300 px-2 py-1 rounded border border-blue-500/20">DEF: {(item as any).defense}</span>}
-                                            {(item as any).mdef && <span className="text-[10px] font-mono bg-indigo-500/10 text-indigo-300 px-2 py-1 rounded border border-indigo-500/20">M.DEF: {(item as any).mdef}</span>}
-                                            {(item as any).bonus && <span className="text-[10px] font-mono bg-green-500/10 text-green-300 px-2 py-1 rounded border border-green-500/20">Bônus: {(item as any).bonus}</span>}
-                                            {(item as any).effect && <span className="text-[10px] font-mono bg-amber-500/10 text-amber-300 px-2 py-1 rounded border border-amber-500/20">Efeito: {(item as any).effect}</span>}
-                                          </div>
-                                        </motion.div>
-                                      )}
-                                    </AnimatePresence>
-                                  </button>
-                                );
-                              })}
-                              {filteredLoot.length === 0 && (
-                                <div className="col-span-2 py-8 flex flex-col items-center justify-center text-muted-foreground border border-dashed border-white/5 rounded-xl">
-                                  <Package className="size-8 opacity-20 mb-2" />
-                                  <p className="text-sm">Nenhum item encontrado no compêndio.</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-4 border border-white/5 rounded-xl p-5 bg-black/40 shadow-inner">
-                            <input type="text" value={customItemName} onChange={e => setCustomItemName(e.target.value)} placeholder="Nome do Item (Ex: Carta do Rei)" className="w-full bg-[#111] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all" />
-
-                            <select value={customItemType} onChange={e => setCustomItemType(e.target.value as any)} className="w-full bg-[#111] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-foreground focus:outline-none focus:border-accent/50 transition-all">
-                              <option value="text">Pergaminho / Carta (Texto Escrito)</option>
-                              <option value="image">Magia de Fótons (Imagem via URL)</option>
-                              <option value="video">Orbe da Lembrança (Vídeo do YouTube)</option>
-                              <option value="app-blueprints">Interface: Almanaque Magitech</option>
-                            </select>
-
-                            {customItemType === 'text' ? (
-                              <textarea value={customItemContent} onChange={e => setCustomItemContent(e.target.value)} placeholder="Escreva o conteúdo da carta aqui..." rows={4} className="w-full bg-[#111] border border-white/10 rounded-lg py-3 px-4 text-sm text-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all custom-scrollbar-sepia resize-none" />
-                            ) : customItemType === 'app-blueprints' ? (
-                              <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg text-xs text-blue-200 flex gap-3 items-center">
-                                <Info className="size-5 shrink-0 text-blue-400" />
-                                Este item instalará um mini-aplicativo na mochila do jogador. Necessita da classe Inventor.
-                              </div>
-                            ) : (
-                              <input type="text" value={customItemContent} onChange={e => setCustomItemContent(e.target.value)} placeholder={`Cole a URL ${customItemType === 'video' ? 'do Youtube' : 'da Imagem'} aqui...`} className="w-full bg-[#111] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all" />
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* PASSO 2: PARA QUEM? */}
-                      <div className={`flex flex-col gap-3 transition-opacity duration-300 ${(selectedLoot || gmPanelTab === 'custom') ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                        <h5 className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-2">
-                          <span className="bg-accent text-black size-5 flex items-center justify-center rounded-full">2</span> 
-                          Destinatário (Inventário)
-                        </h5>
-                        
-                        <div className="grid gap-3 sm:grid-cols-3 bg-black/40 border border-white/5 rounded-xl p-4 shadow-inner max-h-[200px] overflow-y-auto custom-scrollbar-sepia">
-                          {characters.map((c) => {
-                            const owner = data.members.find(m => m.userId === c.ownerId);
-                            const isSelected = selectedTargetCharId === c.id;
-                            return (
-                              <button
-                                key={c.id}
-                                onClick={() => setSelectedTargetCharId(c.id)}
-                                className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 ${
-                                  isSelected
-                                    ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.15)]'
-                                    : 'border-white/5 bg-[#161616] hover:border-white/20 hover:bg-[#1a1a1a]'
-                                }`}
-                              >
-                                <div className={`size-10 rounded-full border overflow-hidden shrink-0 ${isSelected ? 'border-primary' : 'border-white/10'}`}>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={c.avatarUrl || "/mystic-adventurer-portrait.png"} alt="" className="w-full h-full object-cover" />
-                                </div>
-                                <div className="flex flex-col items-start min-w-0">
-                                  <p className="font-serif font-bold text-sm text-foreground truncate w-full text-left">{c.name}</p>
-                                  <p className="text-[9px] text-muted-foreground uppercase tracking-widest mt-0.5 truncate w-full text-left">{owner?.name || "Desconhecido"}</p>
-                                </div>
-                              </button>
-                            );
-                          })}
-                          
-                          {/* Criaturas (apenas para itens de catálogo) */}
-                          {gmPanelTab === 'catalog' && activeCreatures.map((c) => (
-                            <button
-                              key={c.instanceId}
-                              onClick={() => setSelectedTargetCharId(c.instanceId)}
-                              className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 ${
-                                selectedTargetCharId === c.instanceId
-                                  ? 'border-destructive bg-destructive/10 shadow-[0_0_15px_rgba(255,0,0,0.15)]'
-                                  : 'border-white/5 bg-[#161616] hover:border-destructive/30 hover:bg-[#1a1a1a]'
-                              }`}
-                            >
-                               <div className={`size-10 rounded-full border overflow-hidden shrink-0 ${selectedTargetCharId === c.instanceId ? 'border-destructive' : 'border-white/10'}`}>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={c.imageUrl || "/mystic-adventurer-portrait.png"} alt="" className="w-full h-full object-cover grayscale" />
-                                </div>
-                                <div className="flex flex-col items-start min-w-0">
-                                  <p className="font-serif font-bold text-sm text-destructive truncate w-full text-left">{c.name}</p>
-                                  <p className="text-[9px] text-destructive/60 uppercase tracking-widest mt-0.5 truncate w-full text-left">Na Mesa</p>
-                                </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-
-                  {/* FOOTER */}
-                  <div className="p-6 border-t border-white/5 bg-black/60 flex justify-between gap-4 shrink-0 relative overflow-hidden">
-                    <Button variant="ghost" className="text-muted-foreground hover:text-white" onClick={() => setShowGmPanel(false)}>Cancelar</Button>
-                    <Button 
-                      size="lg"
-                      className="gap-2 bg-accent text-black hover:bg-accent/90 font-bold px-8 shadow-[0_0_20px_rgba(var(--accent-rgb, 212,175,55),0.3)] transition-all disabled:opacity-50 disabled:shadow-none" 
-                      disabled={(!selectedLoot && gmPanelTab === 'catalog') || !selectedTargetCharId || sendingLoot} 
-                      onClick={handleGiveLoot}
-                    >
-                      {sendingLoot ? <span className="animate-pulse flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Enviando...</span> : <><Send className="size-4" /> {gmPanelTab === 'custom' ? "Entregar Relíquia" : "Entregar Item"}</>}
-                    </Button>
-                  </div>
-
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <GmPanel
+            isOpen={showGmPanel}
+            onClose={() => setShowGmPanel(false)}
+            characters={characters}
+            activeCreatures={activeCreatures}
+            members={data.members}
+            onGiveZenits={handleGiveZenits}
+            onGiveCustomItem={handleGiveCustomItem}
+            onGiveSystemItem={handleGiveSystemItem}
+          />
 
           <AnimatePresence>
             {showDroppedLoots && (
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-                <motion.div variants={modalVariants} className="relative w-full max-w-3xl h-full max-h-[85vh] rounded-xl border border-accent/50 bg-zinc-950 shadow-2xl flex flex-col">
+                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-3xl flex-col border border-accent/50 bg-zinc-950 shadow-2xl">
                   {/* Header */}
                   <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
                     <div>
-                      <h4 className="font-serif text-2xl font-black text-accent flex items-center gap-2"><Inbox className="size-6" /> Loots Caídos (NPCs)</h4>
+                      <h4 className="font-serif text-2xl font-black flex items-center gap-2"><Inbox className="size-6 text-accent" /> <span className="text-foreground">Loots (NPCs)</span></h4>
                       <p className="text-sm text-muted-foreground mt-1">Gerencie e distribua os itens que caíram de inimigos derrotados.</p>
                     </div>
                     <button onClick={() => setShowDroppedLoots(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
@@ -1675,7 +1749,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   <div className="p-6 border-t border-border/50 bg-black/40 flex justify-end gap-3 shrink-0">
                     <Button variant="ghost" onClick={() => setShowDroppedLoots(false)}>Fechar</Button>
                     <Button className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90" disabled={!selectedDroppedLoot || !selectedTargetCharId || sendingLoot} onClick={handleGiveDroppedLoot}>
-                      {sendingLoot ? <span className="animate-pulse">Enviando...</span> : <><Send className="size-4" /> Distribuir Loot</>}
+                      {sendingLoot ? <span className="animate-pulse">Enviando...</span> : <><Send className="size-4" /> Distribuir itens</>}
                     </Button>
                   </div>
                 </motion.div>
@@ -1686,10 +1760,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           <AnimatePresence>
             {showBestiary && (
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden">
-                <motion.div variants={modalVariants} className="relative w-full max-w-6xl h-full bg-zinc-950 border border-destructive/50 rounded-xl shadow-2xl flex flex-col overflow-hidden">
-                  <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/40 shrink-0">
-                    <h4 className="font-serif text-2xl md:text-3xl font-black text-destructive flex items-center gap-3"><Skull className="size-6 md:size-8" /> Bestiário do Mestre</h4>
-                    <button onClick={() => setShowBestiary(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 md:size-6 text-muted-foreground hover:text-white" /></button>
+                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full w-full max-w-6xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl">
+                  <div className="flex justify-between items-center gap-4 p-6 border-b border-white/10 bg-black/40 shrink-0">
+                    <h4 className="font-serif text-2xl md:text-3xl font-black flex items-center gap-3"><Skull className="size-6 text-destructive md:size-8" /> <span className="text-foreground">Bestiário do Mestre</span></h4>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button onClick={() => setShowBestiary(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 md:size-6 text-muted-foreground hover:text-white" /></button>
+                    </div>
                   </div>
                   <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
                     <div className="lg:w-1/3 border-r border-border/40 p-4 flex flex-col gap-4 bg-black/20">
@@ -1772,9 +1848,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       character={c}
                       editable={isGm || c.ownerId === data.me.id}
                       isGm={isGm}
+                      isOwned={c.ownerId === data.me.id}
                       campaignMembers={data.members}
                       onOptimistic={applyOptimistic}
-                      onRoll={(attr: string, res: number | string) => handleBroadcastRoll(c.name, attr, res)}
+                      onRoll={(attr: string, res: number | string, details?: DiceRollDetails) => handleBroadcastRoll(c.name, attr, res, details)}
                       onKill={isGm ? handleKillNPC : undefined}
                       shouldOpenInventory={inventoryToOpen === c.id}
                       onClearInventoryRequest={() => setInventoryToOpen(null)}
@@ -1783,6 +1860,21 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   ))}
                 </div>
               </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* LOREBOOK MODAL */}
+          <AnimatePresence>
+            {showLorebook && (
+              <Lorebook
+                isOpen={showLorebook}
+                onClose={() => setShowLorebook(false)}
+                isGm={isGm}
+                myUserId={data.me.id}
+                campaignMembers={data.members}
+                entries={loreEntries}
+                onSaveEntries={handleSaveLoreEntries}
+              />
             )}
           </AnimatePresence>
 
@@ -1802,6 +1894,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       isGm={isGm}
                       campaignId={data.campaign.id}
                       activeSounds={activeSounds}
+                      musicVolume={musicVolume}
+                      effectsVolume={effectsVolume}
+                      onMusicVolumeChange={setMusicVolume}
+                      onEffectsVolumeChange={setEffectsVolume}
                       onPlaySound={handlePlaySound}
                       onStopSound={handleStopSound}
                       onStopAll={handleStopAllSounds}
@@ -1812,11 +1908,50 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             )}
           </AnimatePresence>
 
+          {/* GALERIA ARCANA MODALS */}
+          <AnimatePresence>
+            {showImagepad && (
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 sm:p-8 overflow-hidden">
+                <motion.div variants={modalVariants} className="relative w-full max-w-6xl h-[85vh] min-h-[600px] flex flex-col bg-transparent">
+                  <div className="flex-1 w-full h-full rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/10">
+                    <Imagepad
+                      isGm={isGm}
+                      images={galleryImages}
+                      onUpdateImages={(newImages) => {
+                        setGalleryImages(newImages);
+                        localStorage.setItem(`images_${data.campaign.id}`, JSON.stringify(newImages));
+                        if (isGm) {
+                          apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+                            method: "POST", body: JSON.stringify({ characterId: 'sys_gallery', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_GALLERY:UPDATE`, result: JSON.stringify(newImages) })
+                          }).catch(console.error);
+                        }
+                      }}
+                      onShowImage={handleImageClick}
+                      onClose={() => setShowImagepad(false)}
+                    />
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {activeFullscreenImage && (
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed inset-0 z-[400] flex items-center justify-center bg-black/95 backdrop-blur-lg p-4 md:p-12">
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <button onClick={() => setActiveFullscreenImage(null)} className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full z-10 transition-colors"><X className="size-8 text-white" /></button>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={activeFullscreenImage} className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-xl border border-white/10" alt="Visualização Expandida" />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* NOTA IMPORTANTE: Para os jogadores escutarem mesmo com o Modal Fechado, 
               injetamos a engine "invisível" caso não seja GM e o modal não estiver aberto */}
           {!showSoundpad && (
             <div className="hidden">
-              <Soundpad isGm={false} campaignId={data.campaign.id} activeSounds={activeSounds} />
+              <Soundpad isGm={false} campaignId={data.campaign.id} activeSounds={activeSounds} musicVolume={musicVolume} effectsVolume={effectsVolume} />
             </div>
           )}
 
@@ -1858,36 +1993,87 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         document.body
       )}
 
+      {mounted && createPortal(
+        <>
+          {dicePresentations.map((effect) => <DiceRollPresentation key={effect.id} effect={effect} />)}
+          {handPresentation && <HandRaisePresentation key={handPresentation.id} effect={handPresentation} />}
+        </>,
+        document.body
+      )}
+
       {/* HEADER DA SALA */}
-      <header className="mb-6 shrink-0 flex flex-wrap items-center justify-between gap-4 relative z-50">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/campaigns")} aria-label="Voltar" className="text-muted-foreground"><ArrowLeft className="size-5" /></Button>
-          <div>
-            <h1 className="font-serif text-xl md:text-2xl font-black text-foreground">{data.campaign.name}</h1>
-            <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground">
+      <header className="rpg-cartography campaign-cartography relative z-40 mb-5 flex shrink-0 flex-wrap items-center justify-between gap-4 px-3 py-3 sm:px-4">
+        <div className="flex min-h-16 items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.push("/campaigns")} aria-label="Voltar" className="rpg-cartography-action"><ArrowLeft className="size-5" /></Button>
+          <div className="campaign-heading flex min-h-14 flex-col justify-center">
+            <span className="rpg-cartography-kicker">Sessão</span>
+            <h1 className="rpg-title rpg-cartography-title text-xl font-black md:text-2xl">{data.campaign.name}</h1>
+            <div className="rpg-cartography-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm">
               <span className="font-mono">#{data.campaign.code}</span>
-              <span className={`inline-flex items-center gap-1 ${live ? "text-primary" : "text-muted-foreground"}`}><Radio className={`size-3.5 ${live ? "animate-pulse" : ""}`} />{live ? "Ao vivo" : "Conectando..."}</span>
+              <span className="campaign-connection inline-flex items-center gap-1" data-state={realtimeStatus}><Radio className={`size-3.5 ${live ? "animate-pulse" : ""}`} />{live ? "Ao vivo" : realtimeStatus === "reconnecting" ? "Reconectando..." : "Conectando..."}</span>
 
               {/* WIDGET DO CLIMA ATUAL */}
-              <span className="inline-flex items-center gap-1.5 ml-2 border-l border-border/50 pl-3 transition-colors">
-                {weather === "clear" && <><Sun className="size-4 text-yellow-500 animate-[spin_15s_linear_infinite]" /> Limpo</>}
-                {weather === "sunny" && <><SunMedium className="size-4 text-orange-400 animate-pulse" /> Ensolarado</>}
-                {weather === "cloudy" && <><Cloud className="size-4 text-gray-400" /> Nublado</>}
-                {weather === "fog" && <><CloudFog className="size-4 text-zinc-400" /> Neblina</>}
-                {weather === "rain" && <><CloudRain className="size-4 text-blue-400" /> Chovendo</>}
-                {weather === "blizzard" && <><CloudSnow className="size-4 text-white animate-pulse" /> Nevasca</>}
+              <span className="campaign-current-weather inline-flex items-center gap-1.5 border-l border-border/50 pl-2 transition-colors">
+                {weather === "clear" && <><CloudSun className="size-4 text-[#c8ae79]" /> Limpo</>}
+                {weather === "sunny" && <><Sun className="size-4 text-[#c49a5f]" /> Ensolarado</>}
+                {weather === "cloudy" && <><Cloudy className="size-4 text-[#a9b0ae]" /> Nublado</>}
+                {weather === "fog" && <><CloudFog className="size-4 text-[#b8b2a6]" /> Neblina</>}
+                {weather === "rain" && <><CloudRainWind className="size-4 text-[#94aeba]" /> Chovendo</>}
+                {weather === "blizzard" && <><CloudSnow className="size-4 text-[#d9ddd9]" /> Nevasca</>}
               </span>
             </div>
           </div>
         </div>
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs md:text-sm font-medium ${isGm ? "bg-accent/15 text-accent" : "bg-primary/15 text-primary"}`}>
-          {isGm ? <Crown className="size-4" /> : <Shield className="size-4" />} {isGm ? "Mestre de Jogo" : "Jogador"}
-        </span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="relative" ref={volumeMixerRef}>
+            <Button variant="outline" size="sm" className="rpg-cartography-action h-9 gap-2" onClick={() => setShowVolumeMixer(value => !value)} aria-expanded={showVolumeMixer}>
+              <Volume2 className="size-4" /> Mixer
+            </Button>
+            <AnimatePresence>
+              {showVolumeMixer && (
+                <motion.div initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.98 }} className="rpg-modal rpg-volume-mixer absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(90vw,280px)] rounded-md border border-primary/30 bg-background/95 p-4 text-foreground shadow-2xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Áudio da Mesa</span>
+                    <button type="button" onClick={() => setShowVolumeMixer(false)} className="rounded-md p-1 text-muted-foreground hover:bg-white/10 hover:text-foreground" aria-label="Fechar mixer">
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="block">
+                      <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+                        <span className="rpg-mixer-label flex items-center gap-2 font-semibold"><Music className="size-4" /> Música de fundo</span>
+                        <span className="font-mono text-muted-foreground">{Math.round(musicVolume * 100)}%</span>
+                      </div>
+                      <input type="range" min="0" max="1" step="0.05" value={musicVolume} onChange={(e) => setMusicVolume(clampVolume(parseFloat(e.target.value)))} className="w-full h-1.5 cursor-pointer appearance-none rounded-lg bg-muted" style={{ accentColor: 'var(--primary)' }} />
+                    </label>
+                    <label className="block">
+                      <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+                        <span className="rpg-mixer-label flex items-center gap-2 font-semibold"><Speaker className="size-4" /> Efeitos sonoros</span>
+                        <span className="font-mono text-muted-foreground">{Math.round(effectsVolume * 100)}%</span>
+                      </div>
+                      <input type="range" min="0" max="1" step="0.05" value={effectsVolume} onChange={(e) => setEffectsVolume(clampVolume(parseFloat(e.target.value)))} className="w-full h-1.5 cursor-pointer appearance-none rounded-lg bg-muted" style={{ accentColor: 'var(--accent)' }} />
+                    </label>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {!isGm && (
+            <Button size="sm" className="h-9 gap-2 bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-60" onClick={handleRaiseHand} disabled={handRaiseCooldown}>
+              <Hand className="size-4" /> {handRaiseCooldown ? "Enviado" : "Levantar a mão"}
+            </Button>
+          )}
+
+          <span className="rpg-cartography-chip inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold md:text-sm">
+            {isGm ? <Crown className="size-4" /> : <Shield className="size-4" />} {isGm ? "Mestre" : "Jogador"}
+          </span>
+        </div>
       </header>
 
       {/* ÁREA PRINCIPAL DA SALA */}
       <div className="flex-1 flex flex-col min-h-0 relative z-10">
-        <div className="grid gap-6 xl:grid-cols-[1fr_320px] h-full min-h-0">
+        <div className="grid h-full min-h-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
 
           <div className="flex flex-col min-h-0 h-full overflow-hidden">
             {isCombatActive ? (
@@ -1950,9 +2136,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   <div className="flex flex-wrap gap-4 mt-6">
                     {characters.map(char => (
                       <button key={char.id} onClick={() => setSelectedCombatCharId(char.id)} className="flex items-center gap-3 bg-zinc-950 border border-border/50 rounded-lg p-3 w-[240px] hover:border-primary/50 transition-colors text-left group">
-                        <div className="relative size-10 rounded border border-primary/30 overflow-hidden shrink-0 group-hover:shadow-[0_0_10px_rgba(var(--primary),0.3)] transition-shadow pointer-events-auto cursor-zoom-in" onMouseEnter={() => setHoveredImage(char.avatarUrl || "/mystic-adventurer-portrait.png")} onMouseLeave={() => setHoveredImage(null)}>
-                          <Image src={char.avatarUrl || "/mystic-adventurer-portrait.png"} alt="Retrato" fill className="object-cover" />
-                        </div>
+                        <CharacterPortrait src={char.avatarUrl} alt={`Retrato de ${char.name}`} frame={char.portraitFrame} className="size-10 shrink-0 cursor-zoom-in pointer-events-auto" sizes="40px" onMouseEnter={() => setHoveredImage(char.avatarUrl || "/mystic-adventurer-portrait.png")} onMouseLeave={() => setHoveredImage(null)} />
                         <div className="flex-1 min-w-0">
                           <p className="font-serif text-sm font-bold text-foreground truncate">{char.name}</p>
                           <div className="flex gap-2 mt-1">
@@ -1966,23 +2150,23 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 </div>
               </div>
             ) : (
-              <div className="overflow-y-auto custom-scrollbar-sepia h-full pr-2">
+              <div className="rpg-character-scroll h-full overflow-y-auto px-1 py-1 custom-scrollbar-sepia">
                 <section className="mb-8">
                   <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{isGm ? "Personagens do Mestre" : "Meus herois"}</h2>
+                    <h2 className="rpg-section-title">{isGm ? "Viajantes do Mestre" : "Meus viajantes"}</h2>
 
                     <div className="flex gap-2">
                       {isGm && (
-                        <Button size="sm" variant="outline" onClick={() => setShowNursery(true)} className="h-8 gap-1.5 border-destructive/50 text-destructive hover:bg-destructive/10 backdrop-blur-sm">
-                          <UserPlus className="size-4" /> Berçário
+                        <Button size="sm" variant="outline" className="rpg-bestiary-nursery h-8 gap-1.5" onClick={() => setShowNursery(true)}>
+                          <UserPlus className="size-4" /> <span className="text-foreground">Berçário</span>
                         </Button>
                       )}
-                      <Button size="sm" onClick={() => setCreating(true)} className="h-8 gap-1.5 backdrop-blur-sm"><Plus className="size-4" /> Novo heroi</Button>
+                      <Button size="sm" onClick={() => setCreating(true)} className="h-8 gap-1.5 backdrop-blur-sm"><Plus className="size-4" /> Novo viajante</Button>
                     </div>
 
                   </div>
                   {myCharacters.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground backdrop-blur-sm bg-black/20">Voce ainda nao forjou um heroi.</div>
+                    <div className="rpg-empty rounded-md border border-dashed border-border/60 bg-black/20 p-8 text-center text-sm text-muted-foreground">Você ainda não criou um viajante.</div>
                   ) : (
                     <div className="flex flex-col gap-6">
                       {myCharacters.map((c) => (
@@ -1991,14 +2175,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           character={c}
                           editable={true}
                           isGm={isGm}
+                          isOwned={true}
                           campaignMembers={data.members}
                           onOptimistic={applyOptimistic}
-                          onRoll={(attr: string, res: number | string) => handleBroadcastRoll(c.name, attr, res)}
+                          onRoll={(attr: string, res: number | string, details?: DiceRollDetails) => handleBroadcastRoll(c.name, attr, res, details)}
                           onKill={isGm ? handleKillNPC : undefined}
                           shouldOpenInventory={inventoryToOpen === c.id}
                           onClearInventoryRequest={() => setInventoryToOpen(null)}
-                          // GARANTA QUE ESSA LINHA ESTÁ AQUI
                           onArchive={isGm ? handleArchiveCharacter : undefined}
+                          expanded={expandedCharacterId === c.id}
+                          onExpandedChange={(next: boolean) => setExpandedCharacterId(next ? c.id : null)}
                         />
                       ))}
                     </div>
@@ -2007,7 +2193,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
                 {otherCharacters.length > 0 && (
                   <section>
-                    <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">{isGm ? "Herois dos jogadores" : "Companheiros de jornada"}</h2>
+                    <h2 className="rpg-section-title mb-3">{isGm ? "Viajantes dos jogadores" : "Companheiros de jornada"}</h2>
                     <div className="flex flex-col gap-6">
                       {otherCharacters.map((c) => (
                         <CharacterSheet
@@ -2015,14 +2201,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           character={c}
                           editable={isGm}
                           isGm={isGm}
+                          isOwned={false}
                           campaignMembers={data.members}
                           onOptimistic={applyOptimistic}
-                          onRoll={(attr: string, res: number | string) => handleBroadcastRoll(c.name, attr, res)}
+                          onRoll={(attr: string, res: number | string, details?: DiceRollDetails) => handleBroadcastRoll(c.name, attr, res, details)}
                           onKill={isGm ? handleKillNPC : undefined}
                           shouldOpenInventory={inventoryToOpen === c.id}
                           onClearInventoryRequest={() => setInventoryToOpen(null)}
-                          // GARANTA QUE ESSA LINHA ESTÁ AQUI TAMBÉM
                           onArchive={isGm ? handleArchiveCharacter : undefined}
+                          expanded={expandedCharacterId === c.id}
+                          onExpandedChange={(next: boolean) => setExpandedCharacterId(next ? c.id : null)}
                         />
                       ))}
                     </div>
@@ -2033,97 +2221,125 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           </div>
 
           {/* COLUNA DIREITA: PAINEL DO MESTRE & HISTÓRICO */}
-          <aside className="flex flex-col gap-4 min-h-0 h-full overflow-y-auto custom-scrollbar-sepia pr-1 pb-4">
+          <aside className="rpg-session-sidebar flex h-full min-h-0 flex-col gap-4 overflow-y-auto pb-4 pr-1 custom-scrollbar-sepia">
 
             {isGm && (
-              <div className="panel rounded-xl border border-accent/40 p-4 bg-accent/5 shrink-0 backdrop-blur-sm">
-                <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-accent"><Crown className="size-4" /> Ferramentas do Mestre</h2>
+              <div className="panel rpg-gm-tools shrink-0 border border-accent/40 p-4">
+                <div className="rpg-gm-heading mb-4 border-b pb-3">
+                  <h2 className="flex items-center gap-2 font-serif text-base font-bold"><Crown className="size-4" /> Grimório do Mestre</h2>
+                </div>
 
                 <div className="flex flex-col gap-2">
-                  <Button variant="outline" className="w-full justify-start gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground" onClick={() => setShowCutsceneManager(true)}>
-                    <Clapperboard className="size-4" /> Cenas e Cutscenes
+                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowCutsceneManager(true)}>
+                    <Clapperboard className="size-4" /> Cenas
                   </Button>
-                  <Button variant="outline" className="w-full justify-start gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground" onClick={() => setShowImagepad(true)}>
-                    <ImageIconLucide className="size-4" /> Galeria Arcana (Imagens)
+                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowImagepad(true)}>
+                    <ImageIcon className="size-4" /> Galeria arcana
                   </Button>
-                  <Button variant="outline" className="w-full justify-start gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground" onClick={() => setShowSoundpad(true)}>
-                    <Mic className="size-4" /> Efeitos Sonoros (Soundpad)
+                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowSoundpad(true)}>
+                    <Mic className="size-4" /> Efeitos sonoros
                   </Button>
-                  <Button variant="outline" className="w-full justify-start gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground" onClick={() => setShowPollModal(true)}>
-                    <BarChart2 className="size-4" /> Criar Enquete
+                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowLorebook(true)}>
+                    <BookOpen className="size-4" /> <span className="text-foreground">Diário do Mundo</span>
                   </Button>
-                  <Button variant="outline" className="w-full justify-start gap-2 border-accent/50 text-accent hover:bg-accent hover:text-accent-foreground" onClick={() => setShowGmPanel(true)}>
-                    <Gift className="size-4" /> Distribuir Loot / Relíquias
+                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowPollModal(true)}>
+                    <BarChart2 className="size-4" /> Criar enquete
                   </Button>
-                  <Button variant="outline" className="w-full justify-start gap-2 border-accent/50 text-accent hover:bg-accent hover:text-accent-foreground relative" onClick={() => setShowDroppedLoots(true)}>
-                    <Inbox className="size-4" /> Loots de NPC
+                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowGmPanel(true)}>
+                    <Gift className="size-4" /> Distribuir itens
+                  </Button>
+                  <Button variant="outline" className="rpg-tool-button relative w-full justify-start gap-2" onClick={() => setShowDroppedLoots(true)}>
+                    <Inbox className="size-4" /> Gerenciar loots
                     {npcLoots.length > 0 && <span className="absolute right-2 top-1/2 -translate-y-1/2 flex size-5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground">{npcLoots.length}</span>}
+                  </Button>
+                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowBestiary(true)}>
+                    <Skull className="size-4" /> Bestiário
+                  </Button>
+                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowBattleGrid(value => !value)} aria-expanded={showBattleGrid}>
+                    <Grid3X3 className="size-4" /> Grade de batalha
+                    <ChevronDown className={`ml-auto size-4 transition-transform ${showBattleGrid ? "rotate-180" : ""}`} />
                   </Button>
                 </div>
 
-                {/* Grid de Batalha (VTT) */}
-                <div className="mt-4 pt-4 border-t border-accent/20">
-                  <p className="text-[10px] font-bold text-accent uppercase tracking-widest mb-2">Grid de Batalha (VTT)</p>
-                  <div className="flex flex-col gap-2">
-                    {Array.from(new Map(savedMaps.map(m => [m.id, m])).values()).map(m => (
-                      <div key={m.id} className="flex gap-2 w-full">
-                        {/* Botão de abrir só pro mestre preparar */}
-                        <Button size="sm" variant="outline" className="flex-1 justify-start text-xs border-green-500/50 text-green-400 hover:bg-green-500/10 hover:text-green-300 overflow-hidden text-left" onClick={() => setActiveMap(m)} title="Abrir para você (Preparação)">
-                          <Grid3X3 className="size-3 mr-2 shrink-0" /> <span className="truncate">{m.name}</span>
-                        </Button>
+                <div className="rpg-battle-grid-collapse" data-open={showBattleGrid} aria-hidden={!showBattleGrid}>
+                  <div className="rpg-battle-grid-clip">
+                    <div className="rpg-map-index flex flex-col gap-2">
+                      {Array.from(new Map(savedMaps.map(m => [m.id, m])).values()).map(m => (
+                        <div key={m.id} className="flex gap-2 w-full">
+                          <Button size="sm" variant="outline" className={`rpg-map-entry flex-1 justify-start overflow-hidden text-left text-xs ${activeMap?.id === m.id ? "is-active" : ""}`} onClick={() => setActiveMap(m)} title="Abrir para você (Preparação)">
+                            <Grid3X3 className="size-3 mr-2 shrink-0" /> <span className="truncate">{m.name}</span>
+                          </Button>
 
-                        {/* NOVO BOTÃO: Forçar mapa na tela dos jogadores */}
-                        <Button size="sm" variant="outline" className="w-9 px-0 shrink-0 border-purple-500/50 text-purple-400 hover:bg-purple-500/10" onClick={() => handleForceSyncMap(m.id)} title="Transmitir este mapa para todos os jogadores">
-                          <Eye className="size-3" />
-                        </Button>
+                          <Button size="sm" variant="outline" className="rpg-map-action rpg-map-action-share w-9 shrink-0 px-0" onClick={() => handleForceSyncMap(m.id)} title="Transmitir este mapa para todos os jogadores">
+                            <Eye className="size-3" />
+                          </Button>
 
-                        <Button size="sm" variant="outline" className="w-9 px-0 shrink-0 border-blue-500/50 text-blue-400 hover:bg-blue-500/10" onClick={() => handleRenameMap(m.id, m.name)} title="Renomear mapa">
-                          <Pencil className="size-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" className="w-9 px-0 shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteMap(m.id)} title="Deletar mapa">
-                          <Trash2 className="size-3" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button size="sm" variant="outline" className="w-full justify-start text-xs border-white/20 text-muted-foreground hover:text-white hover:bg-white/10" onClick={() => setShowMapImporter(true)}>
-                      <Plus className="size-3 mr-2" /> Importar Novo Mapa
-                    </Button>
+                          <Button size="sm" variant="outline" className="rpg-map-action rpg-map-action-edit w-9 shrink-0 px-0" onClick={() => handleRenameMap(m.id, m.name)} title="Renomear mapa">
+                            <Pencil className="size-3" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="rpg-map-action rpg-map-action-delete w-9 shrink-0 px-0" onClick={() => handleDeleteMap(m.id)} title="Deletar mapa">
+                            <Trash2 className="size-3" />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button size="sm" variant="outline" className="rpg-map-entry w-full justify-start text-xs" onClick={() => setShowMapImporter(true)}>
+                        <Plus className="size-3 mr-2" /> Importar Novo Mapa
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
                 {/* Clima Dinâmico */}
-                <div className="mt-4 pt-4 border-t border-accent/20">
+                <div className="rpg-gm-section mt-4 pt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Clima Dinâmico</p>
-                    <button onClick={() => handleSetWeather(weather)} className="text-[10px] text-primary hover:text-primary/80 uppercase font-bold flex items-center gap-1" title="Forçar clima para quem acabou de entrar"><RefreshCw className="size-3" /> Sincronizar</button>
+                    <p className="rpg-weather-heading whitespace-nowrap font-bold uppercase tracking-widest">Clima Dinâmico</p>
+                    <button onClick={() => handleSetWeather(weather)} className="flex items-center gap-1.5 text-xs font-bold uppercase text-primary hover:text-primary/80" title="Forçar clima para quem acabou de entrar"><RefreshCw className="size-3.5" /> Sincronizar</button>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <Button size="sm" onClick={() => handleSetWeather("clear")} className={`h-8 w-full p-0 flex items-center justify-center ${weather === 'clear' ? 'bg-yellow-500 hover:bg-yellow-600 text-black' : 'bg-transparent text-muted-foreground border border-border hover:bg-white/5 hover:text-white'}`} title="Céu Limpo"><Sun className="size-3.5" /></Button>
-                    <Button size="sm" onClick={() => handleSetWeather("sunny")} className={`h-8 w-full p-0 flex items-center justify-center ${weather === 'sunny' ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-[0_0_10px_rgba(249,115,22,0.5)]' : 'bg-transparent text-muted-foreground border border-border hover:bg-white/5 hover:text-white'}`} title="Ensolarado"><SunMedium className="size-3.5" /></Button>
-                    <Button size="sm" onClick={() => handleSetWeather("cloudy")} className={`h-8 w-full p-0 flex items-center justify-center ${weather === 'cloudy' ? 'bg-blue-300 hover:bg-blue-400 text-black shadow-[0_0_10px_rgba(147,197,253,0.5)]' : 'bg-transparent text-muted-foreground border border-border hover:bg-white/5 hover:text-white'}`} title="Nublado"><Cloud className="size-3.5" /></Button>
-                    <Button size="sm" onClick={() => handleSetWeather("fog")} className={`h-8 w-full p-0 flex items-center justify-center ${weather === 'fog' ? 'bg-zinc-400 hover:bg-zinc-500 text-black shadow-[0_0_10px_rgba(161,161,170,0.5)]' : 'bg-transparent text-muted-foreground border border-border hover:bg-white/5 hover:text-white'}`} title="Neblina"><CloudFog className="size-3.5" /></Button>
-                    <Button size="sm" onClick={() => handleSetWeather("rain")} className={`h-8 w-full p-0 flex items-center justify-center ${weather === 'rain' ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-transparent text-muted-foreground border border-border hover:bg-white/5 hover:text-white'}`} title="Chuvoso"><CloudRain className="size-3.5" /></Button>
-                    <Button size="sm" onClick={() => handleSetWeather("blizzard")} className={`h-8 w-full p-0 flex items-center justify-center ${weather === 'blizzard' ? 'bg-white hover:bg-gray-200 text-black shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'bg-transparent text-muted-foreground border border-border hover:bg-white/5 hover:text-white'}`} title="Nevasca"><CloudSnow className="size-3.5" /></Button>
+                    <Button size="sm" onClick={() => handleSetWeather("clear")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'clear' ? 'is-active' : ''}`} data-weather="clear" title="Céu Limpo"><CloudSun className="size-[18px]" /></Button>
+                    <Button size="sm" onClick={() => handleSetWeather("sunny")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'sunny' ? 'is-active' : ''}`} data-weather="sunny" title="Ensolarado"><Sun className="size-[18px]" /></Button>
+                    <Button size="sm" onClick={() => handleSetWeather("cloudy")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'cloudy' ? 'is-active' : ''}`} data-weather="cloudy" title="Nublado"><Cloudy className="size-[18px]" /></Button>
+                    <Button size="sm" onClick={() => handleSetWeather("fog")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'fog' ? 'is-active' : ''}`} data-weather="fog" title="Neblina"><CloudFog className="size-[18px]" /></Button>
+                    <Button size="sm" onClick={() => handleSetWeather("rain")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'rain' ? 'is-active' : ''}`} data-weather="rain" title="Chuvoso"><CloudRainWind className="size-[18px]" /></Button>
+                    <Button size="sm" onClick={() => handleSetWeather("blizzard")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'blizzard' ? 'is-active' : ''}`} data-weather="blizzard" title="Nevasca"><CloudSnow className="size-[18px]" /></Button>
                   </div>
-                </div>
-
-                {/* Bestiário */}
-                <div className="mt-4 pt-4 border-t border-accent/20">
-                  <Button variant="outline" className="w-full justify-start gap-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => setShowBestiary(true)}>
-                    <Skull className="size-4" /> Bestiário
-                  </Button>
                 </div>
 
               </div>
             )}
 
+            {/* GALERIA ARCANA PARA JOGADORES */}
+            {!isGm && galleryImages.filter(img => img.isPublic).length > 0 && (
+              <div className="panel flex flex-col rounded-xl border border-blue-400/40 p-4 bg-blue-400/5 shrink-0 backdrop-blur-sm">
+                <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#eee3cf]"><ImageIcon className="size-4 text-blue-400" /> Galeria arcana</h2>
+                <div className="flex flex-col gap-2">
+                  <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-xs border-blue-400/50 text-[#eee3cf] hover:bg-blue-400/10 hover:text-[#fff6e6] text-left" onClick={() => setShowImagepad(true)}>
+                    <ImageIcon className="size-3 shrink-0 text-blue-400" /><span className="[word-spacing:0.12em]">Abrir&nbsp;acervo visual</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* LOREBOOK PARA JOGADORES */}
+            {!isGm && loreEntries.some(e => e.isPublic || (e.allowedMembers || []).includes(data.me.id)) && (
+              <div className="panel flex flex-col rounded-xl border border-yellow-500/40 p-4 bg-yellow-500/5 shrink-0 backdrop-blur-sm">
+                <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#eee3cf]"><BookOpen className="size-4 text-yellow-500" /> Registros da Jornada</h2>
+                <div className="flex flex-col gap-2">
+                  <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-xs border-yellow-500/50 text-[#eee3cf] hover:bg-yellow-500/10 hover:text-[#fff6e6] text-left" onClick={() => setShowLorebook(true)}>
+                    <BookOpen className="size-3 shrink-0 text-yellow-500" /><span className="[word-spacing:0.12em]">Ler&nbsp;diário do mundo</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* WIDGET DA ENQUETE ATIVA FICA AQUI TAMBÉM */}
             {/* PAINEL DE MAPAS PARA JOGADORES */}
             {!isGm && savedMaps.length > 0 && (
-              <div className="panel rounded-xl border border-primary/40 p-4 bg-primary/5 shrink-0 backdrop-blur-sm">
-                <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary"><Grid3X3 className="size-4" /> Mapas da Campanha</h2>
+              <div className="rpg-cartography rpg-map-panel shrink-0 p-4">
+                <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold"><Grid3X3 className="size-4" /> Mapas da Campanha</h2>
                 <div className="flex flex-col gap-2">
                   {Array.from(new Map(savedMaps.map(m => [m.id, m])).values()).map(m => (
-                    <Button key={m.id} size="sm" variant="outline" className="w-full justify-start text-xs border-primary/50 text-primary hover:bg-primary/10 hover:text-primary-foreground overflow-hidden text-left" onClick={() => setActiveMap(m)}>
+                    <Button key={m.id} size="sm" variant="outline" className={`rpg-map-entry w-full justify-start overflow-hidden text-left text-sm ${activeMap?.id === m.id ? "is-active" : ""}`} onClick={() => setActiveMap(m)}>
                       <Grid3X3 className="size-3 mr-2 shrink-0" /> <span className="truncate">{m.name}</span>
                     </Button>
                   ))}
@@ -2131,26 +2347,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               </div>
             )}
 
-            {/* GALERIA ARCANA PARA JOGADORES */}
-            {!isGm && galleryImages.filter(img => img.isPublic).length > 0 && (
-              <div className="panel flex flex-col rounded-xl border border-blue-400/40 p-4 bg-blue-400/5 shrink-0 backdrop-blur-sm">
-                <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-blue-400"><ImageIconLucide className="size-4" /> Galeria Arcana</h2>
-                <div className="flex flex-col gap-2">
-                  <Button size="sm" variant="outline" className="w-full justify-start text-xs border-blue-400/50 text-blue-400 hover:bg-blue-400/10 hover:text-blue-300 text-left" onClick={() => setShowImagepad(true)}>
-                    <ImageIconLucide className="size-3 mr-2 shrink-0" /> Abrir Acervo Visual
-                  </Button>
-                </div>
-              </div>
-            )}
-            {/* ----------------------------------- */}
-
-            {/* WIDGET DA ENQUETE ATIVA FICA AQUI TAMBÉM */}
             <AnimatePresence>
               {activePoll && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="panel flex flex-col rounded-xl border border-primary/50 overflow-hidden bg-primary/5 shadow-[0_0_15px_rgba(var(--primary),0.2)] shrink-0 backdrop-blur-sm">
                   <div className="p-4 border-b border-primary/20 bg-black/40">
                     <div className="flex justify-between items-center mb-2">
-                      <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary"><BarChart2 className="size-4" /> Enquete em Andamento</h2>
+                      <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#eee3cf]"><BarChart2 className="size-4 text-primary" /> Enquete em andamento</h2>
                       <span className="flex items-center gap-1.5 text-[10px] font-mono bg-background border border-border px-2 py-0.5 rounded text-muted-foreground"><Clock className="size-3" /> {Math.max(0, Math.ceil((activePoll.expiresAt - now) / 1000))}s</span>
                     </div>
                     <p className="font-serif text-lg font-bold text-foreground leading-tight">{activePoll.question}</p>
@@ -2179,65 +2381,22 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               )}
             </AnimatePresence>
 
-            {/* 1. OVERLAY GLOBAL DA IMAGEM EM TELA CHEIA (TODOS OS JOGADORES) */}
-            <AnimatePresence>
-              {activeFullscreenImage && (
-                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed inset-0 z-[400] flex items-center justify-center bg-black/95 backdrop-blur-lg p-4 md:p-12">
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    <button onClick={() => setActiveFullscreenImage(null)} className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full z-10 transition-colors"><X className="size-8 text-white" /></button>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={activeFullscreenImage} className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-xl border border-white/10" alt="Visualização Expandida" />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* 2. MODAL DA GALERIA ARCANA */}
-            <AnimatePresence>
-              {showImagepad && (
-                <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 sm:p-8 overflow-hidden">
-                  <motion.div variants={modalVariants} className="relative w-full max-w-6xl h-[85vh] min-h-[600px] flex flex-col bg-transparent">
-                    <div className="flex-1 w-full h-full rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/10">
-
-                      {/* ---> ATUALIZE O IMAGEPAD COM AS NOVAS PROPRIEDADES <--- */}
-                      <Imagepad
-                        isGm={isGm}
-                        images={galleryImages}
-                        onUpdateImages={(newImages) => {
-                          setGalleryImages(newImages);
-                          localStorage.setItem(`images_${data.campaign.id}`, JSON.stringify(newImages));
-                          if (isGm) {
-                            apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-                              method: "POST", body: JSON.stringify({ characterId: 'sys_gallery', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_GALLERY:UPDATE`, result: JSON.stringify(newImages) })
-                            }).catch(console.error);
-                          }
-                        }}
-                        onShowImage={handleImageClick}
-                        onClose={() => setShowImagepad(false)}
-                      />
-
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="panel flex flex-col flex-1 rounded-xl border border-border/60 overflow-hidden bg-card/10 shadow-lg min-h-[300px] backdrop-blur-sm">
-              <div className="p-4 border-b border-border/60 bg-black/40 shrink-0">
-                <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground"><Dices className="size-4" /> Histórico</h2>
+            <div className="rpg-cartography rpg-history-panel flex min-h-[300px] flex-1 flex-col overflow-hidden">
+              <div className="rpg-history-heading shrink-0 p-4">
+                <h2 className="flex items-center gap-2 text-sm font-semibold"><Dices className="size-4" /> Histórico da jornada</h2>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar-sepia">
                 {history.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center italic mt-4">Nenhum evento registrado ainda.</p>
                 ) : (
                   history.map((record) => (
-                    <div key={record.id} className={`p-3 rounded-lg border shadow-sm flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 ${record.type === 'poll' ? 'border-primary/40 bg-primary/5' : 'border-border/40 bg-background/60'}`}>
+                    <div key={record.id} className="rpg-history-entry flex flex-col gap-2 p-3 animate-in fade-in slide-in-from-top-2">
                       <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-foreground">{record.title} <span className="text-[10px] text-muted-foreground font-normal ml-1">({record.subtitle})</span></span>
-                        <span className="text-[10px] text-muted-foreground mt-0.5">{record.time}</span>
+                        <span className="rpg-history-name font-bold text-foreground">{record.title} <span className="rpg-history-profile ml-1 font-normal text-muted-foreground">({record.subtitle})</span></span>
+                        <span className="rpg-history-time mt-0.5 text-muted-foreground">{record.time}</span>
                       </div>
-                      <div className="flex justify-between items-center bg-black/30 px-3 py-2 rounded border border-white/5">
-                        <span className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">{record.detail}</span>
+                      <div className="rpg-history-detail flex items-center justify-between border px-3 py-2">
+                        <span className={`rpg-history-detail-label font-semibold text-muted-foreground ${record.detail === "CLIMA ALTERADO" ? "is-weather" : ""}`}>{formatRollLabel(record.detail)}</span>
                         <span className={`text-xl font-black font-mono ${record.type === 'poll' ? 'text-foreground' : 'text-primary'}`}>{record.result}</span>
                       </div>
                     </div>
@@ -2246,10 +2405,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               </div>
             </div>
 
-            <div className="panel mt-auto rounded-xl border border-destructive/30 bg-destructive/5 p-4 shrink-0 backdrop-blur-sm">
-              <Button variant="destructive" className="w-full gap-2 font-semibold" disabled={leaving} onClick={handleLeaveCampaign}>
+            <div className="rpg-leave-panel panel mt-auto shrink-0 p-4">
+              <Button variant="destructive" className="rpg-leave-button w-full gap-2 font-semibold" disabled={leaving} onClick={handleLeaveCampaign}>
                 <DoorOpen className="size-4" />
-                {leaving ? "Saindo..." : (isGm ? "Encerrar Campanha" : "Abandonar Sessão")}
+                {leaving ? "Saindo..." : (isGm ? "Encerrar Campanha" : "Abandonar sessão")}
               </Button>
             </div>
           </aside>

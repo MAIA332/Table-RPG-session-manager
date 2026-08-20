@@ -6,6 +6,8 @@ import { Button } from "./ui/button"
 import { Brush, Crosshair, Move, UserPlus, X } from "lucide-react"
 import type { Character, ActiveCreature } from "@/lib/types"
 import { AnimatePresence } from "framer-motion"
+import { CharacterPortrait } from "./character-portrait"
+import { getPortraitFrameStroke } from "@/lib/portrait-frames"
 
 const TERRAIN_COLORS: Record<TerrainType, string> = {
   grass: "rgba(34, 197, 94, 0.2)", stone: "rgba(100, 116, 139, 0.4)",
@@ -167,7 +169,7 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
 
         ctx.beginPath()
         ctx.arc(px, py, radius, 0, Math.PI * 2)
-        ctx.strokeStyle = pos.type === "character" ? (selectedTokenId === id ? "#3b82f6" : "white") : (selectedTokenId === id ? "#ef4444" : "red")
+        ctx.strokeStyle = pos.type === "character" ? (selectedTokenId === id ? "#3b82f6" : getPortraitFrameStroke((entity as Character).portraitFrame)) : (selectedTokenId === id ? "#ef4444" : "red")
         ctx.lineWidth = selectedTokenId === id ? 4 : 2
         ctx.stroke()
     })
@@ -239,17 +241,17 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
   }
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black flex flex-col overflow-hidden">
-      <div className="h-14 bg-zinc-950/80 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-6 shrink-0 relative z-10">
-        <div className="flex gap-2">
+    <div className="fixed inset-0 z-[200] flex flex-col overflow-hidden bg-black">
+      <div className="relative z-10 flex min-h-14 shrink-0 flex-col gap-2 border-b border-primary/20 bg-zinc-950/95 px-3 py-2 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+        <div className="flex gap-2 overflow-x-auto custom-scrollbar-sepia">
           <Button size="sm" variant={mode === "view" ? "default" : "ghost"} onClick={() => {setMode("view"); setSelectedTokenId(null)}}><Crosshair className="size-4 mr-2"/> Câmera</Button>
           {isGm && <Button size="sm" variant={mode === "paint" ? "default" : "ghost"} onClick={() => {setMode("paint"); setSelectedTokenId(null)}} className={mode === "paint" ? "bg-primary" : ""}><Brush className="size-4 mr-2"/> Terreno</Button>}
-          <Button size="sm" variant={mode === "move" ? "default" : "ghost"} onClick={() => setMode("move")} className={mode === "move" ? "bg-blue-600" : ""}><Move className="size-4 mr-2"/> Interagir/Mover</Button>
+          <Button size="sm" variant={mode === "move" ? "magical" : "ghost"} onClick={() => setMode("move")}><Move className="size-4 mr-2"/> Interagir/Mover</Button>
           {isGm && <Button size="sm" variant={mode === "place" ? "default" : "ghost"} onClick={() => setMode("place")} className={mode === "place" ? "bg-green-600" : ""}><UserPlus className="size-4 mr-2"/> Posicionar Heróis</Button>}
         </div>
 
         {mode === "paint" && isGm && (
-          <div className="flex gap-2 bg-black/50 p-1 rounded-lg border border-white/10">
+          <div className="flex gap-2 overflow-x-auto rounded-sm border border-white/10 bg-black/50 p-1 custom-scrollbar-sepia">
             <Button size="sm" variant="ghost" onClick={() => setActiveTerrain("grass")} className={`h-8 px-3 ${activeTerrain === "grass" ? "bg-green-500/20 text-green-400" : ""}`}>Grama (1)</Button>
             <Button size="sm" variant="ghost" onClick={() => setActiveTerrain("mud")} className={`h-8 px-3 ${activeTerrain === "mud" ? "bg-yellow-700/40 text-yellow-500" : ""}`}>Lama (2)</Button>
             <Button size="sm" variant="ghost" onClick={() => setActiveTerrain("water")} className={`h-8 px-3 ${activeTerrain === "water" ? "bg-blue-500/20 text-blue-400" : ""}`}>Água (3)</Button>
@@ -257,10 +259,10 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
           </div>
         )}
 
-        <Button size="sm" variant="destructive" onClick={onClose}><X className="size-4 mr-2"/> Sair do Mapa</Button>
+        <Button size="sm" variant="outline" className="border-primary/40 bg-black/30 text-[#e7dbc5] hover:border-primary/65 hover:bg-primary/10 hover:text-[#fff6e6]" onClick={onClose}><X className="size-4 mr-2 text-primary"/> Sair do mapa</Button>
       </div>
 
-      <div className="flex-1 flex relative">
+      <div className="relative flex min-h-0 flex-1">
         <div className="flex-1 relative cursor-crosshair">
             <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={() => setIsDragging(false)} onMouseLeave={() => { setIsDragging(false); setHoveredTile(null) }} onContextMenu={(e) => e.preventDefault()} className="absolute inset-0 w-full h-full"/>
             
@@ -286,7 +288,7 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
                     {characters.map(c => (
                         <button key={c.id} onClick={() => setTokenToPlace({id: c.id, type: "character"})} className={`w-full flex items-center gap-3 p-2 rounded border transition-colors ${tokenToPlace?.id === c.id ? "border-primary bg-primary/20" : "border-white/5 bg-white/5 hover:border-primary/50"}`}>
-                            <img src={c.avatarUrl} className="size-8 rounded object-cover" />
+                            <CharacterPortrait src={c.avatarUrl} alt={`Retrato de ${c.name}`} frame={c.portraitFrame} className="size-8 shrink-0" sizes="32px" />
                             <span className="text-sm font-bold text-left text-white">{c.name}</span>
                         </button>
                     ))}

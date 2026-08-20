@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { genId, getMemberRole, publish, store } from "@/lib/store"
+import { genId, getMemberRole, publish, saveToDisk, store } from "@/lib/store"
 import { computeMaxResources } from "@/lib/character"
 import { STARTING_ZENIT, getClass, getEquipment } from "@/lib/game-data"
 import type { AttributeKey, Character, ClassLevel, DieSize } from "@/lib/types"
@@ -36,7 +36,6 @@ export async function POST(request: Request) {
   const max = computeMaxResources(validClasses, attributes)
   const now = Date.now()
   
-  // Forçando o tipo as any para suportar os novos campos
   const character: any = {
     id: genId("char"),
     campaignId,
@@ -58,14 +57,16 @@ export async function POST(request: Request) {
       ip: max.maxIp,
       maxIp: max.maxIp,
       fp: 0,
-      xp: 0 // Inicia com 0 de XP
+      xp: 0
     },
-    skills: body?.skills || {}, // AGORA AS HABILIDADES SÃO SALVAS AQUI!
+    skills: body?.skills || {},
     createdAt: now,
     updatedAt: now,
   }
   
   store.characters.set(character.id, character as Character)
+  store.characterTombstones.delete(character.id)
+  saveToDisk(store)
   publish(campaignId, { type: "character:created", character })
 
   return NextResponse.json({ character })

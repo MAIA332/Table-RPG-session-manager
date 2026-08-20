@@ -21,19 +21,18 @@ interface NpcNurseryProps {
 }
 
 export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onCreated }: NpcNurseryProps) {
-  // O estado de expansão do texto agora fica isolado apenas aqui!
   const [expandedNpcId, setExpandedNpcId] = useState<string | null>(null);
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden">
-          <motion.div variants={modalVariants} className="relative w-full max-w-6xl h-full bg-zinc-950 border border-destructive/50 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[140] flex items-center justify-center overflow-hidden bg-black/80 p-4 backdrop-blur-md md:p-8">
+          <motion.div variants={modalVariants} className="rpg-modal relative flex h-full w-full max-w-6xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl">
 
-            <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
+            <div className="rpg-modal-header flex shrink-0 items-center justify-between border-b border-border/50 p-6">
               <div>
-                <h4 className="font-serif text-2xl font-black text-destructive flex items-center gap-2">
-                  <UserPlus className="size-6" /> Berçário de NPCs
+                <h4 className="font-serif text-2xl font-black flex items-center gap-2">
+                  <UserPlus className="size-6 text-destructive" /> <span className="text-foreground">Berçário</span>
                 </h4>
                 <p className="text-sm text-muted-foreground mt-1">Forje novas ameaças usando o sistema completo de classes e atributos.</p>
               </div>
@@ -44,8 +43,8 @@ export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onC
 
             <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
               <div className="lg:w-1/3 border-r border-border/40 p-6 flex flex-col gap-4 bg-black/20 overflow-y-auto custom-scrollbar-sepia">
-                <h5 className="text-xs font-bold uppercase tracking-widest text-destructive border-b border-white/10 pb-2 flex items-center gap-2">
-                  <Save className="size-3" /> Prontos para Invocação
+                <h5 className="text-xs font-bold uppercase tracking-widest border-b border-white/10 pb-2 flex items-center gap-2">
+                  <Save className="size-3 text-destructive" /> <span className="text-foreground">Prontos para Invocação</span>
                 </h5>
 
                 <div className="flex flex-col gap-3">
@@ -55,7 +54,7 @@ export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onC
                     const isExpanded = expandedNpcId === npc.id;
 
                     return (
-                      <div key={npc.id} className={`flex flex-col gap-3 p-4 rounded-xl border transition-all duration-300 ${isExpanded ? 'border-destructive/50 bg-black/40 shadow-lg' : 'border-border/40 bg-card/20'}`}>
+                      <div key={npc.id} className={`flex flex-col gap-3 rounded-sm border-l-2 p-4 transition-all duration-300 ${isExpanded ? 'border-destructive bg-black/40 shadow-lg' : 'border-destructive/30 bg-card/20'}`}>
                         
                         {/* CABEÇALHO DO CARD */}
                         <div className="flex items-start gap-3">

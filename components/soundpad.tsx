@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Button } from "./ui/button"
-import { Volume2, VolumeX, Play, Square, Repeat, Activity, Plus, Trash2, Link as LinkIcon, Save, Disc3, Settings2, Music } from "lucide-react"
+import { Volume2, Play, Square, Repeat, Activity, Plus, Trash2, Link as LinkIcon, Save, Disc3, Music } from "lucide-react"
 
 export interface Track {
   id: string;
@@ -33,14 +33,16 @@ interface SoundpadProps {
   isGm: boolean;
   campaignId: string;
   activeSounds: ActiveSound[];
+  musicVolume?: number;
+  effectsVolume?: number;
+  onMusicVolumeChange?: (volume: number) => void;
+  onEffectsVolumeChange?: (volume: number) => void;
   onPlaySound?: (track: { id: string, url: string }, loop: boolean) => void;
   onStopSound?: (id: string) => void;
   onStopAll?: () => void;
 }
 
-export function Soundpad({ isGm, campaignId, activeSounds, onPlaySound, onStopSound, onStopAll }: SoundpadProps) {
-  const [globalVolume, setGlobalVolume] = useState(0.5);
-  const [muted, setMuted] = useState(false);
+export function Soundpad({ isGm, campaignId, activeSounds, musicVolume = 0.5, effectsVolume = 0.75, onMusicVolumeChange, onEffectsVolumeChange, onPlaySound, onStopSound, onStopAll }: SoundpadProps) {
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
   const [customTracks, setCustomTracks] = useState<Track[]>([]);
@@ -84,10 +86,11 @@ export function Soundpad({ isGm, campaignId, activeSounds, onPlaySound, onStopSo
     const currentActiveIds = new Set(activeSounds.map(s => s.id));
 
     activeSounds.forEach(sound => {
+      const volume = sound.loop ? musicVolume : effectsVolume;
       if (!audioRefs.current[sound.id]) {
         const audio = new Audio(sound.url);
         audio.loop = sound.loop;
-        audio.volume = muted ? 0 : globalVolume;
+        audio.volume = volume;
         
         audio.onended = () => {
           if (onStopSound) onStopSound(sound.id);
@@ -96,7 +99,7 @@ export function Soundpad({ isGm, campaignId, activeSounds, onPlaySound, onStopSo
         audio.play().catch((err) => console.warn("Áudio não pôde ser tocado automaticamente:", err));
         audioRefs.current[sound.id] = audio;
       } else {
-        audioRefs.current[sound.id].volume = muted ? 0 : globalVolume;
+        audioRefs.current[sound.id].volume = volume;
         audioRefs.current[sound.id].loop = sound.loop;
       }
     });
@@ -109,7 +112,7 @@ export function Soundpad({ isGm, campaignId, activeSounds, onPlaySound, onStopSo
         delete audioRefs.current[id];
       }
     });
-  }, [activeSounds, globalVolume, muted, onStopSound]);
+  }, [activeSounds, musicVolume, effectsVolume, onStopSound]);
 
   useEffect(() => {
     return () => {
@@ -126,13 +129,14 @@ export function Soundpad({ isGm, campaignId, activeSounds, onPlaySound, onStopSo
   const getTrackName = (trackId: string) => allTracks.find(t => t.id === trackId)?.name || "Som Extra";
 
   return (
-    <div className="flex flex-col lg:flex-row w-full h-full bg-[#0a0a0a] text-white font-sans">
+    <div className="flex h-full w-full flex-col overflow-y-auto bg-[#15100c] font-sans text-white lg:flex-row lg:overflow-hidden">
       
       {/* LADO ESQUERDO: BIBLIOTECA (Só visível se for GM) */}
       {isGm ? (
-        <div className="flex-[2] flex flex-col min-h-0 border-r border-white/5 relative">
+        <div className="relative flex min-h-[420px] flex-[2] flex-col border-r border-white/5 lg:min-h-0">
           <div className="p-8 pb-4 shrink-0">
-            <h2 className="text-3xl font-black tracking-tight text-[#00E58F]">Biblioteca</h2>
+            <span className="rpg-kicker mb-2">Arquivo sonoro</span>
+            <h2 className="rpg-title text-3xl font-black">Biblioteca de sons</h2>
             <p className="text-sm text-zinc-400 mt-1">Organize e gerencie seus sons com facilidade</p>
           </div>
 
@@ -153,19 +157,19 @@ export function Soundpad({ isGm, campaignId, activeSounds, onPlaySound, onStopSo
                const isCustom = track.isCustom;
                
                return (
-                 <div key={track.id} className={`group flex items-center justify-between p-3 pr-6 rounded-xl border transition-all duration-300 ${isPlaying ? 'bg-[#00E58F]/10 border-[#00E58F]/40 shadow-[0_0_15px_rgba(0,229,143,0.1)]' : 'bg-[#111] border-white/5 hover:bg-[#161616] hover:border-white/10'}`}>
+                 <div key={track.id} className={`group flex items-center justify-between rounded-sm border p-3 pr-6 transition-all duration-300 ${isPlaying ? 'border-accent/50 bg-accent/10 shadow-inner' : 'border-white/5 bg-[#17110d] hover:border-primary/40 hover:bg-[#211810]'}`}>
                     
                     <div className="flex items-center gap-4 min-w-0 pr-2">
-                       <div className={`flex items-center justify-center size-12 rounded-full shrink-0 transition-colors border ${isPlaying ? 'bg-[#00E58F] text-black border-[#00E58F]' : 'bg-black text-zinc-500 border-white/5 group-hover:text-white'}`}>
+                       <div className={`flex size-12 shrink-0 items-center justify-center rounded-full border transition-colors ${isPlaying ? 'border-accent bg-accent text-black' : 'border-primary/20 bg-black text-zinc-500 group-hover:text-accent'}`}>
                           {isCustom ? <LinkIcon className="size-5" /> : <Disc3 className={`size-6 ${isPlaying ? 'animate-[spin_3s_linear_infinite]' : ''}`} />}
                        </div>
                        <div className="flex flex-col">
-                          <span className={`font-bold text-base truncate ${isPlaying ? 'text-[#00E58F]' : 'text-zinc-200 group-hover:text-white'}`}>
+                          <span className={`truncate text-base font-bold ${isPlaying ? 'text-accent' : 'text-zinc-200 group-hover:text-white'}`}>
                             {track.name}
                           </span>
                           <div className="flex items-center gap-2 mt-1">
                              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded">MP3</span>
-                             {isCustom && <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">Custom</span>}
+                             {isCustom && <span className="rounded-sm border border-primary/25 bg-primary/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-primary">Personalizado</span>}
                           </div>
                        </div>
                     </div>
@@ -181,7 +185,7 @@ export function Soundpad({ isGm, campaignId, activeSounds, onPlaySound, onStopSo
 
                        {track.loopable && (
                           <button 
-                             className={`flex items-center justify-center size-10 rounded-full border transition-all hover:scale-105 ${activeInstances.some(a => a.loop) ? 'bg-[#00E58F] text-black border-[#00E58F]' : 'bg-black hover:bg-white/10 text-zinc-300 hover:text-white border-white/10'}`}
+                             className={`flex size-10 items-center justify-center rounded-full border transition-all hover:scale-105 ${activeInstances.some(a => a.loop) ? 'border-accent bg-accent text-black' : 'border-white/10 bg-black text-zinc-300 hover:bg-white/10 hover:text-white'}`}
                              onClick={() => {
                                 if (activeInstances.some(a => a.loop)) {
                                    const idToStop = activeInstances.find(a => a.loop)?.id;
@@ -212,23 +216,23 @@ export function Soundpad({ isGm, campaignId, activeSounds, onPlaySound, onStopSo
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-center p-8 bg-[#0a0a0a]">
+        <div className="flex flex-1 items-center justify-center bg-[#15100c] p-8 text-center">
           <div className="max-w-md space-y-4">
              <Disc3 className="size-16 mx-auto text-zinc-600 animate-[spin_10s_linear_infinite]" />
              <h3 className="text-xl font-bold text-zinc-300">Conectado ao Áudio da Mesa</h3>
-             <p className="text-sm text-zinc-500">Você está escutando a ambiência e os efeitos sonoros gerenciados pelo Mestre de Jogo em tempo real.</p>
+             <p className="text-sm text-zinc-500">Você está escutando a ambiência e os efeitos sonoros gerenciados pelo Mestre em tempo real.</p>
           </div>
         </div>
       )}
 
       {/* LADO DIREITO: INSPETOR E GERENCIAMENTO */}
-      <div className="w-full lg:w-[380px] flex flex-col shrink-0 bg-[#111111]">
+      <div className="flex w-full shrink-0 flex-col border-l border-primary/15 bg-[#1c1510] lg:w-[380px]">
         
         {/* Tocando Agora */}
         {isGm && (
           <div className="flex-1 overflow-hidden flex flex-col min-h-[250px] p-6 border-b border-white/5">
              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-[#00E58F] flex items-center gap-2">
+                <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent">
                    <Activity className="size-4" /> Agora a Jogar
                 </h4>
                 {activeSounds.length > 0 && (
@@ -246,12 +250,12 @@ export function Soundpad({ isGm, campaignId, activeSounds, onPlaySound, onStopSo
              ) : (
                <div className="flex-1 overflow-y-auto custom-scrollbar-sepia pr-2 space-y-2">
                   {activeSounds.map(active => (
-                    <div key={active.id} className="flex items-center justify-between bg-[#00E58F]/10 border border-[#00E58F]/30 p-3 rounded-lg group animate-in fade-in zoom-in-95 duration-200">
+                    <div key={active.id} className="group flex animate-in items-center justify-between rounded-sm border border-accent/30 bg-accent/10 p-3 fade-in zoom-in-95 duration-200">
                        <div className="flex flex-col min-w-0 pr-3">
-                           <span className="text-[#00E58F] font-bold truncate text-sm flex items-center gap-2">
+                           <span className="flex items-center gap-2 truncate text-sm font-bold text-accent">
                              {getTrackName(active.trackId)}
                            </span>
-                           <span className="text-[9px] text-[#00E58F]/70 uppercase tracking-widest mt-0.5 flex items-center gap-1" title={active.loop ? "Loop Ativo" : "Efeito Único"}>
+                           <span className="mt-0.5 flex items-center gap-1 text-[9px] uppercase tracking-widest text-accent/70" title={active.loop ? "Loop Ativo" : "Efeito Único"}>
                               {active.loop ? <><Repeat className="size-3" /> Loop</> : "1x Shot"}
                            </span>
                        </div>
@@ -274,30 +278,56 @@ export function Soundpad({ isGm, campaignId, activeSounds, onPlaySound, onStopSo
           <div className="p-6 bg-black/20 shrink-0 border-b border-white/5">
              <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2"><Plus className="size-4" /> Adicionar Link MP3</h4>
              <div className="flex flex-col gap-3">
-                <input type="text" value={newSoundName} onChange={e=>setNewSoundName(e.target.value)} placeholder="Nome do Áudio" className="bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-[#00E58F]/50 transition-colors placeholder:text-zinc-600" />
-                <input type="text" value={newSoundUrl} onChange={e=>setNewSoundUrl(e.target.value)} placeholder="URL direta do arquivo" className="bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-[#00E58F]/50 transition-colors font-mono placeholder:text-zinc-600" />
-                <Button variant="default" className="w-full gap-2 mt-1 h-11 bg-[#00E58F] text-black hover:bg-[#00E58F]/80 font-bold transition-all" onClick={handleAddCustomSound}>
+                <input type="text" value={newSoundName} onChange={e=>setNewSoundName(e.target.value)} placeholder="Nome do Áudio" className="rounded-sm border border-white/10 bg-[#0a0a0a] px-4 py-2.5 text-sm text-foreground transition-colors placeholder:text-zinc-600 focus:border-primary/60 focus:outline-none" />
+                <input type="text" value={newSoundUrl} onChange={e=>setNewSoundUrl(e.target.value)} placeholder="URL direta do arquivo" className="rounded-sm border border-white/10 bg-[#0a0a0a] px-4 py-2.5 font-mono text-sm text-foreground transition-colors placeholder:text-zinc-600 focus:border-primary/60 focus:outline-none" />
+                <Button variant="default" className="mt-1 h-11 w-full gap-2 font-bold" onClick={handleAddCustomSound}>
                    <Save className="size-4" /> Salvar Etiqueta
                 </Button>
              </div>
           </div>
         )}
 
-        {/* Painel de Volume do Inspetor */}
         <div className="p-6 mt-auto">
            <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">Mixer Principal</h4>
-           <div className="flex items-center gap-4">
-             <button onClick={() => setMuted(!muted)} className="text-zinc-400 hover:text-[#00E58F] transition-colors focus:outline-none" title="Mutar/Desmutar">
-                {muted ? <VolumeX className="size-5 text-red-400" /> : <Volume2 className="size-5 text-[#00E58F]" />}
-             </button>
-             <input 
-               type="range" min="0" max="1" step="0.05" 
-               value={globalVolume} 
-               onChange={(e) => { setGlobalVolume(parseFloat(e.target.value)); setMuted(false); }}
-               className="flex-1 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer" 
-               style={{ accentColor: '#00E58F' }}
-             />
-             <span className="text-xs font-mono font-bold text-[#00E58F] w-10 text-right">{Math.round(globalVolume * 100)}%</span>
+           <div className="space-y-4">
+             <div className="flex items-center gap-4">
+               <Music className="size-5 text-accent" />
+               <div className="flex-1 min-w-0">
+                 <div className="mb-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                   <span>Música</span>
+                   <span className="font-mono text-accent">{Math.round(musicVolume * 100)}%</span>
+                 </div>
+                 <input
+                   type="range"
+                   min="0"
+                   max="1"
+                   step="0.05"
+                   value={musicVolume}
+                   onChange={(e) => onMusicVolumeChange?.(parseFloat(e.target.value))}
+                   className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                   style={{ accentColor: 'var(--accent)' }}
+                 />
+               </div>
+             </div>
+             <div className="flex items-center gap-4">
+               <Volume2 className="size-5 text-accent" />
+               <div className="flex-1 min-w-0">
+                 <div className="mb-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                   <span>Efeitos</span>
+                   <span className="font-mono text-accent">{Math.round(effectsVolume * 100)}%</span>
+                 </div>
+                 <input
+                   type="range"
+                   min="0"
+                   max="1"
+                   step="0.05"
+                   value={effectsVolume}
+                   onChange={(e) => onEffectsVolumeChange?.(parseFloat(e.target.value))}
+                   className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                   style={{ accentColor: 'var(--accent)' }}
+                 />
+               </div>
+             </div>
            </div>
         </div>
 

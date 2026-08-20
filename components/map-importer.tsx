@@ -89,15 +89,15 @@ export function MapImporter({ onMapReady }: { onMapReady: (map: GameMap) => void
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 bg-zinc-950 border border-primary/30 rounded-xl max-w-4xl w-full shadow-2xl">
+    <div className="rpg-modal flex w-full max-w-4xl flex-col gap-6 border border-primary/30 bg-zinc-950 p-6 shadow-2xl">
       <div className="flex justify-between items-center border-b border-white/10 pb-4">
-        <h3 className="font-serif text-2xl font-black text-primary flex items-center gap-2">
-          <Upload className="size-6" /> Importar Mapa
+        <h3 className="font-serif text-2xl font-black flex items-center gap-2">
+          <Upload className="size-6 text-primary" /> <span className="text-foreground">Importar Mapa</span>
         </h3>
       </div>
 
       {!imageSrc ? (
-        <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-border/50 rounded-xl hover:border-primary/50 hover:bg-card/30 transition-colors cursor-pointer">
+        <label className="rpg-empty flex h-64 w-full cursor-pointer flex-col items-center justify-center border-2 border-dashed border-border/50 transition-colors hover:border-primary/60 hover:bg-card/30">
           <Upload className="size-10 text-muted-foreground mb-4" />
           <p className="text-sm text-muted-foreground font-bold">Arraste uma imagem ou clique</p>
           <p className="text-xs text-muted-foreground mt-1">Recomendado imagens leves (JPG, WEBP) para não pesar o sincronismo.</p>

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { getMemberRole, publish, store } from "@/lib/store"
+import { deleteCharacterFromStore, getMemberRole, publish, saveToDisk, store } from "@/lib/store"
 import { normalizeResources } from "@/lib/character"
+import { normalizePortraitFrame } from "@/lib/portrait-frames"
 import type { Character } from "@/lib/types"
 
 export async function PATCH(
@@ -47,13 +48,14 @@ export async function PATCH(
     }
   }
 
-  // --- AQUI ESTÁ A CORREÇÃO PRINCIPAL ---
   const nextSkills = body?.skills !== undefined ? body.skills : (character as any).skills || {}
   const nextClasses = body?.classes !== undefined ? body.classes : character.classes || []
   const nextEquipment = body?.equipment !== undefined ? body.equipment : character.equipment
-  const nextZenit = body?.zenit !== undefined ? body.zenit : (character as any).zenit
+  const nextZenit = body?.zenit !== undefined ? Math.max(0, Number(body.zenit) || 0) : (character as any).zenit
   const nextCustomModifiers = body?.customModifiers !== undefined ? body.customModifiers : (character as any).customModifiers || [] // <-- Pega as condições
   const nextCustomItems = body?.customItems !== undefined ? body.customItems : (character as any).customItems || [] // <-- Pega os itens costumizados
+
+  const nextPortraitFrame = body?.portraitFrame !== undefined ? normalizePortraitFrame(body.portraitFrame) : normalizePortraitFrame(character.portraitFrame)
 
   const updatedData = { 
     ...character, 
@@ -62,8 +64,9 @@ export async function PATCH(
     classes: nextClasses,
     equipment: nextEquipment,
     zenit: nextZenit,
-    customModifiers: nextCustomModifiers, // <-- Salva no objeto novo
-    customItems: nextCustomItems,         // <-- Salva no objeto novo
+    customModifiers: nextCustomModifiers,
+    customItems: nextCustomItems,
+    portraitFrame: nextPortraitFrame,
     updatedAt: Date.now() 
   } as unknown as Character
 
@@ -73,8 +76,9 @@ export async function PATCH(
   ;(updated as any).skills = nextSkills;
   ;(updated as any).zenit = nextZenit;
   ;(updated as any).resources.xp = nextRes.xp;
-  ;(updated as any).customModifiers = nextCustomModifiers; // <-- Garante as condições
-  ;(updated as any).customItems = nextCustomItems;         // <-- Garante os itens
+  ;(updated as any).customModifiers = nextCustomModifiers;
+  ;(updated as any).customItems = nextCustomItems;
+  updated.portraitFrame = nextPortraitFrame;
 
   // Clampa o HP e MP dentro do limite seguro
   updated.resources.hp = Math.min(nextRes.hp, updated.resources.maxHp);
@@ -83,6 +87,7 @@ export async function PATCH(
   updated.resources.fp = nextRes.fp;
 
   store.characters.set(id, updated)
+  saveToDisk(store)
   publish(character.campaignId, { type: "character:updated", character: updated })
 
   return NextResponse.json({ character: updated })
@@ -105,7 +110,8 @@ export async function DELETE(
   if (character.ownerId !== user.id && role !== "gm")
     return NextResponse.json({ error: "Sem permissao." }, { status: 403 })
 
-  store.characters.delete(id)
+  deleteCharacterFromStore(id)
+  saveToDisk(store)
   publish(character.campaignId, { type: "character:deleted", characterId: id })
   return NextResponse.json({ ok: true })
 }

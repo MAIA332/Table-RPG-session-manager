@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { genId, getUserCampaigns, store } from "@/lib/store"
+import { genId, getCampaignPresenceCount, getUserCampaigns, saveToDisk, store } from "@/lib/store"
 import type { Campaign } from "@/lib/types"
 
 function makeCode(): string {
@@ -16,6 +16,7 @@ export async function GET() {
   const campaigns = getUserCampaigns(user.id).map((c) => ({
     ...c,
     role: c.members.find((m) => m.userId === user.id)?.role,
+    activeCount: getCampaignPresenceCount(c.id),
   }))
   return NextResponse.json({ campaigns })
 }
@@ -37,5 +38,6 @@ export async function POST(request: Request) {
     createdAt: Date.now(),
   }
   store.campaigns.set(campaign.id, campaign)
+  saveToDisk(store)
   return NextResponse.json({ campaign })
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { createPortal } from "react-dom"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import { apiFetch } from "@/lib/client"
 import { ResourceBar } from "@/components/resource-bar"
 import { Button } from "@/components/ui/button"
+import { CharacterPortrait } from "@/components/character-portrait"
+import { PORTRAIT_FRAMES, type PortraitFrameId } from "@/lib/portrait-frames"
 
 import {
   ATTRIBUTE_META,
@@ -29,7 +31,8 @@ import {
   ScrollText, ImageIcon, Film, Lock, Trash2, Search, Activity, Save,
   ArrowLeft, ArrowRight, Check, Swords, ChevronDown,
   Sword, Gem, Eye, SearchX, ShoppingCart, PackageOpen, BookOpen, PenTool,
-  AlertTriangle, Archive
+  AlertTriangle, Archive, Flame, Droplets, ShieldOff, Brain, Ghost, SwatchBook,
+  WandSparkles
 } from "lucide-react"
 
 // ==========================================
@@ -312,9 +315,9 @@ function ModifiersPanel({ character, isGm, onUpdate }: any) {
         ) : (
           <div className="flex flex-col gap-2">
             {mods.map(mod => (
-              <div key={mod.id} className={`flex items-center justify-between p-3 rounded-lg border ${mod.value > 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+              <div key={mod.id} className={`condition-entry flex items-center justify-between p-3 rounded-lg border ${mod.value > 0 ? 'is-positive' : 'is-negative'}`}>
                 <div className="flex flex-col">
-                  <span className={`font-bold text-sm ${mod.value > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className="condition-name text-sm font-bold">
                     {mod.name} ({mod.value > 0 ? '+' + mod.value : mod.value})
                   </span>
                   <span className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">Alvo: {getTargetName(mod.target)}</span>
@@ -518,7 +521,11 @@ export function NPCCreator({ onCreated, onCancel }: { onCreated: (npc: NPCDraft)
     setEquipment((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
   }
 
+  // A validação do step 1 (totalLevels > 0) já permite níveis infinitos para o NPC!
   const canNext = (step === 0 && name.trim().length > 0) || (step === 1 && totalLevels > 0) || (step === 2 && (profileId !== "custom" || customPoints === 8)) || step === 3
+
+  // ATENÇÃO: Defina esta constante se ela não estiver no seu arquivo
+  const NPC_STEPS = ["Essência", "Classes", "Atributos", "Equipamento"] as const;
 
   async function submit() {
     setSaving(true)
@@ -549,9 +556,11 @@ export function NPCCreator({ onCreated, onCancel }: { onCreated: (npc: NPCDraft)
 
       <div className="panel border-glow min-h-[360px] rounded-xl border border-destructive/30 p-6 relative">
         {step === 0 && <EssenceStep name={name} setName={setName} avatarUrl={avatarUrl} setAvatarUrl={setAvatarUrl} origin={origin} setOrigin={setOrigin} identity={identity} setIdentity={setIdentity} theme={theme} setTheme={setTheme} />}
-        {step === 1 && <ClassesStep skillLevels={skillLevels} setSkillLvl={setSkillLvl} classLevels={classLevels} totalLevels={totalLevels} chosenCount={chosenClassCount} />}
+        {/* Passando isNpc={true} para liberar os botões de + */}
+        {step === 1 && <ClassesStep skillLevels={skillLevels} setSkillLvl={setSkillLvl} classLevels={classLevels} totalLevels={totalLevels} chosenCount={chosenClassCount} isNpc={true} />}
         {step === 2 && <AttributesStep profileId={profileId} setProfileId={setProfileId} attributes={attributes} customAttributes={customAttributes} setCustomAttributes={setCustomAttributes} />}
-        {step === 3 && <EquipmentStep equipment={equipment} toggle={toggleEquipment} remaining={remaining} spent={spent} />}
+        {/* Passando isNpc={true} para ignorar a validação de Zenits */}
+        {step === 3 && <EquipmentStep equipment={equipment} toggle={toggleEquipment} remaining={remaining} spent={spent} isNpc={true} />}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-4 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
@@ -585,7 +594,6 @@ export function NPCCreator({ onCreated, onCancel }: { onCreated: (npc: NPCDraft)
 export function CreatureSheet({ creature, isGm, onUpdate, onRoll, onKill }: { creature: any, isGm: boolean, onUpdate: (id: string, updates: any) => void, onRoll: (attr: string, res: number) => void, onKill?: () => void }) {
   const [showInventory, setShowInventory] = useState(false)
   const [rollingAttr, setRollingAttr] = useState<string | null>(null)
-  const [rollResult, setRollResult] = useState<{ attr: string; value: number } | null>(null)
 
   const currentHp = creature.currentHp ?? creature.maxHp;
   const currentMp = creature.currentMp ?? creature.maxMp;
@@ -600,15 +608,12 @@ export function CreatureSheet({ creature, isGm, onUpdate, onRoll, onKill }: { cr
   function rollDice(attr: AttributeKey, dieString: string) {
     if (rollingAttr || !isGm) return;
     setRollingAttr(attr)
-    setRollResult(null)
     setTimeout(() => {
       const sides = parseInt(dieString.replace("d", ""))
       const result = Math.floor(Math.random() * sides) + 1
       const attrLabel = ATTRIBUTE_META[attr].label
-      setRollResult({ attr: attrLabel, value: result })
-      onRoll(attrLabel, result)
+      onRoll(`${attrLabel} [${dieString}]`, result)
       setRollingAttr(null)
-      setTimeout(() => setRollResult(null), 3000)
     }, 800)
   }
 
@@ -636,7 +641,7 @@ export function CreatureSheet({ creature, isGm, onUpdate, onRoll, onKill }: { cr
       <AnimatePresence>
         {showInventory && (
           <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-            <motion.div variants={modalVariants} className="relative w-full max-w-4xl h-full max-h-[85vh] bg-zinc-950 border border-destructive/50 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl">
               <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/40 shrink-0">
                 <h4 className="font-serif text-2xl font-black text-destructive flex items-center gap-3"><Package className="size-6" /> Saque da Criatura</h4>
                 <button onClick={() => setShowInventory(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
@@ -715,7 +720,7 @@ export function CreatureSheet({ creature, isGm, onUpdate, onRoll, onKill }: { cr
         {ATTR_KEYS.map((k: AttributeKey) => {
           const isRolling = rollingAttr === k
           return (
-            <button key={k} disabled={!isGm || isRolling} onClick={() => rollDice(k, creature.attributes[k])} className={`rounded-lg border py-3 text-center transition-all duration-300 ${isRolling ? "animate-bounce border-destructive bg-destructive/20" : "border-border/60 bg-card/40 hover:-translate-y-1 hover:border-destructive/50 hover:bg-card"}`}>
+            <button key={k} disabled={!isGm || isRolling} onClick={() => rollDice(k, creature.attributes[k])} className={`attribute-roll-button rounded-lg border py-3 text-center ${isRolling ? "is-rolling border-destructive bg-destructive/20" : "border-border/60 bg-card/40 hover:border-destructive/50 hover:bg-card"}`}>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">{k}</p>
               <p className="font-serif text-xl font-black text-destructive drop-shadow-sm">{creature.attributes[k]}</p>
             </button>
@@ -790,20 +795,57 @@ export function CreatureSheet({ creature, isGm, onUpdate, onRoll, onKill }: { cr
 // ==========================================
 // FICHA DO PERSONAGEM (JOGADORES)
 // ==========================================
-export function CharacterSheet({ character, editable, isGm, campaignMembers = [], onOptimistic, onRoll, onKill, shouldOpenInventory, onClearInventoryRequest, onArchive, defaultExpanded = false }: any) {
+function CharacterStatusBadges({ modifiers }: { modifiers: Modifier[] }) {
+  if (modifiers.length === 0) return null
+
+  const getVisual = (modifier: Modifier) => {
+    const name = modifier.name.toLocaleLowerCase("pt-BR")
+    if (name.includes("queim") || name.includes("fogo")) return { Icon: Flame, tone: "burn" }
+    if (name.includes("sangr")) return { Icon: Droplets, tone: "bleed" }
+    if (name.includes("fraq") || name.includes("vulner")) return { Icon: ShieldOff, tone: "weak" }
+    if (name.includes("atordo") || name.includes("confus")) return { Icon: Brain, tone: "stun" }
+    if (name.includes("medo") || name.includes("maldi")) return { Icon: Ghost, tone: "curse" }
+    if (name.includes("venen") || name.includes("tox")) return { Icon: Skull, tone: "poison" }
+    return { Icon: Activity, tone: modifier.value < 0 ? "negative" : "positive" }
+  }
+
+  return (
+    <div className="character-status-list" aria-label="Condições ativas">
+      {modifiers.slice(0, 3).map((modifier) => {
+        const { Icon, tone } = getVisual(modifier)
+        const detail = `${modifier.name}${modifier.value ? ` (${modifier.value > 0 ? "+" : ""}${modifier.value})` : ""}`
+        return (
+          <span key={modifier.id} data-tone={tone} className="character-status-icon" title={detail} aria-label={detail}>
+            <Icon className="size-3" />
+          </span>
+        )
+      })}
+      {modifiers.length > 3 && <span className="character-status-more" title={modifiers.slice(3).map((modifier) => modifier.name).join(", ")}>+{modifiers.length - 3}</span>}
+    </div>
+  )
+}
+
+export function CharacterSheet({ character, editable, isGm, isOwned = false, campaignMembers = [], onOptimistic, onRoll, onKill, shouldOpenInventory, onClearInventoryRequest, onArchive, defaultExpanded = false, expanded, onExpandedChange }: any) {
   const [mounted, setMounted] = useState(false)
   const [pending, setPending] = useState(false)
-  
-  // NOTE: State initialized from prop, but we will ONLY use it after mounting to avoid hydration mismatch
-  const [isExpanded, setIsExpanded] = useState(false) 
+  const [internalExpanded, setInternalExpanded] = useState(false)
+  const isExpanded = typeof expanded === "boolean" ? expanded : internalExpanded
   
   const [rollingAttr, setRollingAttr] = useState<string | null>(null)
-  const [rollResult, setRollResult] = useState<{ attr: string; value: number | string } | null>(null)
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null)
   const [showLevelUp, setShowLevelUp] = useState(false)
   const [showInventory, setShowInventory] = useState(false)
   const [showStore, setShowStore] = useState(false)
   const [showLore, setShowLore] = useState(false)
+  const [showFrameGallery, setShowFrameGallery] = useState(false)
+  const [editingZenit, setEditingZenit] = useState(false)
+  const [zenitDraft, setZenitDraft] = useState("")
+  const zenitInputRef = useRef<HTMLInputElement | null>(null)
+  const sheetRef = useRef<HTMLDivElement | null>(null)
+  const scrollFrameRef = useRef<number | null>(null)
+  const previousExpandedRef = useRef(isExpanded)
+  const [expandedContentMounted, setExpandedContentMounted] = useState(defaultExpanded)
+  const [expansionVisible, setExpansionVisible] = useState(defaultExpanded)
 
   const [sheetTab, setSheetTab] = useState<"main" | "checks" | "modifiers">("main")
   const [viewingItem, setViewingItem] = useState<any | null>(null)
@@ -816,16 +858,69 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
   const [archiving, setArchiving] = useState(false)
 
+  function changeExpanded(next: boolean) {
+    if (typeof expanded !== "boolean") setInternalExpanded(next)
+    onExpandedChange?.(next)
+  }
+
+  useLayoutEffect(() => {
+    const wasExpanded = previousExpandedRef.current
+    previousExpandedRef.current = isExpanded
+    if (!wasExpanded || isExpanded || !sheetRef.current) return
+
+    const scroller = sheetRef.current.closest(".rpg-character-scroll") as HTMLElement | null
+    if (!scroller || scroller.scrollTop <= 0) return
+
+    const compactReference = Array.from(scroller.querySelectorAll<HTMLElement>(".rpg-character-sheet[data-expanded='false']"))
+      .find((element) => element !== sheetRef.current)
+    const compactHeight = compactReference?.getBoundingClientRect().height ?? 108
+    const collapseDistance = Math.max(0, sheetRef.current.getBoundingClientRect().height - compactHeight)
+    const target = Math.min(scroller.scrollTop, Math.max(0, scroller.scrollHeight - scroller.clientHeight - collapseDistance))
+    const start = scroller.scrollTop
+    if (Math.abs(start - target) < 1) return
+
+    if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current)
+    const startedAt = performance.now()
+    const duration = 360
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / duration)
+      scroller.scrollTop = start + (target - start) * progress
+      if (progress < 1) scrollFrameRef.current = requestAnimationFrame(step)
+      else scrollFrameRef.current = null
+    }
+    scrollFrameRef.current = requestAnimationFrame(step)
+  }, [isExpanded])
+
+  useEffect(() => {
+    if (isExpanded) {
+      setExpandedContentMounted(true)
+      let secondFrame: number | null = null
+      const firstFrame = requestAnimationFrame(() => {
+        secondFrame = requestAnimationFrame(() => setExpansionVisible(true))
+      })
+      return () => {
+        cancelAnimationFrame(firstFrame)
+        if (secondFrame !== null) cancelAnimationFrame(secondFrame)
+      }
+    }
+    setExpansionVisible(false)
+    const timeout = window.setTimeout(() => setExpandedContentMounted(false), 540)
+    return () => window.clearTimeout(timeout)
+  }, [isExpanded])
+
+  useEffect(() => () => {
+    if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current)
+  }, [])
+
   useEffect(() => {
     setMounted(true);
-    // Hydration Fix: Set default expansion ONLY after mount so server HTML is always uniform
-    if (defaultExpanded) setIsExpanded(true);
+    if (defaultExpanded) changeExpanded(true);
   }, [defaultExpanded])
 
   useEffect(() => {
     if (shouldOpenInventory) {
       setShowInventory(true);
-      setIsExpanded(true);
+      changeExpanded(true);
       if (onClearInventoryRequest) onClearInventoryRequest();
     }
   }, [shouldOpenInventory, onClearInventoryRequest])
@@ -835,6 +930,12 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
   const currentZenit = character.zenit || 0
   const skillsObj = character.skills || {}
   const customItems = character.customItems || []
+
+  useEffect(() => {
+    if (!editingZenit) return
+    zenitInputRef.current?.focus()
+    zenitInputRef.current?.select()
+  }, [editingZenit])
 
   let totalSkillPointsSpent = Object.values(skillsObj).reduce((a: any, b: any) => a + b, 0) as number
   if (totalSkillPointsSpent === 0 && character.classes?.length > 0) {
@@ -915,6 +1016,57 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
     setPending(true)
     try {
       const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, { method: "PATCH", body: JSON.stringify({ resources: { [key]: next[key] } }) })
+      onOptimistic(updated)
+    } finally { setPending(false) }
+  }
+
+  async function saveZenit(value: number) {
+    if (!editable || pending) return
+    const nextZenit = Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value)))
+    if (!Number.isFinite(nextZenit) || nextZenit === currentZenit) return
+    onOptimistic({ ...character, zenit: nextZenit })
+    setPending(true)
+    try {
+      const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, { method: "PATCH", body: JSON.stringify({ zenit: nextZenit }) })
+      onOptimistic(updated)
+    } finally { setPending(false) }
+  }
+
+  async function patchZenit(delta: number) {
+    await saveZenit(currentZenit + delta)
+  }
+
+  function beginZenitEdit() {
+    if (!editable || pending) return
+    setZenitDraft(String(currentZenit))
+    setEditingZenit(true)
+  }
+
+  function commitZenitEdit() {
+    if (!editingZenit) return
+    const trimmed = zenitDraft.trim()
+    setEditingZenit(false)
+    if (!trimmed) return
+    const value = Number(trimmed)
+    if (!Number.isFinite(value) || value < 0) return
+    void saveZenit(value)
+  }
+
+  function cancelZenitEdit() {
+    setZenitDraft(String(currentZenit))
+    setEditingZenit(false)
+  }
+
+  async function savePortraitFrame(frame: PortraitFrameId) {
+    if (!editable || pending || frame === (character.portraitFrame || "bronze")) {
+      setShowFrameGallery(false)
+      return
+    }
+    onOptimistic({ ...character, portraitFrame: frame })
+    setShowFrameGallery(false)
+    setPending(true)
+    try {
+      const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, { method: "PATCH", body: JSON.stringify({ portraitFrame: frame }) })
       onOptimistic(updated)
     } finally { setPending(false) }
   }
@@ -1000,30 +1152,25 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
   function rollDice(attr: AttributeKey, dieString: string) {
     if (rollingAttr || !editable) return;
     setRollingAttr(attr);
-    setRollResult(null);
     setTimeout(() => {
       const sides = parseInt(dieString.replace("d", ""));
       const result = Math.floor(Math.random() * sides) + 1;
       const attrLabel = ATTRIBUTE_META[attr].label;
 
       let modTotal = 0;
-      const activeMods: string[] = [];
       const mods = (character as any).customModifiers || [];
       mods.forEach((m: any) => {
         if (m.target === 'all' || m.target === attr) {
           modTotal += m.value;
-          activeMods.push(`${m.name}(${m.value > 0 ? '+' + m.value : m.value})`);
         }
       });
 
       const finalResult = result + modTotal;
-      const detailStr = `[${attrLabel}] 🎲 ${result}` + (modTotal !== 0 ? ` ⚡ Mod: ${activeMods.join(', ')}` : '');
+      const detailStr = `[${attrLabel} ${dieString}]`;
 
-      setRollResult({ attr: attrLabel, value: finalResult });
-      if (onRoll) onRoll(detailStr, finalResult);
+      if (onRoll) onRoll(detailStr, finalResult, modTotal !== 0 ? { modifier: modTotal } : undefined);
 
-      setRollingAttr(null);
-      setTimeout(() => setRollResult(null), 3000);
+      window.setTimeout(() => setRollingAttr((current) => current === attr ? null : current), 4300);
     }, 800);
   }
 
@@ -1034,33 +1181,30 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
     setTimeout(() => {
       let totalDice = 0;
       let details: number[] = [];
+      let diceLabels: string[] = [];
       check.attrs.forEach((a: string) => {
-        const dieSize = parseInt((character.attributes[a as AttributeKey] || "d6").replace("d", ""));
+        const dieLabel = character.attributes[a as AttributeKey] || "d6";
+        const dieSize = parseInt(dieLabel.replace("d", ""));
         const roll = Math.floor(Math.random() * dieSize) + 1;
         totalDice += roll;
         details.push(roll);
+        diceLabels.push(dieLabel);
       });
 
       let modTotal = 0;
-      let activeMods: string[] = [];
       const mods = (character as any).customModifiers || [];
       mods.forEach((m: any) => {
         if (m.target === 'all' || check.attrs.includes(m.target) || m.target === check.name) {
           modTotal += m.value;
-          activeMods.push(`${m.name} (${m.value > 0 ? '+' + m.value : m.value})`);
         }
       });
 
       const finalResult = totalDice + modTotal;
-      const diceStr = `[${check.attrs.join('+').toUpperCase()}] 🎲 ${details.join(' + ')}`;
-      const modStr = modTotal !== 0 ? ` ⚡ Mod: ${modTotal > 0 ? '+' + modTotal : modTotal}` : '';
-      const logDetail = `${check.name} ${diceStr}${modStr}`;
+      const logDetail = `${check.name} [${check.attrs.join('+').toUpperCase()} ${diceLabels.join(' + ')}]`;
 
-      if (onRoll) onRoll(logDetail, finalResult);
+      if (onRoll) onRoll(logDetail, finalResult, { breakdown: details.join(' + '), modifier: modTotal || undefined });
 
-      setRollResult({ attr: check.name, value: finalResult });
       setRollingAttr(null);
-      setTimeout(() => setRollResult(null), 4000);
     }, 800);
   }
 
@@ -1125,27 +1269,14 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
     } finally { setPending(false); }
   }
 
-  if (!mounted) {
-    return (
-      <div className="panel border-glow relative rounded-xl border p-4 flex items-center gap-4 w-full bg-zinc-950/40 min-h-[100px] animate-pulse">
-        <div className="size-14 sm:size-16 rounded-lg bg-white/5 shrink-0" />
-        <div className="flex-1 space-y-3">
-          <div className="h-5 w-1/3 bg-white/5 rounded" />
-          <div className="h-3 w-1/4 bg-white/5 rounded" />
-        </div>
-        <div className="size-8 rounded-md bg-white/5 shrink-0" />
-      </div>
-    )
-  }
-
   return (
-    <div className={`panel border-glow relative rounded-xl border flex flex-col w-full bg-zinc-950/40 transition-all duration-300 ${isExpanded ? 'p-5 sm:p-6 shadow-[0_0_30px_rgba(var(--primary),0.1)] border-primary/50' : 'p-4 border-border/40 hover:border-primary/30'}`}>
+    <div ref={sheetRef} data-expanded={isExpanded} className={`panel rpg-character-sheet border-glow relative flex w-full flex-col border bg-zinc-950/40 transition-[padding,border-color,box-shadow,background-color] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)] ${isOwned && !isGm ? 'is-player-owned' : ''} ${isExpanded ? 'p-5 sm:p-6 border-primary/50' : 'p-2.5 sm:p-3 border-border/40 hover:border-primary/30'}`}>
       {mounted && createPortal(
         <>
           <AnimatePresence>
             {showLevelUp && (
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-                <motion.div variants={modalVariants} className="relative w-full max-w-2xl h-full max-h-[85vh] rounded-xl border border-primary/50 bg-zinc-950 shadow-2xl flex flex-col">
+                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col border border-primary/50 bg-zinc-950 shadow-2xl">
                   <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
                     <div>
                       <h4 className="font-serif text-2xl font-black text-primary flex items-center gap-2"><TrendingUp className="size-6" /> Evolução</h4>
@@ -1196,7 +1327,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
               >
                 <motion.div
                   variants={modalVariants}
-                  className="relative w-full max-w-7xl h-full max-h-[95vh] bg-zinc-950 border border-accent/30 rounded-xl shadow-2xl flex flex-col overflow-hidden"
+                  className="rpg-modal relative flex h-full max-h-[95vh] w-full max-w-7xl flex-col overflow-hidden border border-accent/30 bg-zinc-950 shadow-2xl"
                 >
                   <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 p-5 md:p-6 border-b border-white/10 bg-black/50 shrink-0">
                     <div className="flex items-center gap-3">
@@ -1418,7 +1549,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
           <AnimatePresence>
             {showInventory && (
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden">
-                <motion.div variants={modalVariants} className="relative w-full max-w-4xl h-full max-h-[85vh] bg-zinc-950 border border-primary/30 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden border border-primary/30 bg-zinc-950 shadow-2xl">
                   <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/40 shrink-0">
                     <h4 className="font-serif text-2xl md:text-3xl font-black text-primary flex items-center gap-3"><Package className="size-6 md:size-8" /> Mochila do Herói</h4>
                     <button onClick={() => setShowInventory(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10"><X className="size-5 md:size-6 text-muted-foreground hover:text-white" /></button>
@@ -1523,7 +1654,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
           <AnimatePresence>
             {viewingItem && (
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-                <motion.div variants={modalVariants} className={`relative w-full max-w-3xl max-h-[85vh] flex flex-col rounded-xl overflow-hidden shadow-2xl ${viewingItem.type === 'text' ? 'bg-[#f4e4bc] text-black border-2 border-[#d4af37]' : 'bg-zinc-950 border border-primary/50'}`}>
+                <motion.div variants={modalVariants} className={`relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden shadow-2xl ${viewingItem.type === 'text' ? 'rpg-paper text-black border-2 border-[#d4af37]' : 'rpg-modal bg-zinc-950 border border-primary/50'}`}>
                   <div className={`flex justify-between items-center p-4 border-b shrink-0 ${viewingItem.type === 'text' ? 'border-[#d4af37]/30' : 'border-white/10 bg-black/40'}`}>
                     <h4 className={`font-serif text-xl font-bold flex items-center gap-2 ${viewingItem.type === 'text' ? 'text-amber-900' : 'text-primary'}`}>
                       {viewingItem.type === 'text' && <ScrollText className="size-5" />}
@@ -1581,20 +1712,12 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
           </AnimatePresence>
 
           <AnimatePresence>
-            {rollResult && (
-              <motion.div initial={{ opacity: 0, y: -20, x: "-50%" }} animate={{ opacity: 1, y: 0, x: "-50%" }} exit={{ opacity: 0, y: -20, x: "-50%" }} className="fixed top-8 left-1/2 z-[200] rounded-full border border-primary/50 bg-primary/90 px-6 py-2 text-base font-bold text-primary-foreground shadow-2xl backdrop-blur-md flex items-center">
-                <Dices className="size-5 mr-3 animate-spin" /> {rollResult.attr}: Tirou {rollResult.value}!
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <AnimatePresence>
             {showTransferModal && editable && (
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                <motion.div variants={modalVariants} className="w-full max-w-md rounded-xl border border-primary/50 bg-zinc-950 p-6 shadow-2xl relative">
+                <motion.div variants={modalVariants} className="rpg-modal relative w-full max-w-md border border-primary/50 bg-zinc-950 p-6 shadow-2xl">
                   <button onClick={() => setShowTransferModal(false)} className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
-                  <h4 className="font-serif text-xl font-bold text-primary mb-2 flex items-center gap-2">
-                    <UserPlus className="size-5" /> Ceder Controle
+                  <h4 className="mb-2 flex items-center gap-2 font-serif text-xl font-bold text-primary">
+                    <UserPlus className="size-5" /> Ceder
                   </h4>
                   <p className="text-sm text-muted-foreground mb-6">Selecione para qual jogador você deseja transferir o controle permanente desta ficha.</p>
                   <div className="space-y-2 mb-6">
@@ -1627,7 +1750,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
           <AnimatePresence>
             {showArchiveConfirm && isGm && (
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                <motion.div variants={modalVariants} className="w-full max-w-md rounded-xl border border-destructive/50 bg-zinc-950 p-6 shadow-2xl relative">
+                <motion.div variants={modalVariants} className="rpg-modal relative w-full max-w-md border border-destructive/50 bg-zinc-950 p-6 shadow-2xl">
                   <button onClick={() => setShowArchiveConfirm(false)} className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
                   <h4 className="font-serif text-xl font-bold text-destructive mb-2 flex items-center gap-2">
                     <Archive className="size-5" /> Arquivar Personagem
@@ -1638,7 +1761,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
                   <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-xs text-destructive mb-6 leading-relaxed">
                     <strong>O que acontece agora?</strong><br />
                     - O jogador perderá o acesso a esta ficha permanentemente.<br />
-                    - O personagem se transformará em um <strong>NPC</strong> e será guardado no seu <strong>Berçário de NPCs</strong>.<br />
+                    - O personagem se transformará em um <strong>NPC</strong> e será guardado no seu <strong>Berçário</strong>.<br />
                     - Você poderá invocá-lo na mesa para combater ou interagir a qualquer momento.
                   </div>
                   <div className="flex justify-end gap-3">
@@ -1660,37 +1783,68 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
           </AnimatePresence>
 
           <AnimatePresence>
+            {showFrameGallery && (
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[320] flex items-center justify-center bg-black/85 p-3 backdrop-blur-md sm:p-6" onClick={() => setShowFrameGallery(false)}>
+                <motion.div variants={modalVariants} className="rpg-modal max-h-[92vh] w-full max-w-3xl overflow-y-auto border p-6 custom-scrollbar-sepia sm:p-8" onClick={(event) => event.stopPropagation()}>
+                  <div className="mb-6 flex items-start justify-between gap-5">
+                    <div>
+                      <span className="text-xs font-semibold text-muted-foreground">Personalização do retrato</span>
+                      <h4 className="rpg-title mt-1.5 text-2xl font-bold text-foreground sm:text-3xl">Galeria de Molduras</h4>
+                    </div>
+                    <button type="button" onClick={() => setShowFrameGallery(false)} className="rounded-sm p-2.5 text-muted-foreground hover:bg-white/10 hover:text-foreground" aria-label="Fechar galeria"><X className="size-6" /></button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    {PORTRAIT_FRAMES.map((frame) => {
+                      const selected = (character.portraitFrame || "bronze") === frame.id
+                      return (
+                        <button key={frame.id} type="button" disabled={pending} onClick={() => void savePortraitFrame(frame.id)} className={`portrait-frame-option ${selected ? "is-selected" : ""}`} aria-pressed={selected}>
+                          <CharacterPortrait src={character.avatarUrl} alt="" frame={frame.id} className="size-20 sm:size-24" sizes="96px" />
+                          <span className="min-w-0 text-left">
+                            <strong>{frame.name}</strong>
+                            <small>{frame.detail}</small>
+                          </span>
+                          {selected && <Check className="portrait-frame-check size-5" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
             {showLore && (
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-                <motion.div variants={modalVariants} className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-xl overflow-hidden shadow-[0_0_40px_rgba(212,175,55,0.2)] bg-[#f4e4bc] text-[#3e2723] border-2 border-[#d4af37] bg-[url('https://www.transparenttextures.com/patterns/old-paper.png')]">
+                <motion.div variants={modalVariants} className="rpg-paper relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden border-2 border-[#d4af37] text-[#3e2723]">
                   <div className="flex justify-between items-center p-5 border-b border-[#d4af37]/40 shrink-0 bg-black/5">
                     <h4 className="font-serif text-2xl font-bold flex items-center gap-3 text-[#5d4037]">
-                      <ScrollText className="size-6" /> História do Herói
+                      <ScrollText className="size-6" /> História do personagem
                     </h4>
                     <button onClick={() => setShowLore(false)} className="rounded-full p-2 hover:bg-black/10 transition-colors">
                       <X className="size-5 text-[#5d4037]" />
                     </button>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar-sepia space-y-6 font-serif">
+                  <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar-sepia space-y-6">
                     <div>
                       <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2">
                         <BookOpenText className="size-4" /> Origem
                       </div>
-                      <div className="text-lg leading-relaxed whitespace-pre-wrap">{character.origin || "Desconhecida"}</div>
+                      <div className="font-serif text-base leading-loose whitespace-pre-wrap">{character.origin || "Desconhecida"}</div>
                     </div>
                     <div className="w-full h-px bg-[#d4af37]/30" />
                     <div>
                       <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2">
                         <Shield className="size-4" /> Identidade
                       </div>
-                      <div className="text-lg leading-relaxed whitespace-pre-wrap">{character.identity || "Nenhuma"}</div>
+                      <div className="font-serif text-base leading-loose whitespace-pre-wrap">{character.identity || "Nenhuma"}</div>
                     </div>
                     <div className="w-full h-px bg-[#d4af37]/30" />
                     <div>
                       <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2">
                         <Sparkles className="size-4" /> Tema
                       </div>
-                      <div className="text-xl leading-relaxed italic text-[#4e342e]">"{character.theme || "Nenhum"}"</div>
+                      <div className="font-serif text-lg leading-relaxed italic text-[#4e342e]">"{character.theme || "Nenhum"}"</div>
                     </div>
                   </div>
                 </motion.div>
@@ -1703,94 +1857,133 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
       )}
 
       {/* HEADER COMPACTO/EXPANDIDO DA FICHA */}
-      <div className="flex items-start justify-between gap-4 w-full relative z-50">
+      <div className="relative z-50 flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
-          <div className="relative size-14 sm:size-16 shrink-0 overflow-hidden rounded-lg border border-primary/40 shadow-md cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-            <Image src={character.avatarUrl || "/mystic-adventurer-portrait.png"} alt="Retrato" fill className="object-cover" sizes="64px" />
+          <div className="relative shrink-0">
+            <CharacterPortrait src={character.avatarUrl} alt={`Retrato de ${character.name}`} frame={character.portraitFrame} className={`${isExpanded ? "size-[88px] sm:size-[104px]" : "size-[72px] sm:size-[80px]"} cursor-pointer transition-[width,height] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)]`} sizes="104px" onClick={() => changeExpanded(!isExpanded)} />
+            {!isExpanded && editable && (
+              <button type="button" onClick={(event) => { event.stopPropagation(); setShowFrameGallery(true) }} className="portrait-frame-trigger" title="Escolher moldura" aria-label="Escolher moldura do retrato">
+                <SwatchBook className="size-4" />
+              </button>
+            )}
           </div>
-          <div className="flex-1 min-w-0 flex flex-col items-start cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+          <div className="flex-1 min-w-0 flex flex-col items-start cursor-pointer" onClick={() => changeExpanded(!isExpanded)}>
             <div className="flex justify-between items-start w-full">
-              <h3 className="font-serif text-lg sm:text-xl md:text-2xl font-bold text-foreground leading-tight truncate">
-                {character.name} <span className="text-primary text-sm sm:text-base md:text-lg whitespace-nowrap">(Nv. {charLevel})</span>
+              <h3 className={`font-serif font-bold text-foreground leading-tight truncate transition-[font-size,line-height] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)] ${isExpanded ? "text-2xl sm:text-[26px] md:text-[28px]" : "text-[20px] sm:text-[22px] md:text-2xl"}`}>
+                {character.name} <span className={`${isExpanded ? "text-primary text-sm sm:text-base md:text-lg" : "text-zinc-400 text-[12px] sm:text-[13px] md:text-sm"} whitespace-nowrap`}>(Nv. {charLevel})</span>
               </h3>
             </div>
 
             {!isExpanded ? (
               // VIEW COMPACTA
               <div className="flex flex-col gap-1 mt-1 w-full">
-                <div className="text-[10px] text-muted-foreground uppercase tracking-widest truncate w-full">
+                <div className="font-sans w-full truncate text-[14px] leading-snug text-muted-foreground">
                   {[character.identity, character.origin].filter(Boolean).join(" · ") || "Aventureiro"}
                 </div>
-                <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest mt-1">
-                  <span className="text-[color:var(--hp)] font-bold">HP: {character.resources.hp}/{character.resources.maxHp}</span>
-                  <span className="text-[color:var(--mp)] font-bold">MP: {character.resources.mp}/{character.resources.maxMp}</span>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[13px] font-semibold tabular-nums">
+                  <span><b className="text-[color:var(--hp)]">HP:</b> <strong className="text-foreground">{character.resources.hp}/{character.resources.maxHp}</strong></span>
+                  <span><b className="text-[color:var(--mp)]">MP:</b> <strong className="text-foreground">{character.resources.mp}/{character.resources.maxMp}</strong></span>
+                  <CharacterStatusBadges modifiers={(character.customModifiers || []) as Modifier[]} />
                 </div>
               </div>
             ) : (
               // VIEW EXPANDIDA
               <>
-                <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 leading-snug line-clamp-2 w-full break-words">
+                <div className="font-sans mt-0.5 line-clamp-2 w-full break-words text-sm leading-snug text-muted-foreground">
                   {[character.identity, character.origin].filter(Boolean).join(" · ") || "Aventureiro"}
                 </div>
-                <Button size="sm" variant="ghost" className="h-6 px-2 mt-1.5 text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0" onClick={(e) => { e.stopPropagation(); setShowLore(true); }}>
-                  <ScrollText className="size-3 mr-1.5 shrink-0" /> Ler História Completa
+                <Button size="sm" variant="ghost" className="mt-1.5 h-8 shrink-0 px-3 text-xs uppercase tracking-widest text-muted-foreground hover:bg-primary/10 hover:text-primary" onClick={(e) => { e.stopPropagation(); setShowLore(true); }}>
+                  <ScrollText className="mr-1.5 size-4 shrink-0" /> Ler História Completa
                 </Button>
               </>
             )}
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-full border border-border/60 shadow-sm">
+        <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+          <div className="flex items-center justify-between gap-2 sm:justify-start">
+            <div className="flex items-center gap-1.5 bg-card px-2 py-1 rounded-full border border-border/60 shadow-sm">
+              {editable && (
+                <button type="button" disabled={pending} onClick={(e) => { e.stopPropagation(); patchZenit(-1); }} className="flex size-5 items-center justify-center rounded-full border border-border/60 bg-background hover:border-accent hover:bg-accent/10 hover:text-accent transition-colors disabled:opacity-40" aria-label="Diminuir Zenits">
+                  <Minus className="size-3" />
+                </button>
+              )}
               <Coins className="size-3.5 text-accent" />
-              <span className="font-mono text-xs font-bold text-foreground">{currentZenit} z</span>
+              {editingZenit ? (
+                <input
+                  ref={zenitInputRef}
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  step="1"
+                  value={zenitDraft}
+                  onClick={(event) => event.stopPropagation()}
+                  onChange={(event) => setZenitDraft(event.target.value)}
+                  onBlur={commitZenitEdit}
+                  onKeyDown={(event) => {
+                    event.stopPropagation()
+                    if (event.key === "Enter") event.currentTarget.blur()
+                    if (event.key === "Escape") cancelZenitEdit()
+                  }}
+                  className="zenit-direct-input"
+                  aria-label="Valor de Zenith"
+                />
+              ) : (
+                <button key={currentZenit} type="button" disabled={!editable || pending} onClick={(event) => { event.stopPropagation(); beginZenitEdit() }} className="zenit-direct-value" title={editable ? "Clique para editar" : undefined}>
+                  {currentZenit} <span>z</span>
+                </button>
+              )}
+              {editable && (
+                <button type="button" disabled={pending} onClick={(e) => { e.stopPropagation(); patchZenit(1); }} className="flex size-5 items-center justify-center rounded-full border border-border/60 bg-background hover:border-accent hover:bg-accent/10 hover:text-accent transition-colors disabled:opacity-40" aria-label="Aumentar Zenits">
+                  <Plus className="size-3" />
+                </button>
+              )}
             </div>
-            <button onClick={() => setIsExpanded(!isExpanded)} className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground">
+            <button onClick={() => changeExpanded(!isExpanded)} className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground">
               <ChevronDown className={`size-5 transition-transform duration-300 ${isExpanded ? "rotate-180 text-primary" : ""}`} />
             </button>
           </div>
 
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex">
             {editable && (
-              <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 border-primary/40 text-primary hover:bg-primary/10 transition-colors" onClick={() => setShowTransferModal(true)}>
-                <UserPlus className="size-3 mr-1.5" /> Ceder Controle
+              <Button size="sm" variant="outline" className="h-9 px-4 text-sm font-semibold border-primary/40 text-primary hover:bg-primary/10 transition-colors" onClick={() => setShowTransferModal(true)}>
+                <UserPlus className="mr-1.5 size-4" /> Ceder
               </Button>
             )}
             {/* O BOTÃO ARQUIVAR FICA AQUI */}
             {isGm && onArchive && (
-              <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors" onClick={() => setShowArchiveConfirm(true)}>
-                <Archive className="size-3 mr-1.5" /> Arquivar
+              <Button size="sm" variant="outline" className="rpg-archive-button h-9 px-4 text-sm font-semibold transition-colors" onClick={() => setShowArchiveConfirm(true)}>
+                <Archive className="mr-1.5 size-4" /> Arquivar
               </Button>
             )}
           </div>
         </div>
       </div>
 
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden relative z-40">
+      <div className="rpg-character-expansion" data-open={expansionVisible} aria-hidden={!expansionVisible}>
+        <div className="rpg-character-expansion-clip">
+          {(expandedContentMounted || isExpanded) && <div className="relative z-40">
             <div className="pt-4 mt-2 border-t border-white/10">
               
               {/* ABAS */}
-              <div className="flex bg-black/40 rounded-lg p-1 border border-border/40 w-full mb-5 relative z-50">
-                <button onClick={() => setSheetTab('main')} className={`flex-1 text-xs py-2 rounded-md transition-colors ${sheetTab === 'main' ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'text-muted-foreground hover:text-white'}`}>Principal</button>
-                <button onClick={() => setSheetTab('checks')} className={`flex-1 text-xs py-2 rounded-md transition-colors ${sheetTab === 'checks' ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'text-muted-foreground hover:text-white'}`}>Testes e Perícias</button>
-                <button onClick={() => setSheetTab('modifiers')} className={`flex-1 text-xs py-2 rounded-md transition-colors ${sheetTab === 'modifiers' ? 'bg-primary text-primary-foreground font-bold shadow-sm' : 'text-muted-foreground hover:text-white flex items-center justify-center gap-1'}`}>
-                  Condições {(character as any).customModifiers?.length > 0 && <span className="flex size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold">{(character as any).customModifiers.length}</span>}
+              <div className="rpg-tabs relative z-50 mb-5 grid h-11 w-full grid-cols-3 p-1">
+                <button onClick={() => setSheetTab('main')} className={`rpg-tab-button flex h-9 min-w-0 flex-1 items-center justify-center rounded-md px-2 text-xs leading-none whitespace-nowrap transition-colors ${sheetTab === 'main' ? 'is-active font-bold' : 'text-muted-foreground'}`}>Principal</button>
+                <button onClick={() => setSheetTab('checks')} className={`rpg-tab-button flex h-9 min-w-0 flex-1 items-center justify-center rounded-md px-2 text-xs leading-none whitespace-nowrap transition-colors ${sheetTab === 'checks' ? 'is-active font-bold' : 'text-muted-foreground'}`}><span className="truncate">Testes e Perícias</span></button>
+                <button onClick={() => setSheetTab('modifiers')} className={`rpg-tab-button relative flex h-9 min-w-0 items-center justify-center rounded-md px-7 text-xs leading-none whitespace-nowrap transition-colors ${sheetTab === 'modifiers' ? 'is-active font-bold' : 'text-muted-foreground'}`}>
+                  <span className="truncate">Condições</span>{sheetTab !== 'modifiers' && (character as any).customModifiers?.length > 0 && <span className="condition-count absolute right-2 flex size-5 items-center justify-center rounded-full text-[10px] font-bold leading-none">{(character as any).customModifiers.length}</span>}
                 </button>
               </div>
 
               {/* CONTEÚDO DAS ABAS */}
               {sheetTab === 'main' && (
                 <div className="animate-in fade-in zoom-in-95 duration-200">
-                  <div className="bg-black/40 rounded-lg p-3 sm:p-4 border border-border/40">
+                  <div className="rounded-sm border border-border/40 bg-black/35 p-3 shadow-inner sm:p-4">
                     <div className="flex justify-between items-center mb-2">
                       <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest">Experiência (XP)</p>
                       <p className="text-xs sm:text-sm text-primary font-mono font-bold">{currentLevelXp} / {xpRequired}</p>
                     </div>
-                    <div className="w-full bg-zinc-800/80 rounded-full h-1.5 sm:h-2 mb-3 sm:mb-4 overflow-hidden">
-                      <div className="bg-primary h-1.5 sm:h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${(currentLevelXp / xpRequired) * 100}%` }}></div>
+                    <div className="rpg-resource-track mb-3 h-1.5 w-full overflow-hidden bg-zinc-800/80 sm:mb-4 sm:h-2">
+                      <div className="rpg-resource-fill h-1.5 bg-primary transition-all duration-500 ease-out sm:h-2" style={{ width: `${(currentLevelXp / xpRequired) * 100}%` }}></div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {unspentPoints > 0 ? (
@@ -1817,9 +2010,15 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
 
                       return (
                         <div key={k} className="relative">
-                          <button disabled={!editable || isRolling} onClick={() => rollDice(k, character.attributes[k])} className={`w-full rounded-lg border py-3 text-center transition-all duration-300 ${isRolling ? "animate-bounce border-primary bg-primary/20" : "border-border/60 bg-card/40 hover:-translate-y-1 hover:border-primary/50 hover:bg-card"}`}>
-                            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">{ATTRIBUTE_META[k].short}</p>
-                            <p className="font-serif text-xl sm:text-2xl font-black text-primary drop-shadow-sm">{character.attributes[k]}</p>
+                          <button disabled={!editable || isRolling} onClick={() => rollDice(k, character.attributes[k])} className={`attribute-roll-button h-20 w-full rounded-sm border text-center shadow-inner ${isRolling ? "is-rolling border-primary bg-primary/20" : editable ? "border-border/60 bg-card/40 hover:border-primary/60 hover:bg-card" : "cursor-default border-border/60 bg-card/40"}`}>
+                            {isRolling ? (
+                              <Dices className="attribute-rolling-die mx-auto size-7 text-primary" />
+                            ) : (
+                              <>
+                                <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{ATTRIBUTE_META[k].short}</p>
+                                <p className="font-serif text-xl font-black text-primary drop-shadow-sm sm:text-2xl">{character.attributes[k]}</p>
+                              </>
+                            )}
                           </button>
 
                           {canUpgradeAttribute && (
@@ -1834,7 +2033,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
 
                   <div className="mt-6 flex flex-col gap-4">
                     <ResourceBar label="Vida" short="HP" icon={<Heart className="size-4" />} current={character.resources.hp} max={character.resources.maxHp} colorVar="--hp" editable={editable} onChange={(d) => patchResource("hp", d)} />
-                    <ResourceBar label="Mente" short="MP" icon={<Zap className="size-4" />} current={character.resources.mp} max={character.resources.maxMp} colorVar="--mp" editable={editable} onChange={(d) => patchResource("mp", d)} />
+                    <ResourceBar label="Mente" short="MP" icon={<WandSparkles className="size-4" />} current={character.resources.mp} max={character.resources.maxMp} colorVar="--mp" editable={editable} onChange={(d) => patchResource("mp", d)} />
                     <ResourceBar label="Inventario" short="IP" icon={<Backpack className="size-4" />} current={character.resources.ip} max={character.resources.maxIp} colorVar="--ip" editable={editable} onChange={(d) => patchResource("ip", d)} />
                   </div>
 
@@ -1870,7 +2069,7 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
                         const isExpanded = expandedSkillId === skill.id;
 
                         return (
-                          <div key={skill.id} className={`rounded-md border transition-colors overflow-hidden shadow-sm ${isExpanded ? 'border-primary/50 bg-primary/10' : 'border-primary/20 bg-primary/5 hover:border-primary/40'}`}>
+                          <div key={skill.id} className={`overflow-hidden rounded-sm border-l-2 transition-colors shadow-sm ${isExpanded ? 'border-primary bg-primary/10' : 'border-primary/40 bg-primary/5 hover:border-primary/70'}`}>
                             <button
                               onClick={() => setExpandedSkillId(isExpanded ? null : skill.id)}
                               className="flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-primary/5"
@@ -1945,11 +2144,10 @@ export function CharacterSheet({ character, editable, isGm, campaignMembers = []
               )}
 
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>}
+        </div>
+      </div>
 
-      {pending && <div className="absolute top-0 right-0 rounded-bl-lg rounded-tr-xl flex items-center gap-2 px-3 py-1 bg-primary/20 text-primary border-b border-l border-primary/50 backdrop-blur-sm z-[100]"><Loader2 className="size-3 animate-spin" /><span className="text-[10px] font-bold uppercase tracking-widest">Sincronizando</span></div>}
     </div>
   )
 }

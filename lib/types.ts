@@ -73,6 +73,7 @@ export interface Character {
   ownerId: string
   name: string
   avatarUrl: string
+  portraitFrame?: import("./portrait-frames").PortraitFrameId
   origin: string
   identity: string
   theme: string
@@ -135,7 +136,8 @@ export type RealtimeEvent =
   | { type: "character:updated"; character: Character }
   | { type: "character:deleted"; characterId: string }
   | { type: "presence"; message: string }
-  | { type: "dice:roll"; characterId: string; characterName: string; playerName: string; attribute: string; result: number }
+  | { type: "presence:updated"; activeCount: number }
+  | { type: "dice:roll"; characterId: string; characterName: string; playerName: string; attribute: string; result: number | string; breakdown?: string; modifier?: number }
   | { type: "creature:spawn"; creature: ActiveCreature }
   | { type: "creature:update"; instanceId: string; updates: Partial<ActiveCreature> }
   | { type: "creature:remove"; instanceId: string }

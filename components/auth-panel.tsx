@@ -35,21 +35,22 @@ export function AuthPanel() {
   }
 
   return (
-    <div className="panel border-glow w-full max-w-md rounded-xl border p-8">
+    <div className="panel border-glow w-full max-w-md rounded-md border p-6 sm:p-8">
       <div className="mb-6 flex items-center gap-3">
-        <div className="flex size-11 items-center justify-center rounded-lg bg-primary/15 text-primary">
+        <div className="flex size-11 items-center justify-center rounded-sm border border-accent/35 bg-accent/10 text-accent shadow-inner">
           <ScrollText className="size-6" />
         </div>
         <div>
-          <h2 className="font-serif text-xl font-bold text-foreground">
-            {mode === "login" ? "Retornar ao Salao" : "Forjar Contrato"}
+          <h2 className="rpg-title text-xl font-bold">
+            {mode === "login" ? "Retornar ao Salão" : "Forjar Contrato"}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {mode === "login" ? "Acesse sua mesa magitech." : "Crie sua conta de aventureiro."}
+            {mode === "login" ? "Reabra os registros da sua campanha." : "Crie sua conta de aventureiro."}
           </p>
         </div>
       </div>
 
+      <div className="rpg-divider mb-6" />
       <form onSubmit={submit} className="flex flex-col gap-4">
         {mode === "register" && (
           <Field
@@ -129,7 +130,7 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className="rounded-md border border-input bg-background/60 px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary focus:ring-1 focus:ring-primary"
+        className="min-h-10 rounded-sm border border-input bg-background/60 px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
       />
     </label>
   )
