@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { deleteCharacterFromStore, getMemberRole, publish, saveToDisk, store } from "@/lib/store"
 import { normalizeResources } from "@/lib/character"
-import { normalizePortraitFrame } from "@/lib/portrait-frames"
+import { normalizePortraitCrop, normalizePortraitFrame } from "@/lib/portrait-frames"
 import type { Character } from "@/lib/types"
 
 export async function PATCH(
@@ -24,6 +24,18 @@ export async function PATCH(
   if (!canEdit) return NextResponse.json({ error: "Sem permissao para editar." }, { status: 403 })
 
   const body = await request.json().catch(() => null)
+  if (!body || typeof body !== "object") return NextResponse.json({ error: "Dados inválidos." }, { status: 400 })
+  const changesPortrait = body.avatarUrl !== undefined || body.portraitCrop !== undefined
+  if (changesPortrait && character.ownerId !== user.id) {
+    return NextResponse.json({ error: "Apenas o dono pode alterar o retrato." }, { status: 403 })
+  }
+  const requestedAvatar = body.avatarUrl !== undefined ? String(body.avatarUrl).trim() : character.avatarUrl
+  const validAvatar = requestedAvatar.startsWith("/")
+    || /^https?:\/\//i.test(requestedAvatar)
+    || /^data:image\/(png|jpe?g|webp|gif|avif);base64,/i.test(requestedAvatar)
+  if (body.avatarUrl !== undefined && (!validAvatar || requestedAvatar.length > 3_500_000)) {
+    return NextResponse.json({ error: "Imagem de retrato inválida ou muito grande." }, { status: 400 })
+  }
   const currentResources = { ...character.resources }
 
   if (body.resources) character.resources = { ...character.resources, ...body.resources }
@@ -56,6 +68,7 @@ export async function PATCH(
   const nextCustomItems = body?.customItems !== undefined ? body.customItems : (character as any).customItems || [] // <-- Pega os itens costumizados
 
   const nextPortraitFrame = body?.portraitFrame !== undefined ? normalizePortraitFrame(body.portraitFrame) : normalizePortraitFrame(character.portraitFrame)
+  const nextPortraitCrop = body?.portraitCrop !== undefined ? normalizePortraitCrop(body.portraitCrop) : normalizePortraitCrop(character.portraitCrop)
 
   const updatedData = { 
     ...character, 
@@ -66,8 +79,10 @@ export async function PATCH(
     zenit: nextZenit,
     customModifiers: nextCustomModifiers,
     customItems: nextCustomItems,
+    avatarUrl: requestedAvatar,
     portraitFrame: nextPortraitFrame,
-    updatedAt: Date.now() 
+    portraitCrop: nextPortraitCrop,
+    updatedAt: Math.max(Date.now(), Number(character.updatedAt || 0) + 1)
   } as unknown as Character
 
   const updated = normalizeResources(updatedData)
@@ -79,6 +94,7 @@ export async function PATCH(
   ;(updated as any).customModifiers = nextCustomModifiers;
   ;(updated as any).customItems = nextCustomItems;
   updated.portraitFrame = nextPortraitFrame;
+  updated.portraitCrop = nextPortraitCrop;
 
   // Clampa o HP e MP dentro do limite seguro
   updated.resources.hp = Math.min(nextRes.hp, updated.resources.maxHp);

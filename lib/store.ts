@@ -6,12 +6,14 @@ import type {
   RealtimeEvent,
   SessionToken,
   User,
+  PersonalNote,
 } from "./types"
 import type { GameMap } from "@/lib/map-types"
 
 type Subscriber = (event: RealtimeEvent) => void
 type PresenceSubscriber = (snapshot: Record<string, number>) => void
 type PresenceConnection = { campaignId: string; userId: string; registrationId: string }
+type PersonalNotesRecord = { notes: PersonalNote[]; updatedAt: number }
 
 interface StoreShape {
   users: Map<string, User>
@@ -21,6 +23,9 @@ interface StoreShape {
   characterTombstones: Map<string, number>
   maps: Map<string, GameMap>
   lore: Map<string, any[]>
+  campaignState: Map<string, Record<string, unknown>>
+  personalNotes: Map<string, PersonalNotesRecord>
+  activeSounds: Map<string, any[]>
   subscribers: Map<string, Set<Subscriber>>
   presence: Map<string, Map<string, number>>
   presenceConnections: Map<string, PresenceConnection>
@@ -36,6 +41,8 @@ interface PersistedStore {
   characterTombstones: [string, number][]
   maps: [string, GameMap][]
   lore: [string, any[]][]
+  campaignState: [string, Record<string, unknown>][]
+  personalNotes: [string, PersonalNotesRecord][]
 }
 
 const DB_FILE_PATH = process.env.VTT_DB_FILE
@@ -54,6 +61,9 @@ function createEmptyStore(): StoreShape {
     characterTombstones: new Map(),
     maps: new Map(),
     lore: new Map(),
+    campaignState: new Map(),
+    personalNotes: new Map(),
+    activeSounds: new Map(),
     subscribers: new Map(),
     presence: new Map(),
     presenceConnections: new Map(),
@@ -89,6 +99,8 @@ function readStoreFile(filePath: string): StoreShape {
     characterTombstones: parseEntries<number>(parsed.characterTombstones, "characterTombstones"),
     maps: parseEntries<GameMap>(parsed.maps, "maps"),
     lore: parseEntries<any[]>(parsed.lore, "lore"),
+    campaignState: parseEntries<Record<string, unknown>>(parsed.campaignState, "campaignState"),
+    personalNotes: parseEntries<PersonalNotesRecord>(parsed.personalNotes, "personalNotes"),
   }
 }
 
@@ -115,7 +127,30 @@ function reconcileCharacters(target: StoreShape, source: StoreShape): void {
   }
 }
 
+function reconcileCampaignState(target: StoreShape, source: StoreShape): void {
+  for (const [campaignId, persistedState] of source.campaignState) {
+    const currentState = target.campaignState.get(campaignId)
+    const persistedAt = Number(persistedState.updatedAt) || 0
+    const currentAt = Number(currentState?.updatedAt) || 0
+    if (!currentState || persistedAt > currentAt) target.campaignState.set(campaignId, persistedState)
+  }
+}
+
+function reconcilePersonalNotes(target: StoreShape, source: StoreShape): void {
+  for (const [key, persistedRecord] of source.personalNotes) {
+    const currentRecord = target.personalNotes.get(key)
+    if (!currentRecord || Number(persistedRecord.updatedAt) > Number(currentRecord.updatedAt)) {
+      target.personalNotes.set(key, persistedRecord)
+    }
+  }
+}
+
 function serializeStore(storeData: StoreShape): PersistedStore {
+  const lore = new Map(storeData.lore)
+  for (const [campaignId, campaignState] of storeData.campaignState) {
+    if (Array.isArray(campaignState.lore)) lore.set(campaignId, campaignState.lore)
+  }
+
   return {
     users: Array.from(storeData.users.entries()),
     sessions: Array.from(storeData.sessions.entries()),
@@ -123,7 +158,9 @@ function serializeStore(storeData: StoreShape): PersistedStore {
     characters: Array.from(storeData.characters.entries()),
     characterTombstones: Array.from(storeData.characterTombstones.entries()),
     maps: Array.from(storeData.maps.entries()),
-    lore: Array.from(storeData.lore.entries()),
+    lore: Array.from(lore.entries()),
+    campaignState: Array.from(storeData.campaignState.entries()),
+    personalNotes: Array.from(storeData.personalNotes.entries()),
   }
 }
 
@@ -213,8 +250,16 @@ export function saveToDisk(storeData: StoreShape): void {
       throw new Error("O banco principal está inválido e não há backup válido. A gravação foi cancelada para proteger os dados.", { cause: primaryReadError })
     }
 
-    if (primaryStore) reconcileCharacters(storeData, primaryStore)
-    if (backupStore) reconcileCharacters(storeData, backupStore)
+    if (primaryStore) {
+      reconcileCharacters(storeData, primaryStore)
+      reconcileCampaignState(storeData, primaryStore)
+      reconcilePersonalNotes(storeData, primaryStore)
+    }
+    if (backupStore) {
+      reconcileCharacters(storeData, backupStore)
+      reconcileCampaignState(storeData, backupStore)
+      reconcilePersonalNotes(storeData, backupStore)
+    }
 
     if (primaryReadError && fs.existsSync(DB_FILE_PATH)) {
       fs.renameSync(DB_FILE_PATH, `${DB_FILE_PATH}.corrupt-${Date.now()}`)
@@ -247,7 +292,11 @@ export function loadFromDisk(): StoreShape {
   }
 
   const loadedStore = primaryStore ?? backupStore!
-  if (primaryStore && backupStore) reconcileCharacters(loadedStore, backupStore)
+  if (primaryStore && backupStore) {
+    reconcileCharacters(loadedStore, backupStore)
+    reconcileCampaignState(loadedStore, backupStore)
+    reconcilePersonalNotes(loadedStore, backupStore)
+  }
 
   return loadedStore
 }
@@ -258,6 +307,9 @@ export const store: StoreShape = globalForStore.__vttStore ?? loadFromDisk()
 
 if (!store.maps) store.maps = new Map()
 if (!store.lore) store.lore = new Map()
+if (!store.campaignState) store.campaignState = new Map()
+if (!store.personalNotes) store.personalNotes = new Map()
+if (!store.activeSounds) store.activeSounds = new Map()
 if (!store.characterTombstones) store.characterTombstones = new Map()
 if (!store.presence) store.presence = new Map()
 if (!store.presenceConnections) store.presenceConnections = new Map()

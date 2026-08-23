@@ -31,12 +31,16 @@ interface BattlemapProps {
 
 export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose, onMoveToken, onPaintTerrain }: BattlemapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
   const imageCache = useRef<Record<string, HTMLImageElement>>({})
+  const zoomRef = useRef(1)
+  const fitZoomRef = useRef(1)
   
   const [mode, setMode] = useState<"view" | "paint" | "move" | "place">("view")
   const [activeTerrain, setActiveTerrain] = useState<TerrainType>("stone")
   
   const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 })
 
@@ -47,6 +51,59 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
 
   const characterMovement = 6; 
 
+  const fitMapToViewport = (imageWidth?: number, imageHeight?: number) => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const background = imageCache.current["bg"]
+    const mapWidth = imageWidth || (background?.complete && background.naturalWidth > 0 ? background.naturalWidth : mapData.grid.cols * mapData.grid.tileSize)
+    const mapHeight = imageHeight || (background?.complete && background.naturalHeight > 0 ? background.naturalHeight : mapData.grid.rows * mapData.grid.tileSize)
+    if (mapWidth <= 0 || mapHeight <= 0 || viewport.clientWidth <= 0 || viewport.clientHeight <= 0) return
+    const padding = viewport.clientWidth < 640 ? 16 : 32
+    const nextZoom = Math.max(0.05, Math.min(1, (viewport.clientWidth - padding * 2) / mapWidth, (viewport.clientHeight - padding * 2) / mapHeight))
+    fitZoomRef.current = nextZoom
+    zoomRef.current = nextZoom
+    setZoom(nextZoom)
+    setOffset({
+      x: (viewport.clientWidth - mapWidth * nextZoom) / 2,
+      y: (viewport.clientHeight - mapHeight * nextZoom) / 2,
+    })
+  }
+
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const frameId = window.requestAnimationFrame(() => fitMapToViewport())
+    const observer = new ResizeObserver(() => fitMapToViewport())
+    observer.observe(viewport)
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      observer.disconnect()
+    }
+  }, [mapData.id])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault()
+      const previousZoom = zoomRef.current
+      const minimumZoom = Math.max(0.05, fitZoomRef.current * 0.45)
+      const nextZoom = Math.max(minimumZoom, Math.min(4, previousZoom * Math.exp(-event.deltaY * 0.0015)))
+      if (Math.abs(nextZoom - previousZoom) < 0.0001) return
+      const rect = canvas.getBoundingClientRect()
+      const pointerX = event.clientX - rect.left
+      const pointerY = event.clientY - rect.top
+      setOffset((current) => ({
+        x: pointerX - ((pointerX - current.x) / previousZoom) * nextZoom,
+        y: pointerY - ((pointerY - current.y) / previousZoom) * nextZoom,
+      }))
+      zoomRef.current = nextZoom
+      setZoom(nextZoom)
+    }
+    canvas.addEventListener("wheel", handleWheel, { passive: false })
+    return () => canvas.removeEventListener("wheel", handleWheel)
+  }, [mapData.id])
+
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext("2d"); if (!ctx) return;
@@ -54,18 +111,24 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
     canvas.width = canvas.parentElement!.clientWidth
     canvas.height = canvas.parentElement!.clientHeight
     ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.save()
+    ctx.translate(offset.x, offset.y)
+    ctx.scale(zoom, zoom)
 
     // Renderiza Fundo
     if (!imageCache.current["bg"]) {
       const bg = new Image(); 
       bg.src = mapData.imageUrl;
-      bg.onload = () => setRenderTick(t => t + 1);
+      bg.onload = () => {
+        fitMapToViewport(bg.naturalWidth, bg.naturalHeight)
+        setRenderTick(t => t + 1)
+      };
       bg.onerror = () => setRenderTick(t => t + 1); // Evita travamento se o fundo falhar
       imageCache.current["bg"] = bg;
     }
     // Verifica se completou e tem largura real (não está quebrado)
     if (imageCache.current["bg"].complete && imageCache.current["bg"].naturalWidth > 0) {
-      ctx.drawImage(imageCache.current["bg"], offset.x, offset.y)
+      ctx.drawImage(imageCache.current["bg"], 0, 0)
     }
 
     // Pathfinding
@@ -107,10 +170,10 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
       for (let x = 0; x < cols; x++) {
         const key = `${x},${y}`
         const tile = mapData.tiles[key]
-        const px = offset.x + (x * tileSize)
-        const py = offset.y + (y * tileSize)
+        const px = x * tileSize
+        const py = y * tileSize
 
-        if (px + tileSize < 0 || px > canvas.width || py + tileSize < 0 || py > canvas.height) continue
+        if (offset.x + (px + tileSize) * zoom < 0 || offset.x + px * zoom > canvas.width || offset.y + (py + tileSize) * zoom < 0 || offset.y + py * zoom > canvas.height) continue
 
         if (tile && tile.terrain !== "grass") {
           ctx.fillStyle = TERRAIN_COLORS[tile.terrain]
@@ -123,13 +186,14 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
         }
 
         ctx.strokeStyle = "rgba(255,255,255,0.15)"
+        ctx.lineWidth = 1 / zoom
         ctx.strokeRect(px, py, tileSize, tileSize)
       }
     }
 
     if (hoveredTile && mode === "move" && reachable.has(`${hoveredTile.x},${hoveredTile.y}`)) {
         ctx.fillStyle = "rgba(250, 204, 21, 0.5)"
-        ctx.fillRect(offset.x + (hoveredTile.x * tileSize), offset.y + (hoveredTile.y * tileSize), tileSize, tileSize)
+        ctx.fillRect(hoveredTile.x * tileSize, hoveredTile.y * tileSize, tileSize, tileSize)
     }
 
     // Tokens
@@ -138,8 +202,8 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
         if (!entity) return;
 
         const url = pos.type === "character" ? (entity as Character).avatarUrl : (entity as ActiveCreature).imageUrl;
-        const px = offset.x + (pos.x * tileSize) + tileSize/2;
-        const py = offset.y + (pos.y * tileSize) + tileSize/2;
+        const px = (pos.x * tileSize) + tileSize/2;
+        const py = (pos.y * tileSize) + tileSize/2;
         const radius = tileSize/2 - 4;
 
         ctx.save()
@@ -170,11 +234,13 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
         ctx.beginPath()
         ctx.arc(px, py, radius, 0, Math.PI * 2)
         ctx.strokeStyle = pos.type === "character" ? (selectedTokenId === id ? "#3b82f6" : getPortraitFrameStroke((entity as Character).portraitFrame)) : (selectedTokenId === id ? "#ef4444" : "red")
-        ctx.lineWidth = selectedTokenId === id ? 4 : 2
+        ctx.lineWidth = (selectedTokenId === id ? 4 : 2) / zoom
         ctx.stroke()
     })
 
-  }, [mapData, offset, mode, selectedTokenId, hoveredTile, characters, creatures, renderTick])
+    ctx.restore()
+
+  }, [mapData, offset, zoom, mode, selectedTokenId, hoveredTile, characters, creatures, renderTick])
 
   const getMousePos = (e: React.MouseEvent) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -182,8 +248,8 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
   }
 
   const getTileFromMouse = (x: number, y: number) => {
-    const tx = Math.floor((x - offset.x) / mapData.grid.tileSize)
-    const ty = Math.floor((y - offset.y) / mapData.grid.tileSize)
+    const tx = Math.floor((x - offset.x) / (mapData.grid.tileSize * zoom))
+    const ty = Math.floor((y - offset.y) / (mapData.grid.tileSize * zoom))
     if (tx >= 0 && tx < mapData.grid.cols && ty >= 0 && ty < mapData.grid.rows) return {x: tx, y: ty}
     return null
   }
@@ -192,6 +258,10 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
     const { x, y } = getMousePos(e)
     
     if (e.button === 1 || e.button === 2) {
+      setIsDragging(true); setLastMousePos({ x, y }); return
+    }
+
+    if (mode === "view" && e.button === 0) {
       setIsDragging(true); setLastMousePos({ x, y }); return
     }
 
@@ -232,7 +302,7 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
     setHoveredTile(t)
 
     if (isDragging) {
-      if (mode === "paint" && isGm && e.button === 0 && t) handlePaintTile(t.x, t.y)
+      if (mode === "paint" && isGm && (e.buttons & 1) === 1 && t) handlePaintTile(t.x, t.y)
       else {
         setOffset(prev => ({ x: prev.x + (x - lastMousePos.x), y: prev.y + (y - lastMousePos.y) }))
         setLastMousePos({ x, y })
@@ -263,7 +333,7 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
       </div>
 
       <div className="relative flex min-h-0 flex-1">
-        <div className="flex-1 relative cursor-crosshair">
+        <div ref={viewportRef} className={`relative flex-1 ${mode === "view" ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-crosshair"}`}>
             <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={() => setIsDragging(false)} onMouseLeave={() => { setIsDragging(false); setHoveredTile(null) }} onContextMenu={(e) => e.preventDefault()} className="absolute inset-0 w-full h-full"/>
             
             {mode === "move" && !selectedTokenId && (
@@ -288,7 +358,7 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
                     {characters.map(c => (
                         <button key={c.id} onClick={() => setTokenToPlace({id: c.id, type: "character"})} className={`w-full flex items-center gap-3 p-2 rounded border transition-colors ${tokenToPlace?.id === c.id ? "border-primary bg-primary/20" : "border-white/5 bg-white/5 hover:border-primary/50"}`}>
-                            <CharacterPortrait src={c.avatarUrl} alt={`Retrato de ${c.name}`} frame={c.portraitFrame} className="size-8 shrink-0" sizes="32px" />
+                            <CharacterPortrait src={c.avatarUrl} alt={`Retrato de ${c.name}`} frame={c.portraitFrame} crop={c.portraitCrop} className="size-8 shrink-0" sizes="32px" />
                             <span className="text-sm font-bold text-left text-white">{c.name}</span>
                         </button>
                     ))}

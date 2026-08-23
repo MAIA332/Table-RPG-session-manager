@@ -47,8 +47,8 @@ export function CutsceneManager({ isOpen, onClose, cutscenes, onSave, onPlay }: 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden">
-          <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col border border-primary/50 bg-zinc-950 shadow-2xl">
+        <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden" onClick={handleClose}>
+          <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col border border-primary/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             
             <div className="rpg-modal-header flex shrink-0 items-center justify-between border-b border-white/10 p-6">
               <div>

@@ -167,6 +167,7 @@ export function Lorebook({
                     transition={{ duration: 0.2 }}
                     // A MÁGICA 1: O padding (p-4 md:p-8) cria uma parede invisível nos cantos da tela
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 sm:p-6 md:p-8 overflow-hidden font-sans"
+                    onClick={onClose}
                 >
                     <motion.div
                         key="lorebook-modal"
@@ -175,7 +176,8 @@ export function Lorebook({
                         animate="visible"
                         exit="exit"
                         // A MÁGICA 2: h-full força a modal a esticar até bater na parede do padding (sempre 100% visível)
-                        className="rpg-modal relative flex h-full w-full max-w-7xl flex-col overflow-hidden border border-white/10 bg-[#121212] text-zinc-300 shadow-2xl"
+                        className="rpg-modal rpg-themed-workspace relative flex h-full w-full max-w-7xl flex-col overflow-hidden border border-white/10 bg-[#121212] text-zinc-300 shadow-2xl"
+                        onClick={(event) => event.stopPropagation()}
                     >
                         {/* HEADER */}
                         <div className="rpg-modal-header flex shrink-0 items-center justify-between border-b border-white/5 px-4 py-4 sm:px-6">
@@ -199,7 +201,7 @@ export function Lorebook({
                         <div className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
 
                             {/* SIDEBAR - LISTA DE LORE */}
-                            <div className="flex max-h-[34%] min-h-0 w-full shrink-0 flex-col border-b border-white/5 bg-[#17100c] md:max-h-none md:w-72 md:border-b-0 md:border-r">
+                            <div className="rpg-themed-subtle flex max-h-[34%] min-h-0 w-full shrink-0 flex-col border-b border-white/5 bg-[#17100c] md:max-h-none md:w-72 md:border-b-0 md:border-r">
                                 <div className="p-4 border-b border-white/5 shrink-0">
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-600" />
@@ -208,7 +210,7 @@ export function Lorebook({
                                             placeholder="Pesquisar registro..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="w-full bg-[#161616] border border-white/5 rounded-md py-2 pl-9 pr-3 text-sm text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-accent/50 transition-colors font-sans"
+                                            className="rpg-themed-deep w-full bg-[#161616] border border-white/5 rounded-md py-2 pl-9 pr-3 text-sm text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-accent/50 transition-colors font-sans"
                                         />
                                     </div>
                                 </div>
@@ -243,7 +245,7 @@ export function Lorebook({
                             </div>
 
                             {/* ÁREA DE VISUALIZAÇÃO OU EDIÇÃO */}
-                            <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#1a130e]">
+                            <div className="rpg-themed-workspace flex min-h-0 min-w-0 flex-1 flex-col bg-[#1a130e]">
                                 {isEditing && isGm ? (
                                     // ==========================================
                                     // MODO EDITOR (GM)
@@ -329,7 +331,7 @@ export function Lorebook({
                                         </div>
 
                                         {/* FOOTER FIXO (Agora flui naturalmente no flex) */}
-                                        <div className="shrink-0 bg-[#121212] border-t border-white/5 p-4 px-6 md:px-8 flex justify-center shadow-[0_-15px_30px_-10px_rgba(0,0,0,0.8)] z-10">
+                                        <div className="rpg-themed-deep shrink-0 bg-[#121212] border-t border-white/5 p-4 px-6 md:px-8 flex justify-center shadow-[0_-15px_30px_-10px_rgba(0,0,0,0.8)] z-10">
                                             <div className="w-full max-w-3xl flex justify-end gap-3 items-center">
                                                 <Button variant="ghost" onClick={() => setIsEditing(false)} className="text-zinc-400 hover:text-white">
                                                     Cancelar
@@ -391,7 +393,7 @@ export function Lorebook({
                                         </div>
 
                                         {/* COLUNA DIREITA: A GRAVURA/PERGAMINHO */}
-                                        <div className="flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-[#120d0a] p-6 md:p-8 lg:p-12">
+                                        <div className="rpg-themed-deep flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-[#120d0a] p-6 md:p-8 lg:p-12">
                                             {selectedEntry.imageUrl ? (
                                                 <motion.div
                                                     initial={{ opacity: 0, scale: 0.95 }}

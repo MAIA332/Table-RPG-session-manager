@@ -308,6 +308,7 @@ Na Grade de batalha:
 - Mantive o conteúdo invisível e sem interação quando a Grade de batalha está retraída
 
 No primeiro carregamento:
+- Adicionei aquecimento das páginas inicial, Salão de Campanhas e sala de campanha antes de abrir o navegador
 - Adiei leitura e gravação dos caches locais pesados para o período ocioso do navegador
 - Garanti que mapas e lore novos da API sempre prevaleçam sobre caches locais antigos
 - Preservei a restauração do último mapa ativo mesmo quando a API responde antes do cache
@@ -325,3 +326,138 @@ No primeiro carregamento:
 - Adicionei identificadores individuais às conexões de presença e liberação imediata ao sair ou fechar a sala
 - Removi o fallback antigo de presença do Salão de Campanhas e mantive múltiplas abas do mesmo usuário contabilizadas corretamente
 - Reordenei a sidebar exclusiva dos jogadores para exibir Galeria arcana e Registros da Jornada antes de Mapas da Campanha
+
+Temas, modais e habilidades de classe:
+
+Nas habilidades dos viajantes:
+- Substituí a montagem animada da descrição das Habilidades de Classe Ativas por uma expansão estável em CSS Grid
+- Mantive a descrição da habilidade montada durante a abertura e a retração para eliminar o salto visual
+- Preservei a animação da habilidade mesmo quando as animações do Windows estão desativadas
+- Ajustei a duração para 280ms e confirmei estados intermediários contínuos ao abrir e fechar
+
+No sistema de temas:
+- Adicionei o botão Tema à navbar da sala de campanha
+- Criei uma galeria visual com os temas Arquivo Arcano, Academia Celeste e Observatório Rubro
+- Fiz cada tema trocar o papel de parede, a paleta principal, cards, navbar, sidebar, modais, abas e superfícies da interface
+- Mantive o tema Arquivo Arcano com a identidade visual original
+- Adicionei uma identidade azul-petróleo e ciano para o tema Academia Celeste
+- Adicionei uma identidade carvão, vinho e dourado para o tema Observatório Rubro
+- Criei o novo papel de parede gothic-observatory.png para o tema Observatório Rubro
+- Salvei a escolha somente no localStorage de cada navegador, sem sincronização por campanha, API ou banco de dados
+- Apliquei o tema antes do primeiro paint para evitar a troca visual durante o carregamento
+- Confirmei que duas sessões do mesmo usuário podem manter temas diferentes ao mesmo tempo
+
+Nos modais e ações das fichas:
+- Removi o texto Personalização do retrato da Galeria de Molduras
+- Troquei os títulos Mochila do Herói, Mercado & Forja e Ceder para branco bege
+- Aumentei levemente a altura vertical do modal Ceder
+- Troquei os textos dos botões Mochila e Loja da ficha expandida para branco bege sem alterar as cores dos SVGs
+- Permiti fechar todos os modais ao clicar na área externa, preservando cliques e ações dentro do conteúdo
+- Corrigi também o clique externo da imagem aberta em tela cheia na Galeria Arcana
+
+No Baú do mestre e no Berçário:
+- Troquei as abas Itens de Sistema, Criar Relíquia e Dar Dinheiro para o mesmo estilo de seleção das abas das fichas
+- Mantive o mesmo hover escuro e a ausência do antigo fundo sólido no estado selecionado
+- Aumentei o espaço inferior da área Sua Essência para impedir que o formulário encoste na borda do Berçário
+
+Na validação visual:
+- Confirmei os três temas em desktop e o seletor de temas no mobile
+- Confirmei ausência de overflow horizontal nas duas larguras
+- Confirmei fechamento por clique externo nos modais de tema, mochila, loja, Baú do mestre e Berçário
+- Confirmei por medição que a habilidade percorre múltiplas alturas intermediárias ao abrir e fechar sem desmontar o conteúdo
+
+Ajustes posteriores dos temas:
+- Troquei o texto Diário do Mundo por Diário do mundo e apliquei branco bege somente ao texto do botão
+- Substituí o fundo da Academia Celeste por uma academia-observatório noturna mais escura, contida e menos luminosa
+- Atualizei também a prévia da Academia Celeste no seletor de temas
+- Troquei o botão Novo viajante do tema Academia Celeste por um azul sólido, sem degradê
+- Removi a malha quadriculada do Histórico da jornada nos temas Academia Celeste e Observatório Rubro
+- Criei fundos próprios para o Histórico da jornada, com superfícies azul-petróleo e vinho, textura suave, bordas e cabeçalhos coerentes com cada tema
+- Expandi o azul sólido do botão Novo viajante para todos os botões primários equivalentes do tema Academia Celeste
+- Preservei os estilos próprios de botões outline, ghost, destrutivos e mágicos
+- Mantive os seletores de clima e botões com tons funcionais próprios fora da substituição azul
+
+Correções de superfícies nos novos temas:
+- Troquei os textos principais do Histórico da jornada por tons claros próprios da Academia Celeste e do Observatório Rubro
+- Criei cores secundárias legíveis para perfil, horário, rótulos e estados vazios do Histórico em cada tema
+- Mantive os resultados destacados em ciano na Academia Celeste e em coral no Observatório Rubro
+- Removi a herança das cores escuras do pergaminho dentro do Histórico dos novos temas
+- Criei superfícies internas azuis para Galeria arcana, Biblioteca de sons e Diário do Mundo na Academia Celeste
+- Criei superfícies internas vinho e rubras para esses mesmos modais no Observatório Rubro
+- Personalizei fundos laterais, áreas profundas, campos e cards internos sem alterar estados ativos ou páginas de pergaminho
+- Mantive os demais modais que já usavam rpg-modal sincronizados com as paletas dos temas
+- Troquei o fundo antigo da Grade de batalha por uma cartografia azul na Academia Celeste
+- Troquei o fundo antigo da Grade de batalha por uma cartografia rubra no Observatório Rubro
+- Ajustei botões de mapas, estados ativos, ações e hovers para acompanharem cada paleta
+- Removi a borda amarela e laranja de Mapas da Campanha na visão de jogador dos novos temas
+- Confirmei por cores computadas e capturas reais os dois temas na visão de mestre e jogador
+- Confirmei ausência de overflow horizontal em desktop e mobile
+
+Persistência, recursos dos viajantes e áudio sincronizado:
+
+Nos recursos das fichas:
+- Passei Vida, Mente, Inventário, Pontos de Fabula e XP a usar um estado visual estável durante as alterações
+- Fiz cliques rápidos de aumentar e diminuir serem calculados sobre o valor otimista mais recente
+- Coloquei as gravações de recursos em uma fila sequencial para impedir respostas antigas de sobrescreverem valores novos
+- Mantive a barra animada durante a atualização sem recuar ou avançar para um valor intermediário antigo
+- Adicionei restauração do último valor confirmado caso uma gravação falhe
+- Tornei o horário de atualização das fichas monotônico e ignorei eventos realtime mais antigos que o estado exibido
+
+Na persistência do conteúdo da campanha:
+- Criei um estado persistente central por campanha dentro do vtt-database.json
+- Passei a salvar Galeria arcana, Diário do mundo, cenas, Berçário, loots de NPCs, rascunhos de enquetes, sons personalizados e clima no banco
+- Mantive localStorage apenas como cache rápido e como origem de migração para instalações antigas
+- Fiz o primeiro carregamento migrar automaticamente dados antigos do navegador e arquivos gallery separados sem apagar listas vazias válidas
+- Fiz o estado retornado pelo servidor prevalecer imediatamente sobre caches antigos após a migração
+- Mantive Galeria e Diário compatíveis com as rotas antigas, agora apontando para o mesmo estado central
+- Mantive itens privados da Galeria e do Diário filtrados para jogadores sem permissão
+- Adicionei gravação atômica, arquivo de backup e reconciliação do estado da campanha durante o salvamento do banco
+
+No áudio da mesa:
+- Criei um estado autoritativo dos sons ativos no servidor
+- Fiz tocar, parar e parar tudo atualizarem esse estado antes da transmissão realtime
+- Fiz o mestre parar o áudio localmente no mesmo instante do clique
+- Impedi alterações no mixer de recriarem a conexão realtime
+- Fiz cada reconexão consultar a lista atual de sons para corrigir automaticamente eventos de play ou pause perdidos
+- Removi duplicações de uma mesma instância de áudio ao receber eventos repetidos
+- Passei os links de sons personalizados para a persistência central da campanha
+
+Na validação:
+- Confirmei a compilação TypeScript sem erros
+- Salvei todos os tipos de conteúdo em uma cópia isolada do banco, reiniciei completamente o servidor e confirmei a restauração de todos
+- Confirmei por duas sessões reais de navegador que o pause chega ao jogador durante alterações rápidas no mixer
+- Confirmei que um áudio parado não volta a tocar após recarregar e reconciliar a conexão do jogador
+- Confirmei 103 amostras contínuas da barra de Vida sem movimento inverso durante cliques rápidos
+
+Bloco de notas pessoal e editor de retratos:
+
+No bloco de notas:
+- Adicionei o botão Bloco de notas à navbar para mestre e jogadores
+- Criei um modal responsivo para listar, pesquisar, criar, editar, salvar e excluir anotações
+- Fiz alterações pendentes serem salvas antes de trocar de nota ou fechar o modal pelo fundo
+- Adicionei tratamento visual de carregamento, salvamento e falhas de rede
+- Limitei títulos, conteúdo e quantidade de notas para proteger o banco contra dados excessivos
+- Criei uma API que identifica o usuário somente pela sessão autenticada e nunca aceita outro userId pelo navegador
+- Separei as notas por campanha e usuário para que nem jogadores nem mestre tenham acesso aos blocos uns dos outros
+- Persisti as notas pessoais dentro do vtt-database.json com timestamp monotônico, gravação atômica e backup
+- Reconciliei as notas do banco principal e do backup sem misturar usuários
+
+No editor de retratos:
+- Fiz o clique direto no retrato abrir o editor somente para o proprietário do viajante
+- Mantive o clique no nome e na seta como formas de expandir ou retrair a ficha
+- Adicionei troca de imagem por arquivo local ou link direto
+- Comprimi arquivos locais em WebP e reduzi dimensões grandes antes de persistir para limitar o crescimento do banco
+- Adicionei reposicionamento por arraste e controles separados para eixo horizontal, eixo vertical e zoom
+- Salvei o enquadramento sem alterar destrutivamente a imagem original
+- Apliquei posição e zoom em cards, combate, Grade de batalha, painel do mestre e prévias de molduras
+- Restringi também a API para impedir que mestre ou outro jogador altere foto e enquadramento de um viajante alheio
+- Mantive troca de moldura independente do novo enquadramento
+
+Na validação:
+- Confirmei que mestre e jogador recebem blocos distintos e não conseguem ler as notas um do outro
+- Reiniciei o servidor de teste e confirmei a persistência das notas das duas contas
+- Confirmei que a alteração de retrato por um não proprietário recebe bloqueio 403
+- Confirmei que posição e zoom do proprietário sobrevivem à reinicialização
+- Validei abertura, salvamento e reaplicação visual do enquadramento em navegador real
+- Inspecionei os modais em 1440x1000 e 390x844 sem overflow horizontal
+- Confirmei ausência de erros de console e de página nos testes desktop e mobile

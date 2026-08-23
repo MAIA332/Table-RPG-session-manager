@@ -67,6 +67,14 @@ export interface CharacterResources {
   xp:number
 }
 
+export interface PersonalNote {
+  id: string
+  title: string
+  content: string
+  createdAt: number
+  updatedAt: number
+}
+
 export interface Character {
   id: string
   campaignId: string
@@ -74,6 +82,7 @@ export interface Character {
   name: string
   avatarUrl: string
   portraitFrame?: import("./portrait-frames").PortraitFrameId
+  portraitCrop?: import("./portrait-frames").PortraitCrop
   origin: string
   identity: string
   theme: string

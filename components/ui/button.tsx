@@ -48,9 +48,14 @@ function Button({
   size = 'default',
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  const customTone = typeof className === 'string' && /(?:bg-destructive|text-destructive|bg-blue-|bg-zinc-|rpg-weather-button)/.test(className)
+  const themePrimary = variant === 'default' && !customTone
+
   return (
     <ButtonPrimitive
       data-slot="button"
+      data-variant={variant}
+      data-theme-primary={themePrimary ? 'true' : undefined}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { getMemberRole, store } from "@/lib/store"
-import fs from "fs/promises"
-import path from "path"
-
-function getGalleryFilePath(campaignId: string) {
-  return path.join(process.cwd(), "data", `gallery_${campaignId}.json`)
-}
+import { getCampaignState, updateCampaignState } from "@/lib/campaign-state"
 
 async function getAccess(params: Promise<{ id: string }>) {
   const user = await getCurrentUser()
@@ -25,14 +20,8 @@ async function getAccess(params: Promise<{ id: string }>) {
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await getAccess(params)
   if (access.error) return access.error
-
-  try {
-    const data = await fs.readFile(getGalleryFilePath(access.campaignId), "utf-8")
-    return NextResponse.json({ images: JSON.parse(data) })
-  } catch (error: any) {
-    if (error?.code === "ENOENT") return NextResponse.json({ images: [] })
-    return NextResponse.json({ error: "Erro ao ler galeria." }, { status: 500 })
-  }
+  const images = getCampaignState(access.campaignId).gallery
+  return NextResponse.json({ images: access.role === "gm" ? images : images.filter((image: any) => image?.isPublic) })
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -43,8 +32,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const body = await request.json().catch(() => null)
   if (!Array.isArray(body?.images)) return NextResponse.json({ error: "Dados inválidos." }, { status: 400 })
 
-  const directory = path.join(process.cwd(), "data")
-  await fs.mkdir(directory, { recursive: true })
-  await fs.writeFile(getGalleryFilePath(access.campaignId), JSON.stringify(body.images, null, 2), "utf-8")
-  return NextResponse.json({ success: true })
+  const state = updateCampaignState(access.campaignId, { gallery: body.images })
+  return NextResponse.json({ success: true, images: state.gallery })
 }

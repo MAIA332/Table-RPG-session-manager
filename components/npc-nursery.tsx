@@ -26,8 +26,8 @@ export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onC
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[140] flex items-center justify-center overflow-hidden bg-black/80 p-4 backdrop-blur-md md:p-8">
-          <motion.div variants={modalVariants} className="rpg-modal relative flex h-full w-full max-w-6xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl">
+        <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[140] flex items-center justify-center overflow-hidden bg-black/80 p-4 backdrop-blur-md md:p-8" onClick={onClose}>
+          <motion.div variants={modalVariants} className="rpg-modal relative flex h-full w-full max-w-6xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
 
             <div className="rpg-modal-header flex shrink-0 items-center justify-between border-b border-border/50 p-6">
               <div>
@@ -164,7 +164,7 @@ export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onC
                 </div>
               </div>
 
-              <div className="lg:w-2/3 p-6 overflow-y-auto custom-scrollbar-sepia flex justify-center">
+              <div className="lg:w-2/3 px-6 pb-12 pt-6 overflow-y-auto custom-scrollbar-sepia flex justify-center">
                 <NPCCreator
                   onCreated={onCreated}
                   onCancel={onClose}

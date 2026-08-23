@@ -9,7 +9,8 @@ import { apiFetch } from "@/lib/client"
 import { ResourceBar } from "@/components/resource-bar"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
-import { PORTRAIT_FRAMES, type PortraitFrameId } from "@/lib/portrait-frames"
+import { PortraitEditor } from "@/components/portrait-editor"
+import { PORTRAIT_FRAMES, type PortraitCrop, type PortraitFrameId } from "@/lib/portrait-frames"
 
 import {
   ATTRIBUTE_META,
@@ -23,7 +24,7 @@ import {
 import { computeMaxResources } from "@/lib/character"
 import { formatSkillDescription, EssenceStep, ClassesStep, EquipmentStep } from "@/components/creator-steps"
 import { AttributesStep } from "@/components/attributes-step"
-import type { AttributeKey, Character, Role, DieSize, ClassLevel } from "@/lib/types"
+import type { AttributeKey, Character, CharacterResources, Role, DieSize, ClassLevel } from "@/lib/types"
 
 import {
   Heart, Zap, Backpack, Sparkles, Minus, Plus, Dices, Package, TrendingUp,
@@ -32,7 +33,9 @@ import {
   ArrowLeft, ArrowRight, Check, Swords, ChevronDown,
   Sword, Gem, Eye, SearchX, ShoppingCart, PackageOpen, BookOpen, PenTool,
   AlertTriangle, Archive, Flame, Droplets, ShieldOff, Brain, Ghost, SwatchBook,
-  WandSparkles
+  WandSparkles,
+  TrendingDown,
+  Pencil
 } from "lucide-react"
 
 // ==========================================
@@ -521,11 +524,7 @@ export function NPCCreator({ onCreated, onCancel }: { onCreated: (npc: NPCDraft)
     setEquipment((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
   }
 
-  // A validação do step 1 (totalLevels > 0) já permite níveis infinitos para o NPC!
   const canNext = (step === 0 && name.trim().length > 0) || (step === 1 && totalLevels > 0) || (step === 2 && (profileId !== "custom" || customPoints === 8)) || step === 3
-
-  // ATENÇÃO: Defina esta constante se ela não estiver no seu arquivo
-  const NPC_STEPS = ["Essência", "Classes", "Atributos", "Equipamento"] as const;
 
   async function submit() {
     setSaving(true)
@@ -556,11 +555,9 @@ export function NPCCreator({ onCreated, onCancel }: { onCreated: (npc: NPCDraft)
 
       <div className="panel border-glow min-h-[360px] rounded-xl border border-destructive/30 p-6 relative">
         {step === 0 && <EssenceStep name={name} setName={setName} avatarUrl={avatarUrl} setAvatarUrl={setAvatarUrl} origin={origin} setOrigin={setOrigin} identity={identity} setIdentity={setIdentity} theme={theme} setTheme={setTheme} />}
-        {/* Passando isNpc={true} para liberar os botões de + */}
-        {step === 1 && <ClassesStep skillLevels={skillLevels} setSkillLvl={setSkillLvl} classLevels={classLevels} totalLevels={totalLevels} chosenCount={chosenClassCount} isNpc={true} />}
+        {step === 1 && <ClassesStep skillLevels={skillLevels} setSkillLvl={setSkillLvl} classLevels={classLevels} totalLevels={totalLevels} chosenCount={chosenClassCount} isNpc />}
         {step === 2 && <AttributesStep profileId={profileId} setProfileId={setProfileId} attributes={attributes} customAttributes={customAttributes} setCustomAttributes={setCustomAttributes} />}
-        {/* Passando isNpc={true} para ignorar a validação de Zenits */}
-        {step === 3 && <EquipmentStep equipment={equipment} toggle={toggleEquipment} remaining={remaining} spent={spent} isNpc={true} />}
+        {step === 3 && <EquipmentStep equipment={equipment} toggle={toggleEquipment} remaining={remaining} spent={spent} isNpc />}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-4 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
@@ -640,8 +637,8 @@ export function CreatureSheet({ creature, isGm, onUpdate, onRoll, onKill }: { cr
     <div className="panel border-glow relative rounded-xl border border-destructive/50 p-5 flex flex-col w-full h-full bg-zinc-950 shadow-[0_0_30px_rgba(255,0,0,0.1)]">
       <AnimatePresence>
         {showInventory && (
-          <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-            <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl">
+          <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden" onClick={() => setShowInventory(false)}>
+            <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
               <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/40 shrink-0">
                 <h4 className="font-serif text-2xl font-black text-destructive flex items-center gap-3"><Package className="size-6" /> Saque da Criatura</h4>
                 <button onClick={() => setShowInventory(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
@@ -828,6 +825,7 @@ function CharacterStatusBadges({ modifiers }: { modifiers: Modifier[] }) {
 export function CharacterSheet({ character, editable, isGm, isOwned = false, campaignMembers = [], onOptimistic, onRoll, onKill, shouldOpenInventory, onClearInventoryRequest, onArchive, defaultExpanded = false, expanded, onExpandedChange }: any) {
   const [mounted, setMounted] = useState(false)
   const [pending, setPending] = useState(false)
+  const [displayResources, setDisplayResources] = useState<CharacterResources>(character.resources)
   const [internalExpanded, setInternalExpanded] = useState(false)
   const isExpanded = typeof expanded === "boolean" ? expanded : internalExpanded
   
@@ -838,12 +836,18 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
   const [showStore, setShowStore] = useState(false)
   const [showLore, setShowLore] = useState(false)
   const [showFrameGallery, setShowFrameGallery] = useState(false)
+  const [showPortraitEditor, setShowPortraitEditor] = useState(false)
   const [editingZenit, setEditingZenit] = useState(false)
   const [zenitDraft, setZenitDraft] = useState("")
   const zenitInputRef = useRef<HTMLInputElement | null>(null)
   const sheetRef = useRef<HTMLDivElement | null>(null)
   const scrollFrameRef = useRef<number | null>(null)
   const previousExpandedRef = useRef(isExpanded)
+  const resourceDraftRef = useRef<CharacterResources>(character.resources)
+  const resourceConfirmedRef = useRef<CharacterResources>(character.resources)
+  const resourceCharacterRef = useRef<Character>(character)
+  const resourceWriteQueueRef = useRef<Promise<unknown>>(Promise.resolve())
+  const resourceWriteCountRef = useRef(0)
   const [expandedContentMounted, setExpandedContentMounted] = useState(defaultExpanded)
   const [expansionVisible, setExpansionVisible] = useState(defaultExpanded)
 
@@ -857,6 +861,10 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
 
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
   const [archiving, setArchiving] = useState(false)
+
+  // Estado do Editor Inline de Modificadores / Condições
+  const [editingModId, setEditingModId] = useState<string | null>(null)
+  const [modDraft, setModDraft] = useState<any>({})
 
   function changeExpanded(next: boolean) {
     if (typeof expanded !== "boolean") setInternalExpanded(next)
@@ -918,6 +926,17 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
   }, [defaultExpanded])
 
   useEffect(() => {
+    if (resourceWriteCountRef.current > 0) {
+      resourceCharacterRef.current = { ...character, resources: resourceDraftRef.current }
+      return
+    }
+    resourceDraftRef.current = character.resources
+    resourceConfirmedRef.current = character.resources
+    resourceCharacterRef.current = character
+    setDisplayResources(character.resources)
+  }, [character])
+
+  useEffect(() => {
     if (shouldOpenInventory) {
       setShowInventory(true);
       changeExpanded(true);
@@ -925,7 +944,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     }
   }, [shouldOpenInventory, onClearInventoryRequest])
 
-  const totalXp = character.resources?.xp || 0
+  const totalXp = displayResources?.xp || 0
   const { charLevel, currentLevelXp, xpRequired } = getLevelInfo(totalXp)
   const currentZenit = character.zenit || 0
   const skillsObj = character.skills || {}
@@ -954,18 +973,9 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
 
   const filteredStoreItems = EQUIPMENT.filter((item: any) => {
     if (item.purchasable === false) return false
-
     const search = storeSearch.toLowerCase().trim()
-
-    const matchesSearch =
-      !search ||
-      item.name.toLowerCase().includes(search) ||
-      item.detail.toLowerCase().includes(search)
-
-    const matchesCategory =
-      storeCategory === "all" ||
-      item.category === storeCategory
-
+    const matchesSearch = !search || item.name.toLowerCase().includes(search) || item.detail.toLowerCase().includes(search)
+    const matchesCategory = storeCategory === "all" || item.category === storeCategory
     return matchesSearch && matchesCategory
   })
 
@@ -990,8 +1000,21 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     if (!nextDie) return;
 
     const newAttributes = { ...character.attributes, [attrKey]: nextDie };
-    const maxes = computeMaxResources(character.classes, newAttributes);
-    const newResources = { ...character.resources, maxHp: maxes.maxHp, maxMp: maxes.maxMp, maxIp: maxes.maxIp };
+    
+    const oldMaxes = computeMaxResources(character.classes || [], character.attributes);
+    const newMaxes = computeMaxResources(character.classes || [], newAttributes);
+
+    // Salva a diferença para preservar alterações manuais feitas pelo Mestre
+    const hpDiff = newMaxes.maxHp - oldMaxes.maxHp;
+    const mpDiff = newMaxes.maxMp - oldMaxes.maxMp;
+    const ipDiff = newMaxes.maxIp - oldMaxes.maxIp;
+
+    const newResources = { 
+      ...character.resources, 
+      maxHp: (character.resources.maxHp || oldMaxes.maxHp) + hpDiff, 
+      maxMp: (character.resources.maxMp || oldMaxes.maxMp) + mpDiff, 
+      maxIp: (character.resources.maxIp || oldMaxes.maxIp) + ipDiff 
+    };
 
     onOptimistic({ ...character, attributes: newAttributes, resources: newResources });
     setPending(true);
@@ -1004,20 +1027,59 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     } finally { setPending(false); }
   }
 
-  async function patchResource(key: string, delta: number) {
-    const res = character.resources
+  function patchResource(key: string, delta: number) {
+    const res = resourceDraftRef.current as any;
     const next = { ...res }
-    if (key === "xp") next[key] = Math.max(0, (res[key] || 0) + delta)
-    else {
-      const max = key === "hp" ? res.maxHp : key === "mp" ? res.maxMp : key === "ip" ? res.maxIp : Infinity
+
+    if (key === "xp" || key === "fp" || key === "lp" || key.startsWith("max")) {
+      next[key] = Math.max(0, (res[key] || 0) + delta)
+    } else {
+      const maxKey = key === "hp" ? "maxHp" : key === "mp" ? "maxMp" : key === "ip" ? "maxIp" : null;
+      const max = maxKey ? res[maxKey] : Infinity
       next[key] = Math.max(0, Math.min(max, res[key] + delta))
     }
-    onOptimistic({ ...character, resources: next })
+
+    if (next[key] === res[key]) return
+    resourceDraftRef.current = next
+    setDisplayResources(next)
+    const optimistic = { ...resourceCharacterRef.current, resources: next }
+    resourceCharacterRef.current = optimistic
+    onOptimistic(optimistic)
+    resourceWriteCountRef.current += 1
     setPending(true)
-    try {
-      const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, { method: "PATCH", body: JSON.stringify({ resources: { [key]: next[key] } }) })
-      onOptimistic(updated)
-    } finally { setPending(false) }
+    const request = resourceWriteQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, { method: "PATCH", body: JSON.stringify({ resources: { [key]: next[key] } }) })
+          resourceConfirmedRef.current = updated.resources
+          resourceWriteCountRef.current -= 1
+          if (resourceWriteCountRef.current === 0) {
+            resourceDraftRef.current = updated.resources
+            resourceCharacterRef.current = updated
+            setDisplayResources(updated.resources)
+            onOptimistic(updated)
+            setPending(false)
+          } else {
+            const current = { ...updated, resources: resourceDraftRef.current }
+            resourceCharacterRef.current = current
+            onOptimistic(current)
+          }
+        } catch (error) {
+          resourceWriteCountRef.current -= 1
+          if (resourceWriteCountRef.current === 0) {
+            const resources = resourceConfirmedRef.current
+            const rollback = { ...resourceCharacterRef.current, resources }
+            resourceDraftRef.current = resources
+            resourceCharacterRef.current = rollback
+            setDisplayResources(resources)
+            onOptimistic(rollback)
+            setPending(false)
+          }
+          throw error
+        }
+      })
+    resourceWriteQueueRef.current = request.catch(console.error)
   }
 
   async function saveZenit(value: number) {
@@ -1071,11 +1133,20 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     } finally { setPending(false) }
   }
 
+  async function savePortraitImage(avatarUrl: string, portraitCrop: PortraitCrop) {
+    if (!isOwned) throw new Error("Apenas o dono pode alterar o retrato.")
+    const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ avatarUrl, portraitCrop })
+    })
+    onOptimistic(updated)
+  }
+
   async function saveNewSkillPoint(skillId: string) {
-    if (!editable) return;
+    if (!editable && !isGm) return;
     const newSkills = { ...skillsObj, [skillId]: (skillsObj[skillId] || 0) + 1 }
     let newClasses = JSON.parse(JSON.stringify(character.classes || []));
-    const classMatch = CLASSES.find(c => c.skills.some(s => s.id === skillId));
+    const classMatch = CLASSES.find((c: any) => c.skills.some((s: any) => s.id === skillId));
 
     if (classMatch) {
       const existingClass = newClasses.find((c: any) => c.classId === classMatch.id || c.id === classMatch.id);
@@ -1083,8 +1154,20 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
       else newClasses.push({ classId: classMatch.id, level: 1 });
     }
 
-    const maxes = computeMaxResources(newClasses, character.attributes);
-    const newResources = { ...character.resources, maxHp: maxes.maxHp, maxMp: maxes.maxMp, maxIp: maxes.maxIp };
+    const oldMaxes = computeMaxResources(character.classes || [], character.attributes);
+    const newMaxes = computeMaxResources(newClasses, character.attributes);
+
+    // Salva a diferença para preservar alterações manuais feitas pelo Mestre
+    const hpDiff = newMaxes.maxHp - oldMaxes.maxHp;
+    const mpDiff = newMaxes.maxMp - oldMaxes.maxMp;
+    const ipDiff = newMaxes.maxIp - oldMaxes.maxIp;
+
+    const newResources = { 
+      ...character.resources, 
+      maxHp: (character.resources.maxHp || oldMaxes.maxHp) + hpDiff, 
+      maxMp: (character.resources.maxMp || oldMaxes.maxMp) + mpDiff, 
+      maxIp: (character.resources.maxIp || oldMaxes.maxIp) + ipDiff 
+    };
 
     onOptimistic({ ...character, skills: newSkills, classes: newClasses, resources: newResources })
     setShowLevelUp(false)
@@ -1208,7 +1291,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     }, 800);
   }
 
-  async function updateModifiers(newMods: Modifier[]) {
+  async function updateModifiers(newMods: any[]) {
     onOptimistic({ ...character, customModifiers: newMods });
     setPending(true);
     try {
@@ -1232,7 +1315,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     if (!editable) return;
     const act = (INVENTORY_ACTIONS as any[]).find((a: any) => a.id === actionId);
     if (!act) return;
-    if (character.resources.ip < act.cost) { alert("Pontos de Inventário insuficientes!"); return; }
+    if (resourceDraftRef.current.ip < act.cost) { alert("Pontos de Inventário insuficientes!"); return; }
     patchResource("ip", -act.cost);
     if (act.effectResource && act.effectValue) patchResource(act.effectResource, act.effectValue);
     setShowInventory(false);
@@ -1274,9 +1357,22 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
       {mounted && createPortal(
         <>
           <AnimatePresence>
+            {showPortraitEditor && (
+              <PortraitEditor
+                name={character.name}
+                avatarUrl={character.avatarUrl}
+                frame={character.portraitFrame}
+                crop={character.portraitCrop}
+                onClose={() => setShowPortraitEditor(false)}
+                onSave={savePortraitImage}
+              />
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
             {showLevelUp && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col border border-primary/50 bg-zinc-950 shadow-2xl">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden" onClick={() => setShowLevelUp(false)}>
+                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col border border-primary/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
                   <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
                     <div>
                       <h4 className="font-serif text-2xl font-black text-primary flex items-center gap-2"><TrendingUp className="size-6" /> Evolução</h4>
@@ -1302,7 +1398,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                                     <p className="text-sm text-primary font-bold">{s.name} <span className="text-xs text-muted-foreground ml-1">Nv.{lvl}</span></p>
                                     <div className="text-xs text-muted-foreground mt-1 leading-relaxed">{formatSkillDescription(s.description, lvl + 1)}</div>
                                   </div>
-                                  <Button size="sm" className="shrink-0 self-end sm:self-auto" onClick={() => saveNewSkillPoint(s.id)}>Aprender</Button>
+                                  <Button size="sm" className="shrink-0 self-end sm:self-auto" disabled={unspentPoints <= 0 && !isGm} onClick={() => saveNewSkillPoint(s.id)}>Aprender</Button>
                                 </div>
                               )
                             })}
@@ -1316,50 +1412,28 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
             )}
           </AnimatePresence>
 
+          {/* ... Outros modais da Loja, Inventário, Vizualização permanecem intocados ... */}
+
           <AnimatePresence>
             {showStore && (
-              <motion.div
-                variants={overlayVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 md:p-6 overflow-hidden"
-              >
-                <motion.div
-                  variants={modalVariants}
-                  className="rpg-modal relative flex h-full max-h-[95vh] w-full max-w-7xl flex-col overflow-hidden border border-accent/30 bg-zinc-950 shadow-2xl"
-                >
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 md:p-6 overflow-hidden" onClick={() => setShowStore(false)}>
+                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[95vh] w-full max-w-7xl flex-col overflow-hidden border border-accent/30 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
                   <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 p-5 md:p-6 border-b border-white/10 bg-black/50 shrink-0">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-accent/10 border border-accent/20">
-                        <Store className="size-6 md:size-7 text-accent" />
-                      </div>
+                      <div className="p-2 rounded-lg bg-accent/10 border border-accent/20"><Store className="size-6 md:size-7 text-accent" /></div>
                       <div>
-                        <h4 className="font-serif text-xl md:text-2xl font-black text-accent">
-                          Mercado & Forja
-                        </h4>
-                        <p className="text-[10px] md:text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                          Equipamentos • Relíquias • Suprimentos
-                        </p>
+                        <h4 className="font-serif text-xl md:text-2xl font-black text-[#eee3cf]">Mercado & Forja</h4>
+                        <p className="text-[10px] md:text-xs uppercase tracking-[0.2em] text-muted-foreground">Equipamentos • Relíquias • Suprimentos</p>
                       </div>
                     </div>
-
                     <div className="flex items-center justify-between md:justify-end gap-3">
                       <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-full border border-accent/20 shadow-inner">
                         <Coins className="size-4 text-accent" />
-                        <span className="font-mono font-bold text-sm md:text-base text-foreground">
-                          {currentZenit} z
-                        </span>
+                        <span className="font-mono font-bold text-sm md:text-base text-foreground">{currentZenit} z</span>
                       </div>
-                      <button
-                        onClick={() => setShowStore(false)}
-                        className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"
-                      >
-                        <X className="size-5 text-muted-foreground hover:text-white" />
-                      </button>
+                      <button onClick={() => setShowStore(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
                     </div>
                   </div>
-
                   <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
                     <aside className="lg:w-[260px] xl:w-[300px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20 flex flex-col">
                       <div className="p-4 border-b border-white/10">
@@ -1371,14 +1445,10 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                           <span className="text-[10px] font-mono text-muted-foreground">{character.equipment.length} itens</span>
                         </div>
                       </div>
-
                       <div className="flex-1 overflow-y-auto p-3 custom-scrollbar-sepia">
                         {character.equipment.length === 0 ? (
                           <div className="h-full min-h-[120px] flex items-center justify-center">
-                            <div className="text-center p-6">
-                              <PackageOpen className="size-8 mx-auto text-muted-foreground/30 mb-2" />
-                              <p className="text-xs text-muted-foreground italic">Mochila vazia.</p>
-                            </div>
+                            <div className="text-center p-6"><PackageOpen className="size-8 mx-auto text-muted-foreground/30 mb-2" /><p className="text-xs text-muted-foreground italic">Mochila vazia.</p></div>
                           </div>
                         ) : (
                           <div className="space-y-2">
@@ -1388,16 +1458,12 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                               const sellPrice = Math.floor(item.cost / 2)
                               return (
                                 <div key={`${id}-${index}`} className="group flex items-center gap-3 p-3 rounded-lg bg-card/60 border border-border/50 hover:border-accent/40 hover:bg-card transition-all">
-                                  <div className="size-9 shrink-0 rounded-md bg-black/40 border border-white/10 flex items-center justify-center">
-                                    <Package className="size-4 text-accent/70" />
-                                  </div>
+                                  <div className="size-9 shrink-0 rounded-md bg-black/40 border border-white/10 flex items-center justify-center"><Package className="size-4 text-accent/70" /></div>
                                   <div className="min-w-0 flex-1">
                                     <p className="font-bold text-xs text-foreground truncate">{item.name}</p>
                                     <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{item.category}</p>
                                   </div>
-                                  <Button size="sm" variant="ghost" disabled={!editable} className="text-accent hover:bg-accent/10 shrink-0 px-2" onClick={() => sellItem(item.id, index)}>
-                                    +{sellPrice}z
-                                  </Button>
+                                  <Button size="sm" variant="ghost" disabled={!editable} className="text-accent hover:bg-accent/10 shrink-0 px-2" onClick={() => sellItem(item.id, index)}>+{sellPrice}z</Button>
                                 </div>
                               )
                             })}
@@ -1405,34 +1471,20 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                         )}
                       </div>
                     </aside>
-
                     <main className="flex-1 min-w-0 flex flex-col">
                       <div className="p-4 md:p-5 border-b border-white/10 bg-black/20">
                         <div className="flex flex-col md:flex-row gap-3">
                           <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                            <input type="text" value={storeSearch} onChange={(e) => setStoreSearch(e.target.value)} placeholder="Pesquisar equipamentos, armas, armaduras..." className="w-full h-10 pl-10 pr-4 rounded-lg bg-background border border-border focus:border-accent/60 focus:outline-none text-sm" />
+                            <input type="text" value={storeSearch} onChange={(e) => setStoreSearch(e.target.value)} placeholder="Pesquisar equipamentos..." className="w-full h-10 pl-10 pr-4 rounded-lg bg-background border border-border focus:border-accent/60 focus:outline-none text-sm" />
                           </div>
                           <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar-sepia">
-                            {[
-                              ["all", "Todos"],
-                              ["weapon", "Armas"],
-                              ["armor", "Armaduras"],
-                              ["shield", "Escudos"],
-                              ["accessory", "Acessórios"],
-                            ].map(([id, label]) => (
-                              <button
-                                key={id}
-                                onClick={() => setStoreCategory(id)}
-                                className={`px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider font-bold whitespace-nowrap border transition-all ${storeCategory === id ? "bg-accent text-accent-foreground border-accent" : "bg-white/5 text-muted-foreground border-white/10 hover:border-accent/30 hover:text-foreground"}`}
-                              >
-                                {label}
-                              </button>
+                            {[["all", "Todos"], ["weapon", "Armas"], ["armor", "Armaduras"], ["shield", "Escudos"], ["accessory", "Acessórios"]].map(([id, label]) => (
+                              <button key={id} onClick={() => setStoreCategory(id)} className={`px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider font-bold whitespace-nowrap border transition-all ${storeCategory === id ? "bg-accent text-accent-foreground border-accent" : "bg-white/5 text-muted-foreground border-white/10 hover:border-accent/30 hover:text-foreground"}`}>{label}</button>
                             ))}
                           </div>
                         </div>
                       </div>
-
                       <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 custom-scrollbar-sepia">
                         <div className="mb-4 flex items-end justify-between">
                           <div>
@@ -1441,44 +1493,24 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                           </div>
                           <span className="text-[10px] font-mono text-muted-foreground">{filteredStoreItems.length} resultados</span>
                         </div>
-
                         {filteredStoreItems.length === 0 ? (
-                          <div className="h-48 flex flex-col items-center justify-center text-center">
-                            <SearchX className="size-8 text-muted-foreground/30 mb-3" />
-                            <p className="text-sm text-muted-foreground">Nenhum item encontrado.</p>
-                            <button onClick={() => { setStoreSearch(""); setStoreCategory("all") }} className="mt-2 text-xs text-accent hover:underline">Limpar filtros</button>
-                          </div>
+                          <div className="h-48 flex flex-col items-center justify-center text-center"><SearchX className="size-8 text-muted-foreground/30 mb-3" /><p className="text-sm text-muted-foreground">Nenhum item encontrado.</p><button onClick={() => { setStoreSearch(""); setStoreCategory("all") }} className="mt-2 text-xs text-accent hover:underline">Limpar filtros</button></div>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                             {filteredStoreItems.map((item: any) => {
                               const canAfford = currentZenit >= item.cost
                               const selected = selectedStoreItem?.id === item.id
                               return (
-                                <motion.button
-                                  layout
-                                  key={item.id}
-                                  onClick={() => setSelectedStoreItem(item)}
-                                  className={`text-left group relative p-4 rounded-xl border transition-all duration-200 ${selected ? "border-accent bg-accent/10 shadow-lg shadow-accent/5" : canAfford ? "border-border/60 bg-card/50 hover:border-accent/40 hover:bg-card" : "border-destructive/20 bg-destructive/5 opacity-60"}`}
-                                >
-                                  <div className="absolute top-3 right-3">
-                                    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-mono font-bold ${canAfford ? "bg-accent/10 text-accent" : "bg-destructive/10 text-destructive"}`}>
-                                      <Coins className="size-3" /> {item.cost}z
-                                    </div>
-                                  </div>
+                                <motion.button layout key={item.id} onClick={() => setSelectedStoreItem(item)} className={`text-left group relative p-4 rounded-xl border transition-all duration-200 ${selected ? "border-accent bg-accent/10 shadow-lg shadow-accent/5" : canAfford ? "border-border/60 bg-card/50 hover:border-accent/40 hover:bg-card" : "border-destructive/20 bg-destructive/5 opacity-60"}`}>
+                                  <div className="absolute top-3 right-3"><div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-mono font-bold ${canAfford ? "bg-accent/10 text-accent" : "bg-destructive/10 text-destructive"}`}><Coins className="size-3" /> {item.cost}z</div></div>
                                   <div className="size-14 mb-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center group-hover:border-accent/30 transition-colors">
                                     {item.category === "weapon" && <Sword className="size-7 text-accent/70" />}
                                     {item.category === "armor" && <Shield className="size-7 text-accent/70" />}
                                     {item.category === "shield" && <Shield className="size-7 text-accent/70" />}
                                     {item.category === "accessory" && <Gem className="size-7 text-accent/70" />}
                                   </div>
-                                  <div className="pr-16">
-                                    <p className="font-bold text-sm text-foreground">{item.name}</p>
-                                    <p className="mt-1 text-[9px] uppercase tracking-widest text-accent/70">{getCategoryLabel(item.category)}</p>
-                                  </div>
-                                  <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
-                                    <span className="text-[10px] text-muted-foreground">Clique para examinar</span>
-                                    <Eye className="size-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
-                                  </div>
+                                  <div className="pr-16"><p className="font-bold text-sm text-foreground">{item.name}</p><p className="mt-1 text-[9px] uppercase tracking-widest text-accent/70">{getCategoryLabel(item.category)}</p></div>
+                                  <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between"><span className="text-[10px] text-muted-foreground">Clique para examinar</span><Eye className="size-3.5 text-muted-foreground group-hover:text-accent transition-colors" /></div>
                                 </motion.button>
                               )
                             })}
@@ -1486,16 +1518,12 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                         )}
                       </div>
                     </main>
-
                     <AnimatePresence mode="wait">
                       {selectedStoreItem && (
                         <motion.aside initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="w-full lg:w-[340px] xl:w-[380px] shrink-0 border-t lg:border-t-0 lg:border-l border-white/10 bg-black/40 flex flex-col">
                           <div className="p-5 border-b border-white/10">
                             <div className="flex justify-between items-start gap-3">
-                              <div>
-                                <p className="text-[9px] uppercase tracking-[0.2em] text-accent mb-1">Inspecionando</p>
-                                <h5 className="font-serif text-xl font-bold text-foreground">{selectedStoreItem.name}</h5>
-                              </div>
+                              <div><p className="text-[9px] uppercase tracking-[0.2em] text-accent mb-1">Inspecionando</p><h5 className="font-serif text-xl font-bold text-foreground">{selectedStoreItem.name}</h5></div>
                               <button onClick={() => setSelectedStoreItem(null)} className="p-1.5 rounded-md hover:bg-white/10"><X className="size-4 text-muted-foreground" /></button>
                             </div>
                           </div>
@@ -1509,32 +1537,18 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                           </div>
                           <div className="flex-1 overflow-y-auto px-5 pb-5 custom-scrollbar-sepia">
                             <div className="space-y-5">
-                              <div>
-                                <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Descrição</p>
-                                <div className="text-sm leading-relaxed text-muted-foreground"><ItemModifiers text={selectedStoreItem.detail} /></div>
-                              </div>
+                              <div><p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Descrição</p><div className="text-sm leading-relaxed text-muted-foreground"><ItemModifiers text={selectedStoreItem.detail} /></div></div>
                               <div className="grid grid-cols-2 gap-2">
-                                <div className="p-3 rounded-lg bg-card border border-border/50">
-                                  <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Categoria</p>
-                                  <p className="mt-1 text-xs font-bold text-foreground">{getCategoryLabel(selectedStoreItem.category)}</p>
-                                </div>
-                                <div className="p-3 rounded-lg bg-card border border-border/50">
-                                  <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Valor</p>
-                                  <p className="mt-1 text-xs font-bold text-accent font-mono">{selectedStoreItem.cost} z</p>
-                                </div>
+                                <div className="p-3 rounded-lg bg-card border border-border/50"><p className="text-[9px] uppercase tracking-widest text-muted-foreground">Categoria</p><p className="mt-1 text-xs font-bold text-foreground">{getCategoryLabel(selectedStoreItem.category)}</p></div>
+                                <div className="p-3 rounded-lg bg-card border border-border/50"><p className="text-[9px] uppercase tracking-widest text-muted-foreground">Valor</p><p className="mt-1 text-xs font-bold text-accent font-mono">{selectedStoreItem.cost} z</p></div>
                               </div>
                             </div>
                           </div>
                           <div className="p-5 border-t border-white/10 bg-black/30">
                             {currentZenit >= selectedStoreItem.cost ? (
-                              <Button disabled={!editable} onClick={() => { buyItem(selectedStoreItem.id); setSelectedStoreItem(null) }} className="w-full h-11 bg-accent text-accent-foreground hover:bg-accent/90 font-bold">
-                                <ShoppingCart className="size-4 mr-2" /> Comprar por {selectedStoreItem.cost} z
-                              </Button>
+                              <Button disabled={!editable} onClick={() => { buyItem(selectedStoreItem.id); setSelectedStoreItem(null) }} className="w-full h-11 bg-accent text-accent-foreground hover:bg-accent/90 font-bold"><ShoppingCart className="size-4 mr-2" /> Comprar por {selectedStoreItem.cost} z</Button>
                             ) : (
-                              <div className="text-center p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                                <p className="text-xs font-bold text-destructive">Zenit insuficiente</p>
-                                <p className="text-[10px] text-muted-foreground mt-1">Faltam {selectedStoreItem.cost - currentZenit} z</p>
-                              </div>
+                              <div className="text-center p-3 rounded-lg bg-destructive/10 border border-destructive/20"><p className="text-xs font-bold text-destructive">Zenit insuficiente</p><p className="text-[10px] text-muted-foreground mt-1">Faltam {selectedStoreItem.cost - currentZenit} z</p></div>
                             )}
                           </div>
                         </motion.aside>
@@ -1546,12 +1560,13 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
             )}
           </AnimatePresence>
 
+          {/* Demais modais seguem em ordem: Inventory, ViewingItem, Transfer, Archive, Gallery, Lore... */}
           <AnimatePresence>
             {showInventory && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden">
-                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden border border-primary/30 bg-zinc-950 shadow-2xl">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden" onClick={() => setShowInventory(false)}>
+                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden border border-primary/30 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
                   <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/40 shrink-0">
-                    <h4 className="font-serif text-2xl md:text-3xl font-black text-primary flex items-center gap-3"><Package className="size-6 md:size-8" /> Mochila do Herói</h4>
+                    <h4 className="font-serif text-2xl md:text-3xl font-black text-[#eee3cf] flex items-center gap-3"><Package className="size-6 text-primary md:size-8" /> Mochila do Herói</h4>
                     <button onClick={() => setShowInventory(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10"><X className="size-5 md:size-6 text-muted-foreground hover:text-white" /></button>
                   </div>
                   <div className="flex-1 overflow-y-auto p-6 md:p-10 flex flex-col md:flex-row gap-10 custom-scrollbar-sepia">
@@ -1598,10 +1613,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                                 <button
                                   key={item.id}
                                   onClick={() => !isLockedForThisChar && setViewingItem(item)}
-                                  className={`flex items-center justify-between p-3 rounded-lg bg-card border transition-colors text-left ${isLockedForThisChar
-                                    ? 'border-destructive/30 opacity-50 cursor-not-allowed'
-                                    : 'border-border/50 hover:border-primary/50'
-                                    }`}
+                                  className={`flex items-center justify-between p-3 rounded-lg bg-card border transition-colors text-left ${isLockedForThisChar ? 'border-destructive/30 opacity-50 cursor-not-allowed' : 'border-border/50 hover:border-primary/50'}`}
                                   disabled={isLockedForThisChar}
                                 >
                                   <div className="flex items-center gap-3">
@@ -1609,14 +1621,9 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                                     {item.type === 'image' && <ImageIcon className="size-5 text-blue-400" />}
                                     {item.type === 'video' && <Film className="size-5 text-purple-400" />}
                                     {item.type === 'app-blueprints' && <Package className={`size-5 ${isLockedForThisChar ? 'text-destructive' : 'text-blue-500'}`} />}
-
                                     <div className="flex flex-col">
-                                      <span className={`font-bold text-sm truncate ${isLockedForThisChar ? 'text-destructive' : 'text-foreground'}`}>
-                                        {item.name}
-                                      </span>
-                                      {isLockedForThisChar && (
-                                        <span className="text-[9px] uppercase tracking-widest text-destructive mt-0.5">Requer: Inventor</span>
-                                      )}
+                                      <span className={`font-bold text-sm truncate ${isLockedForThisChar ? 'text-destructive' : 'text-foreground'}`}>{item.name}</span>
+                                      {isLockedForThisChar && <span className="text-[9px] uppercase tracking-widest text-destructive mt-0.5">Requer: Inventor</span>}
                                     </div>
                                   </div>
                                 </button>
@@ -1629,7 +1636,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                     <section className="flex-1 space-y-4">
                       <div className="flex justify-between items-center border-b border-white/10 pb-2">
                         <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Consumíveis</h5>
-                        <span className="text-sm font-mono font-bold text-primary bg-primary/10 px-2 py-1 rounded">IP Atual: {character.resources.ip}/{character.resources.maxIp}</span>
+                        <span className="text-sm font-mono font-bold text-primary bg-primary/10 px-2 py-1 rounded">IP Atual: {displayResources.ip}/{displayResources.maxIp}</span>
                       </div>
                       {editable ? (
                         <div className="flex flex-col gap-3">
@@ -1653,8 +1660,8 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
 
           <AnimatePresence>
             {viewingItem && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-                <motion.div variants={modalVariants} className={`relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden shadow-2xl ${viewingItem.type === 'text' ? 'rpg-paper text-black border-2 border-[#d4af37]' : 'rpg-modal bg-zinc-950 border border-primary/50'}`}>
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden" onClick={() => setViewingItem(null)}>
+                <motion.div variants={modalVariants} className={`relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden shadow-2xl ${viewingItem.type === 'text' ? 'rpg-paper text-black border-2 border-[#d4af37]' : 'rpg-modal bg-zinc-950 border border-primary/50'}`} onClick={(event) => event.stopPropagation()}>
                   <div className={`flex justify-between items-center p-4 border-b shrink-0 ${viewingItem.type === 'text' ? 'border-[#d4af37]/30' : 'border-white/10 bg-black/40'}`}>
                     <h4 className={`font-serif text-xl font-bold flex items-center gap-2 ${viewingItem.type === 'text' ? 'text-amber-900' : 'text-primary'}`}>
                       {viewingItem.type === 'text' && <ScrollText className="size-5" />}
@@ -1670,32 +1677,20 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
 
                   <div className="flex-1 overflow-y-auto p-6 custom-scrollbar-sepia">
                     {viewingItem.type === 'text' && (
-                      <div className="font-serif text-lg leading-relaxed whitespace-pre-wrap text-amber-950">
-                        {viewingItem.content}
-                      </div>
+                      <div className="font-serif text-lg leading-relaxed whitespace-pre-wrap text-amber-950">{viewingItem.content}</div>
                     )}
                     {viewingItem.type === 'image' && (
                       <div className="flex justify-center items-center">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={viewingItem.content} alt={viewingItem.name} className="max-w-full h-auto rounded-lg shadow-lg" />
                       </div>
                     )}
                     {viewingItem.type === 'video' && (
                       <div className="aspect-video w-full rounded-lg overflow-hidden shadow-lg bg-black">
-                        <iframe
-                          src={getEmbedUrl(viewingItem.content)}
-                          className="w-full h-full border-0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
+                        <iframe src={getEmbedUrl(viewingItem.content)} className="w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                       </div>
                     )}
                     {viewingItem.type === 'app-blueprints' && (
-                      <BlueprintApp
-                        character={character}
-                        editable={editable}
-                        onSpendMp={(cost: number) => patchResource("mp", -cost)}
-                      />
+                      <BlueprintApp character={character} editable={editable} onSpendMp={(cost: number) => patchResource("mp", -cost)} />
                     )}
                   </div>
 
@@ -1713,22 +1708,18 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
 
           <AnimatePresence>
             {showTransferModal && editable && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                <motion.div variants={modalVariants} className="rpg-modal relative w-full max-w-md border border-primary/50 bg-zinc-950 p-6 shadow-2xl">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowTransferModal(false)}>
+                <motion.div variants={modalVariants} className="rpg-modal relative min-h-[440px] w-full max-w-md border border-primary/50 bg-zinc-950 p-6 py-8 shadow-2xl" onClick={(event) => event.stopPropagation()}>
                   <button onClick={() => setShowTransferModal(false)} className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
-                  <h4 className="mb-2 flex items-center gap-2 font-serif text-xl font-bold text-primary">
-                    <UserPlus className="size-5" /> Ceder
+                  <h4 className="mb-2 flex items-center gap-2 font-serif text-xl font-bold text-[#eee3cf]">
+                    <UserPlus className="size-5 text-primary" /> Ceder
                   </h4>
                   <p className="text-sm text-muted-foreground mb-6">Selecione para qual jogador você deseja transferir o controle permanente desta ficha.</p>
                   <div className="space-y-2 mb-6">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Jogadores na Mesa</p>
                     <div className="flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar-sepia">
                       {campaignMembers.map((m: any) => (
-                        <button
-                          key={m.userId}
-                          onClick={() => setTransferUserId(m.userId)}
-                          className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${transferUserId === m.userId ? "border-primary bg-primary/20 text-white font-bold" : "border-white/10 bg-white/5 hover:border-primary/50"}`}
-                        >
+                        <button key={m.userId} onClick={() => setTransferUserId(m.userId)} className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${transferUserId === m.userId ? "border-primary bg-primary/20 text-white font-bold" : "border-white/10 bg-white/5 hover:border-primary/50"}`}>
                           <Shield className="size-4 text-primary" /> {m.name} {m.role === 'gm' && '(Mestre)'}
                         </button>
                       ))}
@@ -1746,18 +1737,15 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
             )}
           </AnimatePresence>
 
-          {/* NOVO MODAL DE ARQUIVAR */}
           <AnimatePresence>
             {showArchiveConfirm && isGm && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                <motion.div variants={modalVariants} className="rpg-modal relative w-full max-w-md border border-destructive/50 bg-zinc-950 p-6 shadow-2xl">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowArchiveConfirm(false)}>
+                <motion.div variants={modalVariants} className="rpg-modal relative w-full max-w-md border border-destructive/50 bg-zinc-950 p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
                   <button onClick={() => setShowArchiveConfirm(false)} className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
                   <h4 className="font-serif text-xl font-bold text-destructive mb-2 flex items-center gap-2">
                     <Archive className="size-5" /> Arquivar Personagem
                   </h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Você está prestes a arquivar <strong>{character.name}</strong>.
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">Você está prestes a arquivar <strong>{character.name}</strong>.</p>
                   <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-xs text-destructive mb-6 leading-relaxed">
                     <strong>O que acontece agora?</strong><br />
                     - O jogador perderá o acesso a esta ficha permanentemente.<br />
@@ -1766,14 +1754,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                   </div>
                   <div className="flex justify-end gap-3">
                     <Button variant="ghost" onClick={() => setShowArchiveConfirm(false)}>Cancelar</Button>
-                    <Button
-                      onClick={() => {
-                        setArchiving(true);
-                        onArchive(character);
-                      }}
-                      disabled={archiving}
-                      className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                    >
+                    <Button onClick={() => { setArchiving(true); onArchive(character); }} disabled={archiving} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
                       {archiving ? <Loader2 className="size-4 animate-spin" /> : "Confirmar e Arquivar"}
                     </Button>
                   </div>
@@ -1787,10 +1768,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[320] flex items-center justify-center bg-black/85 p-3 backdrop-blur-md sm:p-6" onClick={() => setShowFrameGallery(false)}>
                 <motion.div variants={modalVariants} className="rpg-modal max-h-[92vh] w-full max-w-3xl overflow-y-auto border p-6 custom-scrollbar-sepia sm:p-8" onClick={(event) => event.stopPropagation()}>
                   <div className="mb-6 flex items-start justify-between gap-5">
-                    <div>
-                      <span className="text-xs font-semibold text-muted-foreground">Personalização do retrato</span>
-                      <h4 className="rpg-title mt-1.5 text-2xl font-bold text-foreground sm:text-3xl">Galeria de Molduras</h4>
-                    </div>
+                    <h4 className="rpg-title text-2xl font-bold text-foreground sm:text-3xl">Galeria de Molduras</h4>
                     <button type="button" onClick={() => setShowFrameGallery(false)} className="rounded-sm p-2.5 text-muted-foreground hover:bg-white/10 hover:text-foreground" aria-label="Fechar galeria"><X className="size-6" /></button>
                   </div>
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -1798,7 +1776,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                       const selected = (character.portraitFrame || "bronze") === frame.id
                       return (
                         <button key={frame.id} type="button" disabled={pending} onClick={() => void savePortraitFrame(frame.id)} className={`portrait-frame-option ${selected ? "is-selected" : ""}`} aria-pressed={selected}>
-                          <CharacterPortrait src={character.avatarUrl} alt="" frame={frame.id} className="size-20 sm:size-24" sizes="96px" />
+                          <CharacterPortrait src={character.avatarUrl} alt="" frame={frame.id} crop={character.portraitCrop} className="size-20 sm:size-24" sizes="96px" />
                           <span className="min-w-0 text-left">
                             <strong>{frame.name}</strong>
                             <small>{frame.detail}</small>
@@ -1815,8 +1793,8 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
 
           <AnimatePresence>
             {showLore && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-                <motion.div variants={modalVariants} className="rpg-paper relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden border-2 border-[#d4af37] text-[#3e2723]">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden" onClick={() => setShowLore(false)}>
+                <motion.div variants={modalVariants} className="rpg-paper relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden border-2 border-[#d4af37] text-[#3e2723]" onClick={(event) => event.stopPropagation()}>
                   <div className="flex justify-between items-center p-5 border-b border-[#d4af37]/40 shrink-0 bg-black/5">
                     <h4 className="font-serif text-2xl font-bold flex items-center gap-3 text-[#5d4037]">
                       <ScrollText className="size-6" /> História do personagem
@@ -1827,23 +1805,17 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                   </div>
                   <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar-sepia space-y-6">
                     <div>
-                      <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2">
-                        <BookOpenText className="size-4" /> Origem
-                      </div>
+                      <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2"><BookOpenText className="size-4" /> Origem</div>
                       <div className="font-serif text-base leading-loose whitespace-pre-wrap">{character.origin || "Desconhecida"}</div>
                     </div>
                     <div className="w-full h-px bg-[#d4af37]/30" />
                     <div>
-                      <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2">
-                        <Shield className="size-4" /> Identidade
-                      </div>
+                      <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2"><Shield className="size-4" /> Identidade</div>
                       <div className="font-serif text-base leading-loose whitespace-pre-wrap">{character.identity || "Nenhuma"}</div>
                     </div>
                     <div className="w-full h-px bg-[#d4af37]/30" />
                     <div>
-                      <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2">
-                        <Sparkles className="size-4" /> Tema
-                      </div>
+                      <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2"><Sparkles className="size-4" /> Tema</div>
                       <div className="font-serif text-lg leading-relaxed italic text-[#4e342e]">"{character.theme || "Nenhum"}"</div>
                     </div>
                   </div>
@@ -1860,7 +1832,28 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
       <div className="relative z-50 flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
           <div className="relative shrink-0">
-            <CharacterPortrait src={character.avatarUrl} alt={`Retrato de ${character.name}`} frame={character.portraitFrame} className={`${isExpanded ? "size-[88px] sm:size-[104px]" : "size-[72px] sm:size-[80px]"} cursor-pointer transition-[width,height] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)]`} sizes="104px" onClick={() => changeExpanded(!isExpanded)} />
+            <CharacterPortrait
+              src={character.avatarUrl}
+              alt={`Retrato de ${character.name}`}
+              frame={character.portraitFrame}
+              crop={character.portraitCrop}
+              className={`${isExpanded ? "size-[88px] sm:size-[104px]" : "size-[72px] sm:size-[80px]"} cursor-pointer transition-[width,height] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)]`}
+              sizes="104px"
+              role={isOwned ? "button" : undefined}
+              tabIndex={isOwned ? 0 : undefined}
+              title={isOwned ? "Editar retrato" : undefined}
+              onClick={(event) => {
+                event.stopPropagation()
+                if (isOwned) setShowPortraitEditor(true)
+                else changeExpanded(!isExpanded)
+              }}
+              onKeyDown={(event) => {
+                if (isOwned && (event.key === "Enter" || event.key === " ")) {
+                  event.preventDefault()
+                  setShowPortraitEditor(true)
+                }
+              }}
+            />
             {!isExpanded && editable && (
               <button type="button" onClick={(event) => { event.stopPropagation(); setShowFrameGallery(true) }} className="portrait-frame-trigger" title="Escolher moldura" aria-label="Escolher moldura do retrato">
                 <SwatchBook className="size-4" />
@@ -1881,8 +1874,8 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                   {[character.identity, character.origin].filter(Boolean).join(" · ") || "Aventureiro"}
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[13px] font-semibold tabular-nums">
-                  <span><b className="text-[color:var(--hp)]">HP:</b> <strong className="text-foreground">{character.resources.hp}/{character.resources.maxHp}</strong></span>
-                  <span><b className="text-[color:var(--mp)]">MP:</b> <strong className="text-foreground">{character.resources.mp}/{character.resources.maxMp}</strong></span>
+                  <span><b className="text-[color:var(--hp)]">HP:</b> <strong className="text-foreground">{displayResources.hp}/{displayResources.maxHp}</strong></span>
+                  <span><b className="text-[color:var(--mp)]">MP:</b> <strong className="text-foreground">{displayResources.mp}/{displayResources.maxMp}</strong></span>
                   <CharacterStatusBadges modifiers={(character.customModifiers || []) as Modifier[]} />
                 </div>
               </div>
@@ -1950,7 +1943,6 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                 <UserPlus className="mr-1.5 size-4" /> Ceder
               </Button>
             )}
-            {/* O BOTÃO ARQUIVAR FICA AQUI */}
             {isGm && onArchive && (
               <Button size="sm" variant="outline" className="rpg-archive-button h-9 px-4 text-sm font-semibold transition-colors" onClick={() => setShowArchiveConfirm(true)}>
                 <Archive className="mr-1.5 size-4" /> Arquivar
@@ -1986,9 +1978,9 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                       <div className="rpg-resource-fill h-1.5 bg-primary transition-all duration-500 ease-out sm:h-2" style={{ width: `${(currentLevelXp / xpRequired) * 100}%` }}></div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      {unspentPoints > 0 ? (
-                        <Button size="sm" variant="default" disabled={!editable} className="h-8 text-xs animate-pulse bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 shrink-0" onClick={() => setShowLevelUp(true)}>
-                          <TrendingUp className="size-3.5 mr-1.5" /> Classes ({unspentPoints})
+                      {(unspentPoints > 0 || isGm) ? (
+                        <Button size="sm" variant="default" disabled={!editable && !isGm} className="h-8 text-xs animate-pulse bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 shrink-0" onClick={() => setShowLevelUp(true)}>
+                          <TrendingUp className="size-3.5 mr-1.5" /> Classes {unspentPoints > 0 ? `(${unspentPoints})` : "(Mestre)"}
                         </Button>
                       ) : <div />}
                       {isGm && (
@@ -2031,29 +2023,71 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                     })}
                   </div>
 
+                  {/* BARRAS DE RECURSOS E CONTROLE MANUAL DO MESTRE */}
                   <div className="mt-6 flex flex-col gap-4">
-                    <ResourceBar label="Vida" short="HP" icon={<Heart className="size-4" />} current={character.resources.hp} max={character.resources.maxHp} colorVar="--hp" editable={editable} onChange={(d) => patchResource("hp", d)} />
-                    <ResourceBar label="Mente" short="MP" icon={<WandSparkles className="size-4" />} current={character.resources.mp} max={character.resources.maxMp} colorVar="--mp" editable={editable} onChange={(d) => patchResource("mp", d)} />
-                    <ResourceBar label="Inventario" short="IP" icon={<Backpack className="size-4" />} current={character.resources.ip} max={character.resources.maxIp} colorVar="--ip" editable={editable} onChange={(d) => patchResource("ip", d)} />
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <ResourceBar label="Vida" short="HP" icon={<Heart className="size-4" />} current={displayResources.hp} max={displayResources.maxHp} colorVar="--hp" editable={editable} onChange={(d) => patchResource("hp", d)} />
+                      </div>
+                      {isGm && (
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <button onClick={() => patchResource("maxHp", 1)} className="flex items-center justify-center size-5 bg-background border border-border/60 rounded hover:border-[color:var(--hp)] hover:text-[color:var(--hp)] transition-colors" title="Aumentar Vida Máxima Manualmente">+</button>
+                          <button onClick={() => patchResource("maxHp", -1)} className="flex items-center justify-center size-5 bg-background border border-border/60 rounded hover:border-[color:var(--hp)] hover:text-[color:var(--hp)] transition-colors" title="Diminuir Vida Máxima Manualmente">-</button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <ResourceBar label="Mente" short="MP" icon={<WandSparkles className="size-4" />} current={displayResources.mp} max={displayResources.maxMp} colorVar="--mp" editable={editable} onChange={(d) => patchResource("mp", d)} />
+                      </div>
+                      {isGm && (
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <button onClick={() => patchResource("maxMp", 1)} className="flex items-center justify-center size-5 bg-background border border-border/60 rounded hover:border-[color:var(--mp)] hover:text-[color:var(--mp)] transition-colors" title="Aumentar Mana Máxima Manualmente">+</button>
+                          <button onClick={() => patchResource("maxMp", -1)} className="flex items-center justify-center size-5 bg-background border border-border/60 rounded hover:border-[color:var(--mp)] hover:text-[color:var(--mp)] transition-colors" title="Diminuir Mana Máxima Manualmente">-</button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <ResourceBar label="Inventario" short="IP" icon={<Backpack className="size-4" />} current={displayResources.ip} max={displayResources.maxIp} colorVar="--ip" editable={editable} onChange={(d) => patchResource("ip", d)} />
+                      </div>
+                      {isGm && (
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <button onClick={() => patchResource("maxIp", 1)} className="flex items-center justify-center size-5 bg-background border border-border/60 rounded hover:border-[color:var(--ip)] hover:text-[color:var(--ip)] transition-colors" title="Aumentar IP Máximo Manualmente">+</button>
+                          <button onClick={() => patchResource("maxIp", -1)} className="flex items-center justify-center size-5 bg-background border border-border/60 rounded hover:border-[color:var(--ip)] hover:text-[color:var(--ip)] transition-colors" title="Diminuir IP Máximo Manualmente">-</button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 mt-5">
+                    {/* FABULA */}
                     <div className="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-[color:var(--fp)]/30 bg-[color:var(--fp)]/5 px-3 py-2">
                       <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[color:var(--fp)]"><Sparkles className="size-3.5" /> Fabula</span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {editable && <button onClick={() => patchResource("fp", -1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-[color:var(--fp)] hover:bg-[color:var(--fp)]/10 transition-colors"><Minus className="size-3" /></button>}
-                        <span className="w-5 text-center font-mono text-sm font-bold text-[color:var(--fp)]">{character.resources.fp}</span>
+                        <span className="w-5 text-center font-mono text-sm font-bold text-[color:var(--fp)]">{displayResources.fp}</span>
                         {editable && <button onClick={() => patchResource("fp", 1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-[color:var(--fp)] hover:bg-[color:var(--fp)]/10 transition-colors"><Plus className="size-3" /></button>}
+                      </div>
+                    </div>
+                    
+                    {/* PONTOS DE LORE */}
+                    <div className="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-purple-500/30 bg-purple-500/5 px-3 py-2">
+                      <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-purple-400"><BookOpen className="size-3.5" /> Lore</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isGm && <button onClick={() => patchResource("lp", -1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-purple-400 hover:bg-purple-400/10 transition-colors"><Minus className="size-3 text-purple-400" /></button>}
+                        <span className="w-5 text-center font-mono text-sm font-bold text-purple-400">{(displayResources as any).lp || 0}</span>
+                        {isGm && <button onClick={() => patchResource("lp", 1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-purple-400 hover:bg-purple-400/10 transition-colors"><Plus className="size-3 text-purple-400" /></button>}
                       </div>
                     </div>
 
                     <div className="flex-1 min-w-[140px] flex gap-2">
                       <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors" onClick={() => setShowInventory(true)}>
-                        <Package className="size-4 mr-2 shrink-0" /> Mochila
+                        <Package className="size-4 mr-2 shrink-0" /> <span className="text-[#eee3cf]">Mochila</span>
                       </Button>
 
                       <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-accent/30 bg-accent/5 text-accent hover:bg-accent/20 hover:border-accent/50 transition-colors" onClick={() => setShowStore(true)}>
-                        <Store className="size-4 mr-2 shrink-0" /> Loja
+                        <Store className="size-4 mr-2 shrink-0" /> <span className="text-[#eee3cf]">Loja</span>
                       </Button>
                     </div>
                   </div>
@@ -2081,14 +2115,8 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                               <ChevronDown className={`size-4 text-muted-foreground transition-transform duration-300 ${isExpanded ? "rotate-180 text-primary" : ""}`} />
                             </button>
 
-                            <AnimatePresence>
-                              {isExpanded && (
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: "auto", opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.2 }}
-                                >
+                            <div className="rpg-skill-expansion" data-open={isExpanded} aria-hidden={!isExpanded}>
+                              <div className="rpg-skill-expansion-clip">
                                   <div className="px-3 pb-3 pt-1 border-t border-primary/10 mt-1">
                                     <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
                                       {formatSkillDescription(skill.description, lvl as number)}
@@ -2101,9 +2129,8 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                                       </div>
                                     )}
                                   </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
+                              </div>
+                            </div>
                           </div>
                         )
                       })}
@@ -2125,14 +2152,105 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
               )}
 
               {sheetTab === 'modifiers' && (
-                <ModifiersPanel
-                  character={character}
-                  isGm={isGm}
-                  onUpdate={updateModifiers}
-                />
+                <div className="flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="flex justify-between items-center bg-black/40 p-3 rounded-xl border border-white/10 shadow-inner">
+                    <div>
+                      <h3 className="text-sm font-bold text-primary flex items-center gap-2">Condições e Modificadores</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Efeitos, buffs e debuffs ativos.</p>
+                    </div>
+                    {isGm && (
+                      <Button size="sm" onClick={() => {
+                        setEditingModId("new");
+                        setModDraft({ id: Math.random().toString(36).substring(7), name: "", target: "all", value: 1 });
+                      }}>
+                        <Plus className="size-4 mr-1" /> Nova Condição
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    {(character as any).customModifiers?.map((mod: any) => (
+                      <div key={mod.id} className="p-3 bg-card/40 border border-border/50 rounded-lg">
+                        {editingModId === mod.id && isGm ? (
+                          <div className="flex flex-col gap-2">
+                            <input className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" value={modDraft.name} onChange={e => setModDraft({...modDraft, name: e.target.value})} placeholder="Nome da condição" />
+                            <div className="flex gap-2">
+                              <input className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.target} onChange={e => setModDraft({...modDraft, target: e.target.value})} placeholder="Alvo (ex: all, dex, hp)" />
+                              <input type="number" className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.value} onChange={e => setModDraft({...modDraft, value: Number(e.target.value)})} placeholder="Valor (+ ou -)" />
+                            </div>
+                            <div className="flex justify-end gap-2 mt-2">
+                              <Button size="sm" variant="ghost" onClick={() => setEditingModId(null)}>Cancelar</Button>
+                              <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => {
+                                const newMods = (character as any).customModifiers.map((m: any) => m.id === mod.id ? modDraft : m);
+                                updateModifiers(newMods);
+                                setEditingModId(null);
+                              }}>Salvar Edição</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center gap-2">
+                            <div>
+                              <p className="font-bold text-foreground text-sm flex items-center gap-2">
+                                {mod.value > 0 ? <TrendingUp className="size-3 text-green-400" /> : <TrendingDown className="size-3 text-red-400" />} {mod.name}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Alvo: {mod.target} <span className="mx-1">•</span> Bônus: {mod.value > 0 ? `+${mod.value}` : mod.value}</p>
+                            </div>
+                            <div className="flex gap-2 items-center shrink-0">
+                              {!isGm && ((displayResources as any).lp || 0) > 0 && editable && (
+                                <Button size="sm" variant="outline" className="h-8 border-purple-500/50 text-purple-400 hover:bg-purple-500/20" onClick={() => {
+                                  if (confirm(`Gastar 1 Ponto de Lore (LP) para melhorar a condição "${mod.name}" em +1?`)) {
+                                    patchResource("lp", -1);
+                                    const newMods = (character as any).customModifiers.map((m: any) => m.id === mod.id ? { ...m, value: m.value + 1 } : m);
+                                    updateModifiers(newMods);
+                                  }
+                                }}>
+                                  <BookOpen className="size-3 mr-1.5" /> Melhorar (+1)
+                                </Button>
+                              )}
+                              {isGm && (
+                                <>
+                                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-white" onClick={() => { setEditingModId(mod.id); setModDraft(mod); }}><Pencil className="size-4" /></Button>
+                                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/20 hover:text-destructive" onClick={() => {
+                                    if (confirm("Remover condição?")) {
+                                      updateModifiers((character as any).customModifiers.filter((m: any) => m.id !== mod.id));
+                                    }
+                                  }}><Trash2 className="size-4" /></Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {editingModId === "new" && isGm && (
+                      <div className="p-3 bg-card/40 border border-primary/50 rounded-lg mt-2 shadow-[0_0_15px_rgba(var(--primary),0.1)]">
+                        <div className="flex flex-col gap-2">
+                          <input className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" value={modDraft.name} onChange={e => setModDraft({...modDraft, name: e.target.value})} placeholder="Nome da condição" />
+                          <div className="flex gap-2">
+                            <input className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.target} onChange={e => setModDraft({...modDraft, target: e.target.value})} placeholder="Alvo (ex: all, dex, hp)" />
+                            <input type="number" className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.value} onChange={e => setModDraft({...modDraft, value: Number(e.target.value)})} placeholder="Valor (+ ou -)" />
+                          </div>
+                          <div className="flex justify-end gap-2 mt-2">
+                            <Button size="sm" variant="ghost" onClick={() => setEditingModId(null)}>Cancelar</Button>
+                            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => {
+                              const newMods = [...((character as any).customModifiers || []), modDraft];
+                              updateModifiers(newMods);
+                              setEditingModId(null);
+                            }}>Adicionar Condição</Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!(character as any).customModifiers?.length && editingModId !== "new" && (
+                      <p className="text-xs text-muted-foreground text-center italic py-4">Nenhuma condição ativa no momento.</p>
+                    )}
+                  </div>
+                </div>
               )}
 
-              {isGm && onKill && character.resources.hp <= 0 && (
+              {isGm && onKill && displayResources.hp <= 0 && (
                 <div className="mt-6 pt-5 border-t border-destructive/50">
                   <Button
                     className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2 h-12 text-lg font-bold shadow-[0_0_15px_rgba(255,0,0,0.3)] animate-pulse"

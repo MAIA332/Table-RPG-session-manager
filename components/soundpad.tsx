@@ -33,8 +33,10 @@ interface SoundpadProps {
   isGm: boolean;
   campaignId: string;
   activeSounds: ActiveSound[];
+  customTracks?: Track[];
   musicVolume?: number;
   effectsVolume?: number;
+  onCustomTracksChange?: (tracks: Track[]) => void;
   onMusicVolumeChange?: (volume: number) => void;
   onEffectsVolumeChange?: (volume: number) => void;
   onPlaySound?: (track: { id: string, url: string }, loop: boolean) => void;
@@ -42,25 +44,14 @@ interface SoundpadProps {
   onStopAll?: () => void;
 }
 
-export function Soundpad({ isGm, campaignId, activeSounds, musicVolume = 0.5, effectsVolume = 0.75, onMusicVolumeChange, onEffectsVolumeChange, onPlaySound, onStopSound, onStopAll }: SoundpadProps) {
+export function Soundpad({ isGm, activeSounds, customTracks = [], musicVolume = 0.5, effectsVolume = 0.75, onCustomTracksChange, onMusicVolumeChange, onEffectsVolumeChange, onPlaySound, onStopSound, onStopAll }: SoundpadProps) {
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
-  const [customTracks, setCustomTracks] = useState<Track[]>([]);
   const [newSoundName, setNewSoundName] = useState("");
   const [newSoundUrl, setNewSoundUrl] = useState("");
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(`custom_sounds_${campaignId}`);
-      if (saved) {
-        try { setCustomTracks(JSON.parse(saved)); } catch(e){}
-      }
-    }
-  }, [campaignId]);
-
   const saveCustomTracks = (tracks: Track[]) => {
-    setCustomTracks(tracks);
-    localStorage.setItem(`custom_sounds_${campaignId}`, JSON.stringify(tracks));
+    onCustomTracksChange?.(tracks);
   };
 
   const handleAddCustomSound = () => {
@@ -129,7 +120,7 @@ export function Soundpad({ isGm, campaignId, activeSounds, musicVolume = 0.5, ef
   const getTrackName = (trackId: string) => allTracks.find(t => t.id === trackId)?.name || "Som Extra";
 
   return (
-    <div className="flex h-full w-full flex-col overflow-y-auto bg-[#15100c] font-sans text-white lg:flex-row lg:overflow-hidden">
+    <div className="rpg-themed-workspace flex h-full w-full flex-col overflow-y-auto bg-[#15100c] font-sans text-white lg:flex-row lg:overflow-hidden">
       
       {/* LADO ESQUERDO: BIBLIOTECA (Só visível se for GM) */}
       {isGm ? (
@@ -157,7 +148,7 @@ export function Soundpad({ isGm, campaignId, activeSounds, musicVolume = 0.5, ef
                const isCustom = track.isCustom;
                
                return (
-                 <div key={track.id} className={`group flex items-center justify-between rounded-sm border p-3 pr-6 transition-all duration-300 ${isPlaying ? 'border-accent/50 bg-accent/10 shadow-inner' : 'border-white/5 bg-[#17110d] hover:border-primary/40 hover:bg-[#211810]'}`}>
+                 <div key={track.id} data-active={isPlaying} className={`rpg-themed-card group flex items-center justify-between rounded-sm border p-3 pr-6 transition-all duration-300 ${isPlaying ? 'border-accent/50 bg-accent/10 shadow-inner' : 'border-white/5 bg-[#17110d] hover:border-primary/40 hover:bg-[#211810]'}`}>
                     
                     <div className="flex items-center gap-4 min-w-0 pr-2">
                        <div className={`flex size-12 shrink-0 items-center justify-center rounded-full border transition-colors ${isPlaying ? 'border-accent bg-accent text-black' : 'border-primary/20 bg-black text-zinc-500 group-hover:text-accent'}`}>
@@ -216,7 +207,7 @@ export function Soundpad({ isGm, campaignId, activeSounds, musicVolume = 0.5, ef
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center bg-[#15100c] p-8 text-center">
+        <div className="rpg-themed-workspace flex flex-1 items-center justify-center bg-[#15100c] p-8 text-center">
           <div className="max-w-md space-y-4">
              <Disc3 className="size-16 mx-auto text-zinc-600 animate-[spin_10s_linear_infinite]" />
              <h3 className="text-xl font-bold text-zinc-300">Conectado ao Áudio da Mesa</h3>
@@ -226,7 +217,7 @@ export function Soundpad({ isGm, campaignId, activeSounds, musicVolume = 0.5, ef
       )}
 
       {/* LADO DIREITO: INSPETOR E GERENCIAMENTO */}
-      <div className="flex w-full shrink-0 flex-col border-l border-primary/15 bg-[#1c1510] lg:w-[380px]">
+      <div className="rpg-themed-subtle flex w-full shrink-0 flex-col border-l border-primary/15 bg-[#1c1510] lg:w-[380px]">
         
         {/* Tocando Agora */}
         {isGm && (
@@ -278,8 +269,8 @@ export function Soundpad({ isGm, campaignId, activeSounds, musicVolume = 0.5, ef
           <div className="p-6 bg-black/20 shrink-0 border-b border-white/5">
              <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2"><Plus className="size-4" /> Adicionar Link MP3</h4>
              <div className="flex flex-col gap-3">
-                <input type="text" value={newSoundName} onChange={e=>setNewSoundName(e.target.value)} placeholder="Nome do Áudio" className="rounded-sm border border-white/10 bg-[#0a0a0a] px-4 py-2.5 text-sm text-foreground transition-colors placeholder:text-zinc-600 focus:border-primary/60 focus:outline-none" />
-                <input type="text" value={newSoundUrl} onChange={e=>setNewSoundUrl(e.target.value)} placeholder="URL direta do arquivo" className="rounded-sm border border-white/10 bg-[#0a0a0a] px-4 py-2.5 font-mono text-sm text-foreground transition-colors placeholder:text-zinc-600 focus:border-primary/60 focus:outline-none" />
+                <input type="text" value={newSoundName} onChange={e=>setNewSoundName(e.target.value)} placeholder="Nome do Áudio" className="rpg-themed-deep rounded-sm border border-white/10 bg-[#0a0a0a] px-4 py-2.5 text-sm text-foreground transition-colors placeholder:text-zinc-600 focus:border-primary/60 focus:outline-none" />
+                <input type="text" value={newSoundUrl} onChange={e=>setNewSoundUrl(e.target.value)} placeholder="URL direta do arquivo" className="rpg-themed-deep rounded-sm border border-white/10 bg-[#0a0a0a] px-4 py-2.5 font-mono text-sm text-foreground transition-colors placeholder:text-zinc-600 focus:border-primary/60 focus:outline-none" />
                 <Button variant="default" className="mt-1 h-11 w-full gap-2 font-bold" onClick={handleAddCustomSound}>
                    <Save className="size-4" /> Salvar Etiqueta
                 </Button>
@@ -289,31 +280,12 @@ export function Soundpad({ isGm, campaignId, activeSounds, musicVolume = 0.5, ef
 
         <div className="p-6 mt-auto">
            <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">Mixer Principal</h4>
-           <div className="space-y-4">
-             <div className="flex items-center gap-4">
-               <Music className="size-5 text-accent" />
-               <div className="flex-1 min-w-0">
-                 <div className="mb-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                   <span>Música</span>
-                   <span className="font-mono text-accent">{Math.round(musicVolume * 100)}%</span>
-                 </div>
-                 <input
-                   type="range"
-                   min="0"
-                   max="1"
-                   step="0.05"
-                   value={musicVolume}
-                   onChange={(e) => onMusicVolumeChange?.(parseFloat(e.target.value))}
-                   className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-                   style={{ accentColor: 'var(--accent)' }}
-                 />
-               </div>
-             </div>
+           <div>
              <div className="flex items-center gap-4">
                <Volume2 className="size-5 text-accent" />
                <div className="flex-1 min-w-0">
                  <div className="mb-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                   <span>Efeitos</span>
+                   <span>Efeitos sonoros</span>
                    <span className="font-mono text-accent">{Math.round(effectsVolume * 100)}%</span>
                  </div>
                  <input
@@ -322,7 +294,11 @@ export function Soundpad({ isGm, campaignId, activeSounds, musicVolume = 0.5, ef
                    max="1"
                    step="0.05"
                    value={effectsVolume}
-                   onChange={(e) => onEffectsVolumeChange?.(parseFloat(e.target.value))}
+                   onChange={(e) => {
+                     const volume = parseFloat(e.target.value)
+                     onMusicVolumeChange?.(volume)
+                     onEffectsVolumeChange?.(volume)
+                   }}
                    className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
                    style={{ accentColor: 'var(--accent)' }}
                  />

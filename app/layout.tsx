@@ -8,6 +8,7 @@ const cinzel = Cinzel({ subsets: ['latin'], variable: '--font-cinzel', weight: [
 const sourceSans = Source_Sans_3({ subsets: ['latin'], variable: '--font-source-sans' })
 const sourceSerif = Source_Serif_4({ subsets: ['latin'], variable: '--font-source-serif' })
 const kalam = Kalam({ subsets: ['latin'], variable: '--font-kalam', weight: ['300', '400', '700'] })
+const themeScript = `(function(){try{var t=localStorage.getItem('vtt-interface-theme');if(t!=='archive'&&t!=='aether'&&t!=='crimson')t='archive';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='archive'}})()`
 
 export const metadata: Metadata = {
   title: 'Over the Magic School — VTT de Fabula Ultima',
@@ -30,7 +31,9 @@ export default function RootLayout({
     <html
       lang="pt-BR"
       className={`dark bg-background ${sourceSans.variable} ${sourceSerif.variable} ${geistMono.variable} ${cinzel.variable} ${kalam.variable}`}
+      suppressHydrationWarning
     >
+      <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
       <body className="font-sans antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

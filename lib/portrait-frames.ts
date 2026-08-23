@@ -12,8 +12,28 @@ export const PORTRAIT_FRAMES = [
 
 export type PortraitFrameId = (typeof PORTRAIT_FRAMES)[number]["id"]
 
+export interface PortraitCrop {
+  x: number
+  y: number
+  zoom: number
+}
+
+export const DEFAULT_PORTRAIT_CROP: PortraitCrop = { x: 50, y: 50, zoom: 1 }
+
 export function normalizePortraitFrame(value: unknown): PortraitFrameId {
   return PORTRAIT_FRAMES.some((frame) => frame.id === value) ? value as PortraitFrameId : "bronze"
+}
+
+export function normalizePortraitCrop(value: unknown): PortraitCrop {
+  const source = value && typeof value === "object" ? value as Partial<PortraitCrop> : {}
+  const x = Number(source.x)
+  const y = Number(source.y)
+  const zoom = Number(source.zoom)
+  return {
+    x: Number.isFinite(x) ? Math.max(0, Math.min(100, x)) : DEFAULT_PORTRAIT_CROP.x,
+    y: Number.isFinite(y) ? Math.max(0, Math.min(100, y)) : DEFAULT_PORTRAIT_CROP.y,
+    zoom: Number.isFinite(zoom) ? Math.max(1, Math.min(3, zoom)) : DEFAULT_PORTRAIT_CROP.zoom,
+  }
 }
 
 export function getPortraitFrameStroke(value: unknown): string {

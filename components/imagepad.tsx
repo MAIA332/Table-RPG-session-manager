@@ -52,7 +52,7 @@ export function Imagepad({
     .filter(img => img.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[#15100c] p-4 text-foreground sm:p-6">
+    <div className="rpg-themed-workspace flex h-full flex-col overflow-hidden bg-[#15100c] p-4 text-foreground sm:p-6">
       
       {/* Cabeçalho */}
       <div className="mb-6 flex shrink-0 items-start justify-between gap-4 border-b border-primary/25 pb-5">
@@ -105,7 +105,7 @@ export function Imagepad({
       {/* Grid de Imagens */}
       <div className="grid flex-1 auto-rows-max grid-cols-1 content-start gap-5 overflow-y-auto pb-10 pr-2 custom-scrollbar-sepia sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {visibleImages.map(img => (
-          <div key={img.id} className="rpg-gallery-card group relative flex flex-col overflow-hidden border border-white/10 bg-zinc-900 shadow-md transition-all duration-300 hover:shadow-xl">
+          <div key={img.id} className="rpg-gallery-card rpg-themed-card group relative flex flex-col overflow-hidden border border-white/10 bg-zinc-900 shadow-md transition-all duration-300 hover:shadow-xl">
             
             {/* Contêiner da Imagem */}
             <div className="aspect-video relative overflow-hidden bg-black/80 cursor-pointer shrink-0" onClick={() => onShowImage(img.url)}>
@@ -142,7 +142,7 @@ export function Imagepad({
             </div>
 
             {/* Rodapé do Card */}
-            <div className="relative z-20 flex w-full shrink-0 items-center justify-between gap-2 border-t border-primary/15 bg-[#1b140f] p-3">
+            <div className="rpg-themed-subtle relative z-20 flex w-full shrink-0 items-center justify-between gap-2 border-t border-primary/15 bg-[#1b140f] p-3">
               <span className="min-w-0 flex-1 font-bold text-sm truncate text-zinc-200" title={img.name}>{img.name}</span>
               {isGm && (
                 <div className="relative z-30 flex items-center gap-1 shrink-0">

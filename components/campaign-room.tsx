@@ -12,7 +12,10 @@ import { CharacterCreator } from "@/components/character-creator"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
 import { DiceRollPresentation, HandRaisePresentation, formatRollLabel, getDiceFromLabel, type DicePresentation, type DiceRollDetails, type HandPresentation } from "@/components/session-effects"
-import { GmPanel } from "@/components/gm-panel"
+
+// COMPONENTES ISOLADOS DO MESTRE
+import { GmBestiary } from "./gm-bestiary"
+import { GmPanel } from "./gm-panel"
 
 // IMPORTAÇÕES DO COMPONENTE DE FICHAS
 import {
@@ -38,20 +41,22 @@ import {
   Inbox, Sun, CloudSun, CloudRainWind, CloudSnow, Cloudy, CloudFog, Sparkles, Grid3X3,
   BarChart2, Clock, Trash2, CheckCircle2, Save, UserPlus, Mic, RefreshCw,
   Clapperboard, Search, Pencil, Eye, Image as ImageIcon, ChevronDown,
-  Hand, Volume2, Music, Speaker, BookOpen
+  Hand, Volume2, Speaker, BookOpen
 } from "lucide-react"
 
 import { GameMap, TileData } from "@/lib/map-types"
 import { MapImporter } from "./map-importer"
 import { BattlemapEngine } from "./battlemap-engine"
 
-import { Soundpad, ActiveSound } from "./soundpad"
+import { Soundpad, ActiveSound, type Track } from "./soundpad"
 import { CutsceneManager } from "./cutscene-manager"
 import { CutscenePlayer } from "./cutscene-player"
 import type { Cutscene } from "./cutscene-types"
 
 import { Imagepad, SharedImage } from "./imagepad"
 import { Lorebook, type LoreEntry } from "./lorebook"
+import { ThemeSwitcher } from "./theme-switcher"
+import { PersonalNotes } from "./personal-notes"
 
 // ==========================================
 // TIPAGENS & CONSTANTES GLOBAIS DA SALA
@@ -309,11 +314,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [activeMap, setActiveMap] = useState<GameMap | null>(null)
   const [showMapImporter, setShowMapImporter] = useState(false)
   const [showBattleGrid, setShowBattleGrid] = useState(false)
+  const [showPlayerMaps, setShowPlayerMaps] = useState(false)
 
   // Clima
   const [weather, setWeather] = useState<WeatherType>("clear")
 
-  // Painel de Loot (Catálogo, Custom e Zenits)
+  // Painel de Loot (GmPanel)
   const [showGmPanel, setShowGmPanel] = useState(false)
 
   // Criador de Itens Úteis (Handouts)
@@ -339,11 +345,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [showDroppedLoots, setShowDroppedLoots] = useState(false)
   const [npcLoots, setNpcLoots] = useState<DroppedLoot[]>([])
   const [selectedDroppedLoot, setSelectedDroppedLoot] = useState<DroppedLoot | null>(null)
+  const [selectedTargetCharId, setSelectedTargetCharId] = useState<string | null>(null)
 
   // Bestiário
   const [showBestiary, setShowBestiary] = useState(false)
-  const [bestiarySearchQuery, setBestiarySearchQuery] = useState("")
-  const [hoveredCreature, setHoveredCreature] = useState<any | null>(null)
   const [activeCreatures, setActiveCreatures] = useState<ActiveCreature[]>([])
   const [selectedCombatCharId, setSelectedCombatCharId] = useState<string | null>(null)
   const [selectedCombatCreatureId, setSelectedCombatCreatureId] = useState<string | null>(null)
@@ -356,15 +361,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   // SOUNDPAD STATES
   const [showSoundpad, setShowSoundpad] = useState(false)
   const [activeSounds, setActiveSounds] = useState<ActiveSound[]>([])
+  const [customSounds, setCustomSounds] = useState<Track[]>([])
   const [showVolumeMixer, setShowVolumeMixer] = useState(false)
-  const [musicVolume, setMusicVolume] = useState(0.5)
   const [effectsVolume, setEffectsVolume] = useState(0.75)
   const [handRaiseCooldown, setHandRaiseCooldown] = useState(false)
   const [dicePresentations, setDicePresentations] = useState<DicePresentation[]>([])
   const [handPresentation, setHandPresentation] = useState<HandPresentation | null>(null)
   const volumeMixerRef = useRef<HTMLDivElement | null>(null)
   const mapsLoadedFromApiRef = useRef(false)
-  const loreLoadedFromApiRef = useRef(false)
+  const campaignStateLoadedFromApiRef = useRef(false)
+  const campaignStateSaveQueueRef = useRef<Promise<unknown>>(Promise.resolve())
   const lastActiveMapIdRef = useRef<string | null>(null)
 
   // === CUTSCENES STATES ===
@@ -382,12 +388,35 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [showLorebook, setShowLorebook] = useState(false)
   const [loreEntries, setLoreEntries] = useState<LoreEntry[]>([])
 
-  const [selectedTargetCharId, setSelectedTargetCharId] = useState<string | null>(null)
-  const [sendingLoot, setSendingLoot] = useState(false)
-  const [lootSearchQuery, setLootSearchQuery] = useState("")
+  // === CUSTOM DATA ===
+  const [customCreatures, setCustomCreatures] = useState<Creature[]>([])
+  const [customEquipment, setCustomEquipment] = useState<any[]>([])
 
 
   const isGm = data.role === "gm"
+  const effectsVolumeRef = useRef(effectsVolume)
+  const isGmRef = useRef(isGm)
+
+  useEffect(() => {
+    effectsVolumeRef.current = effectsVolume
+  }, [effectsVolume])
+
+  useEffect(() => {
+    isGmRef.current = isGm
+  }, [isGm])
+
+  const persistCampaignState = useCallback((state: Record<string, unknown>) => {
+    if (!isGm) return Promise.resolve()
+    const request = campaignStateSaveQueueRef.current
+      .catch(() => undefined)
+      .then(() => apiFetch(`/api/campaigns/${data.campaign.id}/state`, {
+        method: "POST",
+        body: JSON.stringify({ state })
+      }))
+    campaignStateSaveQueueRef.current = request
+    request.catch(console.error)
+    return request
+  }, [data.campaign.id, isGm])
 
   // Montagem & Carregar Storage
   useEffect(() => {
@@ -395,33 +424,44 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     if (typeof window !== "undefined") {
       lastActiveMapIdRef.current = localStorage.getItem(`last_active_map_${data.campaign.id}`)
       const loadStoredState = () => {
-        const savedDrafts = localStorage.getItem(`drafts_${data.campaign.id}`)
-        if (savedDrafts) { try { setDraftPolls(JSON.parse(savedDrafts)) } catch (e) { } }
+        if (!campaignStateLoadedFromApiRef.current) {
+          const savedCustomCreatures = localStorage.getItem(`custom_creatures_${data.campaign.id}`)
+          if (savedCustomCreatures) { try { setCustomCreatures(JSON.parse(savedCustomCreatures)) } catch (e) { } }
 
-        const savedGallery = localStorage.getItem(`images_${data.campaign.id}`)
-        if (savedGallery) { try { setGalleryImages(JSON.parse(savedGallery)) } catch (e) { } }
+          const savedCustomEquipment = localStorage.getItem(`custom_equipment_${data.campaign.id}`)
+          if (savedCustomEquipment) { try { setCustomEquipment(JSON.parse(savedCustomEquipment)) } catch (e) { } }
 
-        const savedLore = localStorage.getItem(`lore_${data.campaign.id}`)
-        if (savedLore && !loreLoadedFromApiRef.current) { try { setLoreEntries(JSON.parse(savedLore)) } catch (e) { } }
+          const savedDrafts = localStorage.getItem(`drafts_${data.campaign.id}`)
+          if (savedDrafts) { try { setDraftPolls(JSON.parse(savedDrafts)) } catch (e) { } }
 
-        const savedNPCs = localStorage.getItem(`custom_npcs_${data.campaign.id}`)
-        if (savedNPCs) { try { setCustomNPCs(JSON.parse(savedNPCs)) } catch (e) { } }
+          const savedGallery = localStorage.getItem(`images_${data.campaign.id}`)
+          if (savedGallery) { try { setGalleryImages(JSON.parse(savedGallery)) } catch (e) { } }
 
-        const savedLoots = localStorage.getItem(`npc_loots_${data.campaign.id}`)
-        if (savedLoots) { try { setNpcLoots(JSON.parse(savedLoots)) } catch (e) { } }
+          const savedLore = localStorage.getItem(`lore_${data.campaign.id}`)
+          if (savedLore) { try { setLoreEntries(JSON.parse(savedLore)) } catch (e) { } }
 
-        const savedWeather = localStorage.getItem(`weather_${data.campaign.id}`)
-        if (savedWeather) { setWeather(savedWeather as WeatherType) }
+          const savedNPCs = localStorage.getItem(`custom_npcs_${data.campaign.id}`)
+          if (savedNPCs) { try { setCustomNPCs(JSON.parse(savedNPCs)) } catch (e) { } }
 
-        const savedCutscenesStr = localStorage.getItem(`cutscenes_${data.campaign.id}`)
-        if (savedCutscenesStr) { try { setCutscenes(JSON.parse(savedCutscenesStr)) } catch (e) { } }
+          const savedLoots = localStorage.getItem(`npc_loots_${data.campaign.id}`)
+          if (savedLoots) { try { setNpcLoots(JSON.parse(savedLoots)) } catch (e) { } }
+
+          const savedWeather = localStorage.getItem(`weather_${data.campaign.id}`)
+          if (savedWeather) { setWeather(savedWeather as WeatherType) }
+
+          const savedCutscenesStr = localStorage.getItem(`cutscenes_${data.campaign.id}`)
+          if (savedCutscenesStr) { try { setCutscenes(JSON.parse(savedCutscenesStr)) } catch (e) { } }
+
+          const savedCustomSounds = localStorage.getItem(`custom_sounds_${data.campaign.id}`)
+          if (savedCustomSounds) { try { setCustomSounds(JSON.parse(savedCustomSounds)) } catch (e) { } }
+        }
 
         const savedMixerStr = localStorage.getItem(`audio_mixer_${data.campaign.id}`)
         if (savedMixerStr) {
           try {
             const savedMixer = JSON.parse(savedMixerStr)
-            if (typeof savedMixer.music === "number") setMusicVolume(clampVolume(savedMixer.music))
             if (typeof savedMixer.effects === "number") setEffectsVolume(clampVolume(savedMixer.effects))
+            else if (typeof savedMixer.music === "number") setEffectsVolume(clampVolume(savedMixer.music))
           } catch (e) { }
         }
 
@@ -452,8 +492,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   useEffect(() => {
     if (!mounted || typeof window === "undefined") return
-    localStorage.setItem(`audio_mixer_${data.campaign.id}`, JSON.stringify({ music: musicVolume, effects: effectsVolume }))
-  }, [mounted, data.campaign.id, musicVolume, effectsVolume])
+    localStorage.setItem(`audio_mixer_${data.campaign.id}`, JSON.stringify({ music: effectsVolume, effects: effectsVolume }))
+  }, [mounted, data.campaign.id, effectsVolume])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -569,16 +609,85 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       })
       .catch(() => { })
 
-    apiFetch<{ lore: LoreEntry[] }>(`/api/campaigns/${data.campaign.id}/lore`)
+    apiFetch<{ state: Record<string, any>; persistedFields: string[] }>(`/api/campaigns/${data.campaign.id}/state`)
       .then(res => {
-        if (res && res.lore && res.lore.length > 0) {
-          loreLoadedFromApiRef.current = true
-          setLoreEntries(res.lore);
-          storeJsonWhenIdle(`lore_${data.campaign.id}`, res.lore);
+        if (!res?.state) return
+        campaignStateLoadedFromApiRef.current = true
+        const persisted = new Set(res.persistedFields || [])
+        const readArray = (key: string) => {
+          try {
+            const value = JSON.parse(localStorage.getItem(key) || "[]")
+            return Array.isArray(value) ? value : []
+          } catch {
+            return []
+          }
         }
+        
+
+        if (!isGm) {
+          const gallery = Array.isArray(res.state.gallery) ? res.state.gallery : []
+          const lore = Array.isArray(res.state.lore) ? res.state.lore : []
+          const customEq = Array.isArray(res.state.customEquipment) ? res.state.customEquipment : []
+          setGalleryImages(gallery)
+          setLoreEntries(lore)
+          setCustomEquipment(customEq)
+          setWeather((res.state.weather || "clear") as WeatherType)
+          storeJsonWhenIdle(`images_${data.campaign.id}`, gallery)
+          storeJsonWhenIdle(`lore_${data.campaign.id}`, lore)
+          storeJsonWhenIdle(`custom_equipment_${data.campaign.id}`, customEq)
+          
+          localStorage.setItem(`weather_${data.campaign.id}`, res.state.weather || "clear")
+          return
+        }
+
+        const migration: Record<string, unknown> = {}
+        const pickArray = (field: string, storageKey: string) => {
+          if (persisted.has(field)) return Array.isArray(res.state[field]) ? res.state[field] : []
+          const hasCachedValue = localStorage.getItem(storageKey) !== null
+          const cached = readArray(storageKey)
+          if (hasCachedValue) migration[field] = cached
+          return cached
+        }
+        const savedCustomCreatures = pickArray("customCreatures", `custom_creatures_${data.campaign.id}`) as Creature[]
+        const savedCustomEquipment = pickArray("customEquipment", `custom_equipment_${data.campaign.id}`) as any[]
+        const gallery = pickArray("gallery", `images_${data.campaign.id}`) as SharedImage[]
+        const lore = pickArray("lore", `lore_${data.campaign.id}`) as LoreEntry[]
+        const savedCutscenes = pickArray("cutscenes", `cutscenes_${data.campaign.id}`) as Cutscene[]
+        const savedNPCs = pickArray("customNPCs", `custom_npcs_${data.campaign.id}`) as NPCDraft[]
+        const savedLoots = pickArray("npcLoots", `npc_loots_${data.campaign.id}`) as DroppedLoot[]
+        const savedDrafts = pickArray("draftPolls", `drafts_${data.campaign.id}`) as DraftPoll[]
+        const savedSounds = pickArray("customSounds", `custom_sounds_${data.campaign.id}`) as Track[]
+        const cachedWeather = localStorage.getItem(`weather_${data.campaign.id}`)
+       
+        const savedWeather = persisted.has("weather")
+          ? String(res.state.weather || "clear")
+          : cachedWeather || "clear"
+
+        if (!persisted.has("weather") && cachedWeather !== null) migration.weather = savedWeather
+        setGalleryImages(gallery)
+        setLoreEntries(lore)
+        setCutscenes(savedCutscenes)
+        setCustomNPCs(savedNPCs)
+        setNpcLoots(savedLoots)
+        setCustomCreatures(savedCustomCreatures)
+        setCustomEquipment(savedCustomEquipment)
+        setDraftPolls(savedDrafts)
+        setCustomSounds(savedSounds)
+        setWeather(savedWeather as WeatherType)
+        storeJsonWhenIdle(`images_${data.campaign.id}`, gallery)
+        storeJsonWhenIdle(`lore_${data.campaign.id}`, lore)
+        storeJsonWhenIdle(`cutscenes_${data.campaign.id}`, savedCutscenes)
+        storeJsonWhenIdle(`custom_npcs_${data.campaign.id}`, savedNPCs)
+        storeJsonWhenIdle(`npc_loots_${data.campaign.id}`, savedLoots)
+        storeJsonWhenIdle(`drafts_${data.campaign.id}`, savedDrafts)
+        storeJsonWhenIdle(`custom_sounds_${data.campaign.id}`, savedSounds)
+        storeJsonWhenIdle(`custom_creatures_${data.campaign.id}`, savedCustomCreatures)
+        storeJsonWhenIdle(`custom_equipment_${data.campaign.id}`, savedCustomEquipment)
+        localStorage.setItem(`weather_${data.campaign.id}`, savedWeather)
+        if (Object.keys(migration).length > 0) void persistCampaignState(migration)
       })
       .catch(() => { })
-  }, [data.campaign.id, isGm])
+  }, [data.campaign.id, isGm, persistCampaignState])
 
   // Persiste no LocalStorage qual mapa está aberto para reabrir em caso de reload
   useEffect(() => {
@@ -607,6 +716,18 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       // Se for jogador, apenas abre a imagem localmente para ele ver melhor
       setActiveFullscreenImage(url);
     }
+  }
+
+  const saveCustomCreaturesToStorage = (creatures: Creature[]) => {
+    setCustomCreatures(creatures);
+    localStorage.setItem(`custom_creatures_${data.campaign.id}`, JSON.stringify(creatures));
+    void persistCampaignState({ customCreatures: creatures });
+  }
+
+  const saveCustomEquipmentToStorage = (eqs: any[]) => {
+    setCustomEquipment(eqs);
+    localStorage.setItem(`custom_equipment_${data.campaign.id}`, JSON.stringify(eqs));
+    void persistCampaignState({ customEquipment: eqs });
   }
 
   // Verificador de Expiração da Enquete
@@ -640,17 +761,27 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   const handlePlaySound = useCallback((track: { id: string, url: string }, loop: boolean) => {
     const uid = `${track.id}_${Math.random().toString(36).substring(2, 8)}`;
-    apiFetch(`/api/campaigns/${data.campaign.id}/sound`, {
+    const sound = { id: uid, trackId: track.id, url: track.url, loop }
+    setActiveSounds(prev => [...prev.filter(item => item.id !== uid), sound])
+    apiFetch<{ sounds: ActiveSound[] }>(`/api/campaigns/${data.campaign.id}/sound`, {
       method: "POST", body: JSON.stringify({ action: "play", id: uid, trackId: track.id, url: track.url, loop })
+    }).then(res => setActiveSounds(res.sounds || [])).catch(() => {
+      setActiveSounds(prev => prev.filter(item => item.id !== uid))
     });
   }, [data.campaign.id]);
 
   const handleStopSound = useCallback((id: string) => {
-    apiFetch(`/api/campaigns/${data.campaign.id}/sound`, { method: "POST", body: JSON.stringify({ action: "stop", id }) });
+    setActiveSounds(prev => prev.filter(sound => sound.id !== id))
+    apiFetch<{ sounds: ActiveSound[] }>(`/api/campaigns/${data.campaign.id}/sound`, { method: "POST", body: JSON.stringify({ action: "stop", id }) })
+      .then(res => setActiveSounds(res.sounds || []))
+      .catch(console.error);
   }, [data.campaign.id]);
 
   const handleStopAllSounds = useCallback(() => {
-    apiFetch(`/api/campaigns/${data.campaign.id}/sound`, { method: "POST", body: JSON.stringify({ action: "stop_all" }) });
+    setActiveSounds([])
+    apiFetch<{ sounds: ActiveSound[] }>(`/api/campaigns/${data.campaign.id}/sound`, { method: "POST", body: JSON.stringify({ action: "stop_all" }) })
+      .then(res => setActiveSounds(res.sounds || []))
+      .catch(console.error);
   }, [data.campaign.id]);
 
   const handleEvent = useCallback((event: any) => {
@@ -710,7 +841,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
     // Soundpad Events
     if (event.type === "sound:play") {
-      setActiveSounds(prev => [...prev, event.sound]);
+      setActiveSounds(prev => [...prev.filter(sound => sound.id !== event.sound.id), event.sound]);
       return;
     }
     if (event.type === "sound:stop") {
@@ -774,7 +905,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         window.setTimeout(() => {
           setHandPresentation(current => current?.id === noticeId ? null : current);
         }, 3600);
-        if (isGm) playHandRaiseSound(effectsVolume);
+        if (isGmRef.current) playHandRaiseSound(effectsVolumeRef.current);
         return;
       }
 
@@ -892,7 +1023,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       }
 
       const effectId = `${event.characterId || "roll"}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      playDiceRollSound(effectsVolume);
+      playDiceRollSound(effectsVolumeRef.current);
       const presentation: DicePresentation = {
         id: effectId,
         characterName: event.characterName || "Rolagem",
@@ -938,6 +1069,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         case "character:updated":
           return prev.map((c) => {
             if (c.id === event.character.id) {
+              if (Number(event.character.updatedAt || 0) < Number(c.updatedAt || 0)) return c
               // CORREÇÃO: Defesa extra. Se a API devolver a ficha sem os itens, mantemos os locais!
               return {
                 ...event.character,
@@ -951,10 +1083,17 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         default: return prev
       }
     })
-  }, [data.campaign.id, data.me.id, effectsVolume, isGm])
+  }, [data.campaign.id, data.me.id])
 
   const realtimeStatus = useRealtime(data.campaign.id, handleEvent)
   const live = realtimeStatus === "live"
+
+  useEffect(() => {
+    if (realtimeStatus !== "live") return
+    apiFetch<{ sounds: ActiveSound[] }>(`/api/campaigns/${data.campaign.id}/sound`)
+      .then(res => setActiveSounds(res.sounds || []))
+      .catch(console.error)
+  }, [data.campaign.id, realtimeStatus])
 
   const applyOptimistic = useCallback((c: Character) => setCharacters((prev) => prev.map((x) => {
     if (x.id === c.id) {
@@ -1131,6 +1270,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   function handleSetWeather(w: WeatherType) {
     setWeather(w);
     localStorage.setItem(`weather_${data.campaign.id}`, w);
+    void persistCampaignState({ weather: w })
 
     const weatherNames: Record<string, string> = {
       clear: "Céu Limpo", sunny: "Ensolarado", cloudy: "Nublado", fog: "Neblina", rain: "Chuva", blizzard: "Nevasca"
@@ -1150,6 +1290,13 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   function saveCutscenes(newCutscenes: Cutscene[]) {
     setCutscenes(newCutscenes);
     localStorage.setItem(`cutscenes_${data.campaign.id}`, JSON.stringify(newCutscenes));
+    void persistCampaignState({ cutscenes: newCutscenes })
+  }
+
+  function saveCustomSounds(newSounds: Track[]) {
+    setCustomSounds(newSounds)
+    localStorage.setItem(`custom_sounds_${data.campaign.id}`, JSON.stringify(newSounds))
+    void persistCampaignState({ customSounds: newSounds })
   }
 
   function syncCutscene(action: "PLAY" | "STOP" | "SCENE", payload?: any) {
@@ -1173,6 +1320,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const saveCustomNPCsToStorage = (npcs: NPCDraft[]) => {
     setCustomNPCs(npcs);
     localStorage.setItem(`custom_npcs_${data.campaign.id}`, JSON.stringify(npcs));
+    void persistCampaignState({ customNPCs: npcs })
   }
 
   function handleDeleteCustomNPC(id: string) {
@@ -1206,6 +1354,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const saveNpcLoots = (loots: DroppedLoot[]) => {
     setNpcLoots(loots);
     localStorage.setItem(`npc_loots_${data.campaign.id}`, JSON.stringify(loots));
+    void persistCampaignState({ npcLoots: loots })
   }
 
   async function handleKillNPC(character: Character) {
@@ -1231,72 +1380,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     }
   }
 
-  const handleGiveZenits = async (targetId: string, amount: number) => {
-    const targetCharacter = characters.find(c => c.id === targetId);
-    if (!targetCharacter) return;
-    const newZenit = (targetCharacter.zenit || 0) + amount;
-
-    const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, {
-      method: "PATCH", body: JSON.stringify({ zenit: newZenit })
-    });
-    applyOptimistic(updated);
-
-    apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-      method: "POST", body: JSON.stringify({
-        characterId: 'sys_zenits', characterName: targetCharacter.name,
-        playerName: 'Mestre', attribute: `RECEBEU ZENITS`, result: `+${amount}z`
-      })
-    }).catch(console.error);
-  }
-
-  const handleGiveCustomItem = async (targetId: string, name: string, type: string, content: string) => {
-    const targetCharacter = characters.find(c => c.id === targetId);
-    if (!targetCharacter) return;
-
-    const newItem: CustomItem = { id: Math.random().toString(36).substring(2, 9), name, type: type as any, content };
-    const updatedCustomItems = [...((targetCharacter as any).customItems || []), newItem];
-
-    const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, {
-      method: "PATCH", body: JSON.stringify({ customItems: updatedCustomItems })
-    });
-    applyOptimistic({ ...updated, customItems: updatedCustomItems } as any);
-
-    apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-      method: "POST", body: JSON.stringify({
-        characterId: 'sys_item', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_ITEM_GIVEN`,
-        result: JSON.stringify({ charId: targetCharacter.id, character: { ...updated, customItems: updatedCustomItems }, itemName: newItem.name })
-      })
-    }).catch(console.error);
-  }
-
-  const handleGiveSystemItem = async (targetId: string, itemId: string) => {
-    const targetCharacter = characters.find(c => c.id === targetId);
-    const targetCreature = activeCreatures.find(c => c.instanceId === targetId);
-
-    if (targetCharacter) {
-      const newEquipment = [...targetCharacter.equipment, itemId];
-      const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, { method: "PATCH", body: JSON.stringify({ equipment: newEquipment }) });
-      applyOptimistic(updated);
-
-      const itemObj = getEquipment(itemId);
-      apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-        method: "POST", body: JSON.stringify({
-          characterId: 'sys_item', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_ITEM_GIVEN`,
-          result: JSON.stringify({ charId: targetCharacter.id, character: updated, itemName: itemObj?.name || 'Novo Equipamento' })
-        })
-      }).catch(console.error);
-    } else if (targetCreature) {
-      const newEquipment = [...((targetCreature as any).equipment || []), itemId];
-      updateCreatureVital(targetCreature.instanceId, { equipment: newEquipment } as any);
-    }
-  }
-
   async function handleGiveDroppedLoot() {
     if (!selectedDroppedLoot || !selectedTargetCharId) return;
     const targetCharacter = characters.find(c => c.id === selectedTargetCharId);
     if (!targetCharacter) return;
 
-    setSendingLoot(true);
     try {
       const newEquipment = [...targetCharacter.equipment, selectedDroppedLoot.itemId];
       const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, { method: "PATCH", body: JSON.stringify({ equipment: newEquipment }) });
@@ -1313,8 +1401,75 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       setSelectedTargetCharId(null);
     } catch (err) {
       alert("Erro ao enviar Loot.");
-    } finally {
-      setSendingLoot(false);
+    }
+  }
+
+  // --- Handlers do novo GmPanel ---
+  const handleGiveZenits = async (targetId: string, amount: number) => {
+    const targetCharacter = characters.find(c => c.id === targetId);
+    if (targetCharacter) {
+      const currentZenit = targetCharacter.zenit || 0;
+      const newZenit = currentZenit + amount;
+
+      const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, {
+        method: "PATCH", body: JSON.stringify({ zenit: newZenit })
+      });
+
+      applyOptimistic(updated);
+
+      apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+        method: "POST", body: JSON.stringify({
+          characterId: 'sys_zenits',
+          characterName: targetCharacter.name,
+          playerName: 'Mestre',
+          attribute: `RECEBEU ZENITS`,
+          result: `+${amount}z`
+        })
+      }).catch(console.error);
+    }
+  }
+
+  const handleGiveCustomItem = async (targetId: string, name: string, type: string, content: string) => {
+    const targetCharacter = characters.find(c => c.id === targetId)
+    if (targetCharacter) {
+      const newItem: CustomItem = {
+        id: Math.random().toString(36).substring(2, 9),
+        name: name,
+        type: type as any,
+        content: content
+      };
+      const currentCustom = (targetCharacter as any).customItems || [];
+      const updatedCustomItems = [...currentCustom, newItem];
+
+      const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, {
+        method: "PATCH", body: JSON.stringify({ customItems: updatedCustomItems })
+      })
+
+      applyOptimistic({ ...updated, customItems: updatedCustomItems } as any);
+
+      apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+        method: "POST", body: JSON.stringify({ characterId: 'sys_item', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_ITEM_GIVEN`, result: JSON.stringify({ charId: targetCharacter.id, character: { ...updated, customItems: updatedCustomItems }, itemName: newItem.name }) })
+      }).catch(console.error);
+    }
+  }
+
+  const handleGiveSystemItem = async (targetId: string, itemId: string) => {
+    const targetCharacter = characters.find(c => c.id === targetId)
+    const targetCreature = activeCreatures.find(c => c.instanceId === targetId)
+
+    if (targetCharacter) {
+      const newEquipment = [...targetCharacter.equipment, itemId]
+      const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, { method: "PATCH", body: JSON.stringify({ equipment: newEquipment }) })
+      applyOptimistic(updated)
+
+      const itemObj = getEquipment(itemId);
+      apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+        method: "POST", body: JSON.stringify({ characterId: 'sys_item', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_ITEM_GIVEN`, result: JSON.stringify({ charId: targetCharacter.id, character: updated, itemName: itemObj?.name || 'Novo Equipamento' }) })
+      }).catch(console.error);
+
+    } else if (targetCreature) {
+      const newEquipment = [...((targetCreature as any).equipment || []), itemId]
+      updateCreatureVital(targetCreature.instanceId, { equipment: newEquipment } as any)
     }
   }
 
@@ -1354,6 +1509,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const saveDraftsToStorage = (drafts: DraftPoll[]) => {
     setDraftPolls(drafts);
     localStorage.setItem(`drafts_${data.campaign.id}`, JSON.stringify(drafts));
+    void persistCampaignState({ draftPolls: drafts })
   }
 
   function handleSaveDraft() {
@@ -1463,30 +1619,13 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       }).catch(console.error);
 
       // 3. NOVO: Salva definitivamente no banco de dados!
-      try {
-        await apiFetch(`/api/campaigns/${data.campaign.id}/lore`, {
-          method: "POST",
-          body: JSON.stringify({ entries: newEntries })
-        });
-      } catch (err) {
-        console.error("Erro ao persistir Lorebook no banco de dados", err);
-      }
+      await persistCampaignState({ lore: newEntries })
     }
-  }, [data.campaign.id, isGm]);
+  }, [data.campaign.id, isGm, persistCampaignState]);
 
   const myCharacters = characters.filter((c) => c.ownerId === data.me.id)
   const otherCharacters = characters.filter((c) => c.ownerId !== data.me.id)
   const isCombatActive = activeCreatures.length > 0;
-
-  const filteredLoot = EQUIPMENT.filter(item =>
-    item.name.toLowerCase().includes(lootSearchQuery.toLowerCase()) ||
-    item.detail.toLowerCase().includes(lootSearchQuery.toLowerCase())
-  )
-
-  const filteredBestiary = BESTIARY.filter(c =>
-    c.name.toLowerCase().includes(bestiarySearchQuery.toLowerCase()) ||
-    c.species.toLowerCase().includes(bestiarySearchQuery.toLowerCase())
-  )
 
   return (
     <div className="rpg-page mx-auto flex min-h-dvh max-w-[1680px] flex-col px-3 py-4 sm:px-4 md:h-screen md:px-6 md:py-6">
@@ -1506,6 +1645,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
           {activeMap && (
             <BattlemapEngine
+              key={activeMap.id}
               mapData={activeMap}
               characters={characters}
               creatures={activeCreatures}
@@ -1519,8 +1659,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           {/* Componente de Importação de Mapas */}
           <AnimatePresence>
             {showMapImporter && !activeMap && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-                <div className="relative w-full max-w-4xl">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4" onClick={() => setShowMapImporter(false)}>
+                <div className="relative w-full max-w-4xl" onClick={(event) => event.stopPropagation()}>
                   <button onClick={() => setShowMapImporter(false)} className="absolute -top-10 right-0 text-muted-foreground hover:text-white"><X className="size-6" /></button>
                   <MapImporter onMapReady={handleCreateMap} />
                 </div>
@@ -1582,8 +1722,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
           <AnimatePresence>
             {showPollModal && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-lg flex-col border border-primary/50 bg-zinc-950 shadow-2xl">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden" onClick={() => setShowPollModal(false)}>
+                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-lg flex-col border border-primary/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
 
                   <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
                     <div>
@@ -1665,12 +1805,15 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             )}
           </AnimatePresence>
 
-          <GmPanel
+          <GmPanel 
             isOpen={showGmPanel}
             onClose={() => setShowGmPanel(false)}
             characters={characters}
             activeCreatures={activeCreatures}
             members={data.members}
+            customEquipment={customEquipment}
+            onCreateEquipment={(eq) => saveCustomEquipmentToStorage([...customEquipment, eq])}
+            onDeleteEquipment={(id) => saveCustomEquipmentToStorage(customEquipment.filter((e: any) => e.id !== id))}
             onGiveZenits={handleGiveZenits}
             onGiveCustomItem={handleGiveCustomItem}
             onGiveSystemItem={handleGiveSystemItem}
@@ -1678,8 +1821,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
           <AnimatePresence>
             {showDroppedLoots && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden">
-                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-3xl flex-col border border-accent/50 bg-zinc-950 shadow-2xl">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden" onClick={() => setShowDroppedLoots(false)}>
+                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-3xl flex-col border border-accent/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
                   {/* Header */}
                   <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
                     <div>
@@ -1748,8 +1891,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   {/* Footer */}
                   <div className="p-6 border-t border-border/50 bg-black/40 flex justify-end gap-3 shrink-0">
                     <Button variant="ghost" onClick={() => setShowDroppedLoots(false)}>Fechar</Button>
-                    <Button className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90" disabled={!selectedDroppedLoot || !selectedTargetCharId || sendingLoot} onClick={handleGiveDroppedLoot}>
-                      {sendingLoot ? <span className="animate-pulse">Enviando...</span> : <><Send className="size-4" /> Distribuir itens</>}
+                    <Button className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90" disabled={!selectedDroppedLoot || !selectedTargetCharId} onClick={handleGiveDroppedLoot}>
+                       <Send className="size-4" /> Distribuir itens
                     </Button>
                   </div>
                 </motion.div>
@@ -1757,76 +1900,19 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             )}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {showBestiary && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden">
-                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full w-full max-w-6xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl">
-                  <div className="flex justify-between items-center gap-4 p-6 border-b border-white/10 bg-black/40 shrink-0">
-                    <h4 className="font-serif text-2xl md:text-3xl font-black flex items-center gap-3"><Skull className="size-6 text-destructive md:size-8" /> <span className="text-foreground">Bestiário do Mestre</span></h4>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <button onClick={() => setShowBestiary(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 md:size-6 text-muted-foreground hover:text-white" /></button>
-                    </div>
-                  </div>
-                  <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-                    <div className="lg:w-1/3 border-r border-border/40 p-4 flex flex-col gap-4 bg-black/20">
-                      <div className="relative shrink-0">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                        <input type="text" placeholder="Pesquisar criatura..." value={bestiarySearchQuery} onChange={(e) => setBestiarySearchQuery(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-md py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-destructive/50 transition-colors" />
-                      </div>
-                      <div className="overflow-y-auto custom-scrollbar-sepia flex flex-col gap-2 flex-1 pr-1">
-                        {filteredBestiary.map((c) => (
-                          <button key={c.id} onMouseEnter={() => setHoveredCreature(c)} className={`text-left p-3 rounded-lg border transition-colors ${hoveredCreature?.id === c.id ? "bg-destructive/10 border-destructive/50" : "bg-card/40 border-border/30 hover:border-destructive/30"}`}>
-                            <p className="font-bold text-foreground text-sm">{c.name}</p>
-                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">Lv. {c.level} · {c.species}</p>
-                          </button>
-                        ))}
-                        {filteredBestiary.length === 0 && <p className="text-xs text-muted-foreground text-center mt-4">Nenhuma criatura encontrada.</p>}
-                      </div>
-                    </div>
-                    <div className="lg:w-2/3 p-6 overflow-y-auto custom-scrollbar-sepia bg-black/20">
-                      {hoveredCreature ? (
-                        <div className="flex flex-col gap-6 animate-in fade-in">
-                          <div className="flex gap-6">
-                            <div className="relative w-32 h-32 rounded-xl border border-destructive/30 overflow-hidden shrink-0 shadow-[0_0_15px_rgba(255,0,0,0.1)]">
-                              <Image src={hoveredCreature.imageUrl} alt={hoveredCreature.name} fill className="object-cover" />
-                            </div>
-                            <div className="flex flex-col justify-center">
-                              <h2 className="font-serif text-3xl font-black text-foreground">{hoveredCreature.name}</h2>
-                              <p className="text-sm font-bold tracking-widest uppercase text-destructive mt-1">Lv. {hoveredCreature.level} · {hoveredCreature.species}</p>
-                              <div className="flex gap-4 mt-4">
-                                <span className="flex items-center gap-1.5 text-sm text-[color:var(--hp)]"><Heart className="size-4" /> {hoveredCreature.maxHp} HP</span>
-                                <span className="flex items-center gap-1.5 text-sm text-[color:var(--mp)]"><Zap className="size-4" /> {hoveredCreature.maxMp} MP</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-4 gap-2">
-                            {["dex", "ins", "mig", "wlp"].map((k: any) => (
-                              <div key={k} className="p-2 border border-border/40 bg-card/30 rounded text-center">
-                                <span className="text-[10px] uppercase text-muted-foreground font-bold">{k}</span>
-                                <p className="font-mono text-lg font-black text-primary">{hoveredCreature.attributes[k]}</p>
-                              </div>
-                            ))}
-                            <div className="p-2 border border-border/40 bg-card/30 rounded text-center col-span-2"><span className="text-[10px] uppercase text-muted-foreground font-bold">Defesa</span><p className="font-mono text-lg font-black text-foreground">{hoveredCreature.def}</p></div>
-                            <div className="p-2 border border-border/40 bg-card/30 rounded text-center col-span-2"><span className="text-[10px] uppercase text-muted-foreground font-bold">Defesa Mágica</span><p className="font-mono text-lg font-black text-foreground">{hoveredCreature.mdef}</p></div>
-                          </div>
-                          <Button className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2 h-12 text-lg font-bold shadow-[0_0_15px_rgba(255,0,0,0.3)]" onClick={() => spawnCreature(hoveredCreature)}>
-                            <Target className="size-5" /> Invocar para a Mesa
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="h-full flex items-center justify-center text-muted-foreground italic text-sm">Passe o mouse sobre uma criatura para analisar seus atributos.</div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <GmBestiary 
+            isOpen={showBestiary} 
+            onClose={() => setShowBestiary(false)} 
+            onSpawn={spawnCreature} 
+            customCreatures={customCreatures}
+            onCreate={(c) => saveCustomCreaturesToStorage([c, ...customCreatures])}
+            onDelete={(id) => saveCustomCreaturesToStorage(customCreatures.filter(c => c.id !== id))}
+          />
 
           <AnimatePresence>
             {selectedCombatCreatureId && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-y-auto">
-                <div className="relative w-full max-w-4xl mx-auto my-auto pt-10 pb-10">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-y-auto" onClick={() => setSelectedCombatCreatureId(null)}>
+                <div className="relative w-full max-w-4xl mx-auto my-auto pt-10 pb-10" onClick={(event) => event.stopPropagation()}>
                   <button onClick={() => setSelectedCombatCreatureId(null)} className="absolute top-0 right-0 p-2 bg-white/10 hover:bg-white/20 rounded-full z-10"><X className="size-6 text-white" /></button>
                   {activeCreatures.filter(c => c.instanceId === selectedCombatCreatureId).map(c => (
                     <CreatureSheet key={c.instanceId} creature={c} isGm={isGm} onUpdate={updateCreatureVital} onRoll={(attr: string, res: number) => handleBroadcastRoll(c.name, attr, res)} onKill={() => handleKillCreature(c)} />
@@ -1839,8 +1925,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           {/* FICHAS ABERTAS EM COMBATE/POR CLICK */}
           <AnimatePresence>
             {selectedCombatCharId && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-y-auto">
-                <div className="relative w-full max-w-4xl mx-auto my-auto pt-10 pb-10">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-y-auto" onClick={() => setSelectedCombatCharId(null)}>
+                <div className="relative w-full max-w-4xl mx-auto my-auto pt-10 pb-10" onClick={(event) => event.stopPropagation()}>
                   <button onClick={() => setSelectedCombatCharId(null)} className="absolute top-0 right-0 p-2 bg-white/10 hover:bg-white/20 rounded-full z-10"><X className="size-6 text-white" /></button>
                   {characters.filter(c => c.id === selectedCombatCharId).map(c => (
                     <CharacterSheet
@@ -1881,22 +1967,24 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           {/* SOUNDPAD MODAL / ENGINE */}
           <AnimatePresence>
             {showSoundpad && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 sm:p-8 overflow-hidden">
-                <motion.div variants={modalVariants} className="relative w-full max-w-6xl h-[85vh] min-h-[600px] flex flex-col bg-transparent">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 sm:p-8 overflow-hidden" onClick={() => setShowSoundpad(false)}>
+                <motion.div variants={modalVariants} className="rpg-modal rpg-media-modal relative w-full max-w-6xl h-[85vh] min-h-[600px] flex flex-col bg-transparent" onClick={(event) => event.stopPropagation()}>
                   {/* Botão de Fechar por Fora */}
                   <button onClick={() => setShowSoundpad(false)} className="absolute -top-4 -right-4 md:-right-8 md:-top-8 text-zinc-500 hover:text-white bg-black/50 hover:bg-black rounded-full p-2 transition-colors z-[300] border border-white/10">
                     <X className="size-6" />
                   </button>
 
                   {/* Instancia do Engine Local de Audio Ocupando Todo o Espaço */}
-                  <div className="flex-1 w-full h-full rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+                  <div className="rpg-media-modal-frame flex-1 w-full h-full overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)]">
                     <Soundpad
                       isGm={isGm}
                       campaignId={data.campaign.id}
                       activeSounds={activeSounds}
-                      musicVolume={musicVolume}
+                      customTracks={customSounds}
+                      musicVolume={effectsVolume}
                       effectsVolume={effectsVolume}
-                      onMusicVolumeChange={setMusicVolume}
+                      onCustomTracksChange={saveCustomSounds}
+                      onMusicVolumeChange={setEffectsVolume}
                       onEffectsVolumeChange={setEffectsVolume}
                       onPlaySound={handlePlaySound}
                       onStopSound={handleStopSound}
@@ -1911,9 +1999,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           {/* GALERIA ARCANA MODALS */}
           <AnimatePresence>
             {showImagepad && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 sm:p-8 overflow-hidden">
-                <motion.div variants={modalVariants} className="relative w-full max-w-6xl h-[85vh] min-h-[600px] flex flex-col bg-transparent">
-                  <div className="flex-1 w-full h-full rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/10">
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 sm:p-8 overflow-hidden" onClick={() => setShowImagepad(false)}>
+                <motion.div variants={modalVariants} className="rpg-modal rpg-media-modal relative w-full max-w-6xl h-[85vh] min-h-[600px] flex flex-col bg-transparent" onClick={(event) => event.stopPropagation()}>
+                  <div className="rpg-media-modal-frame flex-1 w-full h-full overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/10">
                     <Imagepad
                       isGm={isGm}
                       images={galleryImages}
@@ -1921,6 +2009,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                         setGalleryImages(newImages);
                         localStorage.setItem(`images_${data.campaign.id}`, JSON.stringify(newImages));
                         if (isGm) {
+                          void persistCampaignState({ gallery: newImages })
                           apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
                             method: "POST", body: JSON.stringify({ characterId: 'sys_gallery', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_GALLERY:UPDATE`, result: JSON.stringify(newImages) })
                           }).catch(console.error);
@@ -1937,11 +2026,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
           <AnimatePresence>
             {activeFullscreenImage && (
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed inset-0 z-[400] flex items-center justify-center bg-black/95 backdrop-blur-lg p-4 md:p-12">
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed inset-0 z-[400] flex items-center justify-center bg-black/95 backdrop-blur-lg p-4 md:p-12" onClick={() => setActiveFullscreenImage(null)}>
                 <div className="relative w-full h-full flex items-center justify-center">
-                  <button onClick={() => setActiveFullscreenImage(null)} className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full z-10 transition-colors"><X className="size-8 text-white" /></button>
+                  <button onClick={(event) => { event.stopPropagation(); setActiveFullscreenImage(null) }} className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full z-10 transition-colors"><X className="size-8 text-white" /></button>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={activeFullscreenImage} className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-xl border border-white/10" alt="Visualização Expandida" />
+                  <img src={activeFullscreenImage} className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-xl border border-white/10" alt="Visualização Expandida" onClick={(event) => event.stopPropagation()} />
                 </div>
               </motion.div>
             )}
@@ -1951,7 +2040,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               injetamos a engine "invisível" caso não seja GM e o modal não estiver aberto */}
           {!showSoundpad && (
             <div className="hidden">
-              <Soundpad isGm={false} campaignId={data.campaign.id} activeSounds={activeSounds} musicVolume={musicVolume} effectsVolume={effectsVolume} />
+              <Soundpad isGm={false} campaignId={data.campaign.id} activeSounds={activeSounds} customTracks={customSounds} musicVolume={effectsVolume} effectsVolume={effectsVolume} />
             </div>
           )}
 
@@ -2025,6 +2114,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <PersonalNotes campaignId={data.campaign.id} />
+          <ThemeSwitcher />
           <div className="relative" ref={volumeMixerRef}>
             <Button variant="outline" size="sm" className="rpg-cartography-action h-9 gap-2" onClick={() => setShowVolumeMixer(value => !value)} aria-expanded={showVolumeMixer}>
               <Volume2 className="size-4" /> Mixer
@@ -2038,14 +2129,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       <X className="size-4" />
                     </button>
                   </div>
-                  <div className="space-y-4">
-                    <label className="block">
-                      <div className="mb-2 flex items-center justify-between gap-3 text-xs">
-                        <span className="rpg-mixer-label flex items-center gap-2 font-semibold"><Music className="size-4" /> Música de fundo</span>
-                        <span className="font-mono text-muted-foreground">{Math.round(musicVolume * 100)}%</span>
-                      </div>
-                      <input type="range" min="0" max="1" step="0.05" value={musicVolume} onChange={(e) => setMusicVolume(clampVolume(parseFloat(e.target.value)))} className="w-full h-1.5 cursor-pointer appearance-none rounded-lg bg-muted" style={{ accentColor: 'var(--primary)' }} />
-                    </label>
+                  <div>
                     <label className="block">
                       <div className="mb-2 flex items-center justify-between gap-3 text-xs">
                         <span className="rpg-mixer-label flex items-center gap-2 font-semibold"><Speaker className="size-4" /> Efeitos sonoros</span>
@@ -2136,7 +2220,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   <div className="flex flex-wrap gap-4 mt-6">
                     {characters.map(char => (
                       <button key={char.id} onClick={() => setSelectedCombatCharId(char.id)} className="flex items-center gap-3 bg-zinc-950 border border-border/50 rounded-lg p-3 w-[240px] hover:border-primary/50 transition-colors text-left group">
-                        <CharacterPortrait src={char.avatarUrl} alt={`Retrato de ${char.name}`} frame={char.portraitFrame} className="size-10 shrink-0 cursor-zoom-in pointer-events-auto" sizes="40px" onMouseEnter={() => setHoveredImage(char.avatarUrl || "/mystic-adventurer-portrait.png")} onMouseLeave={() => setHoveredImage(null)} />
+                        <CharacterPortrait src={char.avatarUrl} alt={`Retrato de ${char.name}`} frame={char.portraitFrame} crop={char.portraitCrop} className="size-10 shrink-0 cursor-zoom-in pointer-events-auto" sizes="40px" onMouseEnter={() => setHoveredImage(char.avatarUrl || "/mystic-adventurer-portrait.png")} onMouseLeave={() => setHoveredImage(null)} />
                         <div className="flex-1 min-w-0">
                           <p className="font-serif text-sm font-bold text-foreground truncate">{char.name}</p>
                           <div className="flex gap-2 mt-1">
@@ -2240,7 +2324,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     <Mic className="size-4" /> Efeitos sonoros
                   </Button>
                   <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowLorebook(true)}>
-                    <BookOpen className="size-4" /> <span className="text-foreground">Diário do Mundo</span>
+                    <BookOpen className="size-4" /> <span className="text-[#eee3cf]">Diário do mundo</span>
                   </Button>
                   <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowPollModal(true)}>
                     <BarChart2 className="size-4" /> Criar enquete
@@ -2308,41 +2392,32 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               </div>
             )}
 
-            {/* GALERIA ARCANA PARA JOGADORES */}
-            {!isGm && galleryImages.filter(img => img.isPublic).length > 0 && (
-              <div className="panel flex flex-col rounded-xl border border-blue-400/40 p-4 bg-blue-400/5 shrink-0 backdrop-blur-sm">
-                <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#eee3cf]"><ImageIcon className="size-4 text-blue-400" /> Galeria arcana</h2>
+            {!isGm && (
+              <div className="panel rpg-gm-tools shrink-0 border border-accent/40 p-4">
                 <div className="flex flex-col gap-2">
-                  <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-xs border-blue-400/50 text-[#eee3cf] hover:bg-blue-400/10 hover:text-[#fff6e6] text-left" onClick={() => setShowImagepad(true)}>
-                    <ImageIcon className="size-3 shrink-0 text-blue-400" /><span className="[word-spacing:0.12em]">Abrir&nbsp;acervo visual</span>
+                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowImagepad(true)}>
+                    <ImageIcon className="size-4" /> Acervo visual
+                  </Button>
+                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowLorebook(true)}>
+                    <BookOpen className="size-4" /> Diário do mundo
+                  </Button>
+                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowPlayerMaps((value) => !value)} aria-expanded={showPlayerMaps}>
+                    <Grid3X3 className="size-4" /> Mapas da campanha
+                    <ChevronDown className={`ml-auto size-4 transition-transform ${showPlayerMaps ? "rotate-180" : ""}`} />
                   </Button>
                 </div>
-              </div>
-            )}
 
-            {/* LOREBOOK PARA JOGADORES */}
-            {!isGm && loreEntries.some(e => e.isPublic || (e.allowedMembers || []).includes(data.me.id)) && (
-              <div className="panel flex flex-col rounded-xl border border-yellow-500/40 p-4 bg-yellow-500/5 shrink-0 backdrop-blur-sm">
-                <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#eee3cf]"><BookOpen className="size-4 text-yellow-500" /> Registros da Jornada</h2>
-                <div className="flex flex-col gap-2">
-                  <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-xs border-yellow-500/50 text-[#eee3cf] hover:bg-yellow-500/10 hover:text-[#fff6e6] text-left" onClick={() => setShowLorebook(true)}>
-                    <BookOpen className="size-3 shrink-0 text-yellow-500" /><span className="[word-spacing:0.12em]">Ler&nbsp;diário do mundo</span>
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* WIDGET DA ENQUETE ATIVA FICA AQUI TAMBÉM */}
-            {/* PAINEL DE MAPAS PARA JOGADORES */}
-            {!isGm && savedMaps.length > 0 && (
-              <div className="rpg-cartography rpg-map-panel shrink-0 p-4">
-                <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold"><Grid3X3 className="size-4" /> Mapas da Campanha</h2>
-                <div className="flex flex-col gap-2">
-                  {Array.from(new Map(savedMaps.map(m => [m.id, m])).values()).map(m => (
-                    <Button key={m.id} size="sm" variant="outline" className={`rpg-map-entry w-full justify-start overflow-hidden text-left text-sm ${activeMap?.id === m.id ? "is-active" : ""}`} onClick={() => setActiveMap(m)}>
-                      <Grid3X3 className="size-3 mr-2 shrink-0" /> <span className="truncate">{m.name}</span>
-                    </Button>
-                  ))}
+                <div className="rpg-battle-grid-collapse" data-open={showPlayerMaps} aria-hidden={!showPlayerMaps}>
+                  <div className="rpg-battle-grid-clip">
+                    <div className="rpg-map-index flex flex-col gap-2">
+                      {Array.from(new Map(savedMaps.map((map) => [map.id, map])).values()).map((map) => (
+                        <Button key={map.id} size="sm" variant="outline" className={`rpg-map-entry w-full justify-start overflow-hidden text-left text-xs ${activeMap?.id === map.id ? "is-active" : ""}`} onClick={() => setActiveMap(map)}>
+                          <Grid3X3 className="mr-2 size-3 shrink-0" /> <span className="truncate">{map.name}</span>
+                        </Button>
+                      ))}
+                      {savedMaps.length === 0 && <p className="px-2 py-3 text-center text-xs text-muted-foreground">Nenhum mapa disponível.</p>}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

@@ -174,8 +174,8 @@ export function AttributesStep({ profileId, setProfileId, attributes, customAttr
       {mounted && createPortal(
         <AnimatePresence>
           {selectedAttr && (
-            <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-              <motion.div variants={modalVariants} className="rpg-modal relative flex w-full max-w-lg flex-col overflow-hidden border border-primary/40 bg-zinc-950 shadow-2xl">
+            <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4" onClick={() => setSelectedAttr(null)}>
+              <motion.div variants={modalVariants} className="rpg-modal relative flex w-full max-w-lg flex-col overflow-hidden border border-primary/40 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
                 
                 <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
                   <h4 className="font-serif text-2xl font-black text-primary flex items-center gap-3">

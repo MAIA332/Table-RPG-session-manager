@@ -1451,6 +1451,475 @@
   .session-hand-copy > span:last-child:not(.session-effect-kicker) { color: #6a5945; font-size: 0.74rem; }
 }
 
+:root[data-theme='aether'] {
+  --background: oklch(0.13 0.025 228);
+  --foreground: oklch(0.92 0.018 190);
+  --card: oklch(0.19 0.034 225);
+  --card-foreground: oklch(0.92 0.018 190);
+  --popover: oklch(0.165 0.031 228);
+  --popover-foreground: oklch(0.92 0.018 190);
+  --primary: oklch(0.72 0.105 195);
+  --primary-foreground: oklch(0.13 0.025 228);
+  --secondary: oklch(0.27 0.04 222);
+  --secondary-foreground: oklch(0.92 0.018 190);
+  --muted: oklch(0.235 0.033 225);
+  --muted-foreground: oklch(0.72 0.035 196);
+  --accent: oklch(0.79 0.09 84);
+  --accent-foreground: oklch(0.15 0.025 225);
+  --border: oklch(0.58 0.075 205 / 38%);
+  --input: oklch(0.55 0.07 205 / 32%);
+  --ring: oklch(0.73 0.11 195);
+  --bronze: #5d9b9d;
+  --leather: #14252d;
+  --wine: #6c4f64;
+  --moss: #607d72;
+  --sidebar: oklch(0.165 0.031 228);
+  --sidebar-foreground: oklch(0.92 0.018 190);
+  --sidebar-primary: oklch(0.72 0.105 195);
+  --sidebar-primary-foreground: oklch(0.13 0.025 228);
+  --sidebar-accent: oklch(0.27 0.04 222);
+  --sidebar-accent-foreground: oklch(0.92 0.018 190);
+  --sidebar-border: oklch(0.58 0.075 205 / 38%);
+  --sidebar-ring: oklch(0.73 0.11 195);
+  --color-zinc-950: #081217;
+  --color-zinc-900: #101e25;
+  --color-zinc-800: #1c3039;
+  --color-zinc-700: #304a55;
+  --color-zinc-600: #52707a;
+  --color-zinc-500: #78939a;
+  --color-zinc-400: #9eb2b5;
+  --color-zinc-300: #c3d0ce;
+  --color-zinc-200: #dde7e3;
+}
+
+:root[data-theme='crimson'] {
+  --background: oklch(0.13 0.023 15);
+  --foreground: oklch(0.92 0.022 72);
+  --card: oklch(0.19 0.035 15);
+  --card-foreground: oklch(0.92 0.022 72);
+  --popover: oklch(0.165 0.031 13);
+  --popover-foreground: oklch(0.92 0.022 72);
+  --primary: oklch(0.64 0.14 22);
+  --primary-foreground: oklch(0.96 0.018 75);
+  --secondary: oklch(0.275 0.045 16);
+  --secondary-foreground: oklch(0.92 0.022 72);
+  --muted: oklch(0.235 0.035 15);
+  --muted-foreground: oklch(0.71 0.035 62);
+  --accent: oklch(0.78 0.1 79);
+  --accent-foreground: oklch(0.15 0.03 15);
+  --border: oklch(0.54 0.09 24 / 40%);
+  --input: oklch(0.52 0.08 22 / 34%);
+  --ring: oklch(0.7 0.13 30);
+  --bronze: #a9655c;
+  --leather: #2c171b;
+  --wine: #883f49;
+  --moss: #77735a;
+  --sidebar: oklch(0.165 0.031 13);
+  --sidebar-foreground: oklch(0.92 0.022 72);
+  --sidebar-primary: oklch(0.64 0.14 22);
+  --sidebar-primary-foreground: oklch(0.96 0.018 75);
+  --sidebar-accent: oklch(0.275 0.045 16);
+  --sidebar-accent-foreground: oklch(0.92 0.022 72);
+  --sidebar-border: oklch(0.54 0.09 24 / 40%);
+  --sidebar-ring: oklch(0.7 0.13 30);
+  --color-zinc-950: #120b0e;
+  --color-zinc-900: #211217;
+  --color-zinc-800: #351e25;
+  --color-zinc-700: #543039;
+  --color-zinc-600: #79505a;
+  --color-zinc-500: #9b737a;
+  --color-zinc-400: #bca0a2;
+  --color-zinc-300: #d6c0bc;
+  --color-zinc-200: #eadbd3;
+}
+
+@layer base {
+  html[data-theme='aether'],
+  html[data-theme='aether'] body {
+    background-color: #081217;
+  }
+
+html[data-theme='aether'] body,
+html[data-theme='aether'] body:has(.weather-screen[data-weather='clear']) {
+  background-image: linear-gradient(180deg, rgb(3 12 19 / 26%), rgb(4 13 19 / 56%)), url('/celestial-academy-night.png');
+}
+
+html[data-theme='crimson'],
+html[data-theme='crimson'] body {
+  background-color: #120b0e;
+}
+
+html[data-theme='crimson'] body,
+html[data-theme='crimson'] body:has(.weather-screen[data-weather='clear']) {
+  background-image: linear-gradient(180deg, rgb(12 6 9 / 54%), rgb(18 8 11 / 76%)), url('/gothic-observatory.png');
+}
+
+html[data-theme='aether'] body::before {
+  background-image: repeating-linear-gradient(0deg, transparent 0 5px, rgb(141 235 232 / 0.8%) 6px), radial-gradient(circle at center, transparent 40%, rgb(0 5 10 / 44%) 100%);
+}
+
+html[data-theme='crimson'] body::before {
+  background-image: repeating-linear-gradient(0deg, transparent 0 5px, rgb(255 222 196 / 0.7%) 6px), radial-gradient(circle at center, transparent 40%, rgb(5 0 2 / 48%) 100%);
+}
+
+html[data-theme='aether'] .panel {
+  border-color: rgb(91 164 168 / 34%) !important;
+  background: linear-gradient(145deg, rgb(25 48 57 / 96%), rgb(8 20 26 / 98%)) !important;
+  box-shadow: 0 18px 44px rgb(0 5 10 / 46%), inset 0 1px 0 rgb(202 249 244 / 7%), inset 0 0 0 1px rgb(2 12 18 / 70%) !important;
+}
+
+html[data-theme='crimson'] .panel {
+  border-color: rgb(169 91 86 / 34%) !important;
+  background: linear-gradient(145deg, rgb(51 28 34 / 97%), rgb(19 10 14 / 98%)) !important;
+  box-shadow: 0 18px 44px rgb(7 0 3 / 48%), inset 0 1px 0 rgb(255 226 204 / 6%), inset 0 0 0 1px rgb(15 4 8 / 72%) !important;
+}
+
+html[data-theme='aether'] .rpg-character-sheet,
+html[data-theme='aether'] .rpg-character-sheet:not([data-expanded='true']) {
+  background: linear-gradient(90deg, rgb(61 171 174 / 10%), transparent 18%), linear-gradient(145deg, rgb(24 46 55 / 98%), rgb(8 19 25 / 99%)) !important;
+}
+
+html[data-theme='crimson'] .rpg-character-sheet,
+html[data-theme='crimson'] .rpg-character-sheet:not([data-expanded='true']) {
+  background: linear-gradient(90deg, rgb(181 75 73 / 10%), transparent 18%), linear-gradient(145deg, rgb(49 27 33 / 98%), rgb(18 10 13 / 99%)) !important;
+}
+
+html[data-theme='aether'] .rpg-modal {
+  background: linear-gradient(145deg, rgb(24 46 55 / 99%), rgb(6 17 23 / 99%)) !important;
+}
+
+html[data-theme='crimson'] .rpg-modal {
+  background: linear-gradient(145deg, rgb(50 27 33 / 99%), rgb(17 8 12 / 99%)) !important;
+}
+
+html[data-theme='aether'] .rpg-modal-header,
+html[data-theme='aether'] .campaign-cartography {
+  background-image: linear-gradient(145deg, #294954, #142a34 55%, #091820) !important;
+  border-color: rgb(102 178 181 / 36%) !important;
+}
+
+html[data-theme='crimson'] .rpg-modal-header,
+html[data-theme='crimson'] .campaign-cartography {
+  background-image: linear-gradient(145deg, #4a2830, #2c171d 55%, #160b0f) !important;
+  border-color: rgb(178 99 91 / 38%) !important;
+}
+
+.rpg-media-modal-frame {
+  border-radius: 6px;
+}
+
+html[data-theme='aether'] .rpg-media-modal {
+  border: 1px solid rgb(93 169 174 / 42%);
+}
+
+html[data-theme='crimson'] .rpg-media-modal {
+  border: 1px solid rgb(175 96 91 / 44%);
+}
+
+html[data-theme='aether'] .rpg-themed-workspace {
+  color: #dcebe7;
+  background: linear-gradient(145deg, #193743, #0a222c 58%, #07171e) !important;
+}
+
+html[data-theme='crimson'] .rpg-themed-workspace {
+  color: #eadbd2;
+  background: linear-gradient(145deg, #3a2028, #251219 58%, #13090d) !important;
+}
+
+html[data-theme='aether'] .rpg-themed-subtle {
+  border-color: rgb(100 181 184 / 24%) !important;
+  background: linear-gradient(155deg, #17313b, #0c242d) !important;
+}
+
+html[data-theme='crimson'] .rpg-themed-subtle {
+  border-color: rgb(184 101 94 / 24%) !important;
+  background: linear-gradient(155deg, #321b22, #1e0f15) !important;
+}
+
+html[data-theme='aether'] .rpg-themed-deep {
+  border-color: rgb(99 180 183 / 20%) !important;
+  background: #071820 !important;
+}
+
+html[data-theme='crimson'] .rpg-themed-deep {
+  border-color: rgb(182 96 89 / 21%) !important;
+  background: #150a0f !important;
+}
+
+html[data-theme='aether'] .rpg-themed-card:not([data-active='true']) {
+  border-color: rgb(96 174 178 / 18%) !important;
+  background: rgb(11 31 40 / 88%) !important;
+}
+
+html[data-theme='aether'] .rpg-themed-card:not([data-active='true']):hover {
+  border-color: rgb(105 194 196 / 42%) !important;
+  background: rgb(18 47 57 / 94%) !important;
+}
+
+html[data-theme='crimson'] .rpg-themed-card:not([data-active='true']) {
+  border-color: rgb(174 94 88 / 19%) !important;
+  background: rgb(35 17 23 / 90%) !important;
+}
+
+html[data-theme='crimson'] .rpg-themed-card:not([data-active='true']):hover {
+  border-color: rgb(198 111 101 / 42%) !important;
+  background: rgb(54 27 34 / 95%) !important;
+}
+
+html[data-theme='aether'] .rpg-cartography:not(.campaign-cartography) {
+  color: #dcebe7;
+  border-color: rgb(94 166 170 / 34%);
+  background-image: linear-gradient(rgb(135 213 211 / 3%) 1px, transparent 1px), linear-gradient(90deg, rgb(135 213 211 / 3%) 1px, transparent 1px), linear-gradient(145deg, rgb(28 53 62 / 97%), rgb(10 25 31 / 98%)) !important;
+  box-shadow: 0 18px 42px rgb(0 6 12 / 46%), inset 0 0 32px rgb(0 8 14 / 30%);
+}
+
+html[data-theme='crimson'] .rpg-cartography:not(.campaign-cartography) {
+  color: #eadbd2;
+  border-color: rgb(169 91 86 / 34%);
+  background-image: linear-gradient(rgb(222 155 137 / 3%) 1px, transparent 1px), linear-gradient(90deg, rgb(222 155 137 / 3%) 1px, transparent 1px), linear-gradient(145deg, rgb(55 30 36 / 97%), rgb(21 11 15 / 98%)) !important;
+  box-shadow: 0 18px 42px rgb(7 0 3 / 48%), inset 0 0 32px rgb(9 0 3 / 32%);
+}
+
+html[data-theme='aether'] .rpg-cartography:not(.campaign-cartography):not(.rpg-history-panel) :is(h2, p, .rpg-cartography-title, .rpg-cartography-muted, .rpg-map-entry),
+html[data-theme='crimson'] .rpg-cartography:not(.campaign-cartography):not(.rpg-history-panel) :is(h2, p, .rpg-cartography-title, .rpg-cartography-muted, .rpg-map-entry) {
+  color: var(--foreground) !important;
+  text-shadow: none;
+}
+
+html[data-theme='aether'] .rpg-map-entry,
+html[data-theme='crimson'] .rpg-map-entry {
+  border-bottom-color: color-mix(in oklab, var(--primary) 28%, transparent) !important;
+}
+
+html[data-theme='aether'] .rpg-battle-grid-collapse .rpg-map-index,
+html[data-theme='aether'] .rpg-session-sidebar .rpg-map-panel {
+  color: #dcebe7 !important;
+  border-color: rgb(92 176 182 / 44%) !important;
+  background-image: linear-gradient(rgb(125 216 215 / 3%) 1px, transparent 1px), linear-gradient(145deg, #173540, #0b242e 62%, #071920) !important;
+  background-size: 100% 26px, auto !important;
+  box-shadow: inset 0 0 28px rgb(0 13 21 / 35%), 0 12px 30px rgb(0 5 10 / 28%) !important;
+}
+
+html[data-theme='crimson'] .rpg-battle-grid-collapse .rpg-map-index,
+html[data-theme='crimson'] .rpg-session-sidebar .rpg-map-panel {
+  color: #eadbd2 !important;
+  border-color: rgb(178 94 88 / 45%) !important;
+  background-image: linear-gradient(rgb(230 151 136 / 3%) 1px, transparent 1px), linear-gradient(145deg, #3a2027, #251218 62%, #140a0e) !important;
+  background-size: 100% 26px, auto !important;
+  box-shadow: inset 0 0 28px rgb(16 0 5 / 38%), 0 12px 30px rgb(7 0 3 / 30%) !important;
+}
+
+html[data-theme='aether'] :is(.rpg-battle-grid-collapse, .rpg-map-panel) .rpg-map-entry {
+  color: #dcebe7 !important;
+  border-color: rgb(98 181 184 / 22%) !important;
+  background: rgb(69 139 150 / 10%) !important;
+}
+
+html[data-theme='aether'] :is(.rpg-battle-grid-collapse, .rpg-map-panel) .rpg-map-entry:hover,
+html[data-theme='aether'] :is(.rpg-battle-grid-collapse, .rpg-map-panel) .rpg-map-entry.is-active {
+  color: #f1faf8 !important;
+  border-color: rgb(112 207 207 / 48%) !important;
+  background: rgb(72 155 165 / 22%) !important;
+}
+
+html[data-theme='crimson'] :is(.rpg-battle-grid-collapse, .rpg-map-panel) .rpg-map-entry {
+  color: #eadbd2 !important;
+  border-color: rgb(184 101 94 / 23%) !important;
+  background: rgb(122 47 58 / 11%) !important;
+}
+
+html[data-theme='crimson'] :is(.rpg-battle-grid-collapse, .rpg-map-panel) .rpg-map-entry:hover,
+html[data-theme='crimson'] :is(.rpg-battle-grid-collapse, .rpg-map-panel) .rpg-map-entry.is-active {
+  color: #fff1e8 !important;
+  border-color: rgb(213 126 113 / 48%) !important;
+  background: rgb(142 60 69 / 23%) !important;
+}
+
+html[data-theme='aether'] .rpg-battle-grid-collapse .rpg-map-action {
+  border-color: rgb(98 181 184 / 22%) !important;
+  background: rgb(69 139 150 / 10%) !important;
+}
+
+html[data-theme='crimson'] .rpg-battle-grid-collapse .rpg-map-action {
+  border-color: rgb(184 101 94 / 23%) !important;
+  background: rgb(122 47 58 / 11%) !important;
+}
+
+html[data-theme='aether'] :is(.rpg-battle-grid-collapse .rpg-map-action, .rpg-map-panel .rpg-map-entry):hover {
+  background: rgb(72 155 165 / 22%) !important;
+}
+
+html[data-theme='crimson'] :is(.rpg-battle-grid-collapse .rpg-map-action, .rpg-map-panel .rpg-map-entry):hover {
+  background: rgb(142 60 69 / 23%) !important;
+}
+
+html[data-theme='aether'] :is(.rpg-battle-grid-collapse .rpg-map-index p, .rpg-map-panel h2),
+html[data-theme='crimson'] :is(.rpg-battle-grid-collapse .rpg-map-index p, .rpg-map-panel h2) {
+  color: var(--foreground) !important;
+}
+
+html[data-theme='aether'] [data-slot='button'][data-theme-primary='true'] {
+  color: #f2f8fa !important;
+  border-color: #438fc2 !important;
+  background: #236f9f !important;
+  box-shadow: inset 0 1px 0 rgb(218 245 255 / 15%), 0 7px 18px rgb(0 28 48 / 28%) !important;
+}
+
+html[data-theme='aether'] [data-slot='button'][data-theme-primary='true']:hover {
+  border-color: #67b4df !important;
+  background: #2c82b8 !important;
+}
+
+html[data-theme='aether'] .rpg-cartography.rpg-history-panel {
+  color: #dcebe7;
+  border-color: rgb(93 169 174 / 42%) !important;
+  background-image: radial-gradient(ellipse at 86% 8%, rgb(74 154 168 / 18%), transparent 38%), linear-gradient(155deg, #17323e, #0b222c 56%, #07171e) !important;
+  background-repeat: no-repeat !important;
+  background-size: auto, auto !important;
+  box-shadow: 0 18px 42px rgb(0 6 12 / 44%), inset 0 1px 0 rgb(193 239 238 / 7%), inset 0 0 38px rgb(0 9 15 / 32%) !important;
+}
+
+html[data-theme='crimson'] .rpg-cartography.rpg-history-panel {
+  color: #eadbd2;
+  border-color: rgb(175 96 91 / 44%) !important;
+  background-image: radial-gradient(ellipse at 86% 8%, rgb(151 63 73 / 19%), transparent 38%), linear-gradient(155deg, #351c25, #211117 58%, #12090d) !important;
+  background-repeat: no-repeat !important;
+  background-size: auto, auto !important;
+  box-shadow: 0 18px 42px rgb(8 0 3 / 46%), inset 0 1px 0 rgb(255 223 204 / 6%), inset 0 0 38px rgb(13 0 4 / 34%) !important;
+}
+
+html[data-theme='aether'] .rpg-history-panel::after,
+html[data-theme='crimson'] .rpg-history-panel::after {
+  display: none;
+}
+
+html[data-theme='aether'] .rpg-history-panel::before {
+  border-color: rgb(116 193 194 / 18%);
+}
+
+html[data-theme='crimson'] .rpg-history-panel::before {
+  border-color: rgb(209 126 112 / 17%);
+}
+
+html[data-theme='aether'] .rpg-history-heading {
+  border-bottom-color: rgb(101 183 185 / 22%) !important;
+  background: linear-gradient(90deg, rgb(71 143 155 / 13%), transparent) !important;
+}
+
+html[data-theme='crimson'] .rpg-history-heading {
+  border-bottom-color: rgb(185 101 94 / 22%) !important;
+  background: linear-gradient(90deg, rgb(133 53 64 / 15%), transparent) !important;
+}
+
+html[data-theme='aether'] .rpg-history-detail {
+  border-color: rgb(99 180 183 / 16%) !important;
+  background: rgb(69 139 150 / 9%) !important;
+}
+
+html[data-theme='crimson'] .rpg-history-detail {
+  border-color: rgb(182 96 89 / 17%) !important;
+  background: rgb(122 47 58 / 10%) !important;
+}
+
+html[data-theme='aether'] .rpg-history-heading h2,
+html[data-theme='aether'] .rpg-history-panel .text-foreground,
+html[data-theme='aether'] .rpg-history-entry {
+  color: #e6f3f0 !important;
+}
+
+html[data-theme='aether'] .rpg-history-panel .text-muted-foreground {
+  color: #a9c4c1 !important;
+}
+
+html[data-theme='aether'] .rpg-history-panel .text-primary {
+  color: #79d0d1 !important;
+}
+
+html[data-theme='aether'] .rpg-history-entry {
+  border-bottom-color: rgb(101 183 185 / 22%) !important;
+}
+
+html[data-theme='aether'] .rpg-history-entry:hover {
+  background: rgb(69 139 150 / 10%) !important;
+}
+
+html[data-theme='crimson'] .rpg-history-heading h2,
+html[data-theme='crimson'] .rpg-history-panel .text-foreground,
+html[data-theme='crimson'] .rpg-history-entry {
+  color: #f1e1d8 !important;
+}
+
+html[data-theme='crimson'] .rpg-history-panel .text-muted-foreground {
+  color: #c8aaa4 !important;
+}
+
+html[data-theme='crimson'] .rpg-history-panel .text-primary {
+  color: #e39a8e !important;
+}
+
+html[data-theme='crimson'] .rpg-history-entry {
+  border-bottom-color: rgb(185 101 94 / 23%) !important;
+}
+
+html[data-theme='crimson'] .rpg-history-entry:hover {
+  background: rgb(122 47 58 / 11%) !important;
+}
+
+html[data-theme='aether'] .rpg-tab-button:hover,
+html[data-theme='aether'] .rpg-tab-button.is-active,
+html[data-theme='aether'] .rpg-tab-button.is-active:hover {
+  border-color: rgb(97 180 181 / 28%) !important;
+  background: linear-gradient(180deg, rgb(45 86 96 / 82%), rgb(19 43 52 / 96%)) !important;
+}
+
+  html[data-theme='crimson'] .rpg-tab-button:hover,
+  html[data-theme='crimson'] .rpg-tab-button.is-active,
+  html[data-theme='crimson'] .rpg-tab-button.is-active:hover {
+    border-color: rgb(181 103 94 / 28%) !important;
+    background: linear-gradient(180deg, rgb(87 45 53 / 84%), rgb(42 22 28 / 96%)) !important;
+  }
+}
+
+.theme-option {
+  border-color: color-mix(in oklab, var(--bronze) 34%, transparent);
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--card) 88%, black);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 28%);
+}
+
+.theme-option:hover,
+.theme-option.is-selected {
+  border-color: var(--accent);
+}
+
+.theme-option.is-selected {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 46%, transparent), 0 16px 34px rgb(0 0 0 / 36%);
+}
+
+.theme-option-preview {
+  border-bottom: 1px solid color-mix(in oklab, var(--bronze) 28%, transparent);
+}
+
+.rpg-skill-expansion {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition: grid-template-rows 280ms cubic-bezier(.4, 0, .2, 1), opacity 160ms ease, visibility 0s linear 280ms;
+}
+
+.rpg-skill-expansion[data-open='true'] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition: grid-template-rows 280ms cubic-bezier(.4, 0, .2, 1), opacity 180ms ease 30ms, visibility 0s;
+}
+
+.rpg-skill-expansion-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
 @layer utilities {
   .custom-scrollbar-sepia {
     scrollbar-color: #715333 rgb(13 10 8 / 60%);
@@ -1641,6 +2110,16 @@
   .rpg-character-expansion[data-open='true'] {
     transition-duration: 480ms, 220ms, 0s !important;
     transition-delay: 0s, 40ms, 0s !important;
+  }
+
+  .rpg-skill-expansion {
+    transition-duration: 280ms, 160ms, 0s !important;
+    transition-delay: 0s, 0s, 280ms !important;
+  }
+
+  .rpg-skill-expansion[data-open='true'] {
+    transition-duration: 280ms, 180ms, 0s !important;
+    transition-delay: 0s, 30ms, 0s !important;
   }
 
   .session-dice-field {

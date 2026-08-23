@@ -2125,7 +2125,6 @@ export const EQUIPMENT: EquipmentItem[] = [
     detail:
       "Um colar delicado de metal escurecido com um pingente em formato de coração. Carrega a lembrança inestimável de uma filha amada.\n[BÔNUS: +3 HP Máximo. O calor dessa lembrança fortalece a vontade de continuar lutando.]\n[LORE: Um artefato pessoal onde o verdadeiro poder não vem da magia, mas do amor que o forjou.]"
   },
-
   {
     id: "eq-heirloom-ruby-ring",
     name: "Anel de Rubi Escarlate",
@@ -2135,7 +2134,6 @@ export const EQUIPMENT: EquipmentItem[] = [
     detail:
       "Um anel elegante com um rubi de corte antigo que parece pulsar sutilmente em repouso.\n[BÔNUS: +1 em testes de Vontade (VON) para resistir a medo, charme ou intimidação.]\n[LORE: Uma joia de herança que concede à mente do portador a mesma dureza e resiliência da pedra.]"
   },
-
   {
     id: "eq-silver-braided-bracelet",
     name: "Bracelete Trançado",
@@ -2696,19 +2694,19 @@ export const BESTIARY: Creature[] = [
     mdef: 8,
     affinities: { physical: "RS", air: "none", bolt: "none", dark: "none", earth: "none", fire: "VU", ice: "none", light: "none", poison: "IM" },
     basicAttacks: [
-      { 
-        name: "Esmagamento Colossal", 
-        attributes: ["mig", "mig"], 
-        damage: 16, 
-        type: "físico", 
-        description: "Ergue seus braços maciços e golpeia o chão ou o alvo com uma força brutal, ignorando bloqueios leves." 
+      {
+        name: "Esmagamento Colossal",
+        attributes: ["mig", "mig"],
+        damage: 16,
+        type: "físico",
+        description: "Ergue seus braços maciços e golpeia o chão ou o alvo com uma força brutal, ignorando bloqueios leves."
       },
-      { 
-        name: "Mordida Fúngica", 
-        attributes: ["dex", "mig"], 
-        damage: 10, 
-        type: "físico", 
-        description: "Morde o alvo com dentes apodrecidos e placas de fungo pulsantes." 
+      {
+        name: "Mordida Fúngica",
+        attributes: ["dex", "mig"],
+        damage: 10,
+        type: "físico",
+        description: "Morde o alvo com dentes apodrecidos e placas de fungo pulsantes."
       }
     ],
     spells: [
@@ -2731,19 +2729,19 @@ export const BESTIARY: Creature[] = [
     mdef: 10,
     affinities: { physical: "RS", air: "none", bolt: "none", dark: "IM", earth: "none", fire: "none", ice: "none", light: "VU", poison: "IM" },
     basicAttacks: [
-      { 
-        name: "Arrastar da Lâmina Colossal", 
-        attributes: ["mig", "mig"], 
-        damage: 20, 
-        type: "físico", 
-        description: "Ele arrasta uma espada grande demais para um humano comum e desfere um golpe horizontal devastador." 
+      {
+        name: "Arrastar da Lâmina Colossal",
+        attributes: ["mig", "mig"],
+        damage: 20,
+        type: "físico",
+        description: "Ele arrasta uma espada grande demais para um humano comum e desfere um golpe horizontal devastador."
       },
-      { 
-        name: "Agarrão Sufocante", 
-        attributes: ["mig", "wlp"], 
-        damage: 12, 
-        type: "físico", 
-        description: "Avança com a mão livre para erguer o alvo pelo pescoço." 
+      {
+        name: "Agarrão Sufocante",
+        attributes: ["mig", "wlp"],
+        damage: 12,
+        type: "físico",
+        description: "Avança com a mão livre para erguer o alvo pelo pescoço."
       }
     ],
     spells: [

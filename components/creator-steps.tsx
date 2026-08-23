@@ -3,9 +3,8 @@
 import { useState, useEffect, useMemo } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Check, Info, Coins, BookOpenText, ChevronDown, Search, X, Sparkles, Heart, Zap, Swords, Save, ArrowLeft, ArrowRight, Loader2 } from "lucide-react"
+import { Check, Info, Coins, BookOpenText, ChevronDown, Search, X, Sparkles } from "lucide-react"
 import { CLASSES, EQUIPMENT, ORIGIN_SUGGESTIONS, IDENTITY_SUGGESTIONS, THEME_SUGGESTIONS, getEquipment, STARTING_ZENIT, GameClass } from "@/lib/game-data"
-import { Button } from "./ui/button"
 
 const overlayVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 }, exit: { opacity: 0, transition: { duration: 0.2 } } } as any
 const modalVariants = { hidden: { opacity: 0, scale: 0.95, y: 20 }, visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.3 } }, exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } } } as any
@@ -48,15 +47,12 @@ export function EssenceStep(props: any) {
   )
 }
 
-export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels, chosenCount, isNpc }: any) {
+export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels, chosenCount, isNpc = false }: any) {
   const [mounted, setMounted] = useState(false)
+  const remaining = isNpc ? Number.POSITIVE_INFINITY : 5 - totalLevels
+  const valid = isNpc ? totalLevels > 0 : chosenCount >= 2 && chosenCount <= 3 && totalLevels === 5
   
-  // REGRAS DINÂMICAS: NPCs possuem níveis ilimitados; Jogadores seguem a regra do livro.
-  // remaining será 999 se for NPC, evitando que a matemática trave o jogador.
-  const remaining = isNpc ? 999 : 5 - totalLevels
-  const valid = isNpc ? totalLevels > 0 : (chosenCount >= 2 && chosenCount <= 3 && totalLevels === 5)
-  
-  const [viewClass, setViewClass] = useState<any | null>(null)
+  const [viewClass, setViewClass] = useState<GameClass | null>(null)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -80,15 +76,11 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
       <div className="shrink-0 space-y-1">
         <div className="flex items-center justify-between">
           <h3 className="font-serif text-xl font-bold text-foreground">Invista em Habilidades</h3>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${valid ? (isNpc ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary") : "bg-muted text-muted-foreground"}`}>
-            {isNpc ? `${totalLevels} Nível(is) Gasto(s)` : `${totalLevels}/5 níveis gastos`}
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${valid ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+            {isNpc ? `${totalLevels} níveis gastos` : `${totalLevels}/5 níveis gastos`}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {isNpc 
-            ? "Mestre, adicione quantos níveis e classes quiser para moldar o poder desta criatura." 
-            : "Distribua exatamente 5 níveis (máx 3 classes diferentes)."}
-        </p>
+        <p className="text-sm text-muted-foreground">{isNpc ? "Adicione quantos níveis e classes forem necessários para esta criatura." : "Distribua exatamente 5 níveis (máx 3 classes diferentes)."}</p>
       </div>
 
       {/* BARRA DE PESQUISA INTELIGENTE */}
@@ -99,7 +91,7 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
           placeholder="Pesquisar classe, arquétipo, habilidade ou efeito..." 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className={`w-full rounded-lg border border-border/50 bg-black/40 py-2.5 pl-9 pr-10 text-sm text-foreground outline-none transition-all shadow-inner ${isNpc ? "focus:border-destructive/50 focus:ring-1 focus:ring-destructive/50" : "focus:border-primary/50 focus:ring-1 focus:ring-primary/50"}`}
+          className="w-full rounded-lg border border-border/50 bg-black/40 py-2.5 pl-9 pr-10 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-1 focus:ring-primary/50 shadow-inner"
         />
         {searchQuery && (
           <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
@@ -119,17 +111,14 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
           filteredClasses.map((c) => {
             const cLevel = classLevels[c.id] || 0
             const isExpanded = expandedRow === c.id
-            
-            // CORREÇÃO CRUCIAL:
-            // Se for NPC, sempre pode adicionar habilidades independentemente do total ou do limite de 3 classes.
-            const canAddHere = isNpc ? true : (remaining > 0 && (cLevel > 0 || chosenCount < 3))
+            const canAddHere = isNpc || (remaining > 0 && (cLevel > 0 || chosenCount < 3))
 
             return (
-              <div key={c.id} className={`rounded-sm border-l-2 transition-all duration-200 ${cLevel > 0 ? (isNpc ? "border-destructive bg-destructive/10 shadow-inner" : "border-primary bg-primary/10 shadow-inner") : "border-border/60 bg-card/40 hover:border-primary/50"}`}>
+              <div key={c.id} className={`rounded-sm border-l-2 transition-all duration-200 ${cLevel > 0 ? "border-primary bg-primary/10 shadow-inner" : "border-border/60 bg-card/40 hover:border-primary/50"}`}>
                 <div className="w-full flex items-center justify-between p-4">
                   <button type="button" onClick={() => setViewClass(c as any)} className="text-left group flex-1 pr-4">
-                    <p className={`font-serif font-bold text-lg text-foreground transition-colors flex items-center gap-2 ${isNpc ? "group-hover:text-destructive" : "group-hover:text-primary"}`}>
-                      {c.name} {cLevel > 0 && <span className={`${isNpc ? "text-destructive" : "text-primary"} text-sm tracking-widest uppercase ml-1`}>(Nv. {cLevel})</span>}
+                    <p className="font-serif font-bold text-lg text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
+                      {c.name} {cLevel > 0 && <span className="text-primary text-sm tracking-widest uppercase ml-1">(Nv. {cLevel})</span>}
                       <Info className="size-4 opacity-40 group-hover:opacity-100 transition-opacity" />
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5 uppercase tracking-widest">{c.archetype}</p>
@@ -148,9 +137,9 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
                           return (
                             <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3.5 rounded-lg bg-card/60 border border-border/30 hover:border-border/60 transition-colors">
                               <div className="flex-1 min-w-0">
-                                <p className={`font-bold text-sm flex items-center gap-2 ${isNpc ? "text-destructive" : "text-primary"}`}>
+                                <p className="font-bold text-sm text-primary flex items-center gap-2">
                                   {s.name} 
-                                  {s.action && <span className={`text-[9px] uppercase border px-1.5 py-0.5 rounded tracking-widest ${isNpc ? "bg-destructive/15 text-destructive border-destructive/30" : "bg-accent/15 text-accent border-accent/30"}`}>{s.action.cost} {s.action.resource}</span>}
+                                  {s.action && <span className="text-[9px] uppercase bg-accent/15 text-accent border border-accent/30 px-1.5 py-0.5 rounded tracking-widest">{s.action.cost} {s.action.resource}</span>}
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
                                   {formatSkillDescription(s.description, sLvl)}
@@ -159,14 +148,7 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
                               <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto bg-background/80 p-1 rounded-lg border border-border/50">
                                 <StepButton disabled={sLvl === 0} onClick={() => setSkillLvl(s.id, sLvl - 1, s.maxLevel)}>−</StepButton>
                                 <span className="w-6 text-center font-mono font-bold text-sm">{sLvl}/{s.maxLevel}</span>
-                                
-                                {/* BOTÃO '+' DESTRAVADO SE FOR NPC E NÃO EXCEDER O MÁXIMO DA SKILL EM SI */}
-                                <StepButton 
-                                  disabled={sLvl >= s.maxLevel || !canAddHere} 
-                                  onClick={() => setSkillLvl(s.id, sLvl + 1, s.maxLevel)}
-                                >
-                                  +
-                                </StepButton>
+                                <StepButton disabled={sLvl >= s.maxLevel || !canAddHere} onClick={() => setSkillLvl(s.id, sLvl + 1, s.maxLevel)}>+</StepButton>
                               </div>
                             </div>
                           )
@@ -184,11 +166,11 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
       {mounted && typeof document !== "undefined" && createPortal(
         <AnimatePresence>
           {viewClass && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-              <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} transition={{ duration: 0.3 }} className={`rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden border bg-zinc-950 shadow-2xl ${isNpc ? "border-destructive/40" : "border-primary/40"}`}>
+            <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4" onClick={() => setViewClass(null)}>
+              <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden border border-primary/40 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
                 <div className="flex justify-between items-center p-6 border-b border-white/5 bg-black/60 shrink-0">
                   <div>
-                    <h2 className={`font-serif text-3xl font-black flex items-center gap-3 ${isNpc ? "text-destructive" : "text-primary"}`}>
+                    <h2 className="font-serif text-3xl font-black text-primary flex items-center gap-3">
                       <BookOpenText className="size-7" /> {viewClass.name}
                     </h2>
                     <p className="text-xs font-bold tracking-widest text-muted-foreground uppercase mt-2">{viewClass.archetype}</p>
@@ -214,18 +196,18 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
                      </div>
                   </div>
 
-                  <h3 className={`text-xs font-bold uppercase tracking-widest pt-4 pb-2 border-b border-white/5 flex items-center gap-2 ${isNpc ? "text-destructive" : "text-primary"}`}>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-primary pt-4 pb-2 border-b border-white/5 flex items-center gap-2">
                      <Sparkles className="size-4" /> Todas as Habilidades
                   </h3>
                   <div className="flex flex-col gap-3">
-                    {viewClass.skills.map((skill: any) => (
-                      <div key={skill.id} className={`group relative overflow-hidden rounded-sm border-l-2 bg-card/30 p-4 transition-colors ${isNpc ? "border-destructive/30 hover:border-destructive/60" : "border-primary/30 hover:border-primary/60"}`}>
+                    {viewClass.skills.map(skill => (
+                      <div key={skill.id} className="group relative overflow-hidden rounded-sm border-l-2 border-primary/30 bg-card/30 p-4 transition-colors hover:border-primary/60">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
                           <h4 className="font-serif font-bold text-foreground text-lg">{skill.name}</h4>
                           <div className="flex items-center gap-2 shrink-0">
                              <span className="text-[10px] font-mono font-bold border border-border/80 px-2 py-0.5 rounded text-muted-foreground">Máx Nv. {skill.maxLevel}</span>
                              {skill.action && (
-                               <span className={`text-[10px] font-mono font-bold border px-2 py-0.5 rounded uppercase tracking-widest ${isNpc ? "bg-destructive/15 text-destructive border-destructive/30" : "bg-accent/15 text-accent border-accent/30"}`}>
+                               <span className="text-[10px] font-mono font-bold bg-accent/15 text-accent border border-accent/30 px-2 py-0.5 rounded uppercase tracking-widest">
                                  {skill.action.cost} {skill.action.resource}
                                </span>
                              )}
@@ -248,55 +230,34 @@ export function ClassesStep({ skillLevels, setSkillLvl, classLevels, totalLevels
   )
 }
 
-export function EquipmentStep({ equipment, toggle, remaining, spent, isNpc }: any) {
-  // Se for NPC, a lista mostra TUDO. Se for jogador, filtra os itens 'purchasable: false'.
-  const availableEquipment = isNpc 
-    ? EQUIPMENT 
-    : EQUIPMENT.filter((item) => item.purchasable !== false);
+export function EquipmentStep({ equipment, toggle, remaining, spent, isNpc = false }: any) {
+  const availableEquipment = isNpc ? EQUIPMENT : EQUIPMENT.filter((item) => item.purchasable !== false)
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h3 className="font-serif text-xl font-bold text-foreground">Equipamento inicial</h3>
-        
-        {/* Se for NPC, mostra a tag indicando Orçamento Ilimitado com visual vermelho */}
-        <span className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${(remaining < 0 && !isNpc) ? "bg-destructive/15 text-destructive" : (isNpc ? "bg-destructive/15 text-destructive" : "bg-accent/15 text-accent")}`}>
-          <Coins className="size-3.5" /> 
-          {isNpc ? "Mestre (Ilimitado)" : `${remaining} / ${STARTING_ZENIT} zenit`}
+        <span className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${remaining < 0 && !isNpc ? "bg-destructive/15 text-destructive" : "bg-accent/15 text-accent"}`}>
+          <Coins className="size-3.5" /> {isNpc ? "Orçamento ilimitado" : `${remaining} / ${STARTING_ZENIT} zenit`}
         </span>
       </div>
-      
-      {/* Alerta de erro de orçamento some se for NPC */}
       {remaining < 0 && !isNpc && <p className="text-sm text-destructive">Você ultrapassou o orçamento. Remova algum item.</p>}
-      
       <div className="grid gap-2 sm:grid-cols-2">
         {availableEquipment.map((item) => {
           const selected = equipment.includes(item.id)
-          // Se for NPC, o botão NUNCA é desativado por falta de dinheiro.
           const affordable = isNpc || selected || spent + item.cost <= STARTING_ZENIT
-          
           return (
-            <button 
-              key={item.id} 
-              onClick={() => toggle(item.id)} 
-              disabled={!affordable} 
-              className={`flex items-center justify-between rounded-sm border p-3 text-left transition-colors disabled:opacity-40 ${selected ? (isNpc ? "border-destructive bg-destructive/10" : "border-primary bg-primary/10") : "border-border/60 bg-card/40 hover:border-primary/50"}`}
-            >
+            <button key={item.id} onClick={() => toggle(item.id)} disabled={!affordable} className={`flex items-center justify-between rounded-sm border p-3 text-left transition-colors disabled:opacity-40 ${selected ? "border-primary bg-primary/10" : "border-border/60 bg-card/40"}`}>
               <div>
-                <p className={`font-medium flex items-center gap-2 ${item.purchasable === false ? "text-purple-400" : "text-foreground"}`}>
+                <p className="flex items-center gap-2 font-medium text-foreground">
                   {item.name}
-                  {/* Etiqueta visual para ajudar o mestre a identificar itens especiais */}
-                  {item.purchasable === false && (
-                    <span className="text-[9px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider font-bold">
-                      Exclusivo
-                    </span>
-                  )}
+                  {item.purchasable === false && <span className="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">Exclusivo</span>}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">{item.detail}</p>
+                <p className="text-xs text-muted-foreground">{item.detail}</p>
               </div>
-              <div className="ml-3 flex items-center gap-2 shrink-0">
+              <div className="ml-3 flex shrink-0 items-center gap-2">
                 <span className="font-mono text-sm text-accent">{item.cost}z</span>
-                {selected ? <Check className={`size-4 ${isNpc ? "text-destructive" : "text-primary"}`} /> : <span className="size-4" />}
+                {selected ? <Check className="size-4 text-primary" /> : <span className="size-4" />}
               </div>
             </button>
           )
@@ -305,6 +266,7 @@ export function EquipmentStep({ equipment, toggle, remaining, spent, isNpc }: an
     </div>
   )
 }
+
 function TextField({ label, value, onChange, placeholder }: any) {
   return (
     <label className="flex flex-col gap-1.5">

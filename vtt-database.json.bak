@@ -187,6 +187,54 @@
         "userId": "user_reulc3j3ms3snnxu",
         "createdAt": 1786981329340
       }
+    ],
+    [
+      "sess_92kk53ojmt4s0g1n",
+      {
+        "token": "sess_92kk53ojmt4s0g1n",
+        "userId": "user_reulc3j3ms3snnxu",
+        "createdAt": 1787427212603
+      }
+    ],
+    [
+      "sess_nk2rzx8qmt4s0yyx",
+      {
+        "token": "sess_nk2rzx8qmt4s0yyx",
+        "userId": "user_gd68ua63msnua1nb",
+        "createdAt": 1787427237129
+      }
+    ],
+    [
+      "sess_re7xww80mt4s86f5",
+      {
+        "token": "sess_re7xww80mt4s86f5",
+        "userId": "user_reulc3j3ms3snnxu",
+        "createdAt": 1787427573377
+      }
+    ],
+    [
+      "sess_7tb4fm7umt4salld",
+      {
+        "token": "sess_7tb4fm7umt4salld",
+        "userId": "user_gd68ua63msnua1nb",
+        "createdAt": 1787427686353
+      }
+    ],
+    [
+      "sess_teqtkj61mt4sx0v1",
+      {
+        "token": "sess_teqtkj61mt4sx0v1",
+        "userId": "user_reulc3j3ms3snnxu",
+        "createdAt": 1787428732573
+      }
+    ],
+    [
+      "sess_hvzlax2pmt4sxqh1",
+      {
+        "token": "sess_hvzlax2pmt4sxqh1",
+        "userId": "user_gd68ua63msnua1nb",
+        "createdAt": 1787428765765
+      }
     ]
   ],
   "campaigns": [
@@ -277,18 +325,19 @@
         ],
         "equipment": [
           "eq-silk-robe",
-          "eq-dagger"
+          "eq-dagger",
+          "eq-ruby-ring"
         ],
-        "zenit": 150,
+        "zenit": 0,
         "resources": {
-          "hp": 71,
+          "hp": 69,
           "maxHp": 71,
-          "mp": 29,
+          "mp": 44,
           "maxMp": 49,
           "ip": 6,
           "maxIp": 6,
           "fp": 3,
-          "xp": 0
+          "xp": 5
         },
         "skills": {
           "lo-memory": 1,
@@ -298,7 +347,7 @@
           "mk-chakra": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1786855969700,
+        "updatedAt": 1787461229039,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -371,9 +420,21 @@
             "name": "BUFF Avaliação",
             "value": 1,
             "target": "Avaliação"
+          },
+          {
+            "id": "622qp6",
+            "name": "Insanidade",
+            "value": -2,
+            "target": "ins"
           }
         ],
-        "customItems": []
+        "customItems": [],
+        "portraitFrame": "gothic",
+        "portraitCrop": {
+          "x": 50,
+          "y": 50,
+          "zoom": 1
+        }
       }
     ],
     [
@@ -408,22 +469,22 @@
           }
         ],
         "equipment": [
-          "eq-dagger",
-          "eq-lantern",
           "eq-leather",
           "eq-art-thief-tools",
-          "eq-dagger"
+          "eq-battleaxe",
+          "eq-daughter-heart-necklace"
         ],
-        "zenit": 50,
+        "zenit": 625,
         "resources": {
-          "hp": 72,
+          "hp": 71,
           "maxHp": 72,
-          "mp": 39,
+          "mp": 44,
           "maxMp": 44,
-          "ip": 3,
+          "ip": 0,
           "maxIp": 6,
           "fp": 1,
-          "xp": 0
+          "xp": 4,
+          "lp": 0
         },
         "skills": {
           "prx-prey": 1,
@@ -433,7 +494,7 @@
           "mk-chakra": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1786856083172,
+        "updatedAt": 1787505427941,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -508,7 +569,13 @@
             "target": "Atletismo"
           }
         ],
-        "customItems": []
+        "customItems": [],
+        "portraitFrame": "arcane",
+        "portraitCrop": {
+          "x": 56.179470486111114,
+          "y": 0,
+          "zoom": 1.5
+        }
       }
     ],
     [
@@ -594,18 +661,18 @@
           "eq-lantern",
           "eq-tome",
           "eq-potion-might",
-          "eq-greatsword"
+          "eq-silver-braided-bracelet"
         ],
-        "zenit": 100,
+        "zenit": 0,
         "resources": {
-          "hp": 60,
+          "hp": 63,
           "maxHp": 63,
           "mp": 55,
           "maxMp": 55,
-          "ip": 0,
+          "ip": 6,
           "maxIp": 6,
           "fp": 2,
-          "xp": 0
+          "xp": 4
         },
         "skills": {
           "lo-focus": 1,
@@ -615,7 +682,7 @@
           "cl-sanctuary": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1786856019176,
+        "updatedAt": 1787461925164,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -690,62 +757,39 @@
             "target": "Diplomacia"
           },
           {
-            "id": "qxgav",
-            "name": "Peso",
-            "value": -2,
+            "id": "0yuw8i",
+            "name": "Resfriado",
+            "value": -1,
             "target": "dex"
           }
         ],
-        "customItems": []
-      }
-    ],
-    [
-      "char_4m0s6ac2msvcayxc",
-      {
-        "id": "char_4m0s6ac2msvcayxc",
-        "campaignId": "camp_o5slw0ptmsjhu84l",
-        "ownerId": "user_reulc3j3ms3snnxu",
-        "name": "Moira",
-        "avatarUrl": "http://zipline.sinapselabs.com.br/u/HRbCOn.png",
-        "origin": "Moira nasceu em uma pequena vila comercial na estrada entre Nazir e Ravenkhar. Filha de camponeses, passou a infância entre carroças, mercadores e viajantes que paravam na vila para descansar.\n\nAinda jovem, casou-se com um viajante chamado Elias. Juntos abriram uma pequena loja de artigos diversos. Não era uma loja importante. Vendiam comida, ferramentas, remédios, cordas, velas, quinquilharias e tudo aquilo que alguém poderia precisar durante uma viagem.\n\nEles tiveram uma filha.\n\nLina.\n\nLina cresceu atrás do balcão, ajudando a mãe a organizar as prateleiras e o pai a receber os viajantes. Moira dizia que a menina tinha \"mais conversa que mercador em dia de feira\".\n\nQuando Lina cresceu, começou a acompanhar caravanas como mensageira.\n\nAté que, certa noite, uma caravana que vinha de Ravenkhar chegou à vila.\n\nSem Lina.\n\nDisseram que a caravana havia sido atacada.\n\nAlguns morreram.\n\nOutros desapareceram.\n\nO corpo de Lina nunca foi encontrado.\n\nElias nunca conseguiu aceitar aquilo.\n\nMeses depois, partiu sozinho em busca da filha.\n\nTambém nunca voltou.\n\nMoira ficou.",
-        "identity": "Hoje, Moira é a pequena senhoria da lojinha da estrada.\n\nBaixinha, curvada, sempre com um avental velho e os óculos escorregando pelo nariz.\n\nEla conhece praticamente todo mundo que passa pela região.",
-        "theme": "Esperança.\n\nMas não uma esperança alegre.\n\nUma esperança cansada.\n\nAquela que existe quando você já perdeu quase tudo, mas ainda não consegue fechar a porta.\n\nMoira continua abrindo sua lojinha todas as manhãs porque, em algum lugar dentro dela, ainda existe uma menina de cabelos bagunçados correndo pelo estabelecimento.",
-        "attributes": {
-          "dex": "d6",
-          "ins": "d8",
-          "mig": "d6",
-          "wlp": "d12"
-        },
-        "classes": [
+        "customItems": [
           {
-            "classId": "tinkerer",
-            "level": 1
+            "id": "7xol3iu",
+            "name": "Minha doce Amélia",
+            "type": "text",
+            "content": "O sol já se pôs e as chamas da nossa lareira estão baixinhas, exatamente do jeito que gostamos de deixar para ouvir o crepitar da lenha. Escrevo estas palavras com as mãos um pouco trêmulas, mas com o coração transbordando de orgulho da jovem observadora e destemida que você já está se tornando.\n\nAcredito que as histórias que contamos nestes nossos fins de tarde terão que fazer uma pausa, minha pequena Candinari. Há um cansaço estranho tomando conta de mim, um frio teimoso no peito que age como aquela geada silenciosa que resseca até as raízes das minhas flores mais fortes lá no quintal. Eu sei que logo terei que partir, e me dói pensar nas perguntas que você ainda tem e que eu não poderei responder."
           },
           {
-            "classId": "merchant",
-            "level": 4
+            "id": "4t20pst",
+            "name": "Carta para a Lina",
+            "type": "text",
+            "content": "Minha querida Lina,\n\nO vento do mar do norte tem sido impiedoso ultimamente. Enquanto escrevo estas palavras, nosso navio balança sobre as águas geladas, deixando Vanaheim para trás. Cada vez que olho para a vastidão cinzenta do oceano ou preparo um chá para acalmar os ânimos da tripulação, meu pensamento escapa para você. Espero que esteja se alimentando direito e não esteja dando trabalho com essa sua teimosia maravilhosa."
           }
         ],
-        "equipment": [],
-        "zenit": 500,
-        "resources": {
-          "hp": 66,
-          "maxHp": 66,
-          "mp": 48,
-          "maxMp": 48,
-          "ip": 6,
-          "maxIp": 6,
-          "fp": 0,
-          "xp": 0
-        },
-        "skills": {
-          "ti-gadgets": 1,
-          "me-heard": 3,
-          "me-stock": 1
-        },
-        "createdAt": 1786856634192,
-        "updatedAt": 1786856634192
+        "portraitFrame": "academic",
+        "portraitCrop": {
+          "x": 35.74997901916504,
+          "y": 8.000001907348633,
+          "zoom": 1
+        }
       }
+    ]
+  ],
+  "characterTombstones": [
+    [
+      "char_4m0s6ac2msvcayxc",
+      1787451268492
     ]
   ],
   "maps": [
@@ -34879,6 +34923,1205 @@
             "walkable": true
           }
         }
+      }
+    ]
+  ],
+  "lore": [
+    [
+      "camp_o5slw0ptmsjhu84l",
+      [
+        {
+          "id": "lore_5938rji",
+          "title": "A fé dos 7",
+          "category": "Retratos",
+          "quote": "\"E quando o Vazio ameaçou engolir a terra, a Luz Primordial estilhaçou-se em sete.\nDa primeira lágrima de compaixão, nasceu a Mãe, para curar as feridas dos mortais.\nDa retidão inabalável, ergueu-se o Pai, com a balança que pesa os pecados dos reis.\nDa fúria flamejante, forjou-se o Guerreiro, empunhando a espada que divide os céus.\nDa esperança intocada, sorriu a Donzela, sussurrando promessas de alvoradas.\nDo suor da criação, o Ferreiro bateu seu martelo, dando forma à pedra e ao aço.\nDa memória do tempo, a Velha acendeu sua lanterna, guiando os perdidos na névoa.\nMas da sombra que a própria Luz projetou, surgiu o Desconhecido... aquele cujo rosto é o silêncio, a porta de ébano que se fecha no fim de todas as canções.\"",
+          "content": "A maior ilusão dos forasteiros é olhar para a Fé dos Sete e enxergar um monólito inabalável. Na verdade, a religião é como um grande vitral estilhaçado: todos os crentes olham para a mesma luz divina, mas cada cultura a enxerga através de um caco de vidro de cor e formato diferentes.\n\nNão existe um \"Sumo Sacerdote\" global ou um conselho unificado que dite as regras para o mundo inteiro. A Fé funciona através da interpretação regional, adaptando-se às necessidades de quem reza. Embora o dogma central de que O Divino possui sete faces seja universal, a forma como essas faces são adoradas varia drasticamente, gerando seitas, cismas e até guerras santas.\n\nAs Variações do Culto\nA falta de uma liderança unificada fez com que a religião se fragmentasse em diferentes vertentes geográficas:\n\nA Ortodoxia das Capitais: Nas grandes cidades e impérios ricos, os Sete são adorados como uma entidade única e indivisível. Os templos são imensas construções de sete lados, chamados de Septos, com altares perfeitamente simétricos. A magia e as bênçãos aqui são canalizadas através de rituais pomposos, corais de centenas de vozes e a queima de incensos caros. Para eles, focar em um único deus e ignorar os outros é um pecado grave.\n\nOs Filhos da Forja e da Espada: Em regiões militarizadas, ermos hostis ou reinos focados em conquista, a população praticamente ignora figuras como a Donzela ou a Mãe. Lá, os altares pertencem quase exclusivamente ao Guerreiro e ao Ferreiro. A fé funciona através da ação e do sacrifício de sangue e suor. Clérigos destas terras usam armaduras pesadas em vez de túnicas, e suas orações são o som de espadas batendo em escudos.\n\nOs Cultos Crepusculares: Em pântanos isolados, florestas antigas e ilhas distantes, a adoração assume um tom místico e sombrio, focado na Velha e no Desconhecido. Não há grandes templos, apenas totens de madeira enegrecida e rodas de pedra. A magia divina dessas vertentes é mais crua, ligada à necromancia suave, presságios, leitura de entranhas e feitiços de proteção. Eles são frequentemente chamados de hereges pelos sacerdotes das cidades.",
+          "imageUrl": "https://st2.depositphotos.com/5284880/11244/v/450/depositphotos_112447498-stock-illustration-golden-glittering-symbol-in-seven.jpg",
+          "isPublic": true,
+          "allowedMembers": [],
+          "createdAt": 1787312231837
+        },
+        {
+          "id": "lore_egg0vm6",
+          "title": "O Desafio Eterno",
+          "category": "Retratos",
+          "quote": "Nas águas do sul, a espada não dorme,\nA ruína se ergue na praia de dor.\nKefir marcha cega, com fúria enorme,\nAlimentando as chamas de antigo rancor.\n\nE Narmer responde com sangue e com aço,\nPresa na roda da guerra sem fim.\nDois reinos quebrados no mesmo compasso,\nOnde a paz é um sonho que o tempo deu fim.",
+          "content": "Os bardos do continente evitam cantar sobre o sudoeste, pois as ilhas de Kefir e Narmer permanecem mergulhadas em uma guerra eterna. Seus governantes disputam territórios e recursos há séculos, o que alimenta um ciclo interminável de violência e destruição nas praias escarpadas. Um dos episódios mais marcantes dessa rivalidade foi imortalizado em pinturas: o dia em que um comandante invadiu a grande sala do trono inimiga, apontando sua lâmina diretamente para a rainha governante sob a luz difusa dos vitrais, enquanto guardas de armadura pesada aguardavam a ordem para o massacre.",
+          "imageUrl": "https://lh3.googleusercontent.com/d/1F6HQkjjDNieWICe5daOlS5BlsBY_nXNQ=w1000?authuser=0",
+          "isPublic": true,
+          "allowedMembers": [],
+          "createdAt": 1787312667885
+        },
+        {
+          "id": "lore_lqltge9",
+          "title": "A Tirania das Areias",
+          "category": "Retratos",
+          "quote": "Muralhas de pedra num mar de areia,\nOnde o ouro tilinta e o poder é cruel.\nMil línguas sussurram enquanto o sol queima,\nO deserto curvado a um trono de fel.",
+          "content": "Os diários de mercadores frequentemente descrevem Sinatra, ao sudeste, como uma fortaleza de pedra protegida contra as tempestades do deserto. É um lugar de extremos: palácios opulentos brilham ao sol do meio-dia enquanto milhares de línguas negociam nas ruas labirínticas. O verdadeiro mistério de Sinatra, porém, é o seu governo. O atual governador possui a maior taxa de rejeição dentre todos os líderes, mas já está há muito tempo no poder e é temido como o mais forte de todos os governadores.",
+          "imageUrl": "",
+          "isPublic": true,
+          "allowedMembers": [],
+          "createdAt": 1787312826899
+        },
+        {
+          "id": "lore_s845s9j",
+          "title": "Uma amizade improvável",
+          "category": "Retratos",
+          "quote": "",
+          "content": "Enquanto viajavam no barco, Thofinn resoluto, se debruça sobre a proa para acompanhar a viagem no mar.\nEle não se sentia muito bem, não está acostumado com o balanço das ondas, sempre foi alguém mais terreno.\nA única vez que viajara de barco foi quando precisou sair de Ravenkhar para tentar uma vida melhor em Vanaheim, o que não adiantou muito, estranhamento o destino parece o empurrar de volta para sua terra natal.\nMoira, se aproxima dele, parou ao seu lado. Ela não disse nada a princípio, apenas acompanhou o olhar do rapaz em direção ao horizonte escuro. Com a naturalidade de quem já cuidou de muitos feridos e corações partidos, ela estendeu uma pequena caneca de barro que exalava um vapor suave.\n— Beba devagar — a voz de Moira era macia, carregando um tom de repreensão gentil que aquecia a alma. — É uma infusão de gengibre e casca de limão. Vai acalmar a tempestade que está acontecendo no seu estômago.\n\nThofinn hesitou, mas aceitou a caneca. O calor do barro contrastava com o frio do mar.\n\n— O mar não respeita a força dos nossos braços, não é? — ela continuou, pousando uma mão calejada, porém quente, no ombro tenso de Thofinn. Seu toque era firme, ancorando-o na realidade e aliviando a tontura. — Você está tenso, lutando contra o movimento do navio. O truque não é resistir às ondas, querido, é deixar que elas carreguem você.\n\nMoira apertou o ombro dele de leve, seus olhos transmitindo uma compreensão profunda. Ela parecia enxergar muito além do enjoo marítimo.",
+          "imageUrl": "",
+          "isPublic": false,
+          "allowedMembers": [
+            "user_0bhp2ga3msl1uk6h"
+          ],
+          "createdAt": 1787317247308
+        },
+        {
+          "id": "lore_8r886x3",
+          "title": "A Guerra das Raízes Negras",
+          "category": "Retratos",
+          "quote": "",
+          "content": "Séculos atrás, nos primórdios da desbravação da Rota Mercantil Norte, a ambição de Nazir acendeu a faísca de uma guerra impiedosa. Na ânsia de expandir suas já vastas fronteiras agrícolas, as forças da nação marcharam para além de seus limites, adentrando as sombras da temida Floresta dos Sussurros Brancos. O som dos machados ecoou como um sacrilégio absoluto quando lenhadores e batedores começaram a derrubar bosques centenários para abrir espaço para novos pastos. Aquela não era apenas uma invasão territorial, mas uma ofensa espiritual que profanou as terras mais ancestrais e intocadas de Ravenkhar.\n\nA resposta a essa transgressão foi rápida e banhada em sangue. O longevo governante de Ravenkhar, conhecendo cada segredo oculto sob a folhagem de seu território, recusou-se a travar uma guerra aberta nas planícies. Em vez disso, ele liderou uma campanha implacável de emboscadas brutais. A própria natureza sombria da região ergueu-se como a maior aliada dos defensores. A névoa densa e enganosa do Pântano das Raízes Negras tornou-se um labirinto mortal, engolindo batalhões inteiros das tropas de Nazir. Despreparados para o terreno traiçoeiro, os invasores viram suas pesadas e orgulhosas armaduras tornarem-se âncoras de sua própria ruína, afundando-os na lama implacável enquanto os guerreiros de Ravenkhar atacavam pelas sombras.\n\nCom as perdas se acumulando na escuridão do pântano, a carnificina só teve fim quando o custo do avanço se tornou insustentável, forçando ambos os lados à mesa de negociação. O resultado do derramamento de sangue foi um tratado amargo e carregado de ressentimentos mudos. O acordo selado garantiu a Ravenkhar a soberania definitiva sobre a floresta, protegendo suas árvores ancestrais. O preço dessa vitória, contudo, revelou-se uma armadilha a longo prazo: as terras sombrias e preservadas não eram capazes de gerar sustento suficiente para o povo. Para sobreviver aos invernos rigorosos, a orgulhosa Ravenkhar viu-se forçada a depender vitalmente das exportações de alimentos cultivados nos campos da própria inimiga, Nazir. Assim, sobre os ossos dos soldados engolidos pela lama, nasceu a atual e tensa interdependência comercial entre as duas maiores províncias, uma paz frágil mantida pelo medo da fome e pelas sombras do passado.",
+          "imageUrl": "https://i0.wp.com/pocilga.com.br/wp-content/uploads/2016/07/Destaque-GoT-RPG.jpg?fit=800%2C533&ssl=1",
+          "isPublic": true,
+          "allowedMembers": [],
+          "createdAt": 1787320850650
+        },
+        {
+          "id": "lore_ykt11ie",
+          "title": "O Grande Clarão",
+          "category": "Retratos",
+          "quote": "",
+          "content": "Antes mesmo que os governantes atuais traçassem suas fronteiras e erguessem suas fortalezas, o mundo experimentou uma ruptura que dividiu a história em um \"antes\" e um \"depois\". Em um dia que começou como qualquer outro, os céus sobre os continentes rasgaram-se em um fenômeno conhecido apenas como O Grande Clarão. Por uma fração de segundo que pareceu esticar-se pela eternidade, uma luz intensa, abrasadora e antinatural engolfou toda a terra. Textos apócrifos descrevem que a própria natureza do tempo pareceu fraturar naquele instante; há relatos de relógios parando, estrelas mudando de posição no céu noturno e ecos de eventos de eras passadas e futuras se sobrepondo em alucinações coletivas.\n\nQuando a luz cegante finalmente se dissipou, a geografia e a própria realidade do mundo haviam sido reescritas. Continentes inteiros haviam se deslocado, montanhas foram erguidas do nada e mares invadiram antigas planícies, isolando ilhas como Vanaheim do restante das terras firmes. A magia, que antes fluía de forma mansa e previsível, tornou-se algo selvagem, atada às novas regras dessa realidade recém-tecida. Antigos impérios colapsaram em ruínas na mesma noite, e o conhecimento acumulado por séculos virou cinzas. O Grande Clarão forçou a humanidade a recomeçar em um mundo estranho e hostil, deixando para trás apenas a certeza de que forças cósmicas muito maiores do que qualquer rei ou exército poderiam, num piscar de olhos, apagar a existência.",
+          "imageUrl": "https://lh3.googleusercontent.com/d/1ix1gXfDnZ1UQkQm6K9R_OtKascuOzChW=w1000?authuser=0",
+          "isPublic": true,
+          "allowedMembers": [],
+          "createdAt": 1787322722876
+        },
+        {
+          "id": "lore_n8y8n7w",
+          "title": "Seria um surto?",
+          "category": "Retratos",
+          "quote": "O mar do norte golpeava o casco do navio com um ritmo constante, mas a perturbação que atingiu Kael não veio das ondas.",
+          "content": "O parasita alojado em seu sistema nervoso, que normalmente operava como um arquivo silencioso e organizado de vozes e memórias, sofreu um espasmo violento. Kael estava encostado na amurada, observando o horizonte cinzento, quando as projeções mentais ao seu redor começaram a falhar. Um velho cartógrafo que o parasita usava para lhe explicar as correntes de Vanaheim silenciou abruptamente, sua imagem tremeluzindo como fumaça ao vento.\n\nEntão, a projeção de Lysa apareceu. Mas ela não sorriu, nem usou a voz mansa que a criatura costumava emular para acalmá-lo. A imagem da irmã caminhou até a beira do barco, ergueu o rosto para um céu que de repente parecia opressivo e artificial, e abriu a boca. Nenhum som saiu.\n\nKael fechou os olhos, tentando forçar o organismo à submissão por meio de sua disciplina monástica, mas a simbiose funcionou contra ele. O parasita não estava atacando; estava reagindo. Estava captando uma ressonância distante.\n\nA visão atingiu a mente de Kael como uma maré de óleo negro.\n\nNão havia imagens claras, apenas conceitos e sensações esmagadoras. Ele sentiu o gosto de identidades sendo devoradas. Não uma de cada vez, como o seu parasita fazia para preservar a memória, mas aos milhares, simultaneamente, diluídas e apagadas em um oceano faminto. Ele viu sombras disformes caminhando em uníssono, esvaziadas de vontade, unidas por grossas fibras invisíveis que despencavam de um nada absoluto, manipulando seus membros como carne morta.\n\nJunto com a sensação sufocante de uma mente vasta demais para ser compreendida, veio o som. Um rangido pesado, metálico e frio, como o abrir de um cofre gigantesco feito de um material que engolia a luz. Havia buracos perfeitos nesse metal. Espaços vazios aguardando sacrifícios geométricos. O tato fantasma de um globo ocular sendo arrancado da própria face espalhou-se pelo rosto de Kael — não acompanhado de dor, mas da estranha e terrível sensação de uma chave fria girando em uma fechadura antiga.\n\nA vastidão daquela presença procurava algo. Ela arranhava a barreira do mundo, cega, precisando desesperadamente de mãos que pertencessem a esta terra para mover o metal.\n\nQuando Kael abriu os olhos, ofegante, o vento úmido de Vanaheim bateu em seu rosto. O som metálico desapareceu, substituído pelo ranger da madeira do navio. A projeção de Lysa havia sumido.\n\nEle tateou a própria nuca. O parasita dentro dele, que antes consumira sua família sem hesitar, estava agora retraído no ponto mais profundo de seu sistema nervoso. Kael percebeu, com um fascínio distante e gélido, que o organismo não estava confuso. Pela primeira vez desde que se fundiram, a criatura estava exalando puro terror instintivo diante de algo que fazia sua própria natureza devoradora parecer minúscula.",
+          "imageUrl": "",
+          "isPublic": false,
+          "allowedMembers": [
+            "user_gd68ua63msnua1nb"
+          ],
+          "createdAt": 1787323486354
+        },
+        {
+          "id": "lore_sfbzl6r",
+          "title": "O Eco das Lareiras no Mar Setentrional",
+          "category": "Retratos",
+          "quote": "",
+          "content": "O sol começava a ceder seu espaço no horizonte, tingindo as águas revoltas do Mar Setentrional com tons de cobre e ouro. Para muitos no navio, o fim de tarde no oceano trazia apenas o frio cortante e o balanço enjoativo, mas para Amélia, aquele era um momento quase sagrado.\n\nAfastada da agitação dos marinheiros, ela encontrou um caixote vazio perto da popa e sentou-se, cruzando as pernas. O vento bagunçava seus cabelos, mas seus olhos, sempre curiosos e analíticos, não perdiam um detalhe sequer: a forma como a madeira do navio rangia, o padrão de voo das aves costeiras que iam ficando para trás, e a silhueta das imensas cachoeiras de Vanaheim sumindo na bruma. O mar não a assustava; para uma historiadora, o oceano era apenas um grande arquivo líquido cobrindo os segredos do mundo.\n\nSeus dedos, que conheciam tão bem a textura da terra e o caule de milhares de plantas, tocaram suavemente o colar em seu pescoço. O amuleto que pertencera à sua avó Lúcia irradiou um calor reconfortante contra sua pele. Fechando os olhos por um breve instante, o som das ondas batendo no casco pareceu se transformar no estalar das brasas. A umidade do mar deu lugar ao cheiro de chá de ervas, e ela quase pôde ouvir a voz doce e frágil da velha senhora, contando lendas perto do fogo.\n\nMas Lúcia havia partido, engolida por um mal que as lendas não puderam impedir. Amélia apertou o amuleto, abrindo os olhos com renovada determinação.\n\nNo colo da jovem historiadora repousava um diário de capa de couro espessa, preenchido com suas próprias transcrições minuciosas. Eram os frutos de seus dias enfurnada na vasta biblioteca das irmãs Anne e Zarah. Ela virou a página, parando em um trecho que falava sobre antigas afecções pulmonares.\n\nAo lado do texto médico, Amélia havia desenhado o esboço de uma estranha alga de folhas pálidas. Segundo os registros mais antigos, aquela planta costumava crescer nas fundações de pedra negra construídas pelos tiranos conhecidos como os Reis de Ferro. Quando o maremoto engoliu a capital milenar de Vanaheim, a planta afundou junto com a dinastia. Mas, e se as correntes marítimas tivessem levado suas sementes para o continente leste? E se os mesmos extratos botânicos que os antigos usavam fossem a peça que faltava para entender a doença que levou sua avó?\n\nSorrindo sutilmente diante da nova hipótese, ela ajeitou a pequena adaga que ganhara das irmãs em seu cinto. Sentia-se segura. O passado estava cheio de tragédias e doenças inexplicáveis, mas Amélia sabia que as respostas estavam lá fora, escondidas sob ruínas, nas raízes de uma floresta intocada ou nas páginas de um livro esquecido. Ela só precisava observá-las.",
+          "imageUrl": "",
+          "isPublic": false,
+          "allowedMembers": [
+            "user_gybabf5mmskx7a24"
+          ],
+          "createdAt": 1787323775372
+        },
+        {
+          "id": "lore_7u8rzk5",
+          "title": "O Colar",
+          "category": "Retratos",
+          "quote": "Eu me lembro desse simbolo...",
+          "content": "Os homens não o usavam por fora da camisa, como um adorno, mas sempre escondido contra o peito, sob pesadas camadas de lã e couro.\n\nCheiro de serragem úmida e fumaça de turfa... Foi em Ravenkhar, durante o inverno. Um lenhador no mercado, ou talvez um mercador de peles? A lembrança escorrega.\n\nO vento frio abriu a gola da camisa de lã dele por um segundo. Havia um cordão de couro sujo grudado no suor da pele. E o disco de madeira. Não parecia um amuleto de proteção, não pela forma como ele o empurrou de volta para dentro da roupa, desesperado, como se escondesse uma ferida. O que me marcou não foi o colar, foram os olhos dele... opacos, tranquilos demais, como se não estivesse realmente ali.",
+          "imageUrl": "https://lh3.googleusercontent.com/d/13T69R_ij895MlAs5QvrTMagZf8jScXOw=w1000?authuser=0",
+          "isPublic": false,
+          "allowedMembers": [
+            "user_gd68ua63msnua1nb"
+          ],
+          "createdAt": 1787346698494
+        },
+        {
+          "id": "lore_dz23fe1",
+          "title": "O colar",
+          "category": "Retratos",
+          "quote": "Eu já vi isso antes...",
+          "content": "O som da faca raspando contra a madeira dura... Foi em um cais isolado no Rio Serpentino, nas fronteiras de Ravenkhar.\n\nLembro de um velho barqueiro que costumava trazer suprimentos de Nazir. Ele era um homem barulhento, de riso fácil e que vivia praguejando contra o vento frio.\n\nNaquela mesma noite, eu o observei de longe. Ele estava sentado na beira da água, completamente imóvel, exceto pelas mãos. Entalhava um disco de madeira com obsessão. Primeiro o contorno perfeito. Depois, o 'X', riscado com tanta força que quase partia a peça ao meio.",
+          "imageUrl": "https://lh3.googleusercontent.com/d/13T69R_ij895MlAs5QvrTMagZf8jScXOw=w1000?authuser=0",
+          "isPublic": false,
+          "allowedMembers": [
+            "user_0bhp2ga3msl1uk6h"
+          ],
+          "createdAt": 1787346777632
+        },
+        {
+          "id": "lore_g0vnw60",
+          "title": "Sinto sua falta - Ode ao pensamento",
+          "category": "Retratos",
+          "quote": "Eu vou te eternizar em mim... Mirando além do fim",
+          "content": "Minha querida avó\n\nNesse momento sigo em direção a um novo continente, um lugar em que nunca estive e que não sei o que me espera.\n\nSinto sua falta.\n\nCarrego comigo esperanças de encontrar aquilo que tanto procurei. \n\nEu sei que estou a abeira de um abismo aqui, mas alguém, sim pode ver? Se eu já morri aqui?\n\nNão permitirei que sua lembrança se vá, estou caminhando, rumo ao inevitável, destino.",
+          "imageUrl": "",
+          "isPublic": false,
+          "allowedMembers": [
+            "user_gybabf5mmskx7a24"
+          ],
+          "createdAt": 1787422063083
+        },
+        {
+          "id": "lore_glj5l48",
+          "title": "Laços de vingança - Ode ao pensamento",
+          "category": "Retratos",
+          "quote": "ò deus dos homens guerreiros, me digam onde está a honra...",
+          "content": "Óh deus dos homens do oeste\nÓh filho que morreu sem lutar...\nSerá o amor um caminho\nOu apenas fraqueza?\n\nÓh Deus do Céu, se a ti pertence a vingança então usa-me como tua lança pra alcançar.\n\nCobrirei de cinzas seu Altar",
+          "imageUrl": "",
+          "isPublic": false,
+          "allowedMembers": [
+            "user_0bhp2ga3msl1uk6h"
+          ],
+          "createdAt": 1787422243676
+        },
+        {
+          "id": "lore_rpm7j8u",
+          "title": "Laços de redenção - Ode ao pensamento",
+          "category": "Retratos",
+          "quote": "Eu sei, eu sei\nO que mais tenho agora é tempo\nPra reconhecer o grande peso  \nQue carrego aqui ...",
+          "content": "Não estou só, não,  você sempre foi meu farol\n\nMas eu, sou igual os monstros que destruíram sua vida, eu, uma alma perdida, uma casca vazia.\n\nSe um dia lâminas falavam... hoje eu me calo por compaixão\n\nEu renasci do fogo e das águas \nJá não tenho mais tudo que um dia me pertenceu\n\nLonge no oeste, há uma voz além do mar, que me convida a voltar\n\nFui o sol que te fez sombra...\n\nQuem é feito do fogo pelo fogo não teme passar ",
+          "imageUrl": "",
+          "isPublic": false,
+          "allowedMembers": [
+            "user_gd68ua63msnua1nb"
+          ],
+          "createdAt": 1787422634503
+        }
+      ]
+    ]
+  ],
+  "campaignState": [
+    [
+      "camp_o5slw0ptmsjhu84l",
+      {
+        "gallery": [
+          {
+            "id": "s08u9n",
+            "name": "Colar de Ravenkhar",
+            "url": "http://zipline.sinapselabs.com.br/u/aTDDKv.png",
+            "isPublic": true
+          },
+          {
+            "id": "7qv30e",
+            "name": "Quarto da estalagem",
+            "url": "http://zipline.sinapselabs.com.br/u/KfPsCm.webp",
+            "isPublic": true
+          },
+          {
+            "id": "7sdb3k",
+            "name": "Porto de Vanaheim",
+            "url": "http://zipline.sinapselabs.com.br/u/U4VNiG.png",
+            "isPublic": true
+          },
+          {
+            "id": "zxq7ta",
+            "name": "Fachada da estalagem",
+            "url": "http://zipline.sinapselabs.com.br/u/vZ8kcs.webp",
+            "isPublic": true
+          },
+          {
+            "id": "ig0dx",
+            "name": "Lojinha da Moira",
+            "url": "http://zipline.sinapselabs.com.br/u/xOmAmt.png",
+            "isPublic": true
+          },
+          {
+            "id": "2mdpbn",
+            "name": "Moira",
+            "url": "http://zipline.sinapselabs.com.br/u/6n7Tex.png",
+            "isPublic": true
+          },
+          {
+            "id": "y220er",
+            "name": "Morte da moira",
+            "url": "https://lh3.googleusercontent.com/d/1ZPNs9yw09N-3LQlQPO8cCwfz8lcLfxL-=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "84xvpn",
+            "name": "Darin",
+            "url": "https://lh3.googleusercontent.com/d/1jW7QcoUEBECfyHsQYvvZ0vC8pGo52VAI=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "vwjshp",
+            "name": "Sonho amelia horror",
+            "url": "https://lh3.googleusercontent.com/d/1FZCkULEp3qTLdVNH8hrFO8CWnFMFpIJZ=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "y3ex7",
+            "name": "Sonho amelia",
+            "url": "https://lh3.googleusercontent.com/d/1DJm3b9Gggy0OZuMMMUrctIc391UFayG1=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "lxibs",
+            "name": "Tio do thorfin",
+            "url": "https://lh3.googleusercontent.com/d/1-x-m3UsSIdZ8-qvNN28Q5nS7yZ5Ck9CA=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "93519o",
+            "name": "Cabana sonho thorfin",
+            "url": "https://lh3.googleusercontent.com/d/1eTIWniEGZes12sIQLu5V-TlJBldXTmzx=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "u959l",
+            "name": "Passagem para Darin",
+            "url": "http://zipline.sinapselabs.com.br/u/UU5OVn.jpg",
+            "isPublic": true
+          },
+          {
+            "id": "dp43np",
+            "name": "Floresta",
+            "url": "https://natureconservancy-h.assetsadobe.com/is/image/content/dam/tnc/nature/en/photos/brazil/florestas-thiagocampi.jpg?crop=0%2C1000%2C4000%2C4000&wid=800&hei=800&scl=5.0",
+            "isPublic": true
+          },
+          {
+            "id": "evob8b",
+            "name": "Passagem do rio",
+            "url": "https://i.pinimg.com/736x/90/90/43/909043f27d11bca888d0433da7a01943.jpg",
+            "isPublic": true
+          },
+          {
+            "id": "bwek7u",
+            "name": "Georgie",
+            "url": "https://lh3.googleusercontent.com/d/1HNn5dkVRx2rz5uhCE00y5xv0Dl7AIgNl=w1000?authuser=0",
+            "isPublic": true
+          },
+          {
+            "id": "24bad",
+            "name": "kael vendo os companheiros",
+            "url": "https://lh3.googleusercontent.com/d/1JHRfYWU0OgD3Q4iYHLKgEpK2YgvdXpZC=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "bpvc5t",
+            "name": "Miguel e Nexidium",
+            "url": "https://lh3.googleusercontent.com/d/15NeVEqDREELf0YwVksfWyhTk5s5-kv1c=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "lusdmq",
+            "name": "Interior de Darin",
+            "url": "https://lh3.googleusercontent.com/d/1uI1RTvUFxXzQehO6BK3K8sRmOlepjHbY=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "4tp6ku",
+            "name": "Gorila praga",
+            "url": "https://lh3.googleusercontent.com/d/1vGrqKJVJjMGW-EcH2zRSSKDq7i6XFeSc=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "epy7ff",
+            "name": "Entrando na masmorra",
+            "url": "https://lh3.googleusercontent.com/d/1MCF5aXJEaw_qXJD1mTvK8IMknTe695uf=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "cotz7f",
+            "name": "Corredor da prisão",
+            "url": "https://lh3.googleusercontent.com/d/1eBZC2Z50XW3o3vQ8c3X-PlPVBR-kiTJV=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "hdk4z",
+            "name": "Sala do altar",
+            "url": "https://lh3.googleusercontent.com/d/1N7adw7FIc_V_uqQw51HhVAkTbLm0kTUt=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "rnuty",
+            "name": "Prisioneiro",
+            "url": "https://lh3.googleusercontent.com/d/1TN8goH_4Shzolakno5RwPAIosGNcaWc0=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "tf7re",
+            "name": "Marca Vampirica",
+            "url": "https://lh3.googleusercontent.com/d/1dLlvMN9jH6NacHTibLVvnGcsa4PasZ0j=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "sko6kw",
+            "name": "Vampiro gigante",
+            "url": "https://lh3.googleusercontent.com/d/1s23iH6SOvk5JGnRo6XqjTR4ULscTYmBf=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "xwweee",
+            "name": "2 corvos",
+            "url": "https://lh3.googleusercontent.com/d/1ByvSF6aXs74p1c-cmQF-HllfT_rNKQ6d=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "kn7ppz",
+            "name": "Nexidium",
+            "url": "https://lh3.googleusercontent.com/d/14u73mmq-HfbrxKHMkP3gG87OloK6AZI8=w1000?authuser=0",
+            "isPublic": false
+          },
+          {
+            "id": "97kyn5",
+            "name": "Exorcismo de Miguel",
+            "url": "https://lh3.googleusercontent.com/d/1aQxGwjMMmtwJxGTRNX68qWfAqeLqjRZk=w1000?authuser=0",
+            "isPublic": false
+          }
+        ],
+        "lore": [
+          {
+            "id": "lore_5938rji",
+            "title": "A fé dos 7",
+            "category": "Retratos",
+            "quote": "\"E quando o Vazio ameaçou engolir a terra, a Luz Primordial estilhaçou-se em sete.\nDa primeira lágrima de compaixão, nasceu a Mãe, para curar as feridas dos mortais.\nDa retidão inabalável, ergueu-se o Pai, com a balança que pesa os pecados dos reis.\nDa fúria flamejante, forjou-se o Guerreiro, empunhando a espada que divide os céus.\nDa esperança intocada, sorriu a Donzela, sussurrando promessas de alvoradas.\nDo suor da criação, o Ferreiro bateu seu martelo, dando forma à pedra e ao aço.\nDa memória do tempo, a Velha acendeu sua lanterna, guiando os perdidos na névoa.\nMas da sombra que a própria Luz projetou, surgiu o Desconhecido... aquele cujo rosto é o silêncio, a porta de ébano que se fecha no fim de todas as canções.\"",
+            "content": "A maior ilusão dos forasteiros é olhar para a Fé dos Sete e enxergar um monólito inabalável. Na verdade, a religião é como um grande vitral estilhaçado: todos os crentes olham para a mesma luz divina, mas cada cultura a enxerga através de um caco de vidro de cor e formato diferentes.\n\nNão existe um \"Sumo Sacerdote\" global ou um conselho unificado que dite as regras para o mundo inteiro. A Fé funciona através da interpretação regional, adaptando-se às necessidades de quem reza. Embora o dogma central de que O Divino possui sete faces seja universal, a forma como essas faces são adoradas varia drasticamente, gerando seitas, cismas e até guerras santas.\n\nAs Variações do Culto\nA falta de uma liderança unificada fez com que a religião se fragmentasse em diferentes vertentes geográficas:\n\nA Ortodoxia das Capitais: Nas grandes cidades e impérios ricos, os Sete são adorados como uma entidade única e indivisível. Os templos são imensas construções de sete lados, chamados de Septos, com altares perfeitamente simétricos. A magia e as bênçãos aqui são canalizadas através de rituais pomposos, corais de centenas de vozes e a queima de incensos caros. Para eles, focar em um único deus e ignorar os outros é um pecado grave.\n\nOs Filhos da Forja e da Espada: Em regiões militarizadas, ermos hostis ou reinos focados em conquista, a população praticamente ignora figuras como a Donzela ou a Mãe. Lá, os altares pertencem quase exclusivamente ao Guerreiro e ao Ferreiro. A fé funciona através da ação e do sacrifício de sangue e suor. Clérigos destas terras usam armaduras pesadas em vez de túnicas, e suas orações são o som de espadas batendo em escudos.\n\nOs Cultos Crepusculares: Em pântanos isolados, florestas antigas e ilhas distantes, a adoração assume um tom místico e sombrio, focado na Velha e no Desconhecido. Não há grandes templos, apenas totens de madeira enegrecida e rodas de pedra. A magia divina dessas vertentes é mais crua, ligada à necromancia suave, presságios, leitura de entranhas e feitiços de proteção. Eles são frequentemente chamados de hereges pelos sacerdotes das cidades.",
+            "imageUrl": "https://st2.depositphotos.com/5284880/11244/v/450/depositphotos_112447498-stock-illustration-golden-glittering-symbol-in-seven.jpg",
+            "isPublic": true,
+            "allowedMembers": [],
+            "createdAt": 1787312231837
+          },
+          {
+            "id": "lore_egg0vm6",
+            "title": "O Desafio Eterno",
+            "category": "Retratos",
+            "quote": "Nas águas do sul, a espada não dorme,\nA ruína se ergue na praia de dor.\nKefir marcha cega, com fúria enorme,\nAlimentando as chamas de antigo rancor.\n\nE Narmer responde com sangue e com aço,\nPresa na roda da guerra sem fim.\nDois reinos quebrados no mesmo compasso,\nOnde a paz é um sonho que o tempo deu fim.",
+            "content": "Os bardos do continente evitam cantar sobre o sudoeste, pois as ilhas de Kefir e Narmer permanecem mergulhadas em uma guerra eterna. Seus governantes disputam territórios e recursos há séculos, o que alimenta um ciclo interminável de violência e destruição nas praias escarpadas. Um dos episódios mais marcantes dessa rivalidade foi imortalizado em pinturas: o dia em que um comandante invadiu a grande sala do trono inimiga, apontando sua lâmina diretamente para a rainha governante sob a luz difusa dos vitrais, enquanto guardas de armadura pesada aguardavam a ordem para o massacre.",
+            "imageUrl": "https://lh3.googleusercontent.com/d/1F6HQkjjDNieWICe5daOlS5BlsBY_nXNQ=w1000?authuser=0",
+            "isPublic": true,
+            "allowedMembers": [],
+            "createdAt": 1787312667885
+          },
+          {
+            "id": "lore_lqltge9",
+            "title": "A Tirania das Areias",
+            "category": "Retratos",
+            "quote": "Muralhas de pedra num mar de areia,\nOnde o ouro tilinta e o poder é cruel.\nMil línguas sussurram enquanto o sol queima,\nO deserto curvado a um trono de fel.",
+            "content": "Os diários de mercadores frequentemente descrevem Sinatra, ao sudeste, como uma fortaleza de pedra protegida contra as tempestades do deserto. É um lugar de extremos: palácios opulentos brilham ao sol do meio-dia enquanto milhares de línguas negociam nas ruas labirínticas. O verdadeiro mistério de Sinatra, porém, é o seu governo. O atual governador possui a maior taxa de rejeição dentre todos os líderes, mas já está há muito tempo no poder e é temido como o mais forte de todos os governadores.",
+            "imageUrl": "",
+            "isPublic": true,
+            "allowedMembers": [],
+            "createdAt": 1787312826899
+          },
+          {
+            "id": "lore_s845s9j",
+            "title": "Uma amizade improvável",
+            "category": "Retratos",
+            "quote": "",
+            "content": "Enquanto viajavam no barco, Thofinn resoluto, se debruça sobre a proa para acompanhar a viagem no mar.\nEle não se sentia muito bem, não está acostumado com o balanço das ondas, sempre foi alguém mais terreno.\nA única vez que viajara de barco foi quando precisou sair de Ravenkhar para tentar uma vida melhor em Vanaheim, o que não adiantou muito, estranhamento o destino parece o empurrar de volta para sua terra natal.\nMoira, se aproxima dele, parou ao seu lado. Ela não disse nada a princípio, apenas acompanhou o olhar do rapaz em direção ao horizonte escuro. Com a naturalidade de quem já cuidou de muitos feridos e corações partidos, ela estendeu uma pequena caneca de barro que exalava um vapor suave.\n— Beba devagar — a voz de Moira era macia, carregando um tom de repreensão gentil que aquecia a alma. — É uma infusão de gengibre e casca de limão. Vai acalmar a tempestade que está acontecendo no seu estômago.\n\nThofinn hesitou, mas aceitou a caneca. O calor do barro contrastava com o frio do mar.\n\n— O mar não respeita a força dos nossos braços, não é? — ela continuou, pousando uma mão calejada, porém quente, no ombro tenso de Thofinn. Seu toque era firme, ancorando-o na realidade e aliviando a tontura. — Você está tenso, lutando contra o movimento do navio. O truque não é resistir às ondas, querido, é deixar que elas carreguem você.\n\nMoira apertou o ombro dele de leve, seus olhos transmitindo uma compreensão profunda. Ela parecia enxergar muito além do enjoo marítimo.",
+            "imageUrl": "",
+            "isPublic": false,
+            "allowedMembers": [
+              "user_0bhp2ga3msl1uk6h"
+            ],
+            "createdAt": 1787317247308
+          },
+          {
+            "id": "lore_8r886x3",
+            "title": "A Guerra das Raízes Negras",
+            "category": "Retratos",
+            "quote": "",
+            "content": "Séculos atrás, nos primórdios da desbravação da Rota Mercantil Norte, a ambição de Nazir acendeu a faísca de uma guerra impiedosa. Na ânsia de expandir suas já vastas fronteiras agrícolas, as forças da nação marcharam para além de seus limites, adentrando as sombras da temida Floresta dos Sussurros Brancos. O som dos machados ecoou como um sacrilégio absoluto quando lenhadores e batedores começaram a derrubar bosques centenários para abrir espaço para novos pastos. Aquela não era apenas uma invasão territorial, mas uma ofensa espiritual que profanou as terras mais ancestrais e intocadas de Ravenkhar.\n\nA resposta a essa transgressão foi rápida e banhada em sangue. O longevo governante de Ravenkhar, conhecendo cada segredo oculto sob a folhagem de seu território, recusou-se a travar uma guerra aberta nas planícies. Em vez disso, ele liderou uma campanha implacável de emboscadas brutais. A própria natureza sombria da região ergueu-se como a maior aliada dos defensores. A névoa densa e enganosa do Pântano das Raízes Negras tornou-se um labirinto mortal, engolindo batalhões inteiros das tropas de Nazir. Despreparados para o terreno traiçoeiro, os invasores viram suas pesadas e orgulhosas armaduras tornarem-se âncoras de sua própria ruína, afundando-os na lama implacável enquanto os guerreiros de Ravenkhar atacavam pelas sombras.\n\nCom as perdas se acumulando na escuridão do pântano, a carnificina só teve fim quando o custo do avanço se tornou insustentável, forçando ambos os lados à mesa de negociação. O resultado do derramamento de sangue foi um tratado amargo e carregado de ressentimentos mudos. O acordo selado garantiu a Ravenkhar a soberania definitiva sobre a floresta, protegendo suas árvores ancestrais. O preço dessa vitória, contudo, revelou-se uma armadilha a longo prazo: as terras sombrias e preservadas não eram capazes de gerar sustento suficiente para o povo. Para sobreviver aos invernos rigorosos, a orgulhosa Ravenkhar viu-se forçada a depender vitalmente das exportações de alimentos cultivados nos campos da própria inimiga, Nazir. Assim, sobre os ossos dos soldados engolidos pela lama, nasceu a atual e tensa interdependência comercial entre as duas maiores províncias, uma paz frágil mantida pelo medo da fome e pelas sombras do passado.",
+            "imageUrl": "https://i0.wp.com/pocilga.com.br/wp-content/uploads/2016/07/Destaque-GoT-RPG.jpg?fit=800%2C533&ssl=1",
+            "isPublic": true,
+            "allowedMembers": [],
+            "createdAt": 1787320850650
+          },
+          {
+            "id": "lore_ykt11ie",
+            "title": "O Grande Clarão",
+            "category": "Retratos",
+            "quote": "",
+            "content": "Antes mesmo que os governantes atuais traçassem suas fronteiras e erguessem suas fortalezas, o mundo experimentou uma ruptura que dividiu a história em um \"antes\" e um \"depois\". Em um dia que começou como qualquer outro, os céus sobre os continentes rasgaram-se em um fenômeno conhecido apenas como O Grande Clarão. Por uma fração de segundo que pareceu esticar-se pela eternidade, uma luz intensa, abrasadora e antinatural engolfou toda a terra. Textos apócrifos descrevem que a própria natureza do tempo pareceu fraturar naquele instante; há relatos de relógios parando, estrelas mudando de posição no céu noturno e ecos de eventos de eras passadas e futuras se sobrepondo em alucinações coletivas.\n\nQuando a luz cegante finalmente se dissipou, a geografia e a própria realidade do mundo haviam sido reescritas. Continentes inteiros haviam se deslocado, montanhas foram erguidas do nada e mares invadiram antigas planícies, isolando ilhas como Vanaheim do restante das terras firmes. A magia, que antes fluía de forma mansa e previsível, tornou-se algo selvagem, atada às novas regras dessa realidade recém-tecida. Antigos impérios colapsaram em ruínas na mesma noite, e o conhecimento acumulado por séculos virou cinzas. O Grande Clarão forçou a humanidade a recomeçar em um mundo estranho e hostil, deixando para trás apenas a certeza de que forças cósmicas muito maiores do que qualquer rei ou exército poderiam, num piscar de olhos, apagar a existência.",
+            "imageUrl": "https://lh3.googleusercontent.com/d/1ix1gXfDnZ1UQkQm6K9R_OtKascuOzChW=w1000?authuser=0",
+            "isPublic": true,
+            "allowedMembers": [],
+            "createdAt": 1787322722876
+          },
+          {
+            "id": "lore_n8y8n7w",
+            "title": "Seria um surto?",
+            "category": "Retratos",
+            "quote": "O mar do norte golpeava o casco do navio com um ritmo constante, mas a perturbação que atingiu Kael não veio das ondas.",
+            "content": "O parasita alojado em seu sistema nervoso, que normalmente operava como um arquivo silencioso e organizado de vozes e memórias, sofreu um espasmo violento. Kael estava encostado na amurada, observando o horizonte cinzento, quando as projeções mentais ao seu redor começaram a falhar. Um velho cartógrafo que o parasita usava para lhe explicar as correntes de Vanaheim silenciou abruptamente, sua imagem tremeluzindo como fumaça ao vento.\n\nEntão, a projeção de Lysa apareceu. Mas ela não sorriu, nem usou a voz mansa que a criatura costumava emular para acalmá-lo. A imagem da irmã caminhou até a beira do barco, ergueu o rosto para um céu que de repente parecia opressivo e artificial, e abriu a boca. Nenhum som saiu.\n\nKael fechou os olhos, tentando forçar o organismo à submissão por meio de sua disciplina monástica, mas a simbiose funcionou contra ele. O parasita não estava atacando; estava reagindo. Estava captando uma ressonância distante.\n\nA visão atingiu a mente de Kael como uma maré de óleo negro.\n\nNão havia imagens claras, apenas conceitos e sensações esmagadoras. Ele sentiu o gosto de identidades sendo devoradas. Não uma de cada vez, como o seu parasita fazia para preservar a memória, mas aos milhares, simultaneamente, diluídas e apagadas em um oceano faminto. Ele viu sombras disformes caminhando em uníssono, esvaziadas de vontade, unidas por grossas fibras invisíveis que despencavam de um nada absoluto, manipulando seus membros como carne morta.\n\nJunto com a sensação sufocante de uma mente vasta demais para ser compreendida, veio o som. Um rangido pesado, metálico e frio, como o abrir de um cofre gigantesco feito de um material que engolia a luz. Havia buracos perfeitos nesse metal. Espaços vazios aguardando sacrifícios geométricos. O tato fantasma de um globo ocular sendo arrancado da própria face espalhou-se pelo rosto de Kael — não acompanhado de dor, mas da estranha e terrível sensação de uma chave fria girando em uma fechadura antiga.\n\nA vastidão daquela presença procurava algo. Ela arranhava a barreira do mundo, cega, precisando desesperadamente de mãos que pertencessem a esta terra para mover o metal.\n\nQuando Kael abriu os olhos, ofegante, o vento úmido de Vanaheim bateu em seu rosto. O som metálico desapareceu, substituído pelo ranger da madeira do navio. A projeção de Lysa havia sumido.\n\nEle tateou a própria nuca. O parasita dentro dele, que antes consumira sua família sem hesitar, estava agora retraído no ponto mais profundo de seu sistema nervoso. Kael percebeu, com um fascínio distante e gélido, que o organismo não estava confuso. Pela primeira vez desde que se fundiram, a criatura estava exalando puro terror instintivo diante de algo que fazia sua própria natureza devoradora parecer minúscula.",
+            "imageUrl": "",
+            "isPublic": false,
+            "allowedMembers": [
+              "user_gd68ua63msnua1nb"
+            ],
+            "createdAt": 1787323486354
+          },
+          {
+            "id": "lore_sfbzl6r",
+            "title": "O Eco das Lareiras no Mar Setentrional",
+            "category": "Retratos",
+            "quote": "",
+            "content": "O sol começava a ceder seu espaço no horizonte, tingindo as águas revoltas do Mar Setentrional com tons de cobre e ouro. Para muitos no navio, o fim de tarde no oceano trazia apenas o frio cortante e o balanço enjoativo, mas para Amélia, aquele era um momento quase sagrado.\n\nAfastada da agitação dos marinheiros, ela encontrou um caixote vazio perto da popa e sentou-se, cruzando as pernas. O vento bagunçava seus cabelos, mas seus olhos, sempre curiosos e analíticos, não perdiam um detalhe sequer: a forma como a madeira do navio rangia, o padrão de voo das aves costeiras que iam ficando para trás, e a silhueta das imensas cachoeiras de Vanaheim sumindo na bruma. O mar não a assustava; para uma historiadora, o oceano era apenas um grande arquivo líquido cobrindo os segredos do mundo.\n\nSeus dedos, que conheciam tão bem a textura da terra e o caule de milhares de plantas, tocaram suavemente o colar em seu pescoço. O amuleto que pertencera à sua avó Lúcia irradiou um calor reconfortante contra sua pele. Fechando os olhos por um breve instante, o som das ondas batendo no casco pareceu se transformar no estalar das brasas. A umidade do mar deu lugar ao cheiro de chá de ervas, e ela quase pôde ouvir a voz doce e frágil da velha senhora, contando lendas perto do fogo.\n\nMas Lúcia havia partido, engolida por um mal que as lendas não puderam impedir. Amélia apertou o amuleto, abrindo os olhos com renovada determinação.\n\nNo colo da jovem historiadora repousava um diário de capa de couro espessa, preenchido com suas próprias transcrições minuciosas. Eram os frutos de seus dias enfurnada na vasta biblioteca das irmãs Anne e Zarah. Ela virou a página, parando em um trecho que falava sobre antigas afecções pulmonares.\n\nAo lado do texto médico, Amélia havia desenhado o esboço de uma estranha alga de folhas pálidas. Segundo os registros mais antigos, aquela planta costumava crescer nas fundações de pedra negra construídas pelos tiranos conhecidos como os Reis de Ferro. Quando o maremoto engoliu a capital milenar de Vanaheim, a planta afundou junto com a dinastia. Mas, e se as correntes marítimas tivessem levado suas sementes para o continente leste? E se os mesmos extratos botânicos que os antigos usavam fossem a peça que faltava para entender a doença que levou sua avó?\n\nSorrindo sutilmente diante da nova hipótese, ela ajeitou a pequena adaga que ganhara das irmãs em seu cinto. Sentia-se segura. O passado estava cheio de tragédias e doenças inexplicáveis, mas Amélia sabia que as respostas estavam lá fora, escondidas sob ruínas, nas raízes de uma floresta intocada ou nas páginas de um livro esquecido. Ela só precisava observá-las.",
+            "imageUrl": "",
+            "isPublic": false,
+            "allowedMembers": [
+              "user_gybabf5mmskx7a24"
+            ],
+            "createdAt": 1787323775372
+          },
+          {
+            "id": "lore_7u8rzk5",
+            "title": "O Colar",
+            "category": "Retratos",
+            "quote": "Eu me lembro desse simbolo...",
+            "content": "Os homens não o usavam por fora da camisa, como um adorno, mas sempre escondido contra o peito, sob pesadas camadas de lã e couro.\n\nCheiro de serragem úmida e fumaça de turfa... Foi em Ravenkhar, durante o inverno. Um lenhador no mercado, ou talvez um mercador de peles? A lembrança escorrega.\n\nO vento frio abriu a gola da camisa de lã dele por um segundo. Havia um cordão de couro sujo grudado no suor da pele. E o disco de madeira. Não parecia um amuleto de proteção, não pela forma como ele o empurrou de volta para dentro da roupa, desesperado, como se escondesse uma ferida. O que me marcou não foi o colar, foram os olhos dele... opacos, tranquilos demais, como se não estivesse realmente ali.",
+            "imageUrl": "https://lh3.googleusercontent.com/d/13T69R_ij895MlAs5QvrTMagZf8jScXOw=w1000?authuser=0",
+            "isPublic": false,
+            "allowedMembers": [
+              "user_gd68ua63msnua1nb"
+            ],
+            "createdAt": 1787346698494
+          },
+          {
+            "id": "lore_dz23fe1",
+            "title": "O colar",
+            "category": "Retratos",
+            "quote": "Eu já vi isso antes...",
+            "content": "O som da faca raspando contra a madeira dura... Foi em um cais isolado no Rio Serpentino, nas fronteiras de Ravenkhar.\n\nLembro de um velho barqueiro que costumava trazer suprimentos de Nazir. Ele era um homem barulhento, de riso fácil e que vivia praguejando contra o vento frio.\n\nNaquela mesma noite, eu o observei de longe. Ele estava sentado na beira da água, completamente imóvel, exceto pelas mãos. Entalhava um disco de madeira com obsessão. Primeiro o contorno perfeito. Depois, o 'X', riscado com tanta força que quase partia a peça ao meio.",
+            "imageUrl": "https://lh3.googleusercontent.com/d/13T69R_ij895MlAs5QvrTMagZf8jScXOw=w1000?authuser=0",
+            "isPublic": false,
+            "allowedMembers": [
+              "user_0bhp2ga3msl1uk6h"
+            ],
+            "createdAt": 1787346777632
+          },
+          {
+            "id": "lore_g0vnw60",
+            "title": "Sinto sua falta - Ode ao pensamento",
+            "category": "Retratos",
+            "quote": "Eu vou te eternizar em mim... Mirando além do fim",
+            "content": "Minha querida avó\n\nNesse momento sigo em direção a um novo continente, um lugar em que nunca estive e que não sei o que me espera.\n\nSinto sua falta.\n\nCarrego comigo esperanças de encontrar aquilo que tanto procurei. \n\nEu sei que estou a abeira de um abismo aqui, mas alguém, sim pode ver? Se eu já morri aqui?\n\nNão permitirei que sua lembrança se vá, estou caminhando, rumo ao inevitável, destino.",
+            "imageUrl": "",
+            "isPublic": false,
+            "allowedMembers": [
+              "user_gybabf5mmskx7a24"
+            ],
+            "createdAt": 1787422063083
+          },
+          {
+            "id": "lore_glj5l48",
+            "title": "Laços de vingança - Ode ao pensamento",
+            "category": "Retratos",
+            "quote": "ò deus dos homens guerreiros, me digam onde está a honra...",
+            "content": "Óh deus dos homens do oeste\nÓh filho que morreu sem lutar...\nSerá o amor um caminho\nOu apenas fraqueza?\n\nÓh Deus do Céu, se a ti pertence a vingança então usa-me como tua lança pra alcançar.\n\nCobrirei de cinzas seu Altar",
+            "imageUrl": "",
+            "isPublic": false,
+            "allowedMembers": [
+              "user_0bhp2ga3msl1uk6h"
+            ],
+            "createdAt": 1787422243676
+          },
+          {
+            "id": "lore_rpm7j8u",
+            "title": "Laços de redenção - Ode ao pensamento",
+            "category": "Retratos",
+            "quote": "Eu sei, eu sei\nO que mais tenho agora é tempo\nPra reconhecer o grande peso  \nQue carrego aqui ...",
+            "content": "Não estou só, não,  você sempre foi meu farol\n\nMas eu, sou igual os monstros que destruíram sua vida, eu, uma alma perdida, uma casca vazia.\n\nSe um dia lâminas falavam... hoje eu me calo por compaixão\n\nEu renasci do fogo e das águas \nJá não tenho mais tudo que um dia me pertenceu\n\nLonge no oeste, há uma voz além do mar, que me convida a voltar\n\nFui o sol que te fez sombra...\n\nQuem é feito do fogo pelo fogo não teme passar ",
+            "imageUrl": "",
+            "isPublic": false,
+            "allowedMembers": [
+              "user_gd68ua63msnua1nb"
+            ],
+            "createdAt": 1787422634503
+          }
+        ],
+        "cutscenes": [
+          {
+            "id": "audfmb",
+            "name": "Capitulo 1 - O sonho",
+            "scenes": [
+              {
+                "id": "b51fxr",
+                "type": "text",
+                "content": "Vanaheim, as ilhas do norte, cidade de river falls..."
+              },
+              {
+                "id": "kqpr2i",
+                "type": "video",
+                "content": "https://youtu.be/pNsXwrIS1U0"
+              }
+            ]
+          },
+          {
+            "id": "pi67o",
+            "name": "Capitulo 2 - Viagem Maritimo",
+            "scenes": [
+              {
+                "id": "gmbkx",
+                "type": "video",
+                "content": "https://youtu.be/Y450A7VJYhs"
+              }
+            ]
+          }
+        ],
+        "customNPCs": [
+          {
+            "id": "npc-25o3b54",
+            "name": "Moira",
+            "avatarUrl": "http://zipline.sinapselabs.com.br/u/HRbCOn.png",
+            "origin": "Moira nasceu em uma pequena vila comercial na estrada entre Nazir e Ravenkhar. Filha de camponeses, passou a infância entre carroças, mercadores e viajantes que paravam na vila para descansar.\n\nAinda jovem, casou-se com um viajante chamado Elias. Juntos abriram uma pequena loja de artigos diversos. Não era uma loja importante. Vendiam comida, ferramentas, remédios, cordas, velas, quinquilharias e tudo aquilo que alguém poderia precisar durante uma viagem.\n\nEles tiveram uma filha.\n\nLina.\n\nLina cresceu atrás do balcão, ajudando a mãe a organizar as prateleiras e o pai a receber os viajantes. Moira dizia que a menina tinha \"mais conversa que mercador em dia de feira\".\n\nQuando Lina cresceu, começou a acompanhar caravanas como mensageira.\n\nAté que, certa noite, uma caravana que vinha de Ravenkhar chegou à vila.\n\nSem Lina.\n\nDisseram que a caravana havia sido atacada.\n\nAlguns morreram.\n\nOutros desapareceram.\n\nO corpo de Lina nunca foi encontrado.\n\nElias nunca conseguiu aceitar aquilo.\n\nMeses depois, partiu sozinho em busca da filha.\n\nTambém nunca voltou.\n\nMoira ficou.",
+            "identity": "Hoje, Moira é a pequena senhoria da lojinha da estrada.\n\nBaixinha, curvada, sempre com um avental velho e os óculos escorregando pelo nariz.\n\nEla conhece praticamente todo mundo que passa pela região.",
+            "theme": "Esperança.\n\nMas não uma esperança alegre.\n\nUma esperança cansada.\n\nAquela que existe quando você já perdeu quase tudo, mas ainda não consegue fechar a porta.\n\nMoira continua abrindo sua lojinha todas as manhãs porque, em algum lugar dentro dela, ainda existe uma menina de cabelos bagunçados correndo pelo estabelecimento.",
+            "classes": [
+              {
+                "classId": "tinkerer",
+                "level": 1
+              },
+              {
+                "classId": "merchant",
+                "level": 4
+              }
+            ],
+            "skills": {
+              "ti-gadgets": 1,
+              "me-heard": 3,
+              "me-stock": 1
+            },
+            "attributes": {
+              "dex": "d6",
+              "ins": "d8",
+              "mig": "d6",
+              "wlp": "d12"
+            },
+            "equipment": []
+          },
+          {
+            "id": "npc-15rlxwo",
+            "name": "Miguel de'la Fantasy",
+            "avatarUrl": "https://i.pinimg.com/736x/80/2b/7f/802b7fa2c02baebdf0fd52fc97c5408e.jpg",
+            "origin": "",
+            "identity": "Um homem de cabelos brancos, um blazer preto por cima de uma camisa branca e um cachecol vermelho. Ele tem marcas vermelhas em um dos braços e uma luva de couro no outro. junto dele um ser alado, pequeno e redondo o acompanha",
+            "theme": "",
+            "classes": [
+              {
+                "classId": "exorcist",
+                "level": 2
+              },
+              {
+                "classId": "puppeteer",
+                "level": 13
+              }
+            ],
+            "skills": {
+              "pu-thread": 5,
+              "pu-pull": 5,
+              "pu-hands": 1,
+              "pu-dance": 1,
+              "pu-master": 1,
+              "ex-you-dont-belong": 1,
+              "ex-seal": 1
+            },
+            "attributes": {
+              "dex": "d6",
+              "ins": "d10",
+              "mig": "d6",
+              "wlp": "d10"
+            },
+            "equipment": [
+              "eq-nexidium",
+              "eq-bloodstained-journal",
+              "eq-sword"
+            ]
+          },
+          {
+            "id": "npc-9rglv9y",
+            "name": "Joffrey Paladio",
+            "avatarUrl": "https://images.steamusercontent.com/ugc/5937503625153182925/4616C71097F062697FC6D32F0015D7C3BAF4B02C/?imw=512&&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=false",
+            "origin": "...",
+            "identity": "...",
+            "theme": "...",
+            "classes": [
+              {
+                "classId": "darkblade",
+                "level": 1
+              },
+              {
+                "classId": "orator",
+                "level": 3
+              },
+              {
+                "classId": "paladin",
+                "level": 1
+              }
+            ],
+            "skills": {
+              "or-condemn": 3,
+              "db-shadowstrike": 1,
+              "pl-smite": 1
+            },
+            "attributes": {
+              "dex": "d10",
+              "ins": "d8",
+              "mig": "d8",
+              "wlp": "d6"
+            },
+            "equipment": [
+              "eq-nexidium",
+              "eq-ravenkhar-pendant",
+              "eq-greatsword"
+            ]
+          },
+          {
+            "id": "npc-ps2cxu3",
+            "name": "Moira",
+            "avatarUrl": "http://zipline.sinapselabs.com.br/u/HRbCOn.png",
+            "origin": "Moira nasceu em uma pequena vila comercial na estrada entre Nazir e Ravenkhar. Filha de camponeses, passou a infância entre carroças, mercadores e viajantes que paravam na vila para descansar.\n\nAinda jovem, casou-se com um viajante chamado Elias. Juntos abriram uma pequena loja de artigos diversos. Não era uma loja importante. Vendiam comida, ferramentas, remédios, cordas, velas, quinquilharias e tudo aquilo que alguém poderia precisar durante uma viagem.\n\nEles tiveram uma filha.\n\nLina.\n\nLina cresceu atrás do balcão, ajudando a mãe a organizar as prateleiras e o pai a receber os viajantes. Moira dizia que a menina tinha \"mais conversa que mercador em dia de feira\".\n\nQuando Lina cresceu, começou a acompanhar caravanas como mensageira.\n\nAté que, certa noite, uma caravana que vinha de Ravenkhar chegou à vila.\n\nSem Lina.\n\nDisseram que a caravana havia sido atacada.\n\nAlguns morreram.\n\nOutros desapareceram.\n\nO corpo de Lina nunca foi encontrado.\n\nElias nunca conseguiu aceitar aquilo.\n\nMeses depois, partiu sozinho em busca da filha.\n\nTambém nunca voltou.\n\nMoira ficou.",
+            "identity": "Hoje, Moira é a pequena senhoria da lojinha da estrada.\n\nBaixinha, curvada, sempre com um avental velho e os óculos escorregando pelo nariz.\n\nEla conhece praticamente todo mundo que passa pela região.",
+            "theme": "Esperança.\n\nMas não uma esperança alegre.\n\nUma esperança cansada.\n\nAquela que existe quando você já perdeu quase tudo, mas ainda não consegue fechar a porta.\n\nMoira continua abrindo sua lojinha todas as manhãs porque, em algum lugar dentro dela, ainda existe uma menina de cabelos bagunçados correndo pelo estabelecimento.",
+            "classes": [
+              {
+                "classId": "tinkerer",
+                "level": 1
+              },
+              {
+                "classId": "merchant",
+                "level": 4
+              }
+            ],
+            "skills": {
+              "ti-gadgets": 1,
+              "me-heard": 3,
+              "me-stock": 1
+            },
+            "attributes": {
+              "dex": "d6",
+              "ins": "d8",
+              "mig": "d6",
+              "wlp": "d12"
+            },
+            "equipment": []
+          },
+          {
+            "id": "npc-60mdlvm",
+            "name": "May",
+            "avatarUrl": "http://zipline.sinapselabs.com.br/u/9Lvopr.jpg",
+            "origin": "May nasceu em uma pequena vila agrícola próxima às estradas comerciais de Nazir.\n\nSua mãe era parteira e seu pai trabalhava como boticário. Desde muito jovem, May cresceu cercada por ervas, frascos, instrumentos cirúrgicos e pessoas feridas.\n\nAprendeu cedo que a maioria das pessoas não tem medo da morte.\n\nTem medo de **morrer sozinha**.\n\nAos treze anos já ajudava sua mãe durante partos.\n\nAos dezesseis começou a acompanhar caravanas como assistente de um médico viajante.\n\nFoi durante essas viagens que aprendeu a tratar ferimentos de batalha.\n\nCortes.\n\nQueimaduras.\n\nFraturas.\n\nVeneno.\n\nInfecções.\n\nFerimentos de flecha.\n\nFerimentos que ninguém deveria sobreviver.\n\nMay descobriu que possuía uma habilidade incomum para manter pessoas vivas.\n\nNão porque fosse particularmente poderosa.\n\nMas porque **nunca entrava em pânico**.\n\nEnquanto outras pessoas gritavam diante de um ferimento grave, May simplesmente arregaçava as mangas.\n\n\"Segure aqui.\"\n\n\"Não deixe ele dormir.\"\n\n \"Você, água.\"\n\n\n\"Você, fogo.\"\n\n\n\"E alguém me dê uma faca limpa.\"\n\n\nHoje May viaja pelo mundo tratando aventureiros, soldados, camponeses e qualquer pessoa que consiga pagar — ou que simplesmente precise de ajuda.\n\nEla cobra pelos serviços quando pode.\n\nQuando não pode, aceita comida, abrigo ou simplesmente um favor futuro.",
+            "identity": "May é gentil, paciente e extremamente observadora.\n\nEla costuma ser a pessoa mais tranquila do grupo.\n\nAté alguém se machucar.\n\nNesse momento, sua personalidade muda completamente.\n\nMay se torna extremamente autoritária.\n\nEla possui uma relação quase maternal com pessoas feridas.\n\nPode passar horas cuidando de alguém sem reclamar.\n\nMas espera que seus pacientes sigam suas instruções.",
+            "theme": "\"Salvar alguém também é uma forma de coragem.\"\n\nMay não acredita que curandeiros devam ficar atrás dos guerreiros.\n\nPara ela, entrar em uma batalha para salvar alguém pode ser tão perigoso quanto lutar.\n\nSua maior qualidade é também sua maior fraqueza:\n\nela não consegue abandonar alguém que ainda possa ser salvo.\n\nMesmo quando sabe que está colocando a própria vida em risco.",
+            "classes": [
+              {
+                "classId": "chanter",
+                "level": 1
+              },
+              {
+                "classId": "cleric",
+                "level": 4
+              }
+            ],
+            "skills": {
+              "cl-purify": 1,
+              "cl-sanctuary": 2,
+              "cl-breath": 1,
+              "ch-resonance": 1
+            },
+            "attributes": {
+              "dex": "d6",
+              "ins": "d10",
+              "mig": "d6",
+              "wlp": "d10"
+            },
+            "equipment": [
+              "eq-wet-twine",
+              "eq-lantern"
+            ]
+          },
+          {
+            "id": "npc-6kvdtbb",
+            "name": "Austin",
+            "avatarUrl": "http://zipline.sinapselabs.com.br/u/austin.jpg",
+            "origin": "Filho de lenhadores da fronteira entre Ravenkhar e Nazir.\n\nAustin nasceu em uma pequena comunidade que vivia da extração de madeira e da caça às margens da Floresta dos Sussurros Brancos. Desde cedo aprendeu a sobreviver na mata, seguir rastros e usar uma besta para defender sua família dos javalis selvagens.\n\nQuando completou dezoito anos tentou se alistar no exército de Ravenkhar, sonhando em se tornar um herói. Porém, foi dispensado durante o treinamento básico após quebrar a perna, que o deixou meses afastado.\n\nEnvergonhado de voltar para casa sem ter conquistado nada, passou a vagar entre cidades e tavernas dizendo que havia servido ao exército na fronteira norte. Com o tempo a mentira cresceu tanto que ele próprio começou a acreditar nela.\n\nHoje trabalha como caçador contratado, guarda de caravanas e mercenário ocasional, sempre mantendo a fachada de veterano de guerra.",
+            "identity": "Um homem comum tentando desesperadamente parecer extraordinário.\n\nAustin fala como um militar.\n\nConta histórias de batalhas que nunca aconteceram.\n\nConhece termos de estratégia porque estudou livros de guerra nas bibliotecas públicas, não porque participou delas.\n\nApesar disso, possui boas intenções.\n\nQuando alguém realmente precisa de ajuda, ele é o primeiro a colocar a própria vida em risco, mesmo tremendo de medo.\n\nNo fundo, Austin não quer enganar as pessoas por maldade.\n\nEle apenas quer que, um dia, sua mentira deixe de ser mentira.",
+            "theme": "A mentira que busca se tornar verdade.\n\nAustin vive tentando provar para si mesmo que merece a fama que inventou. Embora nunca tenha sido um verdadeiro soldado, age como se fosse um líder experiente.\n\nSeu maior medo não é morrer, mas que descubram que ele nunca lutou nas grandes guerras.",
+            "classes": [
+              {
+                "classId": "rogue",
+                "level": 7
+              },
+              {
+                "classId": "weaponmaster",
+                "level": 1
+              }
+            ],
+            "skills": {
+              "ro-cheapshot": 2,
+              "ro-dodge": 2,
+              "ro-highspeed": 2,
+              "ro-seeyalater": 1,
+              "wm-breach": 1
+            },
+            "attributes": {
+              "dex": "d10",
+              "ins": "d10",
+              "mig": "d6",
+              "wlp": "d6"
+            },
+            "equipment": [
+              "eq-wet-twine",
+              "eq-lantern",
+              "eq-dagger"
+            ]
+          }
+        ],
+        "npcLoots": [],
+        "draftPolls": [
+          {
+            "id": "nuu1t",
+            "question": "Pegar cartas?",
+            "options": [
+              "SIM",
+              "NÃO"
+            ],
+            "duration": 30
+          },
+          {
+            "id": "9fnu1",
+            "question": "Para onde ir?",
+            "options": [
+              "sessão de história",
+              "Seguir em frente"
+            ],
+            "duration": 60
+          }
+        ],
+        "customSounds": [
+          {
+            "id": "snd_custom_48ctbtj",
+            "name": "Chuva",
+            "url": "https://zipline.sinapselabs.com.br/u/chuva%20melhor.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_bppa1v8",
+            "name": "Batalha Terror",
+            "url": "https://zipline.sinapselabs.com.br/u/batalha%20terror.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_rd66hnj",
+            "name": "Marionete madeira",
+            "url": "https://zipline.sinapselabs.com.br/u/Breaking%20Wood%20Sound%20Effect%20-%20Crate%20Shattering%20-%20Free%20Audio%20Zone%20(youtube).mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_gqgk19q",
+            "name": "Passos na agua",
+            "url": "https://zipline.sinapselabs.com.br/u/passos%20na%20agua.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_iplc125",
+            "name": "Rugido terror",
+            "url": "https://zipline.sinapselabs.com.br/u/BnkmcV.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_0bqi2sy",
+            "name": "Som de porco",
+            "url": "https://zipline.sinapselabs.com.br/u/Som%20Do%20Porco%20-%20barulho%20do%20porco%20.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_dek6jg6",
+            "name": "Trovao",
+            "url": "https://zipline.sinapselabs.com.br/u/trovao.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_0diz11v",
+            "name": "Som de fogueira",
+            "url": "https://zipline.sinapselabs.com.br/u/Som%20de%20fogueira.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_k5cyjmg",
+            "name": "Som ambiente floresta",
+            "url": "http://zipline.sinapselabs.com.br/u/YqX5QH.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_cabvt7s",
+            "name": "Caindo na agia",
+            "url": "https://zipline.sinapselabs.com.br/u/caindo%20na%20agua.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_dz45y3t",
+            "name": "Trilha suspense",
+            "url": "https://zipline.sinapselabs.com.br/u/dNi6GN.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_1648xtn",
+            "name": "Opera soundtrack",
+            "url": "https://zipline.sinapselabs.com.br/u/ECVwjy.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_imet2c4",
+            "name": "Som calmo taverna",
+            "url": "http://zipline.sinapselabs.com.br/u/Qug8lb.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_dtpwrsr",
+            "name": "Briga de taverna",
+            "url": "http://zipline.sinapselabs.com.br/u/gFXSa8.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_8kb1sky",
+            "name": "01 - Alicia",
+            "url": "http://zipline.sinapselabs.com.br/u/9kiOP6.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_bg38iya",
+            "name": "02 - Gustaff",
+            "url": "http://zipline.sinapselabs.com.br/u/rjeCMa.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_qvu5pet",
+            "name": "03 - Lumiere",
+            "url": "http://zipline.sinapselabs.com.br/u/hGRCxC.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_subz0xm",
+            "name": "04 Lumiere",
+            "url": "http://zipline.sinapselabs.com.br/u/DioNrV.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_j3kna5f",
+            "name": "05 - Promenade",
+            "url": "http://zipline.sinapselabs.com.br/u/Ojqmev.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_g7skh7n",
+            "name": "06 - Le grand cafe",
+            "url": "http://zipline.sinapselabs.com.br/u/2BMitz.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_7d7zbog",
+            "name": "07 - Continuer à t'aimer",
+            "url": "http://zipline.sinapselabs.com.br/u/pReUja.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_hke3tzu",
+            "name": "31- Flying Waters - Rain from the Ground",
+            "url": "http://zipline.sinapselabs.com.br/u/Y3YXF4.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_cih0fmd",
+            "name": "So called life",
+            "url": "http://zipline.sinapselabs.com.br/u/zvZslq.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_az5sbae",
+            "name": " World of Tanks Original Soundtrack: Studzianki",
+            "url": "http://zipline.sinapselabs.com.br/u/OMIXuf.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_rcdajl2",
+            "name": " Timber Hearth",
+            "url": "http://zipline.sinapselabs.com.br/u/5JgNzh.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_xxci7ub",
+            "name": " Now That This Old World Is Ending",
+            "url": "http://zipline.sinapselabs.com.br/u/O6ORBh.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_hn46o2r",
+            "name": " Nocturne pour Lumiere ",
+            "url": "http://zipline.sinapselabs.com.br/u/ztwP9t.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_5fu1tcn",
+            "name": "Laços de Vingança",
+            "url": "http://zipline.sinapselabs.com.br/u/aBoK7K.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_5cmw0eb",
+            "name": "Laços Redenção",
+            "url": "http://zipline.sinapselabs.com.br/u/yxW4Xg.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_yjp9f4v",
+            "name": "Missing memories",
+            "url": "http://zipline.sinapselabs.com.br/u/WCT3NI.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_qcrhrj0",
+            "name": "Som de gorila",
+            "url": "http://zipline.sinapselabs.com.br/u/7a5y8B.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_nobmfu5",
+            "name": "Horror ambience",
+            "url": "http://zipline.sinapselabs.com.br/u/ErpIOL.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_b52q43r",
+            "name": "Lion Roar",
+            "url": "http://zipline.sinapselabs.com.br/u/cLlSNn.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_yt2d6s1",
+            "name": "Passaro voando",
+            "url": "http://zipline.sinapselabs.com.br/u/rttYVW.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_dob6u7p",
+            "name": "6 feet",
+            "url": "http://zipline.sinapselabs.com.br/u/oq3xeQ.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_o19y6db",
+            "name": "Instrumental Laços de vingança",
+            "url": "http://zipline.sinapselabs.com.br/u/cHMiHw.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_no5zswm",
+            "name": "Floresta",
+            "url": "http://zipline.sinapselabs.com.br/u/l1nWdH.mp3",
+            "loopable": true,
+            "isCustom": true
+          }
+        ],
+        "weather": "clear",
+        "updatedAt": 1787506505446,
+        "customCreatures": [
+          {
+            "id": "custom-d2xxk2du",
+            "name": "TESTE",
+            "imageUrl": "/mystic-adventurer-portrait.png",
+            "level": 10,
+            "species": "Monstro",
+            "maxHp": 104,
+            "maxMp": 20,
+            "def": 10,
+            "mdef": 10,
+            "attributes": {
+              "dex": "d12",
+              "ins": "d12",
+              "mig": "d12",
+              "wlp": "d12"
+            },
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Golpe",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 10,
+                "type": "físico"
+              }
+            ],
+            "spells": [],
+            "equipment": []
+          }
+        ]
+      }
+    ]
+  ],
+  "personalNotes": [
+    [
+      "camp_o5slw0ptmsjhu84l:user_gybabf5mmskx7a24",
+      {
+        "notes": [
+          {
+            "id": "note_irrbsrjjmt4syi75",
+            "title": "Nova anotação",
+            "content": "",
+            "createdAt": 1787428801697,
+            "updatedAt": 1787428801697
+          }
+        ],
+        "updatedAt": 1787428808134
+      }
+    ],
+    [
+      "camp_o5slw0ptmsjhu84l:user_gd68ua63msnua1nb",
+      {
+        "notes": [
+          {
+            "id": "note_5nz7wlqfmt4tgts6",
+            "title": "Anotações",
+            "content": "Os homens ficaram\nGeorgie e moira são intimos\nAna e zara Amigas da Amélia\nMoira susurra sobre bussola",
+            "createdAt": 1787429656518,
+            "updatedAt": 1787442813120
+          }
+        ],
+        "updatedAt": 1787442813120
+      }
+    ],
+    [
+      "camp_o5slw0ptmsjhu84l:user_0bhp2ga3msl1uk6h",
+      {
+        "notes": [
+          {
+            "id": "note_h794laklmt52dj0t",
+            "title": "Moira",
+            "content": "Moira e Jorge são velhos amigos.",
+            "createdAt": 1787444619149,
+            "updatedAt": 1787444644880
+          },
+          {
+            "id": "note_a39kl7mymt4yvs9j",
+            "title": "Kael Veyr",
+            "content": "Ele perdeu seu pai que era próximo, nasceu em Ravenkhar, sua irmã esta doente e agora ele vaga em busca de uma cura para ela.",
+            "createdAt": 1787438752471,
+            "updatedAt": 1787438805828
+          },
+          {
+            "id": "note_78ueka7lmt4wtgso",
+            "title": "Ravenkhar",
+            "content": "Porto em que saímos Althafen\n\nUm homem chamado jorge era carroceiro e estava nos esperando\n\nBicho que nos faz ver o nosso pior pesadelo do passado.\n\nDarin cidade risonha\n",
+            "createdAt": 1787435285064,
+            "updatedAt": 1787454728999
+          },
+          {
+            "id": "note_ifcefjbamt4vq9bj",
+            "title": "Itens da bolsa",
+            "content": "Saco com arroz e um saco com sal na mochila.\n\ntenho apenas uma faca agora.\n\nColete estou usando +2 em defesa fisica e +1 em defesa mágica\n\nEstou usando colar de coração +3 de hp máximo\n\nCantil.",
+            "createdAt": 1787433455791,
+            "updatedAt": 1787461627394
+          },
+          {
+            "id": "note_tzrdkp6mmt4vjyj3",
+            "title": "Eventos cataclísmicos",
+            "content": "O grande clarão, evento que dividiu continentes mexeu com o espaço tempo e deixou a mana e a magia do mundo selvagem e descontrolada.",
+            "createdAt": 1787433161871,
+            "updatedAt": 1787433233728
+          },
+          {
+            "id": "note_by6fy3xkmt4ve7zp",
+            "title": "Conhecimentos sobre religião",
+            "content": "Oração ao deus guerreiro.\n\nÓh deus dos homens do oeste\nÓh filho que morreu sem lutar...\nSerá o amor um caminho\nOu apenas fraqueza?\n\nÓh Deus do Céu, se a ti pertence a vingança então usa-me como tua lança pra alcançar.\n\nCobrirei de cinzas seu Altar",
+            "createdAt": 1787432894197,
+            "updatedAt": 1787432934187
+          },
+          {
+            "id": "note_sm6j0ja7mt4v8lto",
+            "title": "Anotações sobre regiões",
+            "content": "Sinatra descrita como uma fortaleza de pedra em meio a um deserto turbulento, seu rei é o mais poderoso que já tiveram, porém o com maior rejeição.",
+            "createdAt": 1787432632187,
+            "updatedAt": 1787432695596
+          },
+          {
+            "id": "note_5s4ext2emt4uto25",
+            "title": "diário religião",
+            "content": "fé dos 7, religião universal com várias versões dependendo da região em que vc estiver.\nDeuses:  \nMãe veio da primeira lágrima de compaixão traz a cura as feridas dos mortais.\nPai veio da retidão inabalável a justiça que pesa os pecados dos regentes\nGuerreiro veio da fúria flamejante é a espada que divide os céus\nDonzela veio da esperança intocada, traz promessas de alvorada\nFerreiro veio do suor da criação dando forma a pedra e ao aço\nVelha veio da memória do tempo, guia os perdidos na névoa\nDesconhecido veio da sombra da própria luz, é o silêncio a porta que se fecha no fim das canções.\n",
+            "createdAt": 1787431935244,
+            "updatedAt": 1787432505387
+          },
+          {
+            "id": "note_8cra5ir7mt4us8tc",
+            "title": "anotações do diário de guerra",
+            "content": "Kerfir em guerra com narmer desde sempre, suas lutas enchem  as praias escarpadas de sangue.\n\nGuerra sangrenta entre Nazir e Ravenkhar, Ravenkhar depende de Nazir nos invernos.",
+            "createdAt": 1787431868832,
+            "updatedAt": 1787432549121
+          },
+          {
+            "id": "note_hnil777umt4u19fd",
+            "title": "Vanaheim",
+            "content": "Paguei 4 zenits ao Bariston pela conta do Kael\nLoja da Moira.\nOrmand dono de Bordel da cidade Vanaheim\nJorge funcionário da estalagem em frente a loja da Moira.\nMark funcionário da estalagem que me deu a informação do dono do bordel.\nQuarto 56.\n\n",
+            "createdAt": 1787430609913,
+            "updatedAt": 1787433657521
+          }
+        ],
+        "updatedAt": 1787461627394
+      }
+    ],
+    [
+      "camp_o5slw0ptmsjhu84l:user_reulc3j3ms3snnxu",
+      {
+        "notes": [
+          {
+            "id": "note_j6q81r4jmt4ubiee",
+            "title": "Anotações",
+            "content": "Kael, Thorfinn e Amelia tem laços disponíveis uns com os outros\n\nAumento da vida e mana máxima\nInputar classes nos personagens",
+            "createdAt": 1787431088102,
+            "updatedAt": 1787456633474
+          }
+        ],
+        "updatedAt": 1787456633474
       }
     ]
   ]
