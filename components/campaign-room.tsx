@@ -13,11 +13,12 @@ import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
 import { DiceRollPresentation, HandRaisePresentation, formatRollLabel, getDiceFromLabel, type DicePresentation, type DiceRollDetails, type HandPresentation } from "@/components/session-effects"
 
-// COMPONENTES ISOLADOS DO MESTRE
+// IMPORTAÇÃO NOVA
+import { GmDifficultyGuide, type DiceRollResult } from "@/components/gm-difficulty-guide"
+
 import { GmBestiary } from "./gm-bestiary"
 import { GmPanel } from "./gm-panel"
 
-// IMPORTAÇÕES DO COMPONENTE DE FICHAS
 import {
   CharacterSheet,
   CreatureSheet,
@@ -57,10 +58,6 @@ import { Imagepad, SharedImage } from "./imagepad"
 import { Lorebook, type LoreEntry } from "./lorebook"
 import { ThemeSwitcher } from "./theme-switcher"
 import { PersonalNotes } from "./personal-notes"
-
-// ==========================================
-// TIPAGENS & CONSTANTES GLOBAIS DA SALA
-// ==========================================
 
 export interface Member {
   userId: string;
@@ -321,6 +318,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   // Painel de Loot (GmPanel)
   const [showGmPanel, setShowGmPanel] = useState(false)
+
+  // ESTADO DA ÚLTIMA ROLAGEM LIDA PARA O MESTRE
+  const [latestDiceRoll, setLatestDiceRoll] = useState<DiceRollResult | null>(null)
 
   // Criador de Itens Úteis (Handouts)
   const [itemNotification, setItemNotification] = useState<string | null>(null)
@@ -955,7 +955,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         try {
           const payload = JSON.parse(String(event.result));
           
-          // CORREÇÃO: Força o override completo da ficha no state do React
           setCharacters((prev) => prev.map(c => {
             if (c.id === payload.charId) {
               return {
@@ -963,7 +962,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                  ...payload.character,
                  equipment: payload.character.equipment || [],
                  customItems: payload.character.customItems || [],
-                 customModifiers: payload.character.customModifiers || []
+                 customModifiers: payload.character.customModifiers || [],
+                 bonds: payload.character.bonds || (c as any).bonds || []
               }
             }
             return c
@@ -1080,6 +1080,17 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
       const effectId = `${event.characterId || "roll"}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       playDiceRollSound(effectsVolumeRef.current);
+      
+      // NOVA ADIÇÃO PARA O GM DIFFICULTY GUIDE
+      const numericResult = Number(event.result);
+      if (!isNaN(numericResult)) {
+        // Ignorar "PLAYER_HAND_RAISED", syncs e afins já foi feito pelos if statements acima
+        // Então se chegou aqui, é uma rolagem legítima.
+        const diceMatches = attr.match(/d\d+/gi) || [];
+        const diceCount = diceMatches.length > 0 ? diceMatches.length : 2; // Default 2
+        setLatestDiceRoll({ diceCount, result: numericResult, id: effectId });
+      }
+
       const presentation: DicePresentation = {
         id: effectId,
         characterName: event.characterName || "Rolagem",
@@ -1126,11 +1137,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           return prev.map((c) => {
             if (c.id === event.character.id) {
               if (Number(event.character.updatedAt || 0) < Number(c.updatedAt || 0)) return c
-              // CORREÇÃO: Defesa extra. Se a API devolver a ficha sem os itens, mantemos os locais!
               return {
                 ...event.character,
                 customItems: (event.character as any).customItems || (c as any).customItems || [],
-                customModifiers: (event.character as any).customModifiers || (c as any).customModifiers || []
+                customModifiers: (event.character as any).customModifiers || (c as any).customModifiers || [],
+                bonds: (event.character as any).bonds || (c as any).bonds || []
               };
             }
             return c;
@@ -1153,11 +1164,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   const applyOptimistic = useCallback((c: Character) => setCharacters((prev) => prev.map((x) => {
     if (x.id === c.id) {
-      // CORREÇÃO: Defesa na atualização otimista (quando gasta MP/HP)
       return {
         ...c,
         customItems: (c as any).customItems || (x as any).customItems || [],
-        customModifiers: (c as any).customModifiers || (x as any).customModifiers || []
+        customModifiers: (c as any).customModifiers || (x as any).customModifiers || [],
+        bonds: (c as any).bonds || (x as any).bonds || []
       };
     }
     return x;
@@ -2376,88 +2387,93 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           <aside className="rpg-session-sidebar flex h-full min-h-0 flex-col gap-4 overflow-y-auto pb-4 pr-1 custom-scrollbar-sepia">
 
             {isGm && (
-              <div className="panel rpg-gm-tools shrink-0 border border-accent/40 p-4">
-                <div className="rpg-gm-heading mb-4 border-b pb-3">
-                  <h2 className="flex items-center gap-2 font-serif text-base font-bold"><Crown className="size-4" /> Grimório do Mestre</h2>
-                </div>
+              <>
+                <div className="panel rpg-gm-tools shrink-0 border border-accent/40 p-4">
+                  <div className="rpg-gm-heading mb-4 border-b pb-3">
+                    <h2 className="flex items-center gap-2 font-serif text-base font-bold"><Crown className="size-4" /> Grimório do Mestre</h2>
+                  </div>
 
-                <div className="flex flex-col gap-2">
-                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowCutsceneManager(true)}>
-                    <Clapperboard className="size-4" /> Cenas
-                  </Button>
-                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowImagepad(true)}>
-                    <ImageIcon className="size-4" /> Galeria arcana
-                  </Button>
-                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowSoundpad(true)}>
-                    <Mic className="size-4" /> Efeitos sonoros
-                  </Button>
-                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowLorebook(true)}>
-                    <BookOpen className="size-4" /> <span className="text-[#eee3cf]">Diário do mundo</span>
-                  </Button>
-                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowPollModal(true)}>
-                    <BarChart2 className="size-4" /> Criar enquete
-                  </Button>
-                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowGmPanel(true)}>
-                    <Gift className="size-4" /> Distribuir itens
-                  </Button>
-                  <Button variant="outline" className="rpg-tool-button relative w-full justify-start gap-2" onClick={() => setShowDroppedLoots(true)}>
-                    <Inbox className="size-4" /> Gerenciar loots
-                    {npcLoots.length > 0 && <span className="absolute right-2 top-1/2 -translate-y-1/2 flex size-5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground">{npcLoots.length}</span>}
-                  </Button>
-                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowBestiary(true)}>
-                    <Skull className="size-4" /> Bestiário
-                  </Button>
-                  <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowBattleGrid(value => !value)} aria-expanded={showBattleGrid}>
-                    <Grid3X3 className="size-4" /> Grade de batalha
-                    <ChevronDown className={`ml-auto size-4 transition-transform ${showBattleGrid ? "rotate-180" : ""}`} />
-                  </Button>
-                </div>
+                  <div className="flex flex-col gap-2">
+                    <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowCutsceneManager(true)}>
+                      <Clapperboard className="size-4" /> Cenas
+                    </Button>
+                    <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowImagepad(true)}>
+                      <ImageIcon className="size-4" /> Galeria arcana
+                    </Button>
+                    <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowSoundpad(true)}>
+                      <Mic className="size-4" /> Efeitos sonoros
+                    </Button>
+                    <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowLorebook(true)}>
+                      <BookOpen className="size-4" /> <span className="text-[#eee3cf]">Diário do mundo</span>
+                    </Button>
+                    <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowPollModal(true)}>
+                      <BarChart2 className="size-4" /> Criar enquete
+                    </Button>
+                    <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowGmPanel(true)}>
+                      <Gift className="size-4" /> Distribuir itens
+                    </Button>
+                    <Button variant="outline" className="rpg-tool-button relative w-full justify-start gap-2" onClick={() => setShowDroppedLoots(true)}>
+                      <Inbox className="size-4" /> Gerenciar loots
+                      {npcLoots.length > 0 && <span className="absolute right-2 top-1/2 -translate-y-1/2 flex size-5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground">{npcLoots.length}</span>}
+                    </Button>
+                    <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowBestiary(true)}>
+                      <Skull className="size-4" /> Bestiário
+                    </Button>
+                    <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowBattleGrid(value => !value)} aria-expanded={showBattleGrid}>
+                      <Grid3X3 className="size-4" /> Grade de batalha
+                      <ChevronDown className={`ml-auto size-4 transition-transform ${showBattleGrid ? "rotate-180" : ""}`} />
+                    </Button>
+                  </div>
+                  
 
-                <div className="rpg-battle-grid-collapse" data-open={showBattleGrid} aria-hidden={!showBattleGrid}>
-                  <div className="rpg-battle-grid-clip">
-                    <div className="rpg-map-index flex flex-col gap-2">
-                      {Array.from(new Map(savedMaps.map(m => [m.id, m])).values()).map(m => (
-                        <div key={m.id} className="flex gap-2 w-full">
-                          <Button size="sm" variant="outline" className={`rpg-map-entry flex-1 justify-start overflow-hidden text-left text-xs ${activeMap?.id === m.id ? "is-active" : ""}`} onClick={() => setActiveMap(m)} title="Abrir para você (Preparação)">
-                            <Grid3X3 className="size-3 mr-2 shrink-0" /> <span className="truncate">{m.name}</span>
-                          </Button>
+                  <div className="rpg-battle-grid-collapse" data-open={showBattleGrid} aria-hidden={!showBattleGrid}>
+                    <div className="rpg-battle-grid-clip">
+                      <div className="rpg-map-index flex flex-col gap-2">
+                        {Array.from(new Map(savedMaps.map(m => [m.id, m])).values()).map(m => (
+                          <div key={m.id} className="flex gap-2 w-full">
+                            <Button size="sm" variant="outline" className={`rpg-map-entry flex-1 justify-start overflow-hidden text-left text-xs ${activeMap?.id === m.id ? "is-active" : ""}`} onClick={() => setActiveMap(m)} title="Abrir para você (Preparação)">
+                              <Grid3X3 className="size-3 mr-2 shrink-0" /> <span className="truncate">{m.name}</span>
+                            </Button>
 
-                          <Button size="sm" variant="outline" className="rpg-map-action rpg-map-action-share w-9 shrink-0 px-0" onClick={() => handleForceSyncMap(m.id)} title="Transmitir este mapa para todos os jogadores">
-                            <Eye className="size-3" />
-                          </Button>
+                            <Button size="sm" variant="outline" className="rpg-map-action rpg-map-action-share w-9 shrink-0 px-0" onClick={() => handleForceSyncMap(m.id)} title="Transmitir este mapa para todos os jogadores">
+                              <Eye className="size-3" />
+                            </Button>
 
-                          <Button size="sm" variant="outline" className="rpg-map-action rpg-map-action-edit w-9 shrink-0 px-0" onClick={() => handleRenameMap(m.id, m.name)} title="Renomear mapa">
-                            <Pencil className="size-3" />
-                          </Button>
-                          <Button size="sm" variant="outline" className="rpg-map-action rpg-map-action-delete w-9 shrink-0 px-0" onClick={() => handleDeleteMap(m.id)} title="Deletar mapa">
-                            <Trash2 className="size-3" />
-                          </Button>
-                        </div>
-                      ))}
-                      <Button size="sm" variant="outline" className="rpg-map-entry w-full justify-start text-xs" onClick={() => setShowMapImporter(true)}>
-                        <Plus className="size-3 mr-2" /> Importar Novo Mapa
-                      </Button>
+                            <Button size="sm" variant="outline" className="rpg-map-action rpg-map-action-edit w-9 shrink-0 px-0" onClick={() => handleRenameMap(m.id, m.name)} title="Renomear mapa">
+                              <Pencil className="size-3" />
+                            </Button>
+                            <Button size="sm" variant="outline" className="rpg-map-action rpg-map-action-delete w-9 shrink-0 px-0" onClick={() => handleDeleteMap(m.id)} title="Deletar mapa">
+                              <Trash2 className="size-3" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button size="sm" variant="outline" className="rpg-map-entry w-full justify-start text-xs" onClick={() => setShowMapImporter(true)}>
+                          <Plus className="size-3 mr-2" /> Importar Novo Mapa
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Clima Dinâmico */}
-                <div className="rpg-gm-section mt-4 pt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="rpg-weather-heading whitespace-nowrap font-bold uppercase tracking-widest">Clima Dinâmico</p>
-                    <button onClick={() => handleSetWeather(weather)} className="flex items-center gap-1.5 text-xs font-bold uppercase text-primary hover:text-primary/80" title="Forçar clima para quem acabou de entrar"><RefreshCw className="size-3.5" /> Sincronizar</button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button size="sm" onClick={() => handleSetWeather("clear")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'clear' ? 'is-active' : ''}`} data-weather="clear" title="Céu Limpo"><CloudSun className="size-[18px]" /></Button>
-                    <Button size="sm" onClick={() => handleSetWeather("sunny")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'sunny' ? 'is-active' : ''}`} data-weather="sunny" title="Ensolarado"><Sun className="size-[18px]" /></Button>
-                    <Button size="sm" onClick={() => handleSetWeather("cloudy")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'cloudy' ? 'is-active' : ''}`} data-weather="cloudy" title="Nublado"><Cloudy className="size-[18px]" /></Button>
-                    <Button size="sm" onClick={() => handleSetWeather("fog")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'fog' ? 'is-active' : ''}`} data-weather="fog" title="Neblina"><CloudFog className="size-[18px]" /></Button>
-                    <Button size="sm" onClick={() => handleSetWeather("rain")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'rain' ? 'is-active' : ''}`} data-weather="rain" title="Chuvoso"><CloudRainWind className="size-[18px]" /></Button>
-                    <Button size="sm" onClick={() => handleSetWeather("blizzard")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'blizzard' ? 'is-active' : ''}`} data-weather="blizzard" title="Nevasca"><CloudSnow className="size-[18px]" /></Button>
-                  </div>
-                </div>
+                  <GmDifficultyGuide latestRoll={latestDiceRoll} />
 
-              </div>
+                  {/* Clima Dinâmico */}
+                  <div className="rpg-gm-section mt-4 pt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="rpg-weather-heading whitespace-nowrap font-bold uppercase tracking-widest">Clima Dinâmico</p>
+                      <button onClick={() => handleSetWeather(weather)} className="flex items-center gap-1.5 text-xs font-bold uppercase text-primary hover:text-primary/80" title="Forçar clima para quem acabou de entrar"><RefreshCw className="size-3.5" /> Sincronizar</button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button size="sm" onClick={() => handleSetWeather("clear")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'clear' ? 'is-active' : ''}`} data-weather="clear" title="Céu Limpo"><CloudSun className="size-[18px]" /></Button>
+                      <Button size="sm" onClick={() => handleSetWeather("sunny")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'sunny' ? 'is-active' : ''}`} data-weather="sunny" title="Ensolarado"><Sun className="size-[18px]" /></Button>
+                      <Button size="sm" onClick={() => handleSetWeather("cloudy")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'cloudy' ? 'is-active' : ''}`} data-weather="cloudy" title="Nublado"><Cloudy className="size-[18px]" /></Button>
+                      <Button size="sm" onClick={() => handleSetWeather("fog")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'fog' ? 'is-active' : ''}`} data-weather="fog" title="Neblina"><CloudFog className="size-[18px]" /></Button>
+                      <Button size="sm" onClick={() => handleSetWeather("rain")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'rain' ? 'is-active' : ''}`} data-weather="rain" title="Chuvoso"><CloudRainWind className="size-[18px]" /></Button>
+                      <Button size="sm" onClick={() => handleSetWeather("blizzard")} className={`rpg-weather-button h-8 w-full p-0 ${weather === 'blizzard' ? 'is-active' : ''}`} data-weather="blizzard" title="Nevasca"><CloudSnow className="size-[18px]" /></Button>
+                    </div>
+                  </div>
+
+                </div>
+              </>
             )}
 
             {!isGm && (
@@ -2489,40 +2505,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 </div>
               </div>
             )}
-
-            <AnimatePresence>
-              {activePoll && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="panel flex flex-col rounded-xl border border-primary/50 overflow-hidden bg-primary/5 shadow-[0_0_15px_rgba(var(--primary),0.2)] shrink-0 backdrop-blur-sm">
-                  <div className="p-4 border-b border-primary/20 bg-black/40">
-                    <div className="flex justify-between items-center mb-2">
-                      <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#eee3cf]"><BarChart2 className="size-4 text-primary" /> Enquete em andamento</h2>
-                      <span className="flex items-center gap-1.5 text-[10px] font-mono bg-background border border-border px-2 py-0.5 rounded text-muted-foreground"><Clock className="size-3" /> {Math.max(0, Math.ceil((activePoll.expiresAt - now) / 1000))}s</span>
-                    </div>
-                    <p className="font-serif text-lg font-bold text-foreground leading-tight">{activePoll.question}</p>
-                  </div>
-                  <div className="p-4 space-y-2">
-                    {activePoll.options.map((opt, idx) => {
-                      const totalVotes = Object.values(activePoll.votes).length;
-                      const myVotes = Object.values(activePoll.votes).filter(v => v === idx).length;
-                      const percentage = totalVotes > 0 ? (myVotes / totalVotes) * 100 : 0;
-                      const userVotedForThis = activePoll.votes[data.me.id] === idx;
-
-                      return (
-                        <button key={idx} onClick={() => handleVote(idx)} className="relative w-full text-left overflow-hidden rounded border border-border/50 bg-black/30 hover:border-primary/50 transition-colors group">
-                          <div className="absolute top-0 left-0 bottom-0 bg-primary/20 transition-all duration-500" style={{ width: `${percentage}%` }}></div>
-                          <div className="relative z-10 flex justify-between items-center p-2.5">
-                            <span className={`text-sm font-medium flex items-center gap-2 ${userVotedForThis ? "text-primary font-bold" : "text-foreground"}`}>
-                              {userVotedForThis && <CheckCircle2 className="size-4" />} {opt}
-                            </span>
-                            <span className="text-xs font-mono text-muted-foreground">{myVotes}</span>
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             <div className="rpg-cartography rpg-history-panel flex min-h-[300px] flex-1 flex-col overflow-hidden">
               <div className="rpg-history-heading shrink-0 p-4">

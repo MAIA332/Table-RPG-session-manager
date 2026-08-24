@@ -33,9 +33,7 @@ import {
   ArrowLeft, ArrowRight, Check, Swords, ChevronDown,
   Sword, Gem, Eye, SearchX, ShoppingCart, PackageOpen, BookOpen, PenTool,
   AlertTriangle, Archive, Flame, Droplets, ShieldOff, Brain, Ghost, SwatchBook,
-  WandSparkles,
-  TrendingDown,
-  Pencil
+  WandSparkles, TrendingDown, Pencil, Link2 // <-- Link2 Adicionado para os Laços
 } from "lucide-react"
 
 // ==========================================
@@ -54,6 +52,14 @@ export interface Modifier {
   name: string;
   value: number;
   target: string;
+}
+
+// NOVA TIPAGEM: Laços do Personagem
+export interface Bond {
+  id: string;
+  target: string;
+  type: string;
+  value: number;
 }
 
 export interface Member {
@@ -78,6 +84,12 @@ export interface NPCDraft {
 const ATTR_KEYS: AttributeKey[] = ["dex", "ins", "mig", "wlp"]
 const NPC_STEPS = ["Essência", "Classes", "Atributos", "Equipamento"] as const
 
+const BOND_TYPES = [
+  "Amizade", "Afeto", "Respeito", "Lealdade", "Amor", "Confiança",
+  "Rivalidade", "Ódio", "Desconfiança", "Inveja", "Rancor", 
+  "Dívida", "Culpa", "Proteção", "Admiração"
+];
+
 const overlayVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
@@ -89,51 +101,39 @@ const modalVariants = {
   visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.3 } },
   exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } }
 } as any
+
 export const PRESET_CHECKS = [
-  // --- PERCEPÇÃO E INVESTIGAÇÃO ---
   { id: "c1", name: "Percepção", attrs: ["ins", "dex"], desc: "Notar detalhes, movimentos sutis, armadilhas, emboscadas ou objetos escondidos." },
   { id: "c2", name: "Investigação", attrs: ["ins", "wlp"], desc: "Reconstruir acontecimentos em uma cena, interpretar pistas e ligar informações." },
   { id: "c3", name: "Empatia", attrs: ["ins", "wlp"], desc: "Ler emoções, identificar blefes, nervosismo e compreender as reais intenções de alguém." },
   { id: "c4", name: "Avaliação", attrs: ["ins", "ins"], desc: "Estimar o valor financeiro de mercadorias, reconhecer antiguidades e identificar falsificações." },
   { id: "c5", name: "Interrogatório", attrs: ["wlp", "ins"], desc: "Extrair informações de prisioneiros ou suspeitos através de pressão psicológica ou blefe tático." },
-
-  // --- SOBREVIVÊNCIA E EXPLORAÇÃO ---
   { id: "c6", name: "Sobrevivência Selvagem", attrs: ["ins", "mig"], desc: "Encontrar alimento, preparar abrigos rudimentares e prever tempestades ou perigos naturais." },
   { id: "c7", name: "Rastreamento", attrs: ["ins", "dex"], desc: "Identificar e seguir pegadas, rastros de sangue e sinais de passagem de animais ou pessoas." },
   { id: "c8", name: "Orientação", attrs: ["ins", "ins"], desc: "Ler mapas terrestres ou astrais, guiar o grupo e evitar que se percam durante viagens." },
   { id: "c9", name: "Sobrevivência Urbana", attrs: ["ins", "wlp"], desc: "Encontrar rotas seguras em becos, localizar o mercado negro e entender as regras não ditas das ruas." },
   { id: "c10", name: "Vigília", attrs: ["ins", "mig"], desc: "Manter-se alerta durante o turno de guarda, lutando contra o sono para proteger o grupo." },
-
-  // --- INTELECTO E CIÊNCIA MUNDANA ---
   { id: "c11", name: "Medicina", attrs: ["ins", "dex"], desc: "Realizar cirurgias de emergência, suturar feridas, estabilizar aliados e aplicar primeiros socorros." },
   { id: "c12", name: "Botânica e Venenos", attrs: ["ins", "ins"], desc: "Identificar plantas seguras, extrair toxinas, fabricar antídotos naturais e unguentos." },
   { id: "c13", name: "História e Cultura", attrs: ["ins", "ins"], desc: "Lembrar fatos antigos, reconhecer brasões de nobreza, leis locais e costumes regionais." },
   { id: "c14", name: "Engenharia e Mecânica", attrs: ["ins", "dex"], desc: "Desarmar armadilhas complexas, compreender maquinários, relógios e construir engenhocas." },
   { id: "c15", name: "Criptografia", attrs: ["ins", "wlp"], desc: "Decodificar mensagens secretas, traduzir dialetos mortos e resolver enigmas lógicos." },
   { id: "c16", name: "Estratégia", attrs: ["wlp", "ins"], desc: "Planejar táticas de batalha, prever a movimentação inimiga e vencer jogos de tabuleiro." },
-
-  // --- FURTIVIDADE E CRIME ---
   { id: "c17", name: "Furtividade", attrs: ["dex", "ins"], desc: "Esconder-se nas sombras, mover-se sem fazer ruído e infiltrar-se em áreas vigiadas." },
   { id: "c18", name: "Prestidigitação", attrs: ["dex", "ins"], desc: "Bater carteiras, esconder itens pequenos nas mangas ou realizar truques de mãos rápidos." },
   { id: "c19", name: "Arrombamento", attrs: ["dex", "ins"], desc: "Usar gazuas para abrir fechaduras de portas, baús ou destrancar algemas silenciosamente." },
   { id: "c20", name: "Enganação", attrs: ["wlp", "dex"], desc: "Mentir de forma convincente, usar disfarces, forjar sotaques e improvisar histórias." },
   { id: "c21", name: "Falsificação", attrs: ["dex", "ins"], desc: "Criar cópias exatas de documentos, assinaturas, selos oficiais e passaportes." },
-
-  // --- MOBILIDADE E REFLEXOS ---
   { id: "c22", name: "Acrobacia", attrs: ["dex", "mig"], desc: "Saltar entre telhados, amortecer quedas, equilibrar-se em cordas e rolar durante o combate." },
   { id: "c23", name: "Reflexos", attrs: ["dex", "ins"], desc: "Reagir a ataques surpresa, segurar objetos caindo ou acionar alavancas sob pressão extrema." },
   { id: "c24", name: "Precisão", attrs: ["dex", "ins"], desc: "Fazer arremessos difíceis, atirar facas em alvos pequenos ou acertar pontos fracos." },
   { id: "c25", name: "Condução", attrs: ["dex", "ins"], desc: "Manobrar carroças em alta velocidade, pilotar barcos ou montar a cavalo em terrenos difíceis." },
   { id: "c26", name: "Contorcionismo", attrs: ["dex", "dex"], desc: "Escapar de amarras de corda, espremer-se em tubulações e passar por grades estreitas." },
-
-  // --- FÍSICO E COMBATE CORPORAL ---
   { id: "c27", name: "Atletismo", attrs: ["mig", "dex"], desc: "Escalar paredões, nadar contra a correnteza, correr em disparada e empurrar pedras pesadas." },
   { id: "c28", name: "Força Bruta", attrs: ["mig", "mig"], desc: "Quebrar portas de madeira, erguer pesos descomunais, dobrar barras de ferro e intimidar fisicamente." },
   { id: "c29", name: "Resistência", attrs: ["mig", "wlp"], desc: "Suportar marchas forçadas, ignorar a dor crônica, resistir ao frio/calor e aguentar tortura." },
   { id: "c30", name: "Fôlego", attrs: ["mig", "mig"], desc: "Prender a respiração por longos minutos debaixo d'água ou em ambientes com gás tóxico." },
   { id: "c31", name: "Briga", attrs: ["mig", "dex"], desc: "Entrar em combate corpo a corpo desarmado, imobilizar adversários e aplicar chaves de braço." },
-
-  // --- SOCIAL E RELAÇÕES ---
   { id: "c32", name: "Diplomacia", attrs: ["wlp", "ins"], desc: "Convencer, apaziguar ânimos, negociar pagamentos justos e resolver conflitos sem violência." },
   { id: "c33", name: "Intimidação", attrs: ["wlp", "mig"], desc: "Amedrontar usando tom de voz agressivo, ameaças verbais e postura corporal hostil." },
   { id: "c34", name: "Liderança", attrs: ["wlp", "ins"], desc: "Inspirar coragem nos aliados, coordenar pessoas em pânico e dar ordens claras sob fogo inimigo." },
@@ -141,10 +141,34 @@ export const PRESET_CHECKS = [
   { id: "c36", name: "Atuação", attrs: ["wlp", "dex"], desc: "Chamar a atenção de uma multidão, dançar, cantar ou atuar para criar uma distração perfeita." },
   { id: "c37", name: "Trato com Animais", attrs: ["ins", "wlp"], desc: "Acalmar cães de guarda, adestrar montarias e entender o comportamento de feras selvagens." },
   { id: "c38", name: "Foco e Vontade", attrs: ["wlp", "wlp"], desc: "Manter a mente fria diante do horror, resistir a provocações e focar em uma tarefa durante o caos." },
-
-  // --- TRABALHO MANUAL E ACAMPAMENTO ---
   { id: "c39", name: "Ofícios e Forja", attrs: ["dex", "ins"], desc: "Consertar armaduras rachadas, afiar lâminas, costurar couro e criar ferramentas improvisadas." },
-  { id: "c40", name: "Culinária", attrs: ["ins", "dex"], desc: "Limpar e preparar carne de caça, racionar mantimentos e cozinhar refeições que recuperam o ânimo." }
+  { id: "c40", name: "Culinária", attrs: ["ins", "dex"], desc: "Limpar e preparar carne de caça, racionar mantimentos e cozinhar refeições que recuperam o ânimo." },
+  // ========================================================
+  // --- AÇÕES COMPLEXAS E DE ALTA TENSÃO (3 DADOS) ---
+  // ========================================================
+  { id: "c41", name: "Ritual Arcano", attrs: ["ins", "wlp", "dex"], desc: "Canalizar magias antigas e imprevisíveis, desenhando selos perfeitos enquanto luta para manter a própria sanidade." },
+  { id: "c42", name: "Desarme Crítico", attrs: ["dex", "ins", "wlp"], desc: "Desativar uma bomba ou reator complexo com mãos firmes, desarmar um ataque fatal iminente, dedução lógica veloz e nervos de aço sob extrema pressão." },
+  { id: "c43", name: "Fuga", attrs: ["dex", "ins", "mig"], desc: "Correr por ruínas em colapso total: saltar destroços, ler o ambiente caindo aos pedaços e não perder o fôlego." },
+  { id: "c44", name: "Segurar os Portões", attrs: ["mig", "mig", "wlp"], desc: "Feito insano de resistência: usar o próprio corpo para segurar o avanço de uma horda ou impedir que um teto desabe sobre os aliados." },
+  { id: "c45", name: "Cirurgia Milagrosa", attrs: ["dex", "ins", "wlp"], desc: "Salvar um aliado à beira da morte em pleno campo de batalha, exigindo mãos cirúrgicas, genialidade médica e foco ignorando o caos." },
+  { id: "c46", name: "Discurso da Virada", attrs: ["wlp", "wlp", "ins"], desc: "Inspirar um exército à beira da derrota, lendo os corações das tropas e projetando sua voz com liderança incontestável." },
+  { id: "c47", name: "Resistir à Corrupção", attrs: ["wlp", "wlp", "mig"], desc: "Lutar com a mente e o corpo simultaneamente contra uma possessão demoníaca ou toxina mágica letal no sangue." },
+  { id: "c48", name: "Ataque Desesperado", attrs: ["mig", "dex", "wlp"], desc: "Desferir um único golpe usando absolutamente tudo o que tem: força bruta, precisão letal e a pura força de vontade para vencer." },
+  
+  // ========================================================
+  // --- FEITOS LENDÁRIOS E LIMIT BREAKS (4 DADOS) ---
+  // ========================================================
+  { id: "c49", name: "Milagre", attrs: ["wlp", "wlp", "ins", "ins"], desc: "Realizar um feito impossível com auxilio do roteiro." },
+  { id: "c50", name: "Forjar Relíquia Mítica", attrs: ["dex", "dex", "ins", "wlp"], desc: "Semanas de trabalho ininterrupto combinando técnica perfeita, alta compreensão mágica e dedicação cega para criar um item lendário." },
+  { id: "c51", name: "Sobrevivência Impossível", attrs: ["mig", "mig", "wlp", "ins"], desc: "Atravessar uma Anomalia Geográfica (como uma Nevasca Eterna ou Deserto de Fogo) liderando o grupo e ignorando a dor extrema." },
+  { id: "c52", name: "Comandar o Fim do Mundo", attrs: ["ins", "ins", "wlp", "wlp"], desc: "Orquestrar a Grande Tática contra uma ameaça colossal: prever os movimentos do inimigo e coordenar continentes inteiros mentalmente." },
+  { id: "c53", name: "Limit Break: Omnigolpe", attrs: ["mig", "dex", "ins", "wlp"], desc: "Atingir o ápice do seu ser. Uma ação explosiva e perfeita que une a Força (Mig), a Agilidade (Dex), a Leitura do Inimigo (Ins) e o Espírito (Wlp)." },
+  { id: "c54", name: "Dança da Enganação Perfeita", attrs: ["dex", "dex", "wlp", "ins"], desc: "Convencer a corte inteira ou enganar uma criatura onisciente, combinando linguagem corporal impecável, mentiras complexas e audácia." },
+  { id: "c55", name: "Controle de Multidões", attrs: ["wlp", "wlp", "ins"], desc: "Acalmar um tumulto violento ou guiar uma multidão em pânico em meio a um desastre, usando presença imponente e leitura rápida da situação." },
+  { id: "c56", name: "Interceptação Perigosa", attrs: ["dex", "mig", "ins"], desc: "Perseguir e alcançar um alvo em alta velocidade através de um ambiente hostil, combinando reflexos rápidos, explosão física e leitura do terreno." },
+  { id: "c57", name: "Improviso Genial", attrs: ["ins", "ins", "dex"], desc: "Construir um dispositivo de emergência ou sintetizar um antídoto em poucos segundos usando apenas sucata e materiais instáveis sob extrema pressão." },
+  { id: "c58", name: "Infiltração Impossível", attrs: ["dex", "dex", "ins"], desc: "Atravessar uma rede de segurança milimetricamente, controlando a respiração e os nervos enquanto lida com patrulhas em tempo real." },
+
 ];
 
 // ==========================================
@@ -276,102 +300,6 @@ function CombinedChecksPanel({ character, onRoll, rollingAttr, disabled }: any) 
         ))}
         {filtered.length === 0 && <div className="text-sm text-muted-foreground italic text-center col-span-2 py-8">Nenhum teste encontrado com esse nome.</div>}
       </div>
-    </div>
-  )
-}
-
-function ModifiersPanel({ character, isGm, onUpdate }: any) {
-  const mods: Modifier[] = character.customModifiers || [];
-  const [name, setName] = useState("");
-  const [value, setValue] = useState(0);
-  const [target, setTarget] = useState("all");
-
-  const handleAdd = () => {
-    if (!name.trim() || value === 0) return alert("Preencha um nome e um valor diferente de 0.");
-    const newMod: Modifier = { id: Math.random().toString(36).substring(7), name, value, target };
-    onUpdate([...mods, newMod]);
-    setName("");
-    setValue(0);
-  }
-
-  const handleRemove = (id: string) => {
-    onUpdate(mods.filter(m => m.id !== id));
-  }
-
-  const getTargetName = (tgt: string) => {
-    if (tgt === 'all') return "Todos os Testes";
-    if (tgt === 'mig') return "Apenas Vigor (MIG)";
-    if (tgt === 'dex') return "Apenas Destreza (DEX)";
-    if (tgt === 'ins') return "Apenas Intuição (INS)";
-    if (tgt === 'wlp') return "Apenas Vontade (WLP)";
-    return `Teste Específico: ${tgt}`;
-  }
-
-  return (
-    <div className="flex flex-col gap-6 mt-2 animate-in fade-in zoom-in-95 duration-200">
-      <div className="bg-black/20 border border-border/40 rounded-xl p-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
-          <Activity className="size-4" /> Condições Ativas
-        </h3>
-        {mods.length === 0 ? (
-          <div className="text-sm text-muted-foreground italic text-center py-4 border border-dashed border-border/30 rounded-lg">Personagem saudável. Nenhuma condição afeta seus testes.</div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {mods.map(mod => (
-              <div key={mod.id} className={`condition-entry flex items-center justify-between p-3 rounded-lg border ${mod.value > 0 ? 'is-positive' : 'is-negative'}`}>
-                <div className="flex flex-col">
-                  <span className="condition-name text-sm font-bold">
-                    {mod.name} ({mod.value > 0 ? '+' + mod.value : mod.value})
-                  </span>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">Alvo: {getTargetName(mod.target)}</span>
-                </div>
-                {(isGm || character.ownerId) && (
-                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemove(mod.id)}>
-                    <Trash2 className="size-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {isGm && (
-        <div className="bg-primary/5 border border-primary/30 rounded-xl p-4">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
-            <Plus className="size-4" /> Atribuir Modificador (GM)
-          </h3>
-          <div className="flex flex-col gap-3">
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nome (Ex: Cansado, Veneno, Aura Abençoada)" className="w-full bg-black/40 border border-white/10 rounded-md p-2.5 text-sm text-foreground focus:outline-none focus:border-primary/50" />
-
-            <div className="flex gap-3">
-              <div className="w-1/3 flex flex-col gap-1">
-                <span className="text-[10px] uppercase text-muted-foreground font-bold">Valor (+ ou -)</span>
-                <input type="number" value={value} onChange={e => setValue(Number(e.target.value))} className="w-full bg-black/40 border border-white/10 rounded-md p-2 text-sm text-foreground focus:outline-none focus:border-primary/50 text-center font-mono font-bold" />
-              </div>
-              <div className="w-2/3 flex flex-col gap-1">
-                <span className="text-[10px] uppercase text-muted-foreground font-bold">Afeta Qual Teste?</span>
-                <select value={target} onChange={e => setTarget(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-md p-2 text-sm text-foreground focus:outline-none focus:border-primary/50">
-                  <option value="all">Todos os Testes Gerais</option>
-                  <optgroup label="Por Atributo Envolvido">
-                    <option value="mig">Qualquer rolagem usando Vigor (MIG)</option>
-                    <option value="dex">Qualquer rolagem usando Destreza (DEX)</option>
-                    <option value="ins">Qualquer rolagem usando Intuição (INS)</option>
-                    <option value="wlp">Qualquer rolagem usando Vontade (WLP)</option>
-                  </optgroup>
-                  <optgroup label="Testes Específicos">
-                    {PRESET_CHECKS.map(c => <option key={c.id} value={c.name}>Apenas: {c.name}</option>)}
-                  </optgroup>
-                </select>
-              </div>
-            </div>
-
-            <Button className="w-full mt-2 gap-2 bg-primary text-primary-foreground font-bold hover:bg-primary/90" onClick={handleAdd}>
-              <Save className="size-4" /> Aplicar Condição ao Jogador
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -835,6 +763,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
   const [showInventory, setShowInventory] = useState(false)
   const [showStore, setShowStore] = useState(false)
   const [showLore, setShowLore] = useState(false)
+  const [showBondsModal, setShowBondsModal] = useState(false) // <-- Modal de Laços
   const [showFrameGallery, setShowFrameGallery] = useState(false)
   const [showPortraitEditor, setShowPortraitEditor] = useState(false)
   const [editingZenit, setEditingZenit] = useState(false)
@@ -865,6 +794,11 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
   // Estado do Editor Inline de Modificadores / Condições
   const [editingModId, setEditingModId] = useState<string | null>(null)
   const [modDraft, setModDraft] = useState<any>({})
+
+  // Estado e Rascunhos de Laços (Bonds)
+  const bonds: Bond[] = character.bonds || [];
+  const [activeBond, setActiveBond] = useState<Bond | null>(null);
+  const [bondDraft, setBondDraft] = useState<Partial<Bond>>({ target: "", type: "Amizade", value: 1 });
 
   function changeExpanded(next: boolean) {
     if (typeof expanded !== "boolean") setInternalExpanded(next)
@@ -1182,13 +1116,25 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     } finally { setPending(false) }
   }
 
+  async function updateBonds(newBonds: Bond[]) {
+    onOptimistic({ ...character, bonds: newBonds });
+    setPending(true);
+    try {
+      const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, {
+        method: "PATCH", body: JSON.stringify({ bonds: newBonds })
+      });
+      onOptimistic({ ...updated, bonds: newBonds }); 
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function buyItem(itemId: string) {
     if (!editable) return;
     const item = customEquipment.find((e: any) => e.id === itemId) || getEquipment(itemId)
     if (!item) return
     if (currentZenit < item.cost) { alert("Zênit insuficiente!"); return }
 
-    // CORREÇÃO AQUI
     const currentEquip = Array.isArray(character.equipment) ? character.equipment : []
     const newEquipment = [...currentEquip, item.id]
     
@@ -1207,7 +1153,6 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     if (!item) return
     const sellValue = Math.floor(item.cost / 2)
     
-    // CORREÇÃO AQUI
     const currentEquip = Array.isArray(character.equipment) ? character.equipment : []
     const newEquipment = [...currentEquip]
     newEquipment.splice(index, 1)
@@ -1258,11 +1203,17 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
         }
       });
 
+      // Aplica bônus de Laço se estiver ativado
+      if (activeBond) {
+        modTotal += activeBond.value;
+      }
+
       const finalResult = result + modTotal;
-      const detailStr = `[${attrLabel} ${dieString}]`;
+      const detailStr = `[${attrLabel} ${dieString}]${activeBond ? ` + Laço (${activeBond.target})` : ''}`;
 
       if (onRoll) onRoll(detailStr, finalResult, modTotal !== 0 ? { modifier: modTotal } : undefined);
 
+      if (activeBond) setActiveBond(null); // Consome o laço invocado
       window.setTimeout(() => setRollingAttr((current) => current === attr ? null : current), 4300);
     }, 800);
   }
@@ -1292,11 +1243,17 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
         }
       });
 
+      // Aplica bônus de Laço se estiver ativado
+      if (activeBond) {
+        modTotal += activeBond.value;
+      }
+
       const finalResult = totalDice + modTotal;
-      const logDetail = `${check.name} [${check.attrs.join('+').toUpperCase()} ${diceLabels.join(' + ')}]`;
+      const logDetail = `${check.name} [${check.attrs.join('+').toUpperCase()} ${diceLabels.join(' + ')}]${activeBond ? ` + Laço (${activeBond.target})` : ''}`;
 
       if (onRoll) onRoll(logDetail, finalResult, { breakdown: details.join(' + '), modifier: modTotal || undefined });
 
+      if (activeBond) setActiveBond(null); // Consome o laço
       setRollingAttr(null);
     }, 800);
   }
@@ -1422,7 +1379,98 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
             )}
           </AnimatePresence>
 
-          {/* ... Outros modais da Loja, Inventário, Vizualização permanecem intocados ... */}
+          {/* LAÇOS MODAL */}
+          <AnimatePresence>
+            {showBondsModal && (
+              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden" onClick={() => setShowBondsModal(false)}>
+                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col border border-pink-500/40 bg-zinc-950 shadow-[0_0_40px_rgba(236,72,153,0.15)]" onClick={(event) => event.stopPropagation()}>
+                  <div className="flex justify-between items-center p-6 border-b border-pink-500/20 bg-pink-950/10 shrink-0">
+                    <div>
+                      <h4 className="font-serif text-2xl font-black text-pink-400 flex items-center gap-2"><Link2 className="size-6" /> Laços e Conexões</h4>
+                      <p className="text-sm text-pink-200/60 mt-1">Invoque a força de seus sentimentos para receber bônus vitais em momentos críticos.</p>
+                    </div>
+                    <button onClick={() => setShowBondsModal(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10"><X className="size-5 text-muted-foreground hover:text-white" /></button>
+                  </div>
+                  
+                  <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1 flex flex-col gap-6">
+                    {/* LISTA DE LAÇOS */}
+                    <div className="flex flex-col gap-3">
+                      <h5 className="text-[10px] font-bold uppercase tracking-widest text-pink-400 flex items-center gap-2">Seus Laços</h5>
+                      {bonds.length === 0 ? (
+                        <div className="text-sm text-muted-foreground italic text-center py-6 border border-dashed border-white/10 rounded-lg bg-black/20">Você ainda não formou laços fortes com ninguém.</div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {bonds.map(bond => (
+                            <div key={bond.id} className="flex flex-col gap-3 p-4 rounded-xl bg-black/40 border border-pink-500/20 hover:border-pink-500/40 transition-colors group">
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-bold text-foreground truncate">{bond.target}</span>
+                                  <span className="text-[10px] uppercase tracking-widest text-pink-400/80">{bond.type}</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="font-mono text-xs font-bold bg-pink-500/20 text-pink-300 px-2 py-1 rounded border border-pink-500/30">+{bond.value}</span>
+                                </div>
+                              </div>
+                              <div className="flex gap-2 w-full mt-auto">
+                                <Button size="sm" disabled={!editable || !!activeBond} onClick={() => { setActiveBond(bond); setShowBondsModal(false); }} className="flex-1 gap-1.5 h-8 bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs">
+                                  <Zap className="size-3" /> Invocar
+                                </Button>
+                                {editable && (
+                                  <Button size="sm" variant="outline" onClick={() => { if(confirm("Cortar este laço para sempre?")) updateBonds(bonds.filter(b => b.id !== bond.id)); }} className="h-8 w-8 p-0 border-destructive/50 text-destructive hover:bg-destructive/20 shrink-0">
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* CRIAR LAÇO */}
+                    {editable && (
+                      <div className="mt-4 pt-6 border-t border-white/10">
+                        <h5 className="text-[10px] font-bold uppercase tracking-widest text-pink-400 flex items-center gap-2 mb-4"><Plus className="size-3" /> Formar Novo Laço</h5>
+                        <div className="flex flex-col gap-3 bg-card/20 p-4 rounded-xl border border-white/5">
+                          <label className="flex flex-col gap-1.5">
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground">Personagem ou NPC Alvo</span>
+                            <input type="text" value={bondDraft.target} onChange={e => setBondDraft({...bondDraft, target: e.target.value})} placeholder="Ex: Galadriel, O Rei Goblin..." className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-pink-500/50" />
+                          </label>
+                          <div className="flex gap-3">
+                            <label className="flex flex-col gap-1.5 flex-1">
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground">Sentimento</span>
+                              <select value={bondDraft.type} onChange={e => setBondDraft({...bondDraft, type: e.target.value})} className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-pink-500/50">
+                                {BOND_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            </label>
+                            <label className="flex flex-col gap-1.5 w-1/3 shrink-0">
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground">Intensidade</span>
+                              <select value={bondDraft.value} onChange={e => setBondDraft({...bondDraft, value: Number(e.target.value)})} className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-pink-500/50 font-mono">
+                                <option value={1}>+1</option>
+                                <option value={2}>+2</option>
+                                <option value={3}>+3</option>
+                              </select>
+                            </label>
+                          </div>
+                          <Button 
+                            className="mt-2 w-full bg-white/10 hover:bg-pink-500/20 hover:text-pink-400 text-foreground transition-colors border border-white/5 hover:border-pink-500/50" 
+                            onClick={() => {
+                              if(!bondDraft.target?.trim()) return alert("Dê um nome ao alvo do laço.");
+                              const newBond: Bond = { id: Math.random().toString(36).substring(7), target: bondDraft.target, type: bondDraft.type!, value: bondDraft.value! };
+                              updateBonds([...bonds, newBond]);
+                              setBondDraft({ target: "", type: "Amizade", value: 1 });
+                            }}
+                          >
+                            <Heart className="size-4 mr-2" /> Salvar Laço
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <AnimatePresence>
             {showStore && (
@@ -1582,7 +1630,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                   <div className="flex-1 overflow-y-auto p-6 md:p-10 flex flex-col md:flex-row gap-10 custom-scrollbar-sepia">
                     <section className="flex-1 space-y-4">
                       <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground border-b border-white/10 pb-2">Equipamento Atual</h5>
-                      {!character.equipment || character.equipment.length === 0 ? ( // <-- ADICIONE A VALIDAÇÃO AQUI
+                      {!character.equipment || character.equipment.length === 0 ? (
                         <div className="p-6 text-center rounded-lg border border-dashed border-border/40 bg-card/20"><p className="text-sm text-muted-foreground italic">Nenhum equipamento.</p></div>
                       ) : (
                         <div className="flex flex-col gap-3">
@@ -2005,6 +2053,28 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                     </div>
                   </div>
 
+                  {/* VISUALIZAÇÃO DE LAÇO ATIVO PREPARADO */}
+                  <AnimatePresence>
+                    {activeBond && (
+                      <motion.div initial={{ opacity: 0, height: 0, marginTop: 0 }} animate={{ opacity: 1, height: "auto", marginTop: 20 }} exit={{ opacity: 0, height: 0, marginTop: 0 }} className="overflow-hidden">
+                        <div className="flex items-center justify-between gap-3 bg-pink-500/10 border border-pink-500/30 p-3 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-pink-500/20 rounded-md border border-pink-500/30">
+                              <Heart className="size-4 text-pink-400" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm text-pink-200">Laço Invocado: {activeBond.target} (+{activeBond.value})</p>
+                              <p className="text-[10px] text-pink-400/80 uppercase tracking-widest mt-0.5">Motivo: {activeBond.type} • O bônus será aplicado na próxima rolagem!</p>
+                            </div>
+                          </div>
+                          <Button size="sm" variant="ghost" onClick={() => setActiveBond(null)} className="h-8 px-3 text-pink-400 hover:bg-pink-500/20 hover:text-pink-300">
+                            Cancelar
+                          </Button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <div className="mt-5 grid grid-cols-4 gap-2">
                     {ATTR_KEYS.map((k: AttributeKey) => {
                       const isRolling = rollingAttr === k
@@ -2091,13 +2161,17 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                       </div>
                     </div>
 
-                    <div className="flex-1 min-w-[140px] flex gap-2">
+                    <div className="w-full flex gap-2">
                       <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors" onClick={() => setShowInventory(true)}>
                         <Package className="size-4 mr-2 shrink-0" /> <span className="text-[#eee3cf]">Mochila</span>
                       </Button>
 
                       <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-accent/30 bg-accent/5 text-accent hover:bg-accent/20 hover:border-accent/50 transition-colors" onClick={() => setShowStore(true)}>
                         <Store className="size-4 mr-2 shrink-0" /> <span className="text-[#eee3cf]">Loja</span>
+                      </Button>
+
+                      <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-pink-500/30 bg-pink-500/5 text-pink-400 hover:bg-pink-500/20 hover:border-pink-500/50 transition-colors" onClick={() => setShowBondsModal(true)}>
+                        <Link2 className="size-4 mr-2 shrink-0" /> <span className="text-[#eee3cf]">Laços</span>
                       </Button>
                     </div>
                   </div>

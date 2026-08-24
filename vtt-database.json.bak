@@ -359,7 +359,7 @@
           "mk-chakra": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1787591134889,
+        "updatedAt": 1787597381580,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -36038,8 +36038,8 @@
             "isCustom": true
           }
         ],
-        "weather": "fog",
-        "updatedAt": 1787588143403,
+        "weather": "clear",
+        "updatedAt": 1787591176959,
         "customCreatures": [],
         "customEquipment": [
           {
