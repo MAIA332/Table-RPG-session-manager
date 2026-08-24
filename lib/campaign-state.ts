@@ -9,7 +9,8 @@ export const CAMPAIGN_STATE_ARRAY_FIELDS = [
   "draftPolls",
   "customSounds",
   "customCreatures",
-  "customEquipment"
+  "customEquipment",
+  "customClasses"
 ] as const
 
 export type CampaignStateArrayField = typeof CAMPAIGN_STATE_ARRAY_FIELDS[number]
@@ -22,6 +23,9 @@ export interface CampaignState {
   npcLoots: unknown[]
   draftPolls: unknown[]
   customSounds: unknown[]
+  customCreatures: unknown[]
+  customEquipment: unknown[]
+  customClasses: unknown[]
   weather: string
   updatedAt: number
 }
@@ -36,6 +40,9 @@ export function getCampaignState(campaignId: string): CampaignState {
     npcLoots: Array.isArray(raw.npcLoots) ? raw.npcLoots : [],
     draftPolls: Array.isArray(raw.draftPolls) ? raw.draftPolls : [],
     customSounds: Array.isArray(raw.customSounds) ? raw.customSounds : [],
+    customCreatures: Array.isArray(raw.customCreatures) ? raw.customCreatures : [],
+    customEquipment: Array.isArray(raw.customEquipment) ? raw.customEquipment : [],
+    customClasses: Array.isArray(raw.customClasses) ? raw.customClasses : [],
     weather: typeof raw.weather === "string" ? raw.weather : "clear",
     updatedAt: Number(raw.updatedAt) || 0,
   }

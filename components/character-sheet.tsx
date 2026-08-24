@@ -588,7 +588,7 @@ export function NPCCreator({ onCreated, onCancel }: { onCreated: (npc: NPCDraft)
 // ==========================================
 // FICHA DA CRIATURA
 // ==========================================
-export function CreatureSheet({ creature, isGm, onUpdate, onRoll, onKill }: { creature: any, isGm: boolean, onUpdate: (id: string, updates: any) => void, onRoll: (attr: string, res: number) => void, onKill?: () => void }) {
+export function CreatureSheet({ creature, isGm, customEquipment = [], onUpdate, onRoll, onKill }: { creature: any, isGm: boolean, customEquipment?: any[], onUpdate: (id: string, updates: any) => void, onRoll: (attr: string, res: number) => void, onKill?: () => void }) {
   const [showInventory, setShowInventory] = useState(false)
   const [rollingAttr, setRollingAttr] = useState<string | null>(null)
 
@@ -651,7 +651,7 @@ export function CreatureSheet({ creature, isGm, onUpdate, onRoll, onKill }: { cr
                   ) : (
                     <div className="flex flex-col gap-3">
                       {equipment.map((id: string, idx: number) => {
-                        const item = getEquipment(id)
+                        const item = customEquipment.find((e: any) => e.id === id) || getEquipment(id)
                         return item ? (
                           <div key={`${id}-${idx}`} className="flex items-start gap-3 p-3 rounded-lg bg-card border border-destructive/20">
                             <Info className="size-4 text-destructive shrink-0 mt-0.5" />
@@ -822,7 +822,7 @@ function CharacterStatusBadges({ modifiers }: { modifiers: Modifier[] }) {
   )
 }
 
-export function CharacterSheet({ character, editable, isGm, isOwned = false, campaignMembers = [], onOptimistic, onRoll, onKill, shouldOpenInventory, onClearInventoryRequest, onArchive, defaultExpanded = false, expanded, onExpandedChange }: any) {
+export function CharacterSheet({ character, editable, isGm, isOwned = false, campaignMembers = [], customClasses = [],customEquipment = [],onOptimistic, onRoll, onKill, shouldOpenInventory, onClearInventoryRequest, onArchive, defaultExpanded = false, expanded, onExpandedChange }: any) {
   const [mounted, setMounted] = useState(false)
   const [pending, setPending] = useState(false)
   const [displayResources, setDisplayResources] = useState<CharacterResources>(character.resources)
@@ -971,7 +971,8 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     return acc;
   }, 0) as number;
 
-  const filteredStoreItems = EQUIPMENT.filter((item: any) => {
+  const allStoreItems = [...customEquipment, ...EQUIPMENT]
+  const filteredStoreItems = allStoreItems.filter((item: any) => {
     if (item.purchasable === false) return false
     const search = storeSearch.toLowerCase().trim()
     const matchesSearch = !search || item.name.toLowerCase().includes(search) || item.detail.toLowerCase().includes(search)
@@ -1183,10 +1184,14 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
 
   async function buyItem(itemId: string) {
     if (!editable) return;
-    const item = getEquipment(itemId)
+    const item = customEquipment.find((e: any) => e.id === itemId) || getEquipment(itemId)
     if (!item) return
     if (currentZenit < item.cost) { alert("Zênit insuficiente!"); return }
-    const newEquipment = [...character.equipment, item.id]
+
+    // CORREÇÃO AQUI
+    const currentEquip = Array.isArray(character.equipment) ? character.equipment : []
+    const newEquipment = [...currentEquip, item.id]
+    
     const newZenit = currentZenit - item.cost
     onOptimistic({ ...character, equipment: newEquipment, zenit: newZenit })
     setPending(true)
@@ -1198,11 +1203,15 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
 
   async function sellItem(itemId: string, index: number) {
     if (!editable) return;
-    const item = getEquipment(itemId)
+    const item = customEquipment.find((e: any) => e.id === itemId) || getEquipment(itemId)
     if (!item) return
     const sellValue = Math.floor(item.cost / 2)
-    const newEquipment = [...character.equipment]
+    
+    // CORREÇÃO AQUI
+    const currentEquip = Array.isArray(character.equipment) ? character.equipment : []
+    const newEquipment = [...currentEquip]
     newEquipment.splice(index, 1)
+    
     const newZenit = currentZenit + sellValue
     onOptimistic({ ...character, equipment: newEquipment, zenit: newZenit })
     setPending(true)
@@ -1216,7 +1225,8 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     if (!isGm) return;
     if (!confirm("Tem certeza que deseja remover este item da mochila do jogador?")) return;
 
-    const newEquipment = [...character.equipment];
+    const currentEquip = Array.isArray(character.equipment) ? character.equipment : []
+    const newEquipment = [...currentEquip];
     newEquipment.splice(index, 1);
 
     onOptimistic({ ...character, equipment: newEquipment });
@@ -1453,7 +1463,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                         ) : (
                           <div className="space-y-2">
                             {character.equipment.map((id: string, index: number) => {
-                              const item = getEquipment(id)
+                              const item = customEquipment.find((e: any) => e.id === id) || getEquipment(id)
                               if (!item) return null
                               const sellPrice = Math.floor(item.cost / 2)
                               return (
@@ -1572,12 +1582,12 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                   <div className="flex-1 overflow-y-auto p-6 md:p-10 flex flex-col md:flex-row gap-10 custom-scrollbar-sepia">
                     <section className="flex-1 space-y-4">
                       <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground border-b border-white/10 pb-2">Equipamento Atual</h5>
-                      {character.equipment.length === 0 ? (
+                      {!character.equipment || character.equipment.length === 0 ? ( // <-- ADICIONE A VALIDAÇÃO AQUI
                         <div className="p-6 text-center rounded-lg border border-dashed border-border/40 bg-card/20"><p className="text-sm text-muted-foreground italic">Nenhum equipamento.</p></div>
                       ) : (
                         <div className="flex flex-col gap-3">
                           {character.equipment.map((id: string, idx: number) => {
-                            const item = getEquipment(id)
+                            const item = customEquipment.find((e: any) => e.id === id) || getEquipment(id)
                             return item ? (
                               <div key={`${id}-${idx}`} className="flex items-start justify-between gap-2 p-3 rounded-lg bg-card border border-border/50">
                                 <div className="flex items-start gap-3">
@@ -2175,7 +2185,19 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                           <div className="flex flex-col gap-2">
                             <input className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" value={modDraft.name} onChange={e => setModDraft({...modDraft, name: e.target.value})} placeholder="Nome da condição" />
                             <div className="flex gap-2">
-                              <input className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.target} onChange={e => setModDraft({...modDraft, target: e.target.value})} placeholder="Alvo (ex: all, dex, hp)" />
+                              {/* SELECT RESTAURADO PARA EDIÇÃO */}
+                              <select className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.target} onChange={e => setModDraft({...modDraft, target: e.target.value})}>
+                                <option value="all">Todos os Testes Gerais</option>
+                                <optgroup label="Por Atributo Envolvido">
+                                  <option value="mig">Qualquer rolagem usando Vigor (MIG)</option>
+                                  <option value="dex">Qualquer rolagem usando Destreza (DEX)</option>
+                                  <option value="ins">Qualquer rolagem usando Intuição (INS)</option>
+                                  <option value="wlp">Qualquer rolagem usando Vontade (WLP)</option>
+                                </optgroup>
+                                <optgroup label="Testes Específicos">
+                                  {PRESET_CHECKS.map(c => <option key={c.id} value={c.name}>Apenas: {c.name}</option>)}
+                                </optgroup>
+                              </select>
                               <input type="number" className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.value} onChange={e => setModDraft({...modDraft, value: Number(e.target.value)})} placeholder="Valor (+ ou -)" />
                             </div>
                             <div className="flex justify-end gap-2 mt-2">
@@ -2228,7 +2250,19 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                         <div className="flex flex-col gap-2">
                           <input className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" value={modDraft.name} onChange={e => setModDraft({...modDraft, name: e.target.value})} placeholder="Nome da condição" />
                           <div className="flex gap-2">
-                            <input className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.target} onChange={e => setModDraft({...modDraft, target: e.target.value})} placeholder="Alvo (ex: all, dex, hp)" />
+                              {/* SELECT RESTAURADO PARA CRIAÇÃO */}
+                              <select className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.target} onChange={e => setModDraft({...modDraft, target: e.target.value})}>
+                                <option value="all">Todos os Testes Gerais</option>
+                                <optgroup label="Por Atributo Envolvido">
+                                  <option value="mig">Qualquer rolagem usando Vigor (MIG)</option>
+                                  <option value="dex">Qualquer rolagem usando Destreza (DEX)</option>
+                                  <option value="ins">Qualquer rolagem usando Intuição (INS)</option>
+                                  <option value="wlp">Qualquer rolagem usando Vontade (WLP)</option>
+                                </optgroup>
+                                <optgroup label="Testes Específicos">
+                                  {PRESET_CHECKS.map(c => <option key={c.id} value={c.name}>Apenas: {c.name}</option>)}
+                                </optgroup>
+                              </select>
                             <input type="number" className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.value} onChange={e => setModDraft({...modDraft, value: Number(e.target.value)})} placeholder="Valor (+ ou -)" />
                           </div>
                           <div className="flex justify-end gap-2 mt-2">

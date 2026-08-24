@@ -51,6 +51,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         gallery: state.gallery.filter((entry: any) => entry?.isPublic),
         lore: state.lore.filter((entry: any) => entry?.isPublic || entry?.allowedMembers?.includes(access.user.id)),
         weather: state.weather,
+        customEquipment: state.customEquipment || [],
+        customClasses: state.customClasses || [],
       },
       persistedFields,
     })
@@ -71,16 +73,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const patch: Record<string, unknown> = {}
+  
   for (const field of CAMPAIGN_STATE_ARRAY_FIELDS) {
     if (Object.prototype.hasOwnProperty.call(source, field)) {
       if (!Array.isArray(source[field])) return NextResponse.json({ error: `Campo ${field} inválido.` }, { status: 400 })
       patch[field] = source[field]
     }
   }
-  if (Object.prototype.hasOwnProperty.call(source, "weather")) {
-    if (typeof source.weather !== "string") return NextResponse.json({ error: "Clima inválido." }, { status: 400 })
-    patch.weather = source.weather
-  }
+
   if (Object.prototype.hasOwnProperty.call(source, "weather")) {
     if (typeof source.weather !== "string") return NextResponse.json({ error: "Clima inválido." }, { status: 400 })
     patch.weather = source.weather
@@ -91,13 +91,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     patch.customCreatures = source.customCreatures
   }
 
-   if (Object.prototype.hasOwnProperty.call(source, "customEquipment")) {
-    if (!Array.isArray(source.customCreatures)) return NextResponse.json({ error: "Itens inválidas." }, { status: 400 })
-    patch.customCreatures = source.customCreatures
+  // CORRIGIDO: Agora checa customEquipment corretamente
+  if (Object.prototype.hasOwnProperty.call(source, "customEquipment")) {
+    if (!Array.isArray(source.customEquipment)) return NextResponse.json({ error: "Itens inválidos." }, { status: 400 })
+    patch.customEquipment = source.customEquipment
   }
-  // ---------------------------
 
-  if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Nenhum campo persistente informado." }, { status: 400 })
+  if (Object.prototype.hasOwnProperty.call(source, "customClasses")) {
+    if (!Array.isArray(source.customClasses)) return NextResponse.json({ error: "Classes inválidas." }, { status: 400 })
+    patch.customClasses = source.customClasses
+  }
+
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Nenhum campo persistente informado." }, { status: 400 })
 
   const state = updateCampaignState(access.campaignId, patch)

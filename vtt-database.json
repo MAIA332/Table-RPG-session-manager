@@ -235,6 +235,14 @@
         "userId": "user_gd68ua63msnua1nb",
         "createdAt": 1787428765765
       }
+    ],
+    [
+      "sess_ftv83jelmt68qfy2",
+      {
+        "token": "sess_ftv83jelmt68qfy2",
+        "userId": "user_reulc3j3ms3snnxu",
+        "createdAt": 1787515765562
+      }
     ]
   ],
   "campaigns": [
@@ -325,19 +333,23 @@
         ],
         "equipment": [
           "eq-silk-robe",
-          "eq-dagger",
-          "eq-ruby-ring"
+          "eq-ruby-ring",
+          "custom-eq-dp41yaap",
+          "custom-eq-dp41yaap",
+          "custom-eq-dp41yaap",
+          "custom-eq-p5pwv2kk"
         ],
         "zenit": 0,
         "resources": {
-          "hp": 69,
+          "hp": 54,
           "maxHp": 71,
-          "mp": 44,
+          "mp": 24,
           "maxMp": 49,
           "ip": 6,
           "maxIp": 6,
           "fp": 3,
-          "xp": 5
+          "xp": 6,
+          "lp": 0
         },
         "skills": {
           "lo-memory": 1,
@@ -347,7 +359,7 @@
           "mk-chakra": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1787461229039,
+        "updatedAt": 1787591134889,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -382,7 +394,7 @@
           {
             "id": "coyrok",
             "name": "DEBUFF Liderança",
-            "value": -1,
+            "value": 0,
             "target": "Liderança"
           },
           {
@@ -424,8 +436,20 @@
           {
             "id": "622qp6",
             "name": "Insanidade",
-            "value": -2,
+            "value": -1,
             "target": "ins"
+          },
+          {
+            "id": "117539",
+            "name": "Cansados",
+            "target": "dex",
+            "value": -2
+          },
+          {
+            "id": "bp57x",
+            "name": "Enfraquecido",
+            "target": "dex",
+            "value": -2
           }
         ],
         "customItems": [],
@@ -476,14 +500,14 @@
         ],
         "zenit": 625,
         "resources": {
-          "hp": 71,
-          "maxHp": 72,
-          "mp": 44,
+          "hp": 70,
+          "maxHp": 75,
+          "mp": 39,
           "maxMp": 44,
           "ip": 0,
           "maxIp": 6,
           "fp": 1,
-          "xp": 4,
+          "xp": 5,
           "lp": 0
         },
         "skills": {
@@ -494,7 +518,7 @@
           "mk-chakra": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1787505427941,
+        "updatedAt": 1787525511490,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -535,7 +559,7 @@
           {
             "id": "4rhr9d",
             "name": "BUFF Acrobacia",
-            "value": 1,
+            "value": 2,
             "target": "Acrobacia"
           },
           {
@@ -567,6 +591,18 @@
             "name": "BUFF Atletismo",
             "value": 1,
             "target": "Atletismo"
+          },
+          {
+            "id": "46pbf",
+            "name": "Cansado",
+            "target": "dex",
+            "value": -2
+          },
+          {
+            "id": "r3pz1",
+            "name": "Nausea",
+            "target": "dex",
+            "value": -1
           }
         ],
         "customItems": [],
@@ -665,14 +701,15 @@
         ],
         "zenit": 0,
         "resources": {
-          "hp": 63,
+          "hp": 47,
           "maxHp": 63,
           "mp": 55,
           "maxMp": 55,
-          "ip": 6,
+          "ip": 5,
           "maxIp": 6,
           "fp": 2,
-          "xp": 4
+          "xp": 5,
+          "lp": 0
         },
         "skills": {
           "lo-focus": 1,
@@ -682,7 +719,7 @@
           "cl-sanctuary": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1787461925164,
+        "updatedAt": 1787524316292,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -693,7 +730,7 @@
           {
             "id": "wz2tr",
             "name": "BUFF Medicina",
-            "value": 1,
+            "value": 2,
             "target": "Medicina"
           },
           {
@@ -705,7 +742,7 @@
           {
             "id": "ns9fd",
             "name": "BUFF História e Cultura",
-            "value": 2,
+            "value": 3,
             "target": "História e Cultura"
           },
           {
@@ -757,10 +794,10 @@
             "target": "Diplomacia"
           },
           {
-            "id": "0yuw8i",
-            "name": "Resfriado",
-            "value": -1,
-            "target": "dex"
+            "id": "katlhk",
+            "name": "Cansado",
+            "target": "dex",
+            "value": -2
           }
         ],
         "customItems": [
@@ -35088,6 +35125,17 @@
             "user_gd68ua63msnua1nb"
           ],
           "createdAt": 1787422634503
+        },
+        {
+          "id": "lore_0oepgzd",
+          "title": "Lore Kael",
+          "category": "Retratos",
+          "quote": "",
+          "content": "Os Veyr haviam construído sua fortuna sobre uma convicção simples: nada que uma pessoa possuísse era mais valioso do que aquilo que ela sabia. Em Ravenkhar, mantinham um instituto privado onde depoimentos, técnicas profissionais, segredos políticos e conhecimentos especializados eram comprados, organizados e revendidos como qualquer outro bem. Dentro da própria família, essa lógica contaminava todas as relações. Afeto podia ser utilizado como recompensa, intimidade servia como moeda e qualquer fraqueza revelada era armazenada para uso futuro. Kael cresceu compreendendo cedo que falar demais significava entregar armas aos outros. Aprendeu a observar antes de responder, esconder reações e jamais permitir que alguém soubesse exatamente o que sentia. Aos dezessete anos, já demonstrava pouco apego pelos pais e irmãos, mas existia uma exceção evidente: Lysa, sua irmã de onze anos. Lysa ainda possuía características que a criação dos Veyr parecia destinada a eliminar. Era espontânea, curiosa e sensível a coisas que a família considerava inúteis. Gostava de pintar, principalmente lugares, rostos e cenas que lhe provocavam alguma impressão emocional, ainda que não tivesse qualquer valor acadêmico ou comercial. Frequentemente escondia os próprios trabalhos para evitar os comentários dos pais, e Kael era uma das poucas pessoas que sabia onde ela os guardava. Os dois também costumavam passar tempo nas galerias funerárias sob Ravenkhar, onde Lysa inventava histórias sobre as pessoas cujos nomes apareciam nas sepulturas e Kael corrigia os exageros dela com uma seriedade que aos poucos se tornara parte da brincadeira. Ela era uma das poucas pessoas diante de quem Kael não precisava medir cada palavra, e ele era a única pessoa da casa em quem Lysa realmente confiava. Foi exatamente essa relação que chamou a atenção dos pais. Durante anos, os Veyr haviam procurado formas de armazenar conhecimento de maneira mais eficiente do que livros, testemunhos ou registros escritos. Eventualmente adquiriram um organismo raro cuja capacidade parecia exceder tudo que haviam encontrado antes. A criatura conseguia invadir um corpo vivo, percorrer seu sistema nervoso e conservar partes daquilo que encontrava. Não armazenava apenas informações factuais; conseguia reter memórias, habilidades, hábitos, padrões comportamentais e partes da identidade de uma pessoa. O problema era que a criatura parecia incapaz de permanecer em qualquer corpo por muito tempo. Quando encontrava incompatibilidade, destruía progressivamente o hospedeiro e migrava para outro organismo vivo próximo. Os pais de Kael sabiam que uma integração verdadeira exigiria um hospedeiro excepcionalmente compatível, mas não sabiam qual dos filhos poderia cumprir essa condição. Por isso prepararam um experimento no qual mais de uma pessoa seria exposta à criatura. Lysa foi amarrada a uma mesa no centro da sala onde o organismo era mantido, não porque soubessem que ela seria compatível, mas porque estavam certos de que sua presença garantiria a intervenção de Kael. Eles conheciam suficientemente bem o filho para prever que ele jamais permaneceria distante ao descobrir que a irmã estava em risco. Ao colocá-la naquela posição, asseguravam que Kael também entraria na sala e, consequentemente, seria testado pelo organismo. Kael descobriu o que estava acontecendo antes que o procedimento começasse de maneira controlada. Ao entrar na sala, viu Lysa imobilizada e percebeu imediatamente o que os pais pretendiam fazer. Em vez de permitir que continuassem o experimento, libertou deliberadamente a criatura de seu recipiente, acreditando que poderia virar contra eles aquilo que haviam comprado para utilizar nos próprios filhos. O organismo reagiu como um animal colocado diante de vários possíveis hospedeiros. Procurava apenas um corpo no qual pudesse permanecer, e o pai de Kael foi o primeiro que alcançou. A criatura entrou no homem e percorreu seu sistema nervoso rapidamente. Por alguns momentos, seu corpo resistiu, mas a incompatibilidade logo se tornou evidente. O parasita abandonou o hospedeiro antes que ele morresse completamente, deixando para trás danos irreversíveis. Ainda assim, não saiu vazio. Durante o tempo em que estivera conectado ao cérebro do homem, absorvera diversos fragmentos de sua mente, incluindo lembranças, conhecimentos adquiridos ao longo da vida e parte das pesquisas que ele próprio havia realizado sobre o organismo. A mãe foi atacada logo depois e sofreu um processo semelhante. Também não era compatível, e a criatura a abandonou depois de assimilar partes incompletas daquilo que ela havia sido. Kael tentou impedir que o organismo alcançasse Lysa e acabou sendo o terceiro hospedeiro. A criatura penetrou seu corpo e permaneceu nele por mais tempo do que havia permanecido nos pais. Durante esse período, conseguiu registrar uma quantidade muito maior de informações. Absorveu memórias da infância, conhecimentos, hábitos, padrões motores, maneiras de falar, associações emocionais e grande parte da estrutura autobiográfica que fazia Kael reconhecer a si próprio. Durante alguns instantes, pareceu possível que ele fosse finalmente o hospedeiro compatível, mas a integração também começou a falhar. O organismo abandonou Kael depois de causar danos severos ao cérebro e ao sistema nervoso. O coração continuava batendo, ainda que de maneira extremamente fraca, e o corpo permanecia biologicamente vivo, mas a continuidade consciente de Kael havia sido destruída durante a invasão. Depois de deixar Kael no chão, o parasita avançou sobre Lysa. Dessa vez, algo diferente aconteceu. Em vez de encontrar resistência, a criatura começou a integrar-se ao organismo dela. Seus tecidos passaram a se conectar aos nervos, à medula e ao cérebro da menina sem provocar a destruição observada nos hospedeiros anteriores. A consciência de Lysa continuou funcionando durante o processo, mas progressivamente deixou de depender exclusivamente de seu cérebro humano. Parte da atividade necessária para sustentar pensamentos, lembranças e percepção passou a ocorrer também dentro da estrutura neural do próprio parasita. A integração foi tão profunda que, ao final, já não existia uma divisão simples entre onde terminava o sistema nervoso de Lysa e onde começava o organismo. Ela continuava sendo Lysa e continuava ocupando o próprio corpo, mas sua mente já estava distribuída por uma estrutura biológica maior do que aquela com a qual havia nascido. Lysa permaneceu inconsciente durante algum tempo e despertou ainda amarrada à mesa. A sala estava destruída. Os pais haviam morrido, o recipiente onde o organismo havia sido mantido estava quebrado e Kael permanecia caído alguns metros adiante. O choque inicial deu lugar a um desespero imediato. Ela puxou os braços repetidamente contra as amarras até perceber que não conseguiria se libertar daquela maneira. Com a adrenalina dominando qualquer capacidade de pensar sobre as consequências, forçou uma das mãos contra a contenção até quebrar o próprio pulso e conseguiu retirá-la da correia. Depois de libertar o restante do corpo, caiu da mesa e atravessou a sala até o irmão. Enquanto se aproximava de Kael, Lysa ainda em desespero, por algum motivo compreendia que o organismo permanecia em um hospedeiro enquanto aquele corpo continuasse biologicamente viável, sabia que havia abandonado os anteriores por incompatibilidade e entendia que, caso perdesse o corpo no qual estava instalado, procuraria imediatamente outro organismo vivo. A origem dessas informações eram os fragmentos da mente de seu pai que haviam sido absorvidos anteriormente e agora faziam parte da estrutura neural compartilhada pelo parasita e por Lysa. O homem que havia estudado a criatura durante meses continuava existindo apenas em pedaços, mas seu conhecimento era suficiente para permitir que a filha entendesse o comportamento básico do organismo. Ao alcançar Kael, Lysa encontrou uma respiração quase imperceptível. O corpo ainda estava vivo, embora por pouco tempo. Ela acreditou que a presença do parasita poderia obrigá-lo a sobreviver se a criatura fosse novamente transferida para ele. Não sabia que Kael já havia perdido aquilo que o tornava uma consciência contínua e tampouco compreendia completamente o que a integração havia feito consigo mesma. Para Lysa, o parasita ainda era uma criatura instalada dentro de seu corpo, e a lógica parecia simples: enquanto ela permanecesse viva, ele não teria motivo para abandoná-la; caso seu corpo deixasse de ser utilizável, Kael seria o único hospedeiro vivo disponível na sala. Lysa pegou um caco do recipiente quebrado e permaneceu por alguns instantes ao lado do irmão. Tudo o que fizera até ali havia acontecido rápido demais para que compreendesse plenamente as consequências, mas naquele momento não enxergava outra alternativa. Aos onze anos, não possuía qualquer teoria elaborada sobre sacrifício ou morte. Queria apenas dar ao irmão uma possibilidade que o corpo dele estava prestes a perder. Antes de cortar a própria garganta, olhou para Kael e murmurou: “Se você pudesse crescer, encontraria motivos pra sorrir?” O corpo de Lysa começou rapidamente a perder a capacidade de sustentar o organismo. O parasita respondeu exatamente da forma que o conhecimento assimilado do pai havia indicado e abandonou aquele hospedeiro para procurar outro corpo ainda vivo. A menina acreditava que morreria ali e que a criatura seguiria sem ela, mas ignorava que sua consciência já não existia exclusivamente dentro de seu cérebro. Durante a integração, o parasita havia incorporado completamente os processos que sustentavam a mente de Lysa. Quando o corpo dela começou a morrer, aquilo que constituía sua consciência não desapareceu junto dele. Lysa continuou existindo dentro da criatura que abandonava sua carne. O parasita retornou para Kael carregando tudo o que havia adquirido naquela noite.Porém, Lysa não estava armazenada como um conjunto de lembranças. Ela permanecia inteira. Era a única continuidade mental completa transportada pelo organismo. Quando a criatura voltou a entrar no corpo de Kael, encontrou um organismo gravemente danificado, mas ainda biologicamente recuperável. Começou a reconstruir o sistema nervoso, reparar tecidos e estabilizar órgãos. O cérebro voltou a possuir condições de sustentar uma consciência, mas Kael já não existia para ocupá-lo. A única mente completa disponível era Lysa, e foi ela que passou a operar através daquele corpo. Quando os olhos de Kael se abriram novamente, quem observava através deles era Lysa, embora ela não possuísse qualquer motivo para perceber isso. Ela se lembrava de nascer como Kael, de crescer naquela casa, das conversas com os pais, das galerias funerárias e dos anos de convivência com a irmã mais nova. Lembrava de Lysa pintando, de segui-la pelos corredores, de protegê-la das manipulações da família e de entrar naquela sala porque acreditava que precisava salvá-la. O corpo era o de Kael, a voz era a de Kael e praticamente toda a autobiografia consciente disponível dizia que ela era Kael Veyr. Havia, entretanto, outra sequência de lembranças profundamente incompatível com essa identidade. A própria consciência de Lysa ainda carregava a experiência de estar amarrada à mesa, assistir Kael sendo invadido, quebrar o pulso para escapar, rastejar até o irmão e sacrificar o próprio corpo para obrigar o parasita a voltar para ele. A mente recém-estabilizada não conseguia conciliar a certeza de ser Kael com uma memória na qual observava Kael de fora. O conflito foi resolvido através de uma reconstrução inconsciente dos acontecimentos. As memórias armazenadas de Kael forneceram o ponto de vista dominante, enquanto as experiências de Lysa foram rearranjadas até formarem uma narrativa coerente com a identidade que a consciência acreditava possuir. A morte real de Kael desapareceu dessa versão. A compatibilidade de Lysa foi transferida para o irmão, o sacrifício dela deixou de existir e a noite passou a ser lembrada como o momento em que Kael tentou salvar Lysa, viu a irmã ser consumida e acabou tornando-se o hospedeiro definitivo do parasita. Foi dessa maneira que Kael Veyr retornou ao mundo, embora a pessoa que abriu os olhos dentro daquele corpo nunca tivesse sido ele. Durante os anos seguintes, a falsidade permaneceu praticamente impossível de perceber. O corpo era genuinamente de Kael, as lembranças anteriores àquela noite pertenciam a ele e o parasita havia preservado informações suficientes para reproduzir hábitos, conhecimentos e padrões comportamentais. As diferenças começaram a surgir com o tempo. O Kael que cresceu depois daquela noite parecia permanecer preso a características que pertenciam ao rapaz de dezessete anos. Ele acumulava conhecimento, aprendia novas técnicas e vivia experiências que o adolescente jamais conhecera, mas partes de sua personalidade pareciam estranhamente estáveis. Isso acontecia porque a memória utilizada como base de identidade terminava naquela idade. O verdadeiro Kael nunca viveu os anos seguintes. Tudo o que aconteceu depois foi experimentado por Lysa utilizando a personalidade, as lembranças e o corpo do irmão como referência para compreender a própria existência. A compatibilidade original de Lysa também continuou existindo. O parasita não funcionava como uma criatura externa que precisava ser dominada pelo hospedeiro. Durante a primeira integração, seu sistema nervoso havia se tornado parte da própria consciência dela. Ao retornar para o corpo de Kael, essa relação permaneceu intacta. Por isso a criatura respondia aos comandos de “Kael” com uma naturalidade que nenhum dos hospedeiros anteriores havia demonstrado. Transformações físicas, aumento de massa, regeneração e alterações monstruosas do corpo não eram ordens dadas a uma entidade separada, mas extensões de uma integração estabelecida originalmente com Lysa. O hospedeiro acreditava possuir domínio excepcional sobre o parasita sem compreender que aquele domínio existia porque a pessoa realmente compatível nunca havia sido Kael. Lysa também aparecia diante dele, mas de uma maneira fundamentalmente diferente. Kael acreditava que o parasita havia preservado a irmã da mesma forma que preservara seus pais e outras pessoas assimiladas. A figura de Lysa parecia conversar com ele, oferecer conselhos, lembrá-lo de certas coisas e, algumas vezes, demonstrar uma compreensão muito mais íntima de seus sentimentos do que qualquer outra reconstrução. Na realidade, não existia dentro do parasita um arquivo completo chamado Lysa Veyr. Ela nunca havia sido reduzida a fragmentos porque sua consciência era a própria consciência ativa. A imagem da menina surgia como uma representação mental da identidade original que havia sido soterrada pela autobiografia de Kael. Era a forma encontrada pela mente para manter acessível aquilo que não conseguia reconhecer como parte de si mesma. A investigação acabaria obrigando a mente a revisitar a noite que havia sustentado toda a sua identidade. Aos poucos, as duas versões deixariam de conseguir permanecer separadas. A lembrança de estar amarrada à mesa se conectaria à sensação real do pulso quebrado, à visão dos pais mortos, à imagem de Kael imóvel no chão e ao conhecimento estranho que surgira na mente através dos fragmentos do pai. A experiência de cortar a própria garganta retornaria não como a morte de outra pessoa, mas como uma lembrança em primeira pessoa, seguida pela sensação impossível de continuidade enquanto o parasita abandonava aquele corpo e entrava no irmão. Nesse momento, a natureza do que acontecera se tornaria impossível de negar. Kael Veyr havia morrido naquela sala aos dezessete anos. Seu corpo fora recuperado e grande parte de sua memória havia sido preservada, mas a consciência que possuíra aquelas lembranças originalmente não retornara. Durante quatorze anos, ela viveu no corpo de Kael, utilizando suas memórias, carregando seu nome e acreditando que o parasita havia matado Lysa naquela noite. A verdade era o inverso. O parasita nunca matou Lysa. Ele preservou sua consciência de maneira tão completa que ela se tornou incapaz de perceber que havia sobrevivido. Quem desapareceu foi Kael. O sacrifício de Lysa conseguiu salvar seu corpo, suas lembranças e tudo aquilo que ainda podia ser reconstruído a partir dele, mas não conseguiu trazer de volta a pessoa que havia morrido tentando protegê-la. ",
+          "imageUrl": "https://zipline.sinapselabs.com.br/u/W9bDWd.png",
+          "isPublic": true,
+          "allowedMembers": [],
+          "createdAt": 1787512039058
         }
       ]
     ]
@@ -35137,37 +35185,37 @@
             "id": "y220er",
             "name": "Morte da moira",
             "url": "https://lh3.googleusercontent.com/d/1ZPNs9yw09N-3LQlQPO8cCwfz8lcLfxL-=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "84xvpn",
             "name": "Darin",
             "url": "https://lh3.googleusercontent.com/d/1jW7QcoUEBECfyHsQYvvZ0vC8pGo52VAI=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "vwjshp",
             "name": "Sonho amelia horror",
             "url": "https://lh3.googleusercontent.com/d/1FZCkULEp3qTLdVNH8hrFO8CWnFMFpIJZ=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "y3ex7",
             "name": "Sonho amelia",
             "url": "https://lh3.googleusercontent.com/d/1DJm3b9Gggy0OZuMMMUrctIc391UFayG1=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "lxibs",
             "name": "Tio do thorfin",
             "url": "https://lh3.googleusercontent.com/d/1-x-m3UsSIdZ8-qvNN28Q5nS7yZ5Ck9CA=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "93519o",
             "name": "Cabana sonho thorfin",
             "url": "https://lh3.googleusercontent.com/d/1eTIWniEGZes12sIQLu5V-TlJBldXTmzx=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "u959l",
@@ -35197,7 +35245,7 @@
             "id": "24bad",
             "name": "kael vendo os companheiros",
             "url": "https://lh3.googleusercontent.com/d/1JHRfYWU0OgD3Q4iYHLKgEpK2YgvdXpZC=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "bpvc5t",
@@ -35209,55 +35257,55 @@
             "id": "lusdmq",
             "name": "Interior de Darin",
             "url": "https://lh3.googleusercontent.com/d/1uI1RTvUFxXzQehO6BK3K8sRmOlepjHbY=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "4tp6ku",
             "name": "Gorila praga",
             "url": "https://lh3.googleusercontent.com/d/1vGrqKJVJjMGW-EcH2zRSSKDq7i6XFeSc=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "epy7ff",
             "name": "Entrando na masmorra",
             "url": "https://lh3.googleusercontent.com/d/1MCF5aXJEaw_qXJD1mTvK8IMknTe695uf=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "cotz7f",
             "name": "Corredor da prisão",
             "url": "https://lh3.googleusercontent.com/d/1eBZC2Z50XW3o3vQ8c3X-PlPVBR-kiTJV=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "hdk4z",
             "name": "Sala do altar",
             "url": "https://lh3.googleusercontent.com/d/1N7adw7FIc_V_uqQw51HhVAkTbLm0kTUt=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "rnuty",
             "name": "Prisioneiro",
             "url": "https://lh3.googleusercontent.com/d/1TN8goH_4Shzolakno5RwPAIosGNcaWc0=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "tf7re",
             "name": "Marca Vampirica",
             "url": "https://lh3.googleusercontent.com/d/1dLlvMN9jH6NacHTibLVvnGcsa4PasZ0j=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "sko6kw",
             "name": "Vampiro gigante",
             "url": "https://lh3.googleusercontent.com/d/1s23iH6SOvk5JGnRo6XqjTR4ULscTYmBf=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "xwweee",
             "name": "2 corvos",
             "url": "https://lh3.googleusercontent.com/d/1ByvSF6aXs74p1c-cmQF-HllfT_rNKQ6d=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true
           },
           {
             "id": "kn7ppz",
@@ -35270,6 +35318,12 @@
             "name": "Exorcismo de Miguel",
             "url": "https://lh3.googleusercontent.com/d/1aQxGwjMMmtwJxGTRNX68qWfAqeLqjRZk=w1000?authuser=0",
             "isPublic": false
+          },
+          {
+            "id": "gtowx48",
+            "name": "Kael na floresta",
+            "url": "https://lh3.googleusercontent.com/d/1bKonUuWpNWuTV5VHAqp_Qm5SYKNj-uEg=w1000?authuser=0",
+            "isPublic": true
           }
         ],
         "lore": [
@@ -35431,6 +35485,17 @@
               "user_gd68ua63msnua1nb"
             ],
             "createdAt": 1787422634503
+          },
+          {
+            "id": "lore_0oepgzd",
+            "title": "Lore Kael",
+            "category": "Retratos",
+            "quote": "",
+            "content": "Os Veyr haviam construído sua fortuna sobre uma convicção simples: nada que uma pessoa possuísse era mais valioso do que aquilo que ela sabia. Em Ravenkhar, mantinham um instituto privado onde depoimentos, técnicas profissionais, segredos políticos e conhecimentos especializados eram comprados, organizados e revendidos como qualquer outro bem. Dentro da própria família, essa lógica contaminava todas as relações. Afeto podia ser utilizado como recompensa, intimidade servia como moeda e qualquer fraqueza revelada era armazenada para uso futuro. Kael cresceu compreendendo cedo que falar demais significava entregar armas aos outros. Aprendeu a observar antes de responder, esconder reações e jamais permitir que alguém soubesse exatamente o que sentia. Aos dezessete anos, já demonstrava pouco apego pelos pais e irmãos, mas existia uma exceção evidente: Lysa, sua irmã de onze anos. Lysa ainda possuía características que a criação dos Veyr parecia destinada a eliminar. Era espontânea, curiosa e sensível a coisas que a família considerava inúteis. Gostava de pintar, principalmente lugares, rostos e cenas que lhe provocavam alguma impressão emocional, ainda que não tivesse qualquer valor acadêmico ou comercial. Frequentemente escondia os próprios trabalhos para evitar os comentários dos pais, e Kael era uma das poucas pessoas que sabia onde ela os guardava. Os dois também costumavam passar tempo nas galerias funerárias sob Ravenkhar, onde Lysa inventava histórias sobre as pessoas cujos nomes apareciam nas sepulturas e Kael corrigia os exageros dela com uma seriedade que aos poucos se tornara parte da brincadeira. Ela era uma das poucas pessoas diante de quem Kael não precisava medir cada palavra, e ele era a única pessoa da casa em quem Lysa realmente confiava. Foi exatamente essa relação que chamou a atenção dos pais. Durante anos, os Veyr haviam procurado formas de armazenar conhecimento de maneira mais eficiente do que livros, testemunhos ou registros escritos. Eventualmente adquiriram um organismo raro cuja capacidade parecia exceder tudo que haviam encontrado antes. A criatura conseguia invadir um corpo vivo, percorrer seu sistema nervoso e conservar partes daquilo que encontrava. Não armazenava apenas informações factuais; conseguia reter memórias, habilidades, hábitos, padrões comportamentais e partes da identidade de uma pessoa. O problema era que a criatura parecia incapaz de permanecer em qualquer corpo por muito tempo. Quando encontrava incompatibilidade, destruía progressivamente o hospedeiro e migrava para outro organismo vivo próximo. Os pais de Kael sabiam que uma integração verdadeira exigiria um hospedeiro excepcionalmente compatível, mas não sabiam qual dos filhos poderia cumprir essa condição. Por isso prepararam um experimento no qual mais de uma pessoa seria exposta à criatura. Lysa foi amarrada a uma mesa no centro da sala onde o organismo era mantido, não porque soubessem que ela seria compatível, mas porque estavam certos de que sua presença garantiria a intervenção de Kael. Eles conheciam suficientemente bem o filho para prever que ele jamais permaneceria distante ao descobrir que a irmã estava em risco. Ao colocá-la naquela posição, asseguravam que Kael também entraria na sala e, consequentemente, seria testado pelo organismo. Kael descobriu o que estava acontecendo antes que o procedimento começasse de maneira controlada. Ao entrar na sala, viu Lysa imobilizada e percebeu imediatamente o que os pais pretendiam fazer. Em vez de permitir que continuassem o experimento, libertou deliberadamente a criatura de seu recipiente, acreditando que poderia virar contra eles aquilo que haviam comprado para utilizar nos próprios filhos. O organismo reagiu como um animal colocado diante de vários possíveis hospedeiros. Procurava apenas um corpo no qual pudesse permanecer, e o pai de Kael foi o primeiro que alcançou. A criatura entrou no homem e percorreu seu sistema nervoso rapidamente. Por alguns momentos, seu corpo resistiu, mas a incompatibilidade logo se tornou evidente. O parasita abandonou o hospedeiro antes que ele morresse completamente, deixando para trás danos irreversíveis. Ainda assim, não saiu vazio. Durante o tempo em que estivera conectado ao cérebro do homem, absorvera diversos fragmentos de sua mente, incluindo lembranças, conhecimentos adquiridos ao longo da vida e parte das pesquisas que ele próprio havia realizado sobre o organismo. A mãe foi atacada logo depois e sofreu um processo semelhante. Também não era compatível, e a criatura a abandonou depois de assimilar partes incompletas daquilo que ela havia sido. Kael tentou impedir que o organismo alcançasse Lysa e acabou sendo o terceiro hospedeiro. A criatura penetrou seu corpo e permaneceu nele por mais tempo do que havia permanecido nos pais. Durante esse período, conseguiu registrar uma quantidade muito maior de informações. Absorveu memórias da infância, conhecimentos, hábitos, padrões motores, maneiras de falar, associações emocionais e grande parte da estrutura autobiográfica que fazia Kael reconhecer a si próprio. Durante alguns instantes, pareceu possível que ele fosse finalmente o hospedeiro compatível, mas a integração também começou a falhar. O organismo abandonou Kael depois de causar danos severos ao cérebro e ao sistema nervoso. O coração continuava batendo, ainda que de maneira extremamente fraca, e o corpo permanecia biologicamente vivo, mas a continuidade consciente de Kael havia sido destruída durante a invasão. Depois de deixar Kael no chão, o parasita avançou sobre Lysa. Dessa vez, algo diferente aconteceu. Em vez de encontrar resistência, a criatura começou a integrar-se ao organismo dela. Seus tecidos passaram a se conectar aos nervos, à medula e ao cérebro da menina sem provocar a destruição observada nos hospedeiros anteriores. A consciência de Lysa continuou funcionando durante o processo, mas progressivamente deixou de depender exclusivamente de seu cérebro humano. Parte da atividade necessária para sustentar pensamentos, lembranças e percepção passou a ocorrer também dentro da estrutura neural do próprio parasita. A integração foi tão profunda que, ao final, já não existia uma divisão simples entre onde terminava o sistema nervoso de Lysa e onde começava o organismo. Ela continuava sendo Lysa e continuava ocupando o próprio corpo, mas sua mente já estava distribuída por uma estrutura biológica maior do que aquela com a qual havia nascido. Lysa permaneceu inconsciente durante algum tempo e despertou ainda amarrada à mesa. A sala estava destruída. Os pais haviam morrido, o recipiente onde o organismo havia sido mantido estava quebrado e Kael permanecia caído alguns metros adiante. O choque inicial deu lugar a um desespero imediato. Ela puxou os braços repetidamente contra as amarras até perceber que não conseguiria se libertar daquela maneira. Com a adrenalina dominando qualquer capacidade de pensar sobre as consequências, forçou uma das mãos contra a contenção até quebrar o próprio pulso e conseguiu retirá-la da correia. Depois de libertar o restante do corpo, caiu da mesa e atravessou a sala até o irmão. Enquanto se aproximava de Kael, Lysa ainda em desespero, por algum motivo compreendia que o organismo permanecia em um hospedeiro enquanto aquele corpo continuasse biologicamente viável, sabia que havia abandonado os anteriores por incompatibilidade e entendia que, caso perdesse o corpo no qual estava instalado, procuraria imediatamente outro organismo vivo. A origem dessas informações eram os fragmentos da mente de seu pai que haviam sido absorvidos anteriormente e agora faziam parte da estrutura neural compartilhada pelo parasita e por Lysa. O homem que havia estudado a criatura durante meses continuava existindo apenas em pedaços, mas seu conhecimento era suficiente para permitir que a filha entendesse o comportamento básico do organismo. Ao alcançar Kael, Lysa encontrou uma respiração quase imperceptível. O corpo ainda estava vivo, embora por pouco tempo. Ela acreditou que a presença do parasita poderia obrigá-lo a sobreviver se a criatura fosse novamente transferida para ele. Não sabia que Kael já havia perdido aquilo que o tornava uma consciência contínua e tampouco compreendia completamente o que a integração havia feito consigo mesma. Para Lysa, o parasita ainda era uma criatura instalada dentro de seu corpo, e a lógica parecia simples: enquanto ela permanecesse viva, ele não teria motivo para abandoná-la; caso seu corpo deixasse de ser utilizável, Kael seria o único hospedeiro vivo disponível na sala. Lysa pegou um caco do recipiente quebrado e permaneceu por alguns instantes ao lado do irmão. Tudo o que fizera até ali havia acontecido rápido demais para que compreendesse plenamente as consequências, mas naquele momento não enxergava outra alternativa. Aos onze anos, não possuía qualquer teoria elaborada sobre sacrifício ou morte. Queria apenas dar ao irmão uma possibilidade que o corpo dele estava prestes a perder. Antes de cortar a própria garganta, olhou para Kael e murmurou: “Se você pudesse crescer, encontraria motivos pra sorrir?” O corpo de Lysa começou rapidamente a perder a capacidade de sustentar o organismo. O parasita respondeu exatamente da forma que o conhecimento assimilado do pai havia indicado e abandonou aquele hospedeiro para procurar outro corpo ainda vivo. A menina acreditava que morreria ali e que a criatura seguiria sem ela, mas ignorava que sua consciência já não existia exclusivamente dentro de seu cérebro. Durante a integração, o parasita havia incorporado completamente os processos que sustentavam a mente de Lysa. Quando o corpo dela começou a morrer, aquilo que constituía sua consciência não desapareceu junto dele. Lysa continuou existindo dentro da criatura que abandonava sua carne. O parasita retornou para Kael carregando tudo o que havia adquirido naquela noite.Porém, Lysa não estava armazenada como um conjunto de lembranças. Ela permanecia inteira. Era a única continuidade mental completa transportada pelo organismo. Quando a criatura voltou a entrar no corpo de Kael, encontrou um organismo gravemente danificado, mas ainda biologicamente recuperável. Começou a reconstruir o sistema nervoso, reparar tecidos e estabilizar órgãos. O cérebro voltou a possuir condições de sustentar uma consciência, mas Kael já não existia para ocupá-lo. A única mente completa disponível era Lysa, e foi ela que passou a operar através daquele corpo. Quando os olhos de Kael se abriram novamente, quem observava através deles era Lysa, embora ela não possuísse qualquer motivo para perceber isso. Ela se lembrava de nascer como Kael, de crescer naquela casa, das conversas com os pais, das galerias funerárias e dos anos de convivência com a irmã mais nova. Lembrava de Lysa pintando, de segui-la pelos corredores, de protegê-la das manipulações da família e de entrar naquela sala porque acreditava que precisava salvá-la. O corpo era o de Kael, a voz era a de Kael e praticamente toda a autobiografia consciente disponível dizia que ela era Kael Veyr. Havia, entretanto, outra sequência de lembranças profundamente incompatível com essa identidade. A própria consciência de Lysa ainda carregava a experiência de estar amarrada à mesa, assistir Kael sendo invadido, quebrar o pulso para escapar, rastejar até o irmão e sacrificar o próprio corpo para obrigar o parasita a voltar para ele. A mente recém-estabilizada não conseguia conciliar a certeza de ser Kael com uma memória na qual observava Kael de fora. O conflito foi resolvido através de uma reconstrução inconsciente dos acontecimentos. As memórias armazenadas de Kael forneceram o ponto de vista dominante, enquanto as experiências de Lysa foram rearranjadas até formarem uma narrativa coerente com a identidade que a consciência acreditava possuir. A morte real de Kael desapareceu dessa versão. A compatibilidade de Lysa foi transferida para o irmão, o sacrifício dela deixou de existir e a noite passou a ser lembrada como o momento em que Kael tentou salvar Lysa, viu a irmã ser consumida e acabou tornando-se o hospedeiro definitivo do parasita. Foi dessa maneira que Kael Veyr retornou ao mundo, embora a pessoa que abriu os olhos dentro daquele corpo nunca tivesse sido ele. Durante os anos seguintes, a falsidade permaneceu praticamente impossível de perceber. O corpo era genuinamente de Kael, as lembranças anteriores àquela noite pertenciam a ele e o parasita havia preservado informações suficientes para reproduzir hábitos, conhecimentos e padrões comportamentais. As diferenças começaram a surgir com o tempo. O Kael que cresceu depois daquela noite parecia permanecer preso a características que pertenciam ao rapaz de dezessete anos. Ele acumulava conhecimento, aprendia novas técnicas e vivia experiências que o adolescente jamais conhecera, mas partes de sua personalidade pareciam estranhamente estáveis. Isso acontecia porque a memória utilizada como base de identidade terminava naquela idade. O verdadeiro Kael nunca viveu os anos seguintes. Tudo o que aconteceu depois foi experimentado por Lysa utilizando a personalidade, as lembranças e o corpo do irmão como referência para compreender a própria existência. A compatibilidade original de Lysa também continuou existindo. O parasita não funcionava como uma criatura externa que precisava ser dominada pelo hospedeiro. Durante a primeira integração, seu sistema nervoso havia se tornado parte da própria consciência dela. Ao retornar para o corpo de Kael, essa relação permaneceu intacta. Por isso a criatura respondia aos comandos de “Kael” com uma naturalidade que nenhum dos hospedeiros anteriores havia demonstrado. Transformações físicas, aumento de massa, regeneração e alterações monstruosas do corpo não eram ordens dadas a uma entidade separada, mas extensões de uma integração estabelecida originalmente com Lysa. O hospedeiro acreditava possuir domínio excepcional sobre o parasita sem compreender que aquele domínio existia porque a pessoa realmente compatível nunca havia sido Kael. Lysa também aparecia diante dele, mas de uma maneira fundamentalmente diferente. Kael acreditava que o parasita havia preservado a irmã da mesma forma que preservara seus pais e outras pessoas assimiladas. A figura de Lysa parecia conversar com ele, oferecer conselhos, lembrá-lo de certas coisas e, algumas vezes, demonstrar uma compreensão muito mais íntima de seus sentimentos do que qualquer outra reconstrução. Na realidade, não existia dentro do parasita um arquivo completo chamado Lysa Veyr. Ela nunca havia sido reduzida a fragmentos porque sua consciência era a própria consciência ativa. A imagem da menina surgia como uma representação mental da identidade original que havia sido soterrada pela autobiografia de Kael. Era a forma encontrada pela mente para manter acessível aquilo que não conseguia reconhecer como parte de si mesma. A investigação acabaria obrigando a mente a revisitar a noite que havia sustentado toda a sua identidade. Aos poucos, as duas versões deixariam de conseguir permanecer separadas. A lembrança de estar amarrada à mesa se conectaria à sensação real do pulso quebrado, à visão dos pais mortos, à imagem de Kael imóvel no chão e ao conhecimento estranho que surgira na mente através dos fragmentos do pai. A experiência de cortar a própria garganta retornaria não como a morte de outra pessoa, mas como uma lembrança em primeira pessoa, seguida pela sensação impossível de continuidade enquanto o parasita abandonava aquele corpo e entrava no irmão. Nesse momento, a natureza do que acontecera se tornaria impossível de negar. Kael Veyr havia morrido naquela sala aos dezessete anos. Seu corpo fora recuperado e grande parte de sua memória havia sido preservada, mas a consciência que possuíra aquelas lembranças originalmente não retornara. Durante quatorze anos, ela viveu no corpo de Kael, utilizando suas memórias, carregando seu nome e acreditando que o parasita havia matado Lysa naquela noite. A verdade era o inverso. O parasita nunca matou Lysa. Ele preservou sua consciência de maneira tão completa que ela se tornou incapaz de perceber que havia sobrevivido. Quem desapareceu foi Kael. O sacrifício de Lysa conseguiu salvar seu corpo, suas lembranças e tudo aquilo que ainda podia ser reconstruído a partir dele, mas não conseguiu trazer de volta a pessoa que havia morrido tentando protegê-la. ",
+            "imageUrl": "https://zipline.sinapselabs.com.br/u/W9bDWd.png",
+            "isPublic": true,
+            "allowedMembers": [],
+            "createdAt": 1787512039058
           }
         ],
         "cutscenes": [
@@ -35950,11 +36015,49 @@
             "url": "http://zipline.sinapselabs.com.br/u/l1nWdH.mp3",
             "loopable": true,
             "isCustom": true
+          },
+          {
+            "id": "snd_custom_leqqbd2",
+            "name": "Macaco",
+            "url": "http://zipline.sinapselabs.com.br/u/8b7vtq.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_vugl6rf",
+            "name": "Nocturnus",
+            "url": "http://zipline.sinapselabs.com.br/u/3HkFLD.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_sabm3zl",
+            "name": "Ansiedade",
+            "url": "http://zipline.sinapselabs.com.br/u/Y3mARA.mp3",
+            "loopable": true,
+            "isCustom": true
           }
         ],
         "weather": "clear",
-        "updatedAt": 1787506511540,
-        "customCreatures": []
+        "updatedAt": 1787591176959,
+        "customCreatures": [],
+        "customEquipment": [
+          {
+            "id": "custom-eq-p5pwv2kk",
+            "name": "Dente do Kael",
+            "category": "accessory",
+            "cost": 1,
+            "purchasable": false,
+            "detail": "Dente canino do Kael",
+            "damage": "",
+            "defense": "",
+            "mdef": "",
+            "type": "",
+            "bonus": "",
+            "effect": ""
+          }
+        ],
+        "customClasses": []
       }
     ]
   ],
@@ -35981,12 +36084,12 @@
           {
             "id": "note_5nz7wlqfmt4tgts6",
             "title": "Anotações",
-            "content": "Os homens ficaram\nGeorgie e moira são intimos\nAna e zara Amigas da Amélia\nMoira susurra sobre bussola",
+            "content": "Meu dente esta na minha bolsa\n",
             "createdAt": 1787429656518,
-            "updatedAt": 1787442813120
+            "updatedAt": 1787514807274
           }
         ],
-        "updatedAt": 1787442813120
+        "updatedAt": 1787514807274
       }
     ],
     [
@@ -36010,16 +36113,16 @@
           {
             "id": "note_78ueka7lmt4wtgso",
             "title": "Ravenkhar",
-            "content": "Porto em que saímos Althafen\n\nUm homem chamado jorge era carroceiro e estava nos esperando\n\nBicho que nos faz ver o nosso pior pesadelo do passado.\n\nDarin cidade risonha\n",
+            "content": "Porto em que saímos Althafen\n\nUm homem chamado jorge era carroceiro e estava nos esperando\n\nBicho que nos faz ver o nosso pior pesadelo do passado.\n\nDarin cidade risonha, agora abandonada e conhecida como cidade abandonada.\n\nBabuíno das montanhas, são territorialistas, porém não são agressivos se vc não for brusco.\n\nFruta do piril.\n\nGorila aproximadamente 30 metros, sangue preto, olhos putrefatos e cinzas cheio de feridas.",
             "createdAt": 1787435285064,
-            "updatedAt": 1787454728999
+            "updatedAt": 1787522601346
           },
           {
             "id": "note_ifcefjbamt4vq9bj",
             "title": "Itens da bolsa",
-            "content": "Saco com arroz e um saco com sal na mochila.\n\ntenho apenas uma faca agora.\n\nColete estou usando +2 em defesa fisica e +1 em defesa mágica\n\nEstou usando colar de coração +3 de hp máximo\n\nCantil.",
+            "content": "Saco com sal na mochila.\n\nColete estou usando +2 em defesa fisica e +1 em defesa mágica\n\nEstou usando colar de coração +3 de hp máximo\n\nCantil.",
             "createdAt": 1787433455791,
-            "updatedAt": 1787461627394
+            "updatedAt": 1787514804828
           },
           {
             "id": "note_tzrdkp6mmt4vjyj3",
@@ -36064,7 +36167,7 @@
             "updatedAt": 1787433657521
           }
         ],
-        "updatedAt": 1787461627394
+        "updatedAt": 1787522601346
       }
     ],
     [
@@ -36074,12 +36177,12 @@
           {
             "id": "note_j6q81r4jmt4ubiee",
             "title": "Anotações",
-            "content": "Kael, Thorfinn e Amelia tem laços disponíveis uns com os outros\n\nAumento da vida e mana máxima\nInputar classes nos personagens",
+            "content": "Kael, Thorfinn e Amelia tem laços disponíveis uns com os outros",
             "createdAt": 1787431088102,
-            "updatedAt": 1787456633474
+            "updatedAt": 1787591145240
           }
         ],
-        "updatedAt": 1787456633474
+        "updatedAt": 1787591145240
       }
     ]
   ]

@@ -391,7 +391,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   // === CUSTOM DATA ===
   const [customCreatures, setCustomCreatures] = useState<Creature[]>([])
   const [customEquipment, setCustomEquipment] = useState<any[]>([])
-
+  const [customClasses, setCustomClasses] = useState<any[]>([])
 
   const isGm = data.role === "gm"
   const effectsVolumeRef = useRef(effectsVolume)
@@ -427,6 +427,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         if (!campaignStateLoadedFromApiRef.current) {
           const savedCustomCreatures = localStorage.getItem(`custom_creatures_${data.campaign.id}`)
           if (savedCustomCreatures) { try { setCustomCreatures(JSON.parse(savedCustomCreatures)) } catch (e) { } }
+
+          const savedCustomClasses = localStorage.getItem(`custom_classes_${data.campaign.id}`)
+          if (savedCustomClasses) { try { setCustomClasses(JSON.parse(savedCustomClasses)) } catch (e) { } }
 
           const savedCustomEquipment = localStorage.getItem(`custom_equipment_${data.campaign.id}`)
           if (savedCustomEquipment) { try { setCustomEquipment(JSON.parse(savedCustomEquipment)) } catch (e) { } }
@@ -622,20 +625,23 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             return []
           }
         }
-        
+
 
         if (!isGm) {
           const gallery = Array.isArray(res.state.gallery) ? res.state.gallery : []
           const lore = Array.isArray(res.state.lore) ? res.state.lore : []
           const customEq = Array.isArray(res.state.customEquipment) ? res.state.customEquipment : []
+          const customCls = Array.isArray(res.state.customClasses) ? res.state.customClasses : []
           setGalleryImages(gallery)
           setLoreEntries(lore)
           setCustomEquipment(customEq)
+          setCustomClasses(customCls)
           setWeather((res.state.weather || "clear") as WeatherType)
           storeJsonWhenIdle(`images_${data.campaign.id}`, gallery)
           storeJsonWhenIdle(`lore_${data.campaign.id}`, lore)
+          storeJsonWhenIdle(`custom_classes_${data.campaign.id}`, customCls)
           storeJsonWhenIdle(`custom_equipment_${data.campaign.id}`, customEq)
-          
+
           localStorage.setItem(`weather_${data.campaign.id}`, res.state.weather || "clear")
           return
         }
@@ -650,6 +656,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         }
         const savedCustomCreatures = pickArray("customCreatures", `custom_creatures_${data.campaign.id}`) as Creature[]
         const savedCustomEquipment = pickArray("customEquipment", `custom_equipment_${data.campaign.id}`) as any[]
+        const savedCustomClasses = pickArray("customClasses", `custom_classes_${data.campaign.id}`) as any[]
         const gallery = pickArray("gallery", `images_${data.campaign.id}`) as SharedImage[]
         const lore = pickArray("lore", `lore_${data.campaign.id}`) as LoreEntry[]
         const savedCutscenes = pickArray("cutscenes", `cutscenes_${data.campaign.id}`) as Cutscene[]
@@ -658,7 +665,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         const savedDrafts = pickArray("draftPolls", `drafts_${data.campaign.id}`) as DraftPoll[]
         const savedSounds = pickArray("customSounds", `custom_sounds_${data.campaign.id}`) as Track[]
         const cachedWeather = localStorage.getItem(`weather_${data.campaign.id}`)
-       
+
         const savedWeather = persisted.has("weather")
           ? String(res.state.weather || "clear")
           : cachedWeather || "clear"
@@ -671,10 +678,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         setNpcLoots(savedLoots)
         setCustomCreatures(savedCustomCreatures)
         setCustomEquipment(savedCustomEquipment)
+        setCustomClasses(savedCustomClasses)
         setDraftPolls(savedDrafts)
         setCustomSounds(savedSounds)
         setWeather(savedWeather as WeatherType)
         storeJsonWhenIdle(`images_${data.campaign.id}`, gallery)
+        storeJsonWhenIdle(`custom_classes_${data.campaign.id}`, savedCustomClasses)
         storeJsonWhenIdle(`lore_${data.campaign.id}`, lore)
         storeJsonWhenIdle(`cutscenes_${data.campaign.id}`, savedCutscenes)
         storeJsonWhenIdle(`custom_npcs_${data.campaign.id}`, savedNPCs)
@@ -724,10 +733,26 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     void persistCampaignState({ customCreatures: creatures });
   }
 
+  const saveCustomClassesToStorage = (clsArray: any[]) => {
+    setCustomClasses(clsArray);
+    localStorage.setItem(`custom_classes_${data.campaign.id}`, JSON.stringify(clsArray));
+    void persistCampaignState({ customClasses: clsArray });
+
+    apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+      method: "POST",
+      body: JSON.stringify({ characterId: 'sys_classes', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_CLASSES:UPDATE`, result: JSON.stringify(clsArray) })
+    }).catch(console.error);
+  }
+
   const saveCustomEquipmentToStorage = (eqs: any[]) => {
     setCustomEquipment(eqs);
     localStorage.setItem(`custom_equipment_${data.campaign.id}`, JSON.stringify(eqs));
     void persistCampaignState({ customEquipment: eqs });
+
+    apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+      method: "POST",
+      body: JSON.stringify({ characterId: 'sys_equip', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_EQUIPMENT:UPDATE`, result: JSON.stringify(eqs) })
+    }).catch(console.error);
   }
 
   // Verificador de Expiração da Enquete
@@ -929,7 +954,20 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       if (attr.startsWith("SYNC_ITEM_GIVEN")) {
         try {
           const payload = JSON.parse(String(event.result));
-          setCharacters((prev) => prev.map(c => c.id === payload.charId ? payload.character : c));
+          
+          // CORREÇÃO: Força o override completo da ficha no state do React
+          setCharacters((prev) => prev.map(c => {
+            if (c.id === payload.charId) {
+              return {
+                 ...c,
+                 ...payload.character,
+                 equipment: payload.character.equipment || [],
+                 customItems: payload.character.customItems || [],
+                 customModifiers: payload.character.customModifiers || []
+              }
+            }
+            return c
+          }));
 
           if (payload.character.ownerId === data.me.id) {
             setItemNotification(payload.itemName);
@@ -1009,6 +1047,24 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           const synced = JSON.parse(String(event.result));
           setGalleryImages(synced);
           localStorage.setItem(`images_${data.campaign.id}`, JSON.stringify(synced));
+        } catch (e) { }
+        return;
+      }
+
+      if (attr === "SYNC_EQUIPMENT:UPDATE") {
+        try {
+          const synced = JSON.parse(String(event.result));
+          setCustomEquipment(synced);
+          localStorage.setItem(`custom_equipment_${data.campaign.id}`, JSON.stringify(synced));
+        } catch (e) { }
+        return;
+      }
+
+      if (attr === "SYNC_CLASSES:UPDATE") {
+        try {
+          const synced = JSON.parse(String(event.result));
+          setCustomClasses(synced);
+          localStorage.setItem(`custom_classes_${data.campaign.id}`, JSON.stringify(synced));
         } catch (e) { }
         return;
       }
@@ -1392,7 +1448,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
       saveNpcLoots(npcLoots.filter(l => l.uid !== selectedDroppedLoot.uid));
 
-      const itemObj = getEquipment(selectedDroppedLoot.itemId);
+      // CORREÇÃO: Procurar o item também nos itens customizados criados pelo mestre
+      const itemObj = customEquipment.find(e => e.id === selectedDroppedLoot.itemId) || getEquipment(selectedDroppedLoot.itemId);
       apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
         method: "POST", body: JSON.stringify({ characterId: 'sys_item', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_ITEM_GIVEN`, result: JSON.stringify({ charId: targetCharacter.id, character: updated, itemName: itemObj?.name || 'Loot de Inimigo' }) })
       }).catch(console.error);
@@ -1458,17 +1515,21 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     const targetCreature = activeCreatures.find(c => c.instanceId === targetId)
 
     if (targetCharacter) {
-      const newEquipment = [...targetCharacter.equipment, itemId]
+      // CORREÇÃO: Garante que equipment é um array para evitar bugs
+      const currentEquip = Array.isArray(targetCharacter.equipment) ? targetCharacter.equipment : []
+      const newEquipment = [...currentEquip, itemId]
+
       const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${targetCharacter.id}`, { method: "PATCH", body: JSON.stringify({ equipment: newEquipment }) })
       applyOptimistic(updated)
 
-      const itemObj = getEquipment(itemId);
+      const itemObj = customEquipment.find(e => e.id === itemId) || getEquipment(itemId);
       apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
         method: "POST", body: JSON.stringify({ characterId: 'sys_item', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_ITEM_GIVEN`, result: JSON.stringify({ charId: targetCharacter.id, character: updated, itemName: itemObj?.name || 'Novo Equipamento' }) })
       }).catch(console.error);
 
     } else if (targetCreature) {
-      const newEquipment = [...((targetCreature as any).equipment || []), itemId]
+      const currentEquip = Array.isArray((targetCreature as any).equipment) ? (targetCreature as any).equipment : []
+      const newEquipment = [...currentEquip, itemId]
       updateCreatureVital(targetCreature.instanceId, { equipment: newEquipment } as any)
     }
   }
@@ -1805,15 +1866,18 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             )}
           </AnimatePresence>
 
-          <GmPanel 
+          <GmPanel
             isOpen={showGmPanel}
             onClose={() => setShowGmPanel(false)}
             characters={characters}
             activeCreatures={activeCreatures}
             members={data.members}
             customEquipment={customEquipment}
+            customClasses={customClasses} // <-- AQUI
             onCreateEquipment={(eq) => saveCustomEquipmentToStorage([...customEquipment, eq])}
             onDeleteEquipment={(id) => saveCustomEquipmentToStorage(customEquipment.filter((e: any) => e.id !== id))}
+            onCreateClass={(cls) => saveCustomClassesToStorage([...customClasses, cls])} // <-- AQUI
+            onDeleteClass={(id) => saveCustomClassesToStorage(customClasses.filter((c: any) => c.id !== id))} // <-- AQUI
             onGiveZenits={handleGiveZenits}
             onGiveCustomItem={handleGiveCustomItem}
             onGiveSystemItem={handleGiveSystemItem}
@@ -1842,7 +1906,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           <h5 className="text-xs font-bold uppercase tracking-widest text-primary shrink-0 mb-3">1. Escolha o Loot Extraído</h5>
                           <div className="grid gap-3 sm:grid-cols-2 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar-sepia border border-border/30 rounded-lg p-2 bg-black/20">
                             {npcLoots.map((loot) => {
-                              const item = getEquipment(loot.itemId)
+                              const item = customEquipment.find(e => e.id === loot.itemId) || getEquipment(loot.itemId)
                               if (!item) return null;
                               return (
                                 <div key={loot.uid} className={`flex flex-col text-left p-3 rounded-lg border transition-colors ${selectedDroppedLoot?.uid === loot.uid ? 'border-accent bg-accent/20' : 'border-border/60 bg-card/40 hover:border-accent/40'}`}>
@@ -1892,7 +1956,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   <div className="p-6 border-t border-border/50 bg-black/40 flex justify-end gap-3 shrink-0">
                     <Button variant="ghost" onClick={() => setShowDroppedLoots(false)}>Fechar</Button>
                     <Button className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90" disabled={!selectedDroppedLoot || !selectedTargetCharId} onClick={handleGiveDroppedLoot}>
-                       <Send className="size-4" /> Distribuir itens
+                      <Send className="size-4" /> Distribuir itens
                     </Button>
                   </div>
                 </motion.div>
@@ -1900,10 +1964,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             )}
           </AnimatePresence>
 
-          <GmBestiary 
-            isOpen={showBestiary} 
-            onClose={() => setShowBestiary(false)} 
-            onSpawn={spawnCreature} 
+          <GmBestiary
+            isOpen={showBestiary}
+            onClose={() => setShowBestiary(false)}
+            onSpawn={spawnCreature}
             customCreatures={customCreatures}
             onCreate={(c) => saveCustomCreaturesToStorage([c, ...customCreatures])}
             onDelete={(id) => saveCustomCreaturesToStorage(customCreatures.filter(c => c.id !== id))}
@@ -1915,7 +1979,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 <div className="relative w-full max-w-4xl mx-auto my-auto pt-10 pb-10" onClick={(event) => event.stopPropagation()}>
                   <button onClick={() => setSelectedCombatCreatureId(null)} className="absolute top-0 right-0 p-2 bg-white/10 hover:bg-white/20 rounded-full z-10"><X className="size-6 text-white" /></button>
                   {activeCreatures.filter(c => c.instanceId === selectedCombatCreatureId).map(c => (
-                    <CreatureSheet key={c.instanceId} creature={c} isGm={isGm} onUpdate={updateCreatureVital} onRoll={(attr: string, res: number) => handleBroadcastRoll(c.name, attr, res)} onKill={() => handleKillCreature(c)} />
+                    <CreatureSheet key={c.instanceId} creature={c} isGm={isGm} customEquipment={customEquipment} onUpdate={updateCreatureVital} onRoll={(attr: string, res: number) => handleBroadcastRoll(c.name, attr, res)} onKill={() => handleKillCreature(c)} />
                   ))}
                 </div>
               </motion.div>
@@ -1937,6 +2001,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       isOwned={c.ownerId === data.me.id}
                       campaignMembers={data.members}
                       onOptimistic={applyOptimistic}
+                      customClasses={customClasses}
+                      customEquipment={customEquipment}
                       onRoll={(attr: string, res: number | string, details?: DiceRollDetails) => handleBroadcastRoll(c.name, attr, res, details)}
                       onKill={isGm ? handleKillNPC : undefined}
                       shouldOpenInventory={inventoryToOpen === c.id}
@@ -2261,6 +2327,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           isGm={isGm}
                           isOwned={true}
                           campaignMembers={data.members}
+                          customEquipment={customEquipment}
                           onOptimistic={applyOptimistic}
                           onRoll={(attr: string, res: number | string, details?: DiceRollDetails) => handleBroadcastRoll(c.name, attr, res, details)}
                           onKill={isGm ? handleKillNPC : undefined}
@@ -2287,6 +2354,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           isGm={isGm}
                           isOwned={false}
                           campaignMembers={data.members}
+                          customEquipment={customEquipment}
                           onOptimistic={applyOptimistic}
                           onRoll={(attr: string, res: number | string, details?: DiceRollDetails) => handleBroadcastRoll(c.name, attr, res, details)}
                           onKill={isGm ? handleKillNPC : undefined}
