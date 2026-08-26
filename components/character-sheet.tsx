@@ -800,6 +800,8 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
   const [activeBond, setActiveBond] = useState<Bond | null>(null);
   const [bondDraft, setBondDraft] = useState<Partial<Bond>>({ target: "", type: "Amizade", value: 1 });
 
+  const [classSearch, setClassSearch] = useState("")
+
   function changeExpanded(next: boolean) {
     if (typeof expanded !== "boolean") setInternalExpanded(next)
     onExpandedChange?.(next)
@@ -1345,34 +1347,102 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                       <h4 className="font-serif text-2xl font-black text-primary flex items-center gap-2"><TrendingUp className="size-6" /> Evolução</h4>
                       <p className="text-sm text-muted-foreground mt-1">Você tem {unspentPoints} ponto(s) para investir em Classes.</p>
                     </div>
-                    <button onClick={() => setShowLevelUp(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10"><X className="size-5 text-muted-foreground hover:text-white" /></button>
+                    <button onClick={() => setShowLevelUp(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
                   </div>
-                  <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1">
-                    {CLASSES.map(c => {
-                      const hasClass = c.skills.some((s: any) => skillsObj[s.id] > 0)
-                      const numClasses = new Set(Object.keys(skillsObj).map(id => id.split('-')[0])).size
-                      if (!hasClass && numClasses >= 3) return null
-                      return (
-                        <div key={c.id} className="mb-6">
-                          <h5 className="font-bold text-foreground bg-primary/10 border border-primary/20 px-3 py-2 rounded mb-3 flex items-center gap-2"><BookOpenText className="size-4 text-primary" /> {c.name}</h5>
-                          <div className="space-y-2 pl-2">
-                            {c.skills.map((s: any) => {
-                              const lvl = skillsObj[s.id] || 0
-                              if (lvl >= s.maxLevel) return null
+
+                  {/* Barra de Busca */}
+                  <div className="px-6 py-4 border-b border-border/30 bg-black/20 shrink-0">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Buscar por classe ou habilidade..."
+                        value={classSearch}
+                        onChange={(e) => setClassSearch(e.target.value)}
+                        className="w-full bg-zinc-900/50 border border-border/50 rounded-lg py-2.5 pl-10 pr-4 text-sm text-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-muted-foreground/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1 relative">
+                    {(() => {
+                      // Filtra e prepara as classes antes de renderizar
+                      const filteredClasses = CLASSES.map(c => {
+                        // Pega apenas as habilidades que o jogador ainda pode upar
+                        const availableSkills = c.skills.filter((s: any) => (skillsObj[s.id] || 0) < s.maxLevel);
+                        return { ...c, availableSkills };
+                      }).filter(c => {
+                        // Remove a classe se não houver mais habilidades para upar
+                        if (c.availableSkills.length === 0) return false;
+
+                        // Filtro de busca
+                        if (classSearch) {
+                          const term = classSearch.toLowerCase();
+                          const matchClass = c.name.toLowerCase().includes(term);
+                          const matchSkill = c.availableSkills.some((s: any) => s.name.toLowerCase().includes(term));
+                          return matchClass || matchSkill;
+                        }
+                        
+                        return true;
+                      });
+
+                      if (filteredClasses.length === 0) {
+                        return (
+                          <div className="flex flex-col items-center justify-center py-12 text-center opacity-60">
+                            <SearchX className="size-12 text-muted-foreground mb-4" />
+                            <p className="text-muted-foreground font-medium">Nenhuma classe ou habilidade encontrada.</p>
+                            {classSearch && <p className="text-sm mt-1 text-muted-foreground/70">Tente buscar por outro termo.</p>}
+                          </div>
+                        );
+                      }
+
+                      return filteredClasses.map(c => (
+                        <div key={c.id} className="mb-8 last:mb-2 relative">
+                          {/* Sticky header para a classe não sumir ao dar scroll */}
+                          <div className="sticky top-[-24px] z-10 bg-zinc-950/95 backdrop-blur-sm py-2 mb-3">
+                            <h5 className="font-bold text-foreground bg-primary/10 border border-primary/20 px-4 py-2.5 rounded-md flex items-center gap-2 shadow-sm">
+                              <BookOpenText className="size-4 text-primary" /> {c.name}
+                            </h5>
+                          </div>
+                          
+                          <div className="space-y-3 pl-2 pr-1">
+                            {c.availableSkills.map((s: any) => {
+                              const lvl = skillsObj[s.id] || 0;
+                              
+                              // Highlight caso a busca seja exatamente na habilidade
+                              const isSkillMatch = classSearch && s.name.toLowerCase().includes(classSearch.toLowerCase());
+
                               return (
-                                <div key={s.id} className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 p-3 rounded-lg bg-card/40 border border-border/40 hover:border-primary/30 transition-colors">
-                                  <div className="pr-4">
-                                    <p className="text-sm text-primary font-bold">{s.name} <span className="text-xs text-muted-foreground ml-1">Nv.{lvl}</span></p>
-                                    <div className="text-xs text-muted-foreground mt-1 leading-relaxed">{formatSkillDescription(s.description, lvl + 1)}</div>
+                                <div 
+                                  key={s.id} 
+                                  className={`flex flex-col sm:flex-row justify-between sm:items-center gap-4 p-4 rounded-lg bg-card/40 border transition-all ${
+                                    isSkillMatch ? 'border-primary/50 shadow-[0_0_15px_rgba(var(--primary),0.1)]' : 'border-border/40 hover:border-primary/30'
+                                  }`}
+                                >
+                                  <div className="flex-1 pr-4">
+                                    <p className="text-base text-primary font-bold flex items-baseline gap-2">
+                                      {s.name} 
+                                      <span className="text-xs font-mono bg-background/50 px-1.5 py-0.5 rounded text-muted-foreground">Nv.{lvl} ➔ {lvl + 1}</span>
+                                    </p>
+                                    <div className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                                      {formatSkillDescription(s.description, lvl + 1)}
+                                    </div>
                                   </div>
-                                  <Button size="sm" className="shrink-0 self-end sm:self-auto" disabled={unspentPoints <= 0 && !isGm} onClick={() => saveNewSkillPoint(s.id)}>Aprender</Button>
+                                  <Button 
+                                    size="default" 
+                                    className="shrink-0 self-end sm:self-auto font-bold shadow-md" 
+                                    disabled={unspentPoints <= 0 && !isGm} 
+                                    onClick={() => saveNewSkillPoint(s.id)}
+                                  >
+                                    Aprender
+                                  </Button>
                                 </div>
                               )
                             })}
                           </div>
                         </div>
-                      )
-                    })}
+                      ));
+                    })()}
                   </div>
                 </motion.div>
               </motion.div>
