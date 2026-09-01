@@ -8,9 +8,16 @@ export async function apiFetch<T = unknown>(
     ...options,
     headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
   })
-  const data = await res.json().catch(() => ({}))
+  
   if (!res.ok) {
-    throw new Error((data as { error?: string }).error ?? "Ocorreu um erro.")
+    // Attempt to parse JSON error, fallback to empty object if it's an HTML/empty response
+    const data = await res.json().catch(() => ({}))
+    
+    // Provide a much clearer fallback error that includes the HTTP status
+    const errorMessage = data.error || `Erro na requisição: ${res.status} ${res.statusText}`
+    throw new Error(errorMessage)
   }
-  return data as T
+
+  // Only parse the success JSON if the response is OK
+  return await res.json().catch(() => ({})) as T
 }

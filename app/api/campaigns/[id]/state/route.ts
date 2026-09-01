@@ -31,7 +31,7 @@ async function migrateLegacyState(campaignId: string) {
       const filePath = path.join(process.cwd(), "data", `gallery_${campaignId}.json`)
       const gallery = JSON.parse(await fs.readFile(filePath, "utf-8"))
       if (Array.isArray(gallery)) patch.gallery = gallery
-    } catch {}
+    } catch { }
   }
 
   if (Object.keys(patch).length > 0) updateCampaignState(campaignId, patch)
@@ -49,10 +49,28 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({
       state: {
         gallery: state.gallery.filter((entry: any) => entry?.isPublic),
-        lore: state.lore.filter((entry: any) => entry?.isPublic || entry?.allowedMembers?.includes(access.user.id)),
+        lore: state.lore.filter(
+          (entry: any) =>
+            entry?.isPublic ||
+            entry?.allowedMembers?.includes(access.user.id)
+        ),
         weather: state.weather,
         customEquipment: state.customEquipment || [],
         customClasses: state.customClasses || [],
+        galleryFolders: Array.isArray(state.galleryFolders)
+          ? state.galleryFolders
+          : [
+            {
+              id: "root",
+              name: "Todas as imagens"
+            }
+          ],
+
+        // IMPORTANTE:
+        // jogadores também precisam receber as pastas da loja
+        storeFolders: Array.isArray(state.storeFolders)
+          ? state.storeFolders
+          : [],
       },
       persistedFields,
     })
@@ -68,12 +86,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const body = await request.json().catch(() => null)
   const source = body?.state
+  console.log("[CAMPAIGN STATE POST] source:", source)
+  console.log(
+    "[CAMPAIGN STATE POST] fields:",
+    CAMPAIGN_STATE_ARRAY_FIELDS
+  )
   if (!source || typeof source !== "object" || Array.isArray(source)) {
     return NextResponse.json({ error: "Estado inválido." }, { status: 400 })
   }
 
   const patch: Record<string, unknown> = {}
-  
+
   for (const field of CAMPAIGN_STATE_ARRAY_FIELDS) {
     if (Object.prototype.hasOwnProperty.call(source, field)) {
       if (!Array.isArray(source[field])) return NextResponse.json({ error: `Campo ${field} inválido.` }, { status: 400 })

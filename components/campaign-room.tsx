@@ -34,7 +34,7 @@ import {
   getEquipment,
 } from "@/lib/game-data"
 
-import type { Character, Role, Creature, ActiveCreature, AttributeKey, ActivePoll, DieSize, ClassLevel } from "@/lib/types"
+import type { Character, Role, Creature, ActiveCreature, AttributeKey, ActivePoll, DieSize, ClassLevel, StoreFolder, GalleryFolder } from "@/lib/types"
 
 import {
   ArrowLeft, Crown, Plus, Radio, Shield, Users, DoorOpen, Dices, Gift, X,
@@ -58,6 +58,7 @@ import { Imagepad, SharedImage } from "./imagepad"
 import { Lorebook, type LoreEntry } from "./lorebook"
 import { ThemeSwitcher } from "./theme-switcher"
 import { PersonalNotes } from "./personal-notes"
+import { HazardData } from "./condition-manager"
 
 export interface Member {
   userId: string;
@@ -382,7 +383,15 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   // === GALERIA ARCANA ===
   const [showImagepad, setShowImagepad] = useState(false)
   const [activeFullscreenImage, setActiveFullscreenImage] = useState<string | null>(null)
+
   const [galleryImages, setGalleryImages] = useState<SharedImage[]>([])
+
+  const [galleryFolders, setGalleryFolders] = useState<GalleryFolder[]>([
+    {
+      id: "root",
+      name: "Todas as imagens"
+    }
+  ])
 
   // === LOREBOOK ===
   const [showLorebook, setShowLorebook] = useState(false)
@@ -392,6 +401,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [customCreatures, setCustomCreatures] = useState<Creature[]>([])
   const [customEquipment, setCustomEquipment] = useState<any[]>([])
   const [customClasses, setCustomClasses] = useState<any[]>([])
+  const [storeFolders, setStoreFolders] = useState<StoreFolder[]>([])
+
+  const [activeHazards, setActiveHazards] = useState<HazardData[]>([])
 
   const isGm = data.role === "gm"
   const effectsVolumeRef = useRef(effectsVolume)
@@ -417,6 +429,53 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     request.catch(console.error)
     return request
   }, [data.campaign.id, isGm])
+  const saveGallery = useCallback(
+    (
+      images: SharedImage[],
+      folders: GalleryFolder[]
+    ) => {
+      const normalizedImages = images.map(image => ({
+        ...image,
+        folderId: image.folderId || "root"
+      }))
+
+      setGalleryImages(normalizedImages)
+      setGalleryFolders(folders)
+
+      localStorage.setItem(
+        `images_${data.campaign.id}`,
+        JSON.stringify(normalizedImages)
+      )
+
+      localStorage.setItem(
+        `gallery_folders_${data.campaign.id}`,
+        JSON.stringify(folders)
+      )
+
+      void persistCampaignState({
+        gallery: normalizedImages,
+        galleryFolders: folders
+      })
+
+      apiFetch(
+        `/api/campaigns/${data.campaign.id}/roll`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            characterId: "sys_gallery",
+            characterName: "Sistema",
+            playerName: "Mestre",
+            attribute: "SYNC_GALLERY:UPDATE",
+            result: JSON.stringify({
+              images: normalizedImages,
+              folders
+            })
+          })
+        }
+      ).catch(console.error)
+    },
+    [data.campaign.id, persistCampaignState]
+  )
 
   // Montagem & Carregar Storage
   useEffect(() => {
@@ -439,6 +498,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
           const savedGallery = localStorage.getItem(`images_${data.campaign.id}`)
           if (savedGallery) { try { setGalleryImages(JSON.parse(savedGallery)) } catch (e) { } }
+
+          const savedGalleryFolders = localStorage.getItem(
+            `gallery_folders_${data.campaign.id}`
+          )
+
+          if (savedGalleryFolders) {
+            try {
+              setGalleryFolders(JSON.parse(savedGalleryFolders))
+            } catch { }
+          }
 
           const savedLore = localStorage.getItem(`lore_${data.campaign.id}`)
           if (savedLore) { try { setLoreEntries(JSON.parse(savedLore)) } catch (e) { } }
@@ -565,6 +634,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       e.preventDefault();
     };
 
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('contextmenu', handleContextMenu);
 
@@ -628,10 +698,34 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
 
         if (!isGm) {
-          const gallery = Array.isArray(res.state.gallery) ? res.state.gallery : []
+          const gallery = Array.isArray(res.state.gallery)
+            ? res.state.gallery.map((image: any) => ({
+              ...image,
+              folderId: image?.folderId || "root"
+            }))
+            : []
           const lore = Array.isArray(res.state.lore) ? res.state.lore : []
           const customEq = Array.isArray(res.state.customEquipment) ? res.state.customEquipment : []
           const customCls = Array.isArray(res.state.customClasses) ? res.state.customClasses : []
+          const savedGalleryFolders = Array.isArray(res.state.galleryFolders)
+            ? res.state.galleryFolders
+            : [
+              {
+                id: "root",
+                name: "Todas as imagens"
+              }
+            ]
+          const savedStoreFolders = Array.isArray(res.state.storeFolders)
+            ? res.state.storeFolders
+            : []
+
+          setStoreFolders(savedStoreFolders)
+          setGalleryFolders(savedGalleryFolders)
+
+          storeJsonWhenIdle(
+            `store_folders_${data.campaign.id}`,
+            savedStoreFolders
+          )
           setGalleryImages(gallery)
           setLoreEntries(lore)
           setCustomEquipment(customEq)
@@ -641,6 +735,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           storeJsonWhenIdle(`lore_${data.campaign.id}`, lore)
           storeJsonWhenIdle(`custom_classes_${data.campaign.id}`, customCls)
           storeJsonWhenIdle(`custom_equipment_${data.campaign.id}`, customEq)
+          storeJsonWhenIdle(
+            `gallery_folders_${data.campaign.id}`,
+            savedGalleryFolders
+          )
 
           localStorage.setItem(`weather_${data.campaign.id}`, res.state.weather || "clear")
           return
@@ -664,6 +762,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         const savedLoots = pickArray("npcLoots", `npc_loots_${data.campaign.id}`) as DroppedLoot[]
         const savedDrafts = pickArray("draftPolls", `drafts_${data.campaign.id}`) as DraftPoll[]
         const savedSounds = pickArray("customSounds", `custom_sounds_${data.campaign.id}`) as Track[]
+        const savedStoreFolders = pickArray(
+          "storeFolders",
+          `store_folders_${data.campaign.id}`
+        ) as StoreFolder[]
         const cachedWeather = localStorage.getItem(`weather_${data.campaign.id}`)
 
         const savedWeather = persisted.has("weather")
@@ -681,6 +783,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         setCustomClasses(savedCustomClasses)
         setDraftPolls(savedDrafts)
         setCustomSounds(savedSounds)
+        setStoreFolders(savedStoreFolders)
         setWeather(savedWeather as WeatherType)
         storeJsonWhenIdle(`images_${data.campaign.id}`, gallery)
         storeJsonWhenIdle(`custom_classes_${data.campaign.id}`, savedCustomClasses)
@@ -692,6 +795,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         storeJsonWhenIdle(`custom_sounds_${data.campaign.id}`, savedSounds)
         storeJsonWhenIdle(`custom_creatures_${data.campaign.id}`, savedCustomCreatures)
         storeJsonWhenIdle(`custom_equipment_${data.campaign.id}`, savedCustomEquipment)
+        storeJsonWhenIdle(
+          `store_folders_${data.campaign.id}`,
+          savedStoreFolders
+        )
         localStorage.setItem(`weather_${data.campaign.id}`, savedWeather)
         if (Object.keys(migration).length > 0) void persistCampaignState(migration)
       })
@@ -713,6 +820,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     setSavedMaps(uniqueMaps);
     localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(uniqueMaps));
   }, [data.campaign.id]);
+
+
 
   function handleImageClick(url: string) {
     if (isGm) {
@@ -754,6 +863,138 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       body: JSON.stringify({ characterId: 'sys_equip', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_EQUIPMENT:UPDATE`, result: JSON.stringify(eqs) })
     }).catch(console.error);
   }
+  const saveStoreFolders = useCallback(
+    (folders: StoreFolder[]) => {
+      setStoreFolders(folders)
+
+      localStorage.setItem(
+        `store_folders_${data.campaign.id}`,
+        JSON.stringify(folders)
+      )
+
+      void persistCampaignState({
+        storeFolders: folders
+      })
+
+      // Sincroniza imediatamente com os jogadores conectados
+      apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+        method: "POST",
+        body: JSON.stringify({
+          characterId: "sys_store",
+          characterName: "Sistema",
+          playerName: "Mestre",
+          attribute: "SYNC_STORE_FOLDERS:UPDATE",
+          result: JSON.stringify(folders)
+        })
+      }).catch(console.error)
+    },
+    [data.campaign.id, persistCampaignState]
+  )
+
+  const handleCreateFolder = useCallback(
+    (folder: StoreFolder) => {
+      if (folder.isSystem) {
+        // SISTEMA/CUSTOM podem ser criadas apenas pelo sistema.
+        // O GM somente altera as já existentes.
+        const existing = storeFolders.find(f => f.id === folder.id)
+
+        if (existing) {
+          const updated = storeFolders.map(f =>
+            f.id === folder.id ? { ...f, ...folder, isSystem: true } : f
+          )
+
+          saveStoreFolders(updated)
+          return
+        }
+      }
+
+      if (storeFolders.some(f => f.id === folder.id)) return
+
+      saveStoreFolders([
+        ...storeFolders,
+        {
+          ...folder,
+          isSystem: false,
+          isVisible: folder.isVisible !== false
+        }
+      ])
+    },
+    [storeFolders, saveStoreFolders]
+  )
+
+  const handleUpdateFolder = useCallback(
+    (id: string, updates: Partial<StoreFolder>) => {
+      const updated = storeFolders.map(folder => {
+        if (folder.id !== id) return folder
+
+        return {
+          ...folder,
+          ...updates,
+
+          // Nunca permitir transformar uma pasta do sistema em custom
+          isSystem: folder.isSystem
+        }
+      })
+
+      saveStoreFolders(updated)
+    },
+    [storeFolders, saveStoreFolders]
+  )
+
+  const handleDeleteFolder = useCallback(
+    (id: string) => {
+      const folder = storeFolders.find(f => f.id === id)
+
+      if (folder?.isSystem || id === "system" || id === "custom") {
+        alert("As pastas SISTEMA e CUSTOM não podem ser excluídas.")
+        return
+      }
+
+      const updatedEquipment = customEquipment.map(item =>
+        item.folderId === id
+          ? { ...item, folderId: "custom" }
+          : item
+      )
+
+      saveCustomEquipmentToStorage(updatedEquipment)
+
+      saveStoreFolders(
+        storeFolders.filter(folder => folder.id !== id)
+      )
+    },
+    [
+      storeFolders,
+      customEquipment,
+      saveCustomEquipmentToStorage,
+      saveStoreFolders
+    ]
+  )
+
+  const handleMoveCustomItem = useCallback(
+    (itemId: string, folderId: string) => {
+      const destination = [
+        "custom",
+        ...storeFolders
+          .filter(folder => !folder.isSystem)
+          .map(folder => folder.id)
+      ]
+
+      // Segurança: não permite mover custom para SISTEMA
+      if (!destination.includes(folderId)) {
+        console.warn("Tentativa de mover item custom para pasta inválida:", folderId)
+        return
+      }
+
+      const updated = customEquipment.map(item =>
+        item.id === itemId
+          ? { ...item, folderId }
+          : item
+      )
+
+      saveCustomEquipmentToStorage(updated)
+    },
+    [customEquipment, storeFolders]
+  )
 
   // Verificador de Expiração da Enquete
   useEffect(() => {
@@ -824,7 +1065,63 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     if (event.type === "creature:spawn") { setActiveCreatures(prev => [...prev, event.creature]); return; }
     if (event.type === "creature:update") { setActiveCreatures(prev => prev.map(c => c.instanceId === event.instanceId ? { ...c, ...event.updates } : c)); return; }
     if (event.type === "creature:remove") { setActiveCreatures(prev => prev.filter(c => c.instanceId !== event.instanceId)); return; }
+    if (event.type === "hazard:launch") {
+      setActiveHazards(prev => {
+        const incoming = event.hazard as HazardData
 
+        return [
+          ...prev.filter(hazard => {
+            if (hazard.type !== incoming.type) return true
+
+            // Um novo hazard global substitui todos daquele tipo
+            if (incoming.targetCharacterIds === null) {
+              return false
+            }
+
+            // Remove o hazard anterior do mesmo personagem
+            return !(
+              hazard.targetCharacterIds?.length === 1 &&
+              hazard.targetCharacterIds[0] ===
+              incoming.targetCharacterIds?.[0]
+            )
+          }),
+          incoming
+        ]
+      })
+
+      return
+    }
+
+    if (event.type === "hazard:stop" || event.action === "hazard:stop") {
+
+      // Garante que vai encontrar o tipo
+      const typeToStop = event.hazardType || event.hazard?.type || event.hazard?.hazardType
+
+      // O PULO DO GATO AQUI: Se for undefined, forçamos a ser null
+      const targetsToStop = event.targetCharacterIds ?? event.hazard?.targetCharacterIds ?? null
+
+      console.log("🛑 RECEBEU STOP CORRIGIDO:", { typeToStop, targetsToStop })
+
+      setActiveHazards(prev =>
+        prev.filter(hazard => {
+          // 1. Se for de outro tipo, mantém
+          if (hazard.type !== typeToStop) return true
+
+          // 2. Se for null (agora garantido graças ao ?? null acima), removemos!
+          if (targetsToStop === null) return false
+
+          // 3. Se o Mestre mandou parar para um alvo específico
+          if (hazard.targetCharacterIds && targetsToStop) {
+            const isTargeted = hazard.targetCharacterIds.some(id => targetsToStop.includes(id))
+            if (isTargeted) return false
+          }
+
+          // Caso contrário, mantém
+          return true
+        })
+      )
+      return
+    }
     // Mapa
     if (event.type === "map:created") {
       setSavedMaps(prev => {
@@ -954,16 +1251,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       if (attr.startsWith("SYNC_ITEM_GIVEN")) {
         try {
           const payload = JSON.parse(String(event.result));
-          
+
           setCharacters((prev) => prev.map(c => {
             if (c.id === payload.charId) {
               return {
-                 ...c,
-                 ...payload.character,
-                 equipment: payload.character.equipment || [],
-                 customItems: payload.character.customItems || [],
-                 customModifiers: payload.character.customModifiers || [],
-                 bonds: payload.character.bonds || (c as any).bonds || []
+                ...c,
+                ...payload.character,
+                equipment: payload.character.equipment || [],
+                customItems: payload.character.customItems || [],
+                customModifiers: payload.character.customModifiers || [],
+                bonds: payload.character.bonds || (c as any).bonds || []
               }
             }
             return c
@@ -1026,11 +1323,65 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
       if (attr === "SYNC_GALLERY:UPDATE") {
         try {
-          const synced = JSON.parse(String(event.result));
-          setGalleryImages(synced);
-          localStorage.setItem(`images_${data.campaign.id}`, JSON.stringify(synced));
-        } catch (e) { }
-        return;
+          const payload = JSON.parse(String(event.result))
+
+          // Novo formato
+          if (
+            payload &&
+            typeof payload === "object" &&
+            !Array.isArray(payload)
+          ) {
+            const syncedImages = Array.isArray(payload.images)
+              ? payload.images.map((image: any) => ({
+                ...image,
+                folderId: image?.folderId || "root"
+              }))
+              : []
+
+            const syncedFolders = Array.isArray(payload.folders)
+              ? payload.folders
+              : [
+                {
+                  id: "root",
+                  name: "Todas as imagens"
+                }
+              ]
+
+            setGalleryImages(syncedImages)
+            setGalleryFolders(syncedFolders)
+
+            localStorage.setItem(
+              `images_${data.campaign.id}`,
+              JSON.stringify(syncedImages)
+            )
+
+            localStorage.setItem(
+              `gallery_folders_${data.campaign.id}`,
+              JSON.stringify(syncedFolders)
+            )
+
+            return
+          }
+
+          // Compatibilidade com eventos antigos
+          if (Array.isArray(payload)) {
+            const syncedImages = payload.map((image: any) => ({
+              ...image,
+              folderId: image?.folderId || "root"
+            }))
+
+            setGalleryImages(syncedImages)
+
+            localStorage.setItem(
+              `images_${data.campaign.id}`,
+              JSON.stringify(syncedImages)
+            )
+          }
+        } catch (e) {
+          console.error("Erro ao sincronizar galeria:", e)
+        }
+
+        return
       }
 
       if (attr === "SYNC_LORE:UPDATE") {
@@ -1059,6 +1410,24 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         } catch (e) { }
         return;
       }
+      if (attr === "SYNC_STORE_FOLDERS:UPDATE") {
+        try {
+          const synced = JSON.parse(String(event.result))
+
+          if (Array.isArray(synced)) {
+            setStoreFolders(synced)
+
+            localStorage.setItem(
+              `store_folders_${data.campaign.id}`,
+              JSON.stringify(synced)
+            )
+          }
+        } catch (e) {
+          console.error("Erro ao sincronizar pastas da loja:", e)
+        }
+
+        return
+      }
 
       if (attr === "SYNC_CLASSES:UPDATE") {
         try {
@@ -1080,7 +1449,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
       const effectId = `${event.characterId || "roll"}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       playDiceRollSound(effectsVolumeRef.current);
-      
+
       // NOVA ADIÇÃO PARA O GM DIFFICULTY GUIDE
       const numericResult = Number(event.result);
       if (!isNaN(numericResult)) {
@@ -1159,7 +1528,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     if (realtimeStatus !== "live") return
     apiFetch<{ sounds: ActiveSound[] }>(`/api/campaigns/${data.campaign.id}/sound`)
       .then(res => setActiveSounds(res.sounds || []))
-      .catch(console.error)
+      .catch(() => {
+        console.warn("Sons não encontrados ou campanha deletada");
+      })
   }, [data.campaign.id, realtimeStatus])
 
   const applyOptimistic = useCallback((c: Character) => setCharacters((prev) => prev.map((x) => {
@@ -1617,6 +1988,107 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     }).catch(console.error);
     setShowPollModal(false);
   }
+  const handleLaunchHazard = useCallback(
+    async (
+      type: "oxygen" | "bleeding" | "reaction",
+      minutes: number,
+      targetCharacterIds: string[] | null
+    ) => {
+      const durationMs = minutes * 60 * 1000
+
+      const newHazard: HazardData = {
+        id: crypto.randomUUID(),
+        type,
+        duration: durationMs,
+        endTime: Date.now() + durationMs,
+        targetCharacterIds
+      }
+
+      setActiveHazards(prev => {
+        // Remove somente o mesmo tipo para o mesmo alvo
+        const filtered = prev.filter(hazard => {
+          if (hazard.type !== type) return true
+
+          // Condição global
+          if (targetCharacterIds === null) {
+            return false
+          }
+
+          // Remove somente se for exatamente o mesmo personagem
+          if (
+            hazard.targetCharacterIds?.length === 1 &&
+            hazard.targetCharacterIds[0] === targetCharacterIds[0]
+          ) {
+            return false
+          }
+
+          return true
+        })
+
+        return [...filtered, newHazard]
+      })
+
+      try {
+        await fetch(`/api/campaigns/${data.campaign.id}/events`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "hazard:launch",
+            hazard: newHazard
+          })
+        })
+      } catch (error) {
+        console.error("Erro ao sincronizar nova ameaça:", error)
+      }
+    },
+    [data.campaign.id]
+  )
+  const handleStopHazard = useCallback(
+    async (
+      type: "oxygen" | "bleeding" | "reaction",
+      targetCharacterIds: string[] | null
+    ) => {
+      setActiveHazards(prev =>
+        prev.filter(hazard => {
+          if (hazard.type !== type) return true
+
+          // Parar para TODOS
+          if (targetCharacterIds === null) {
+            return false
+          }
+
+          // Parar somente o personagem selecionado
+          if (
+            hazard.targetCharacterIds?.length === 1 &&
+            hazard.targetCharacterIds[0] === targetCharacterIds[0]
+          ) {
+            return false
+          }
+
+          return true
+        })
+      )
+
+      try {
+        await fetch(`/api/campaigns/${data.campaign.id}/events`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "hazard:stop",
+            hazardType: type,
+            targetCharacterIds
+          })
+        })
+      } catch (error) {
+        console.error("Erro ao sincronizar fim da ameaça:", error)
+      }
+    },
+    [data.campaign.id]
+  )
 
   function handleCreateAndLaunchPoll() {
     const validOptions = pollOptions.filter(o => o.trim() !== "");
@@ -1892,6 +2364,14 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             onGiveZenits={handleGiveZenits}
             onGiveCustomItem={handleGiveCustomItem}
             onGiveSystemItem={handleGiveSystemItem}
+            activeHazards={activeHazards}
+            onLaunchHazard={handleLaunchHazard}
+            onStopHazard={handleStopHazard}
+            storeFolders={storeFolders}
+            onCreateFolder={handleCreateFolder}
+            onUpdateFolder={handleUpdateFolder}
+            onDeleteFolder={handleDeleteFolder}
+            onMoveCustomItem={handleMoveCustomItem}
           />
 
           <AnimatePresence>
@@ -2012,6 +2492,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       isOwned={c.ownerId === data.me.id}
                       campaignMembers={data.members}
                       onOptimistic={applyOptimistic}
+                      activeHazards={activeHazards}
                       customClasses={customClasses}
                       customEquipment={customEquipment}
                       onRoll={(attr: string, res: number | string, details?: DiceRollDetails) => handleBroadcastRoll(c.name, attr, res, details)}
@@ -2019,6 +2500,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       shouldOpenInventory={inventoryToOpen === c.id}
                       onClearInventoryRequest={() => setInventoryToOpen(null)}
                       onArchive={isGm ? handleArchiveCharacter : undefined}
+                      storeFolders={storeFolders}
                     />
                   ))}
                 </div>
@@ -2082,16 +2564,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     <Imagepad
                       isGm={isGm}
                       images={galleryImages}
-                      onUpdateImages={(newImages) => {
-                        setGalleryImages(newImages);
-                        localStorage.setItem(`images_${data.campaign.id}`, JSON.stringify(newImages));
-                        if (isGm) {
-                          void persistCampaignState({ gallery: newImages })
-                          apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-                            method: "POST", body: JSON.stringify({ characterId: 'sys_gallery', characterName: 'Sistema', playerName: 'Mestre', attribute: `SYNC_GALLERY:UPDATE`, result: JSON.stringify(newImages) })
-                          }).catch(console.error);
-                        }
-                      }}
+                      folders={galleryFolders}
+                      onUpdateGallery={saveGallery}
                       onShowImage={handleImageClick}
                       onClose={() => setShowImagepad(false)}
                     />
@@ -2335,8 +2809,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           key={c.id}
                           character={c}
                           editable={true}
+                          activeHazards={activeHazards}
                           isGm={isGm}
                           isOwned={true}
+                          customClasses={customClasses}
                           campaignMembers={data.members}
                           customEquipment={customEquipment}
                           onOptimistic={applyOptimistic}
@@ -2347,6 +2823,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           onArchive={isGm ? handleArchiveCharacter : undefined}
                           expanded={expandedCharacterId === c.id}
                           onExpandedChange={(next: boolean) => setExpandedCharacterId(next ? c.id : null)}
+                          storeFolders={storeFolders}
                         />
                       ))}
                     </div>
@@ -2362,10 +2839,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           key={c.id}
                           character={c}
                           editable={isGm}
+                          activeHazards={activeHazards}
                           isGm={isGm}
                           isOwned={false}
                           campaignMembers={data.members}
                           customEquipment={customEquipment}
+                          customClasses={customClasses}
                           onOptimistic={applyOptimistic}
                           onRoll={(attr: string, res: number | string, details?: DiceRollDetails) => handleBroadcastRoll(c.name, attr, res, details)}
                           onKill={isGm ? handleKillNPC : undefined}
@@ -2374,6 +2853,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           onArchive={isGm ? handleArchiveCharacter : undefined}
                           expanded={expandedCharacterId === c.id}
                           onExpandedChange={(next: boolean) => setExpandedCharacterId(next ? c.id : null)}
+                          storeFolders={storeFolders}
                         />
                       ))}
                     </div>
@@ -2410,7 +2890,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       <BarChart2 className="size-4" /> Criar enquete
                     </Button>
                     <Button variant="outline" className="rpg-tool-button w-full justify-start gap-2" onClick={() => setShowGmPanel(true)}>
-                      <Gift className="size-4" /> Distribuir itens
+                      <Gift className="size-4" /> Customizaveis
                     </Button>
                     <Button variant="outline" className="rpg-tool-button relative w-full justify-start gap-2" onClick={() => setShowDroppedLoots(true)}>
                       <Inbox className="size-4" /> Gerenciar loots
@@ -2424,7 +2904,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       <ChevronDown className={`ml-auto size-4 transition-transform ${showBattleGrid ? "rotate-180" : ""}`} />
                     </Button>
                   </div>
-                  
+
 
                   <div className="rpg-battle-grid-collapse" data-open={showBattleGrid} aria-hidden={!showBattleGrid}>
                     <div className="rpg-battle-grid-clip">

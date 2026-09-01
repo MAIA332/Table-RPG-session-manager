@@ -1,7 +1,9 @@
 import { saveToDisk, store } from "@/lib/store"
+import { GalleryFolder, StoreFolder } from "./types"
 
 export const CAMPAIGN_STATE_ARRAY_FIELDS = [
   "gallery",
+  "galleryFolders",
   "lore",
   "cutscenes",
   "customNPCs",
@@ -10,7 +12,8 @@ export const CAMPAIGN_STATE_ARRAY_FIELDS = [
   "customSounds",
   "customCreatures",
   "customEquipment",
-  "customClasses"
+  "customClasses",
+  "storeFolders"
 ] as const
 
 export type CampaignStateArrayField = typeof CAMPAIGN_STATE_ARRAY_FIELDS[number]
@@ -28,6 +31,8 @@ export interface CampaignState {
   customClasses: unknown[]
   weather: string
   updatedAt: number
+  storeFolders: StoreFolder[]
+  galleryFolders: GalleryFolder[]
 }
 
 export function getCampaignState(campaignId: string): CampaignState {
@@ -43,7 +48,16 @@ export function getCampaignState(campaignId: string): CampaignState {
     customCreatures: Array.isArray(raw.customCreatures) ? raw.customCreatures : [],
     customEquipment: Array.isArray(raw.customEquipment) ? raw.customEquipment : [],
     customClasses: Array.isArray(raw.customClasses) ? raw.customClasses : [],
+    storeFolders: Array.isArray(raw.storeFolders) ? raw.storeFolders : [],
     weather: typeof raw.weather === "string" ? raw.weather : "clear",
+    galleryFolders: Array.isArray(raw.galleryFolders)
+      ? raw.galleryFolders
+      : [
+        {
+          id: "root",
+          name: "Todas as imagens"
+        }
+      ],
     updatedAt: Number(raw.updatedAt) || 0,
   }
 }

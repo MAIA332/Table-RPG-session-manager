@@ -6,11 +6,24 @@ export type DieSize = "d6" | "d8" | "d10" | "d12"
 
 export type AttributeKey = "dex" | "ins" | "mig" | "wlp"
 
+export interface StoreFolder {
+  id: string;
+  name: string;
+  isVisible: boolean;
+  isSystem?: boolean;
+}
+
+export interface GalleryFolder {
+  id: string
+  name: string
+}
+
 export interface CustomItem {
   id: string;
   name: string;
-  type: "text" | "image" | "video" | "app-blueprints"; // <-- Adicionado aqui
+  type: "text" | "image" | "video" | "app-blueprints";
   content: string;
+  folderId?: string;
 }
 
 export interface User {
@@ -64,7 +77,7 @@ export interface CharacterResources {
   ip: number
   maxIp: number
   fp: number
-  xp:number
+  xp: number
 }
 
 export interface PersonalNote {
@@ -89,7 +102,7 @@ export interface Character {
   attributes: Record<AttributeKey, DieSize>
   classes: ClassLevel[]
   skills: Record<string, number>
-  equipment: string[] 
+  equipment: string[]
   zenit: number
   resources: CharacterResources
   createdAt: number
@@ -150,5 +163,9 @@ export type RealtimeEvent =
   | { type: "creature:spawn"; creature: ActiveCreature }
   | { type: "creature:update"; instanceId: string; updates: Partial<ActiveCreature> }
   | { type: "creature:remove"; instanceId: string }
+  | { type: "hazard:launch"; hazard: any }
+  | { type: "hazard:stop"; hazardType: any }
   | { type: "poll:start"; poll: ActivePoll }
   | { type: "poll:vote"; pollId: string; userId: string; optionIndex: number };
+
+

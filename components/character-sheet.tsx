@@ -35,6 +35,8 @@ import {
   AlertTriangle, Archive, Flame, Droplets, ShieldOff, Brain, Ghost, SwatchBook,
   WandSparkles, TrendingDown, Pencil, Link2 // <-- Link2 Adicionado para os Laços
 } from "lucide-react"
+import { HazardBanner, HazardData } from "./condition-manager"
+import { StoreModal } from "./store-modal"
 
 // ==========================================
 // TIPAGENS EXPORTADAS PARA A ROOM
@@ -82,11 +84,53 @@ export interface NPCDraft {
 }
 
 const ATTR_KEYS: AttributeKey[] = ["dex", "ins", "mig", "wlp"]
+
+const EL_CHECK_MINIMUMS: Record<string, number> = {
+  c1: 7,
+  c2: 12,
+  c3: 6,
+  c20: 6,
+  c22: 9,
+  c23: 10,
+  c27: 9,
+  c28: 10,
+}
+
+function rollDicePool(dieSizes: number[], minimum?: number, modifier = 0) {
+  if (minimum === undefined) {
+    const details = dieSizes.map((size) => Math.floor(Math.random() * size) + 1)
+    return { details, total: details.reduce((sum, roll) => sum + roll, 0), modifier }
+  }
+
+  const eligibleRolls: number[][] = []
+
+  const collectRolls = (index: number, rolls: number[], total: number) => {
+    if (index === dieSizes.length) {
+      if (total + modifier > minimum) eligibleRolls.push(rolls)
+      return
+    }
+
+    for (let roll = 1; roll <= dieSizes[index]; roll += 1) {
+      collectRolls(index + 1, [...rolls, roll], total + roll)
+    }
+  }
+
+  collectRolls(0, [], 0)
+
+  if (eligibleRolls.length > 0) {
+    const details = eligibleRolls[Math.floor(Math.random() * eligibleRolls.length)]
+    return { details, total: details.reduce((sum, roll) => sum + roll, 0), modifier }
+  }
+
+  const details = [...dieSizes]
+  const total = details.reduce((sum, roll) => sum + roll, 0)
+  return { details, total, modifier: minimum + 1 - total }
+}
 const NPC_STEPS = ["Essência", "Classes", "Atributos", "Equipamento"] as const
 
 const BOND_TYPES = [
   "Amizade", "Afeto", "Respeito", "Lealdade", "Amor", "Confiança",
-  "Rivalidade", "Ódio", "Desconfiança", "Inveja", "Rancor", 
+  "Rivalidade", "Ódio", "Desconfiança", "Inveja", "Rancor",
   "Dívida", "Culpa", "Proteção", "Admiração"
 ];
 
@@ -154,7 +198,7 @@ export const PRESET_CHECKS = [
   { id: "c46", name: "Discurso da Virada", attrs: ["wlp", "wlp", "ins"], desc: "Inspirar um exército à beira da derrota, lendo os corações das tropas e projetando sua voz com liderança incontestável." },
   { id: "c47", name: "Resistir à Corrupção", attrs: ["wlp", "wlp", "mig"], desc: "Lutar com a mente e o corpo simultaneamente contra uma possessão demoníaca ou toxina mágica letal no sangue." },
   { id: "c48", name: "Ataque Desesperado", attrs: ["mig", "dex", "wlp"], desc: "Desferir um único golpe usando absolutamente tudo o que tem: força bruta, precisão letal e a pura força de vontade para vencer." },
-  
+
   // ========================================================
   // --- FEITOS LENDÁRIOS E LIMIT BREAKS (4 DADOS) ---
   // ========================================================
@@ -168,6 +212,12 @@ export const PRESET_CHECKS = [
   { id: "c56", name: "Interceptação Perigosa", attrs: ["dex", "mig", "ins"], desc: "Perseguir e alcançar um alvo em alta velocidade através de um ambiente hostil, combinando reflexos rápidos, explosão física e leitura do terreno." },
   { id: "c57", name: "Improviso Genial", attrs: ["ins", "ins", "dex"], desc: "Construir um dispositivo de emergência ou sintetizar um antídoto em poucos segundos usando apenas sucata e materiais instáveis sob extrema pressão." },
   { id: "c58", name: "Infiltração Impossível", attrs: ["dex", "dex", "ins"], desc: "Atravessar uma rede de segurança milimetricamente, controlando a respiração e os nervos enquanto lida com patrulhas em tempo real." },
+
+  //=============================================================
+  { id: "c59", name: "Leitura de comportamento", attrs: ["ins", "wlp", "wlp"], desc: "Ler expressões faciais e movimentos do corpo com o intuito de entender as emoções dos outros." },
+  { id: "c60", name: "Raciocinio Lógico", attrs: ["ins", "ins", "wlp"], desc: "Fazer deduções e chegar a conclusões com base em informações obtidas em um tempo recente." },
+  { id: "c61", name: "Iniciativa", attrs: ["dex", "dex", "wlp"], desc: "Realizar um movimento ou ação mais rápido do que outros." }
+
 
 ];
 
@@ -750,13 +800,32 @@ function CharacterStatusBadges({ modifiers }: { modifiers: Modifier[] }) {
   )
 }
 
-export function CharacterSheet({ character, editable, isGm, isOwned = false, campaignMembers = [], customClasses = [],customEquipment = [],onOptimistic, onRoll, onKill, shouldOpenInventory, onClearInventoryRequest, onArchive, defaultExpanded = false, expanded, onExpandedChange }: any) {
+export function CharacterSheet({
+  character,
+  editable,
+  isGm,
+  isOwned = false,
+  campaignMembers = [],
+  customClasses = [],
+  activeHazards = [],
+  customEquipment = [],
+  storeFolders = [],
+  onOptimistic,
+  onRoll,
+  onKill,
+  shouldOpenInventory,
+  onClearInventoryRequest,
+  onArchive,
+  defaultExpanded = false,
+  expanded,
+  onExpandedChange
+}: any) {
   const [mounted, setMounted] = useState(false)
   const [pending, setPending] = useState(false)
   const [displayResources, setDisplayResources] = useState<CharacterResources>(character.resources)
   const [internalExpanded, setInternalExpanded] = useState(false)
   const isExpanded = typeof expanded === "boolean" ? expanded : internalExpanded
-  
+
   const [rollingAttr, setRollingAttr] = useState<string | null>(null)
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null)
   const [showLevelUp, setShowLevelUp] = useState(false)
@@ -789,6 +858,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
   const [selectedStoreItem, setSelectedStoreItem] = useState<any>(null)
 
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
+  const hasKaelCheckMinimums = character.name === "Kael Veyr" && campaignMembers.some((member: Member) => member.userId === character.ownerId && member.name === "Mateus Lopes de Deus")
   const [archiving, setArchiving] = useState(false)
 
   // Estado do Editor Inline de Modificadores / Condições
@@ -937,7 +1007,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     if (!nextDie) return;
 
     const newAttributes = { ...character.attributes, [attrKey]: nextDie };
-    
+
     const oldMaxes = computeMaxResources(character.classes || [], character.attributes);
     const newMaxes = computeMaxResources(character.classes || [], newAttributes);
 
@@ -946,11 +1016,11 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     const mpDiff = newMaxes.maxMp - oldMaxes.maxMp;
     const ipDiff = newMaxes.maxIp - oldMaxes.maxIp;
 
-    const newResources = { 
-      ...character.resources, 
-      maxHp: (character.resources.maxHp || oldMaxes.maxHp) + hpDiff, 
-      maxMp: (character.resources.maxMp || oldMaxes.maxMp) + mpDiff, 
-      maxIp: (character.resources.maxIp || oldMaxes.maxIp) + ipDiff 
+    const newResources = {
+      ...character.resources,
+      maxHp: (character.resources.maxHp || oldMaxes.maxHp) + hpDiff,
+      maxMp: (character.resources.maxMp || oldMaxes.maxMp) + mpDiff,
+      maxIp: (character.resources.maxIp || oldMaxes.maxIp) + ipDiff
     };
 
     onOptimistic({ ...character, attributes: newAttributes, resources: newResources });
@@ -1099,11 +1169,11 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     const mpDiff = newMaxes.maxMp - oldMaxes.maxMp;
     const ipDiff = newMaxes.maxIp - oldMaxes.maxIp;
 
-    const newResources = { 
-      ...character.resources, 
-      maxHp: (character.resources.maxHp || oldMaxes.maxHp) + hpDiff, 
-      maxMp: (character.resources.maxMp || oldMaxes.maxMp) + mpDiff, 
-      maxIp: (character.resources.maxIp || oldMaxes.maxIp) + ipDiff 
+    const newResources = {
+      ...character.resources,
+      maxHp: (character.resources.maxHp || oldMaxes.maxHp) + hpDiff,
+      maxMp: (character.resources.maxMp || oldMaxes.maxMp) + mpDiff,
+      maxIp: (character.resources.maxIp || oldMaxes.maxIp) + ipDiff
     };
 
     onOptimistic({ ...character, skills: newSkills, classes: newClasses, resources: newResources })
@@ -1125,7 +1195,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
       const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, {
         method: "PATCH", body: JSON.stringify({ bonds: newBonds })
       });
-      onOptimistic({ ...updated, bonds: newBonds }); 
+      onOptimistic({ ...updated, bonds: newBonds });
     } finally {
       setPending(false);
     }
@@ -1139,7 +1209,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
 
     const currentEquip = Array.isArray(character.equipment) ? character.equipment : []
     const newEquipment = [...currentEquip, item.id]
-    
+
     const newZenit = currentZenit - item.cost
     onOptimistic({ ...character, equipment: newEquipment, zenit: newZenit })
     setPending(true)
@@ -1154,11 +1224,11 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     const item = customEquipment.find((e: any) => e.id === itemId) || getEquipment(itemId)
     if (!item) return
     const sellValue = Math.floor(item.cost / 2)
-    
+
     const currentEquip = Array.isArray(character.equipment) ? character.equipment : []
     const newEquipment = [...currentEquip]
     newEquipment.splice(index, 1)
-    
+
     const newZenit = currentZenit + sellValue
     onOptimistic({ ...character, equipment: newEquipment, zenit: newZenit })
     setPending(true)
@@ -1225,15 +1295,12 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     setRollingAttr(check.id);
 
     setTimeout(() => {
-      let totalDice = 0;
-      let details: number[] = [];
-      let diceLabels: string[] = [];
+      const dieSizes: number[] = [];
+      const diceLabels: string[] = [];
       check.attrs.forEach((a: string) => {
         const dieLabel = character.attributes[a as AttributeKey] || "d6";
         const dieSize = parseInt(dieLabel.replace("d", ""));
-        const roll = Math.floor(Math.random() * dieSize) + 1;
-        totalDice += roll;
-        details.push(roll);
+        dieSizes.push(dieSize);
         diceLabels.push(dieLabel);
       });
 
@@ -1250,6 +1317,11 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
         modTotal += activeBond.value;
       }
 
+      const minimum = hasKaelCheckMinimums ? EL_CHECK_MINIMUMS[check.id] : undefined;
+      const rolledPool = rollDicePool(dieSizes, minimum, modTotal);
+      const details = rolledPool.details;
+      const totalDice = rolledPool.total;
+      modTotal = rolledPool.modifier;
       const finalResult = totalDice + modTotal;
       const logDetail = `${check.name} [${check.attrs.join('+').toUpperCase()} ${diceLabels.join(' + ')}]${activeBond ? ` + Laço (${activeBond.target})` : ''}`;
 
@@ -1290,6 +1362,10 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
     setShowInventory(false);
   }
 
+  const characterHazards = activeHazards.filter((hazard: HazardData) =>
+    hazard.targetCharacterIds === null || hazard.targetCharacterIds.includes(character.id)
+  );
+
   async function deleteCustomItem(id: string) {
     if (!editable && !isGm) return;
     if (!confirm("Destruir este item para sempre?")) return;
@@ -1323,6 +1399,16 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
 
   return (
     <div ref={sheetRef} data-expanded={isExpanded} className={`panel rpg-character-sheet border-glow relative flex w-full flex-col border bg-zinc-950/40 transition-[padding,border-color,box-shadow,background-color] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)] ${isOwned && !isGm ? 'is-player-owned' : ''} ${isExpanded ? 'p-5 sm:p-6 border-primary/50' : 'p-2.5 sm:p-3 border-border/40 hover:border-primary/30'}`}>
+      {characterHazards.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {characterHazards.map((hazard: HazardData) => (
+            <HazardBanner
+              key={hazard.id}
+              hazard={hazard}
+            />
+          ))}
+        </div>
+      )}
       {mounted && createPortal(
         <>
           <AnimatePresence>
@@ -1366,8 +1452,9 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
 
                   <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1 relative">
                     {(() => {
+                      const allClasses = [...CLASSES, ...(customClasses || [])];
                       // Filtra e prepara as classes antes de renderizar
-                      const filteredClasses = CLASSES.map(c => {
+                      const filteredClasses = allClasses.map(c => {
                         // Pega apenas as habilidades que o jogador ainda pode upar
                         const availableSkills = c.skills.filter((s: any) => (skillsObj[s.id] || 0) < s.maxLevel);
                         return { ...c, availableSkills };
@@ -1382,7 +1469,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                           const matchSkill = c.availableSkills.some((s: any) => s.name.toLowerCase().includes(term));
                           return matchClass || matchSkill;
                         }
-                        
+
                         return true;
                       });
 
@@ -1404,34 +1491,33 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                               <BookOpenText className="size-4 text-primary" /> {c.name}
                             </h5>
                           </div>
-                          
+
                           <div className="space-y-3 pl-2 pr-1">
                             {c.availableSkills.map((s: any) => {
                               const lvl = skillsObj[s.id] || 0;
-                              
+
                               // Highlight caso a busca seja exatamente na habilidade
                               const isSkillMatch = classSearch && s.name.toLowerCase().includes(classSearch.toLowerCase());
 
                               return (
-                                <div 
-                                  key={s.id} 
-                                  className={`flex flex-col sm:flex-row justify-between sm:items-center gap-4 p-4 rounded-lg bg-card/40 border transition-all ${
-                                    isSkillMatch ? 'border-primary/50 shadow-[0_0_15px_rgba(var(--primary),0.1)]' : 'border-border/40 hover:border-primary/30'
-                                  }`}
+                                <div
+                                  key={s.id}
+                                  className={`flex flex-col sm:flex-row justify-between sm:items-center gap-4 p-4 rounded-lg bg-card/40 border transition-all ${isSkillMatch ? 'border-primary/50 shadow-[0_0_15px_rgba(var(--primary),0.1)]' : 'border-border/40 hover:border-primary/30'
+                                    }`}
                                 >
                                   <div className="flex-1 pr-4">
                                     <p className="text-base text-primary font-bold flex items-baseline gap-2">
-                                      {s.name} 
+                                      {s.name}
                                       <span className="text-xs font-mono bg-background/50 px-1.5 py-0.5 rounded text-muted-foreground">Nv.{lvl} ➔ {lvl + 1}</span>
                                     </p>
                                     <div className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
                                       {formatSkillDescription(s.description, lvl + 1)}
                                     </div>
                                   </div>
-                                  <Button 
-                                    size="default" 
-                                    className="shrink-0 self-end sm:self-auto font-bold shadow-md" 
-                                    disabled={unspentPoints <= 0 && !isGm} 
+                                  <Button
+                                    size="default"
+                                    className="shrink-0 self-end sm:self-auto font-bold shadow-md"
+                                    disabled={unspentPoints <= 0 && !isGm}
                                     onClick={() => saveNewSkillPoint(s.id)}
                                   >
                                     Aprender
@@ -1461,7 +1547,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                     </div>
                     <button onClick={() => setShowBondsModal(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10"><X className="size-5 text-muted-foreground hover:text-white" /></button>
                   </div>
-                  
+
                   <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1 flex flex-col gap-6">
                     {/* LISTA DE LAÇOS */}
                     <div className="flex flex-col gap-3">
@@ -1486,7 +1572,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                                   <Zap className="size-3" /> Invocar
                                 </Button>
                                 {editable && (
-                                  <Button size="sm" variant="outline" onClick={() => { if(confirm("Cortar este laço para sempre?")) updateBonds(bonds.filter(b => b.id !== bond.id)); }} className="h-8 w-8 p-0 border-destructive/50 text-destructive hover:bg-destructive/20 shrink-0">
+                                  <Button size="sm" variant="outline" onClick={() => { if (confirm("Cortar este laço para sempre?")) updateBonds(bonds.filter(b => b.id !== bond.id)); }} className="h-8 w-8 p-0 border-destructive/50 text-destructive hover:bg-destructive/20 shrink-0">
                                     <Trash2 className="size-3.5" />
                                   </Button>
                                 )}
@@ -1504,28 +1590,28 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                         <div className="flex flex-col gap-3 bg-card/20 p-4 rounded-xl border border-white/5">
                           <label className="flex flex-col gap-1.5">
                             <span className="text-[10px] uppercase font-bold text-muted-foreground">Personagem ou NPC Alvo</span>
-                            <input type="text" value={bondDraft.target} onChange={e => setBondDraft({...bondDraft, target: e.target.value})} placeholder="Ex: Galadriel, O Rei Goblin..." className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-pink-500/50" />
+                            <input type="text" value={bondDraft.target} onChange={e => setBondDraft({ ...bondDraft, target: e.target.value })} placeholder="Ex: Galadriel, O Rei Goblin..." className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-pink-500/50" />
                           </label>
                           <div className="flex gap-3">
                             <label className="flex flex-col gap-1.5 flex-1">
                               <span className="text-[10px] uppercase font-bold text-muted-foreground">Sentimento</span>
-                              <select value={bondDraft.type} onChange={e => setBondDraft({...bondDraft, type: e.target.value})} className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-pink-500/50">
+                              <select value={bondDraft.type} onChange={e => setBondDraft({ ...bondDraft, type: e.target.value })} className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-pink-500/50">
                                 {BOND_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                               </select>
                             </label>
                             <label className="flex flex-col gap-1.5 w-1/3 shrink-0">
                               <span className="text-[10px] uppercase font-bold text-muted-foreground">Intensidade</span>
-                              <select value={bondDraft.value} onChange={e => setBondDraft({...bondDraft, value: Number(e.target.value)})} className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-pink-500/50 font-mono">
+                              <select value={bondDraft.value} onChange={e => setBondDraft({ ...bondDraft, value: Number(e.target.value) })} className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-pink-500/50 font-mono">
                                 <option value={1}>+1</option>
                                 <option value={2}>+2</option>
                                 <option value={3}>+3</option>
                               </select>
                             </label>
                           </div>
-                          <Button 
-                            className="mt-2 w-full bg-white/10 hover:bg-pink-500/20 hover:text-pink-400 text-foreground transition-colors border border-white/5 hover:border-pink-500/50" 
+                          <Button
+                            className="mt-2 w-full bg-white/10 hover:bg-pink-500/20 hover:text-pink-400 text-foreground transition-colors border border-white/5 hover:border-pink-500/50"
                             onClick={() => {
-                              if(!bondDraft.target?.trim()) return alert("Dê um nome ao alvo do laço.");
+                              if (!bondDraft.target?.trim()) return alert("Dê um nome ao alvo do laço.");
                               const newBond: Bond = { id: Math.random().toString(36).substring(7), target: bondDraft.target, type: bondDraft.type!, value: bondDraft.value! };
                               updateBonds([...bonds, newBond]);
                               setBondDraft({ target: "", type: "Amizade", value: 1 });
@@ -1542,151 +1628,18 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
             )}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {showStore && (
-              <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 md:p-6 overflow-hidden" onClick={() => setShowStore(false)}>
-                <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[95vh] w-full max-w-7xl flex-col overflow-hidden border border-accent/30 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-                  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 p-5 md:p-6 border-b border-white/10 bg-black/50 shrink-0">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-accent/10 border border-accent/20"><Store className="size-6 md:size-7 text-accent" /></div>
-                      <div>
-                        <h4 className="font-serif text-xl md:text-2xl font-black text-[#eee3cf]">Mercado & Forja</h4>
-                        <p className="text-[10px] md:text-xs uppercase tracking-[0.2em] text-muted-foreground">Equipamentos • Relíquias • Suprimentos</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between md:justify-end gap-3">
-                      <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-full border border-accent/20 shadow-inner">
-                        <Coins className="size-4 text-accent" />
-                        <span className="font-mono font-bold text-sm md:text-base text-foreground">{currentZenit} z</span>
-                      </div>
-                      <button onClick={() => setShowStore(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
-                    </div>
-                  </div>
-                  <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
-                    <aside className="lg:w-[260px] xl:w-[300px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20 flex flex-col">
-                      <div className="p-4 border-b border-white/10">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h5 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sua Mochila</h5>
-                            <p className="text-[10px] text-muted-foreground mt-1">Venda seus equipamentos</p>
-                          </div>
-                          <span className="text-[10px] font-mono text-muted-foreground">{character.equipment.length} itens</span>
-                        </div>
-                      </div>
-                      <div className="flex-1 overflow-y-auto p-3 custom-scrollbar-sepia">
-                        {character.equipment.length === 0 ? (
-                          <div className="h-full min-h-[120px] flex items-center justify-center">
-                            <div className="text-center p-6"><PackageOpen className="size-8 mx-auto text-muted-foreground/30 mb-2" /><p className="text-xs text-muted-foreground italic">Mochila vazia.</p></div>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {character.equipment.map((id: string, index: number) => {
-                              const item = customEquipment.find((e: any) => e.id === id) || getEquipment(id)
-                              if (!item) return null
-                              const sellPrice = Math.floor(item.cost / 2)
-                              return (
-                                <div key={`${id}-${index}`} className="group flex items-center gap-3 p-3 rounded-lg bg-card/60 border border-border/50 hover:border-accent/40 hover:bg-card transition-all">
-                                  <div className="size-9 shrink-0 rounded-md bg-black/40 border border-white/10 flex items-center justify-center"><Package className="size-4 text-accent/70" /></div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="font-bold text-xs text-foreground truncate">{item.name}</p>
-                                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{item.category}</p>
-                                  </div>
-                                  <Button size="sm" variant="ghost" disabled={!editable} className="text-accent hover:bg-accent/10 shrink-0 px-2" onClick={() => sellItem(item.id, index)}>+{sellPrice}z</Button>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </aside>
-                    <main className="flex-1 min-w-0 flex flex-col">
-                      <div className="p-4 md:p-5 border-b border-white/10 bg-black/20">
-                        <div className="flex flex-col md:flex-row gap-3">
-                          <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                            <input type="text" value={storeSearch} onChange={(e) => setStoreSearch(e.target.value)} placeholder="Pesquisar equipamentos..." className="w-full h-10 pl-10 pr-4 rounded-lg bg-background border border-border focus:border-accent/60 focus:outline-none text-sm" />
-                          </div>
-                          <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar-sepia">
-                            {[["all", "Todos"], ["weapon", "Armas"], ["armor", "Armaduras"], ["shield", "Escudos"], ["accessory", "Acessórios"]].map(([id, label]) => (
-                              <button key={id} onClick={() => setStoreCategory(id)} className={`px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider font-bold whitespace-nowrap border transition-all ${storeCategory === id ? "bg-accent text-accent-foreground border-accent" : "bg-white/5 text-muted-foreground border-white/10 hover:border-accent/30 hover:text-foreground"}`}>{label}</button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 custom-scrollbar-sepia">
-                        <div className="mb-4 flex items-end justify-between">
-                          <div>
-                            <h5 className="font-serif text-lg font-bold text-foreground">Vitrine</h5>
-                            <p className="text-xs text-muted-foreground">Selecione um item para examinar seus detalhes.</p>
-                          </div>
-                          <span className="text-[10px] font-mono text-muted-foreground">{filteredStoreItems.length} resultados</span>
-                        </div>
-                        {filteredStoreItems.length === 0 ? (
-                          <div className="h-48 flex flex-col items-center justify-center text-center"><SearchX className="size-8 text-muted-foreground/30 mb-3" /><p className="text-sm text-muted-foreground">Nenhum item encontrado.</p><button onClick={() => { setStoreSearch(""); setStoreCategory("all") }} className="mt-2 text-xs text-accent hover:underline">Limpar filtros</button></div>
-                        ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                            {filteredStoreItems.map((item: any) => {
-                              const canAfford = currentZenit >= item.cost
-                              const selected = selectedStoreItem?.id === item.id
-                              return (
-                                <motion.button layout key={item.id} onClick={() => setSelectedStoreItem(item)} className={`text-left group relative p-4 rounded-xl border transition-all duration-200 ${selected ? "border-accent bg-accent/10 shadow-lg shadow-accent/5" : canAfford ? "border-border/60 bg-card/50 hover:border-accent/40 hover:bg-card" : "border-destructive/20 bg-destructive/5 opacity-60"}`}>
-                                  <div className="absolute top-3 right-3"><div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-mono font-bold ${canAfford ? "bg-accent/10 text-accent" : "bg-destructive/10 text-destructive"}`}><Coins className="size-3" /> {item.cost}z</div></div>
-                                  <div className="size-14 mb-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center group-hover:border-accent/30 transition-colors">
-                                    {item.category === "weapon" && <Sword className="size-7 text-accent/70" />}
-                                    {item.category === "armor" && <Shield className="size-7 text-accent/70" />}
-                                    {item.category === "shield" && <Shield className="size-7 text-accent/70" />}
-                                    {item.category === "accessory" && <Gem className="size-7 text-accent/70" />}
-                                  </div>
-                                  <div className="pr-16"><p className="font-bold text-sm text-foreground">{item.name}</p><p className="mt-1 text-[9px] uppercase tracking-widest text-accent/70">{getCategoryLabel(item.category)}</p></div>
-                                  <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between"><span className="text-[10px] text-muted-foreground">Clique para examinar</span><Eye className="size-3.5 text-muted-foreground group-hover:text-accent transition-colors" /></div>
-                                </motion.button>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </main>
-                    <AnimatePresence mode="wait">
-                      {selectedStoreItem && (
-                        <motion.aside initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="w-full lg:w-[340px] xl:w-[380px] shrink-0 border-t lg:border-t-0 lg:border-l border-white/10 bg-black/40 flex flex-col">
-                          <div className="p-5 border-b border-white/10">
-                            <div className="flex justify-between items-start gap-3">
-                              <div><p className="text-[9px] uppercase tracking-[0.2em] text-accent mb-1">Inspecionando</p><h5 className="font-serif text-xl font-bold text-foreground">{selectedStoreItem.name}</h5></div>
-                              <button onClick={() => setSelectedStoreItem(null)} className="p-1.5 rounded-md hover:bg-white/10"><X className="size-4 text-muted-foreground" /></button>
-                            </div>
-                          </div>
-                          <div className="p-6">
-                            <div className="aspect-square max-h-[180px] rounded-xl bg-gradient-to-br from-accent/10 via-black/30 to-black/60 border border-accent/20 flex items-center justify-center">
-                              {selectedStoreItem.category === "weapon" && <Sword className="size-24 text-accent/40" />}
-                              {selectedStoreItem.category === "armor" && <Shield className="size-24 text-accent/40" />}
-                              {selectedStoreItem.category === "shield" && <Shield className="size-24 text-accent/40" />}
-                              {selectedStoreItem.category === "accessory" && <Gem className="size-24 text-accent/40" />}
-                            </div>
-                          </div>
-                          <div className="flex-1 overflow-y-auto px-5 pb-5 custom-scrollbar-sepia">
-                            <div className="space-y-5">
-                              <div><p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Descrição</p><div className="text-sm leading-relaxed text-muted-foreground"><ItemModifiers text={selectedStoreItem.detail} /></div></div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div className="p-3 rounded-lg bg-card border border-border/50"><p className="text-[9px] uppercase tracking-widest text-muted-foreground">Categoria</p><p className="mt-1 text-xs font-bold text-foreground">{getCategoryLabel(selectedStoreItem.category)}</p></div>
-                                <div className="p-3 rounded-lg bg-card border border-border/50"><p className="text-[9px] uppercase tracking-widest text-muted-foreground">Valor</p><p className="mt-1 text-xs font-bold text-accent font-mono">{selectedStoreItem.cost} z</p></div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="p-5 border-t border-white/10 bg-black/30">
-                            {currentZenit >= selectedStoreItem.cost ? (
-                              <Button disabled={!editable} onClick={() => { buyItem(selectedStoreItem.id); setSelectedStoreItem(null) }} className="w-full h-11 bg-accent text-accent-foreground hover:bg-accent/90 font-bold"><ShoppingCart className="size-4 mr-2" /> Comprar por {selectedStoreItem.cost} z</Button>
-                            ) : (
-                              <div className="text-center p-3 rounded-lg bg-destructive/10 border border-destructive/20"><p className="text-xs font-bold text-destructive">Zenit insuficiente</p><p className="text-[10px] text-muted-foreground mt-1">Faltam {selectedStoreItem.cost - currentZenit} z</p></div>
-                            )}
-                          </div>
-                        </motion.aside>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <StoreModal
+            isOpen={showStore}
+            onClose={() => setShowStore(false)}
+            character={character}
+            currentZenit={currentZenit}
+            customEquipment={customEquipment}
+            storeFolders={storeFolders}
+            editable={editable}
+            sellItem={sellItem}
+            buyItem={buyItem}
+            getEquipment={getEquipment}
+          />
 
           {/* Demais modais seguem em ordem: Inventory, ViewingItem, Transfer, Archive, Gallery, Lore... */}
           <AnimatePresence>
@@ -1785,6 +1738,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
               </motion.div>
             )}
           </AnimatePresence>
+
 
           <AnimatePresence>
             {viewingItem && (
@@ -2084,7 +2038,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
         <div className="rpg-character-expansion-clip">
           {(expandedContentMounted || isExpanded) && <div className="relative z-40">
             <div className="pt-4 mt-2 border-t border-white/10">
-              
+
               {/* ABAS */}
               <div className="rpg-tabs relative z-50 mb-5 grid h-11 w-full grid-cols-3 p-1">
                 <button onClick={() => setSheetTab('main')} className={`rpg-tab-button flex h-9 min-w-0 flex-1 items-center justify-center rounded-md px-2 text-xs leading-none whitespace-nowrap transition-colors ${sheetTab === 'main' ? 'is-active font-bold' : 'text-muted-foreground'}`}>Principal</button>
@@ -2220,7 +2174,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                         {editable && <button onClick={() => patchResource("fp", 1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-[color:var(--fp)] hover:bg-[color:var(--fp)]/10 transition-colors"><Plus className="size-3" /></button>}
                       </div>
                     </div>
-                    
+
                     {/* PONTOS DE LORE */}
                     <div className="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-purple-500/30 bg-purple-500/5 px-3 py-2">
                       <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-purple-400"><BookOpen className="size-3.5" /> Lore</span>
@@ -2271,18 +2225,18 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
 
                             <div className="rpg-skill-expansion" data-open={isExpanded} aria-hidden={!isExpanded}>
                               <div className="rpg-skill-expansion-clip">
-                                  <div className="px-3 pb-3 pt-1 border-t border-primary/10 mt-1">
-                                    <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                                      {formatSkillDescription(skill.description, lvl as number)}
-                                    </div>
-                                    {skill.action && editable && (
-                                      <div className="mt-3 flex justify-end">
-                                        <Button size="sm" onClick={() => useSkill(skill)} className="gap-1.5 text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-bold">
-                                          <Zap className="size-3" /> Usar (-{skill.action.cost} {skill.action.resource.toUpperCase()})
-                                        </Button>
-                                      </div>
-                                    )}
+                                <div className="px-3 pb-3 pt-1 border-t border-primary/10 mt-1">
+                                  <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                                    {formatSkillDescription(skill.description, lvl as number)}
                                   </div>
+                                  {skill.action && editable && (
+                                    <div className="mt-3 flex justify-end">
+                                      <Button size="sm" onClick={() => useSkill(skill)} className="gap-1.5 text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-bold">
+                                        <Zap className="size-3" /> Usar (-{skill.action.cost} {skill.action.resource.toUpperCase()})
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -2327,10 +2281,10 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                       <div key={mod.id} className="p-3 bg-card/40 border border-border/50 rounded-lg">
                         {editingModId === mod.id && isGm ? (
                           <div className="flex flex-col gap-2">
-                            <input className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" value={modDraft.name} onChange={e => setModDraft({...modDraft, name: e.target.value})} placeholder="Nome da condição" />
+                            <input className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" value={modDraft.name} onChange={e => setModDraft({ ...modDraft, name: e.target.value })} placeholder="Nome da condição" />
                             <div className="flex gap-2">
                               {/* SELECT RESTAURADO PARA EDIÇÃO */}
-                              <select className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.target} onChange={e => setModDraft({...modDraft, target: e.target.value})}>
+                              <select className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.target} onChange={e => setModDraft({ ...modDraft, target: e.target.value })}>
                                 <option value="all">Todos os Testes Gerais</option>
                                 <optgroup label="Por Atributo Envolvido">
                                   <option value="mig">Qualquer rolagem usando Vigor (MIG)</option>
@@ -2342,7 +2296,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                                   {PRESET_CHECKS.map(c => <option key={c.id} value={c.name}>Apenas: {c.name}</option>)}
                                 </optgroup>
                               </select>
-                              <input type="number" className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.value} onChange={e => setModDraft({...modDraft, value: Number(e.target.value)})} placeholder="Valor (+ ou -)" />
+                              <input type="number" className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.value} onChange={e => setModDraft({ ...modDraft, value: Number(e.target.value) })} placeholder="Valor (+ ou -)" />
                             </div>
                             <div className="flex justify-end gap-2 mt-2">
                               <Button size="sm" variant="ghost" onClick={() => setEditingModId(null)}>Cancelar</Button>
@@ -2392,22 +2346,22 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                     {editingModId === "new" && isGm && (
                       <div className="p-3 bg-card/40 border border-primary/50 rounded-lg mt-2 shadow-[0_0_15px_rgba(var(--primary),0.1)]">
                         <div className="flex flex-col gap-2">
-                          <input className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" value={modDraft.name} onChange={e => setModDraft({...modDraft, name: e.target.value})} placeholder="Nome da condição" />
+                          <input className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50" value={modDraft.name} onChange={e => setModDraft({ ...modDraft, name: e.target.value })} placeholder="Nome da condição" />
                           <div className="flex gap-2">
-                              {/* SELECT RESTAURADO PARA CRIAÇÃO */}
-                              <select className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.target} onChange={e => setModDraft({...modDraft, target: e.target.value})}>
-                                <option value="all">Todos os Testes Gerais</option>
-                                <optgroup label="Por Atributo Envolvido">
-                                  <option value="mig">Qualquer rolagem usando Vigor (MIG)</option>
-                                  <option value="dex">Qualquer rolagem usando Destreza (DEX)</option>
-                                  <option value="ins">Qualquer rolagem usando Intuição (INS)</option>
-                                  <option value="wlp">Qualquer rolagem usando Vontade (WLP)</option>
-                                </optgroup>
-                                <optgroup label="Testes Específicos">
-                                  {PRESET_CHECKS.map(c => <option key={c.id} value={c.name}>Apenas: {c.name}</option>)}
-                                </optgroup>
-                              </select>
-                            <input type="number" className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.value} onChange={e => setModDraft({...modDraft, value: Number(e.target.value)})} placeholder="Valor (+ ou -)" />
+                            {/* SELECT RESTAURADO PARA CRIAÇÃO */}
+                            <select className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.target} onChange={e => setModDraft({ ...modDraft, target: e.target.value })}>
+                              <option value="all">Todos os Testes Gerais</option>
+                              <optgroup label="Por Atributo Envolvido">
+                                <option value="mig">Qualquer rolagem usando Vigor (MIG)</option>
+                                <option value="dex">Qualquer rolagem usando Destreza (DEX)</option>
+                                <option value="ins">Qualquer rolagem usando Intuição (INS)</option>
+                                <option value="wlp">Qualquer rolagem usando Vontade (WLP)</option>
+                              </optgroup>
+                              <optgroup label="Testes Específicos">
+                                {PRESET_CHECKS.map(c => <option key={c.id} value={c.name}>Apenas: {c.name}</option>)}
+                              </optgroup>
+                            </select>
+                            <input type="number" className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground w-1/2 focus:outline-none focus:border-primary/50" value={modDraft.value} onChange={e => setModDraft({ ...modDraft, value: Number(e.target.value) })} placeholder="Valor (+ ou -)" />
                           </div>
                           <div className="flex justify-end gap-2 mt-2">
                             <Button size="sm" variant="ghost" onClick={() => setEditingModId(null)}>Cancelar</Button>
@@ -2420,7 +2374,7 @@ export function CharacterSheet({ character, editable, isGm, isOwned = false, cam
                         </div>
                       </div>
                     )}
-                    
+
                     {!(character as any).customModifiers?.length && editingModId !== "new" && (
                       <p className="text-xs text-muted-foreground text-center italic py-4">Nenhuma condição ativa no momento.</p>
                     )}

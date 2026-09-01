@@ -291,6 +291,54 @@
         "userId": "user_reulc3j3ms3snnxu",
         "createdAt": 1787760252737
       }
+    ],
+    [
+      "sess_4rjc4pasmtd4cjzo",
+      {
+        "token": "sess_4rjc4pasmtd4cjzo",
+        "userId": "user_gd68ua63msnua1nb",
+        "createdAt": 1787931662388
+      }
+    ],
+    [
+      "sess_of2nfuepmtd4dgvw",
+      {
+        "token": "sess_of2nfuepmtd4dgvw",
+        "userId": "user_reulc3j3ms3snnxu",
+        "createdAt": 1787931705020
+      }
+    ],
+    [
+      "sess_2iddfbimmtd4dvio",
+      {
+        "token": "sess_2iddfbimmtd4dvio",
+        "userId": "user_gd68ua63msnua1nb",
+        "createdAt": 1787931723984
+      }
+    ],
+    [
+      "sess_bdus6e6xmtfc5xdm",
+      {
+        "token": "sess_bdus6e6xmtfc5xdm",
+        "userId": "user_reulc3j3ms3snnxu",
+        "createdAt": 1788065722426
+      }
+    ],
+    [
+      "sess_qx95p0eimtg3j04n",
+      {
+        "token": "sess_qx95p0eimtg3j04n",
+        "userId": "user_gd68ua63msnua1nb",
+        "createdAt": 1788111682151
+      }
+    ],
+    [
+      "sess_p9jt7hjwmthscwkj",
+      {
+        "token": "sess_p9jt7hjwmthscwkj",
+        "userId": "user_ex0bq249ms6myjd2",
+        "createdAt": 1788213854179
+      }
     ]
   ],
   "campaigns": [
@@ -376,7 +424,7 @@
           },
           {
             "classId": "parasite",
-            "level": 2
+            "level": 3
           }
         ],
         "equipment": [
@@ -385,34 +433,39 @@
           "custom-eq-dp41yaap",
           "custom-eq-dp41yaap",
           "custom-eq-dp41yaap",
-          "custom-eq-p5pwv2kk"
+          "custom-eq-p5pwv2kk",
+          "custom-eq-8mth39oh",
+          "custom-eq-u26mxku6",
+          "eq-sword",
+          "custom-eq-9c813zh3"
         ],
-        "zenit": 0,
+        "zenit": 800,
         "resources": {
-          "hp": 54,
-          "maxHp": 71,
-          "mp": 24,
-          "maxMp": 49,
+          "hp": 47,
+          "maxHp": 77,
+          "mp": 45,
+          "maxMp": 52,
           "ip": 6,
           "maxIp": 6,
           "fp": 4,
-          "xp": 9,
-          "lp": 1
+          "xp": 18,
+          "lp": 0
         },
         "skills": {
           "lo-memory": 1,
           "lo-flash": 1,
           "pa-mutation": 1,
           "pa-monster": 1,
-          "mk-chakra": 1
+          "mk-chakra": 1,
+          "pa-symbiosis": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1787767886985,
+        "updatedAt": 1788135636846,
         "customModifiers": [
           {
             "id": "lamvsl",
             "name": "DEBUFF Empatia",
-            "value": -1,
+            "value": 0,
             "target": "Empatia"
           },
           {
@@ -480,24 +533,6 @@
             "name": "BUFF Avaliação",
             "value": 1,
             "target": "Avaliação"
-          },
-          {
-            "id": "622qp6",
-            "name": "Insanidade",
-            "value": -2,
-            "target": "ins"
-          },
-          {
-            "id": "117539",
-            "name": "Cansados",
-            "target": "dex",
-            "value": -2
-          },
-          {
-            "id": "bp57x",
-            "name": "Enfraquecido",
-            "target": "dex",
-            "value": -2
           }
         ],
         "customItems": [],
@@ -538,24 +573,39 @@
           {
             "classId": "predator",
             "level": 2
+          },
+          {
+            "classId": "hemomancer",
+            "level": 1
+          },
+          {
+            "classId": "parasite",
+            "level": 1
           }
         ],
         "equipment": [
           "eq-leather",
           "eq-art-thief-tools",
           "eq-battleaxe",
-          "eq-daughter-heart-necklace"
+          "eq-daughter-heart-necklace",
+          "eq-dagger",
+          "custom-eq-2h9c6v8u",
+          "eq-sword",
+          "eq-sword",
+          "eq-dagger",
+          "custom-eq-r6x9dd0y",
+          "custom-eq-r6x9dd0y"
         ],
-        "zenit": 625,
+        "zenit": 800,
         "resources": {
-          "hp": 70,
-          "maxHp": 75,
-          "mp": 39,
-          "maxMp": 44,
+          "hp": 83,
+          "maxHp": 85,
+          "mp": 19,
+          "maxMp": 52,
           "ip": 0,
           "maxIp": 6,
-          "fp": 1,
-          "xp": 8,
+          "fp": 0,
+          "xp": 33,
           "lp": 0
         },
         "skills": {
@@ -563,21 +613,23 @@
           "prx-track": 1,
           "nj-dualwield": 1,
           "mk-ironfist": 1,
-          "mk-chakra": 1
+          "mk-chakra": 1,
+          "he-coagulation": 1,
+          "pa-monster": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1787767878971,
+        "updatedAt": 1788135640367,
         "customModifiers": [
           {
             "id": "6ute35",
             "name": "DEBUFF Empatia",
-            "value": -2,
+            "value": -1,
             "target": "Empatia"
           },
           {
             "id": "drhog",
             "name": "DEBUFF Diplomacia",
-            "value": -2,
+            "value": -1,
             "target": "Diplomacia"
           },
           {
@@ -639,18 +691,6 @@
             "name": "BUFF Atletismo",
             "value": 1,
             "target": "Atletismo"
-          },
-          {
-            "id": "46pbf",
-            "name": "Cansado",
-            "target": "dex",
-            "value": -2
-          },
-          {
-            "id": "r3pz1",
-            "name": "Nausea",
-            "target": "dex",
-            "value": -1
           }
         ],
         "customItems": [],
@@ -737,7 +777,7 @@
           },
           {
             "classId": "cleric",
-            "level": 2
+            "level": 3
           }
         ],
         "equipment": [
@@ -745,18 +785,20 @@
           "eq-lantern",
           "eq-tome",
           "eq-potion-might",
-          "eq-silver-braided-bracelet"
+          "eq-silver-braided-bracelet",
+          "eq-sword",
+          "custom-eq-9c813zh3"
         ],
-        "zenit": 0,
+        "zenit": 800,
         "resources": {
-          "hp": 47,
-          "maxHp": 63,
+          "hp": 32,
+          "maxHp": 67,
           "mp": 55,
-          "maxMp": 55,
+          "maxMp": 60,
           "ip": 5,
           "maxIp": 6,
-          "fp": 2,
-          "xp": 8,
+          "fp": 1,
+          "xp": 18,
           "lp": 0
         },
         "skills": {
@@ -764,10 +806,11 @@
           "lo-knowledge": 1,
           "lo-memory": 1,
           "cl-purify": 1,
-          "cl-sanctuary": 1
+          "cl-sanctuary": 1,
+          "cl-breath": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1787767872712,
+        "updatedAt": 1788135644676,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -778,7 +821,7 @@
           {
             "id": "wz2tr",
             "name": "BUFF Medicina",
-            "value": 2,
+            "value": 3,
             "target": "Medicina"
           },
           {
@@ -840,12 +883,6 @@
             "name": "BUFF Diplomacia",
             "value": 2,
             "target": "Diplomacia"
-          },
-          {
-            "id": "katlhk",
-            "name": "Cansado",
-            "target": "dex",
-            "value": -2
           }
         ],
         "customItems": [
@@ -875,6 +912,14 @@
     [
       "char_4m0s6ac2msvcayxc",
       1787451268492
+    ],
+    [
+      "char_7lczrpjmmtet17z3",
+      1788132899295
+    ],
+    [
+      "char_8mw4k00rmthsdabs",
+      1788217387747
     ]
   ],
   "maps": [
@@ -110337,205 +110382,491 @@
             "id": "s08u9n",
             "name": "Colar de Ravenkhar",
             "url": "http://zipline.sinapselabs.com.br/u/aTDDKv.png",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "a407158b-5c05-450a-bf75-b3c231b9095b"
           },
           {
             "id": "7qv30e",
             "name": "Quarto da estalagem",
             "url": "http://zipline.sinapselabs.com.br/u/KfPsCm.webp",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "root"
           },
           {
             "id": "7sdb3k",
             "name": "Porto de Vanaheim",
             "url": "http://zipline.sinapselabs.com.br/u/U4VNiG.png",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "a407158b-5c05-450a-bf75-b3c231b9095b"
           },
           {
             "id": "zxq7ta",
             "name": "Fachada da estalagem",
             "url": "http://zipline.sinapselabs.com.br/u/vZ8kcs.webp",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "a407158b-5c05-450a-bf75-b3c231b9095b"
           },
           {
             "id": "ig0dx",
             "name": "Lojinha da Moira",
             "url": "http://zipline.sinapselabs.com.br/u/xOmAmt.png",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "a407158b-5c05-450a-bf75-b3c231b9095b"
           },
           {
             "id": "2mdpbn",
             "name": "Moira",
             "url": "http://zipline.sinapselabs.com.br/u/6n7Tex.png",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "a407158b-5c05-450a-bf75-b3c231b9095b"
           },
           {
             "id": "y220er",
             "name": "Morte da moira",
             "url": "https://lh3.googleusercontent.com/d/1ZPNs9yw09N-3LQlQPO8cCwfz8lcLfxL-=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "939e091c-c782-445c-a43e-7ed38469fe0c"
           },
           {
             "id": "84xvpn",
             "name": "Darin",
             "url": "https://lh3.googleusercontent.com/d/1jW7QcoUEBECfyHsQYvvZ0vC8pGo52VAI=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "dd765753-2153-4ad1-987e-003c17de8ad5"
           },
           {
             "id": "vwjshp",
             "name": "Sonho amelia horror",
             "url": "https://lh3.googleusercontent.com/d/1FZCkULEp3qTLdVNH8hrFO8CWnFMFpIJZ=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "939e091c-c782-445c-a43e-7ed38469fe0c"
           },
           {
             "id": "y3ex7",
             "name": "Sonho amelia",
             "url": "https://lh3.googleusercontent.com/d/1DJm3b9Gggy0OZuMMMUrctIc391UFayG1=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "939e091c-c782-445c-a43e-7ed38469fe0c"
           },
           {
             "id": "lxibs",
             "name": "Tio do thorfin",
             "url": "https://lh3.googleusercontent.com/d/1-x-m3UsSIdZ8-qvNN28Q5nS7yZ5Ck9CA=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "939e091c-c782-445c-a43e-7ed38469fe0c"
           },
           {
             "id": "93519o",
             "name": "Cabana sonho thorfin",
             "url": "https://lh3.googleusercontent.com/d/1eTIWniEGZes12sIQLu5V-TlJBldXTmzx=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "939e091c-c782-445c-a43e-7ed38469fe0c"
           },
           {
             "id": "u959l",
             "name": "Passagem para Darin",
             "url": "http://zipline.sinapselabs.com.br/u/UU5OVn.jpg",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "939e091c-c782-445c-a43e-7ed38469fe0c"
           },
           {
             "id": "dp43np",
             "name": "Floresta",
             "url": "https://natureconservancy-h.assetsadobe.com/is/image/content/dam/tnc/nature/en/photos/brazil/florestas-thiagocampi.jpg?crop=0%2C1000%2C4000%2C4000&wid=800&hei=800&scl=5.0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "939e091c-c782-445c-a43e-7ed38469fe0c"
           },
           {
             "id": "evob8b",
             "name": "Passagem do rio",
             "url": "https://i.pinimg.com/736x/90/90/43/909043f27d11bca888d0433da7a01943.jpg",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "939e091c-c782-445c-a43e-7ed38469fe0c"
           },
           {
             "id": "bwek7u",
             "name": "Georgie",
             "url": "https://lh3.googleusercontent.com/d/1HNn5dkVRx2rz5uhCE00y5xv0Dl7AIgNl=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "939e091c-c782-445c-a43e-7ed38469fe0c"
           },
           {
             "id": "24bad",
             "name": "kael vendo os companheiros",
             "url": "https://lh3.googleusercontent.com/d/1JHRfYWU0OgD3Q4iYHLKgEpK2YgvdXpZC=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "939e091c-c782-445c-a43e-7ed38469fe0c"
           },
           {
             "id": "bpvc5t",
             "name": "Miguel e Nexidium",
             "url": "https://lh3.googleusercontent.com/d/15NeVEqDREELf0YwVksfWyhTk5s5-kv1c=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true,
+            "folderId": "dd765753-2153-4ad1-987e-003c17de8ad5"
           },
           {
             "id": "lusdmq",
             "name": "Interior de Darin",
             "url": "https://lh3.googleusercontent.com/d/1uI1RTvUFxXzQehO6BK3K8sRmOlepjHbY=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "dd765753-2153-4ad1-987e-003c17de8ad5"
           },
           {
             "id": "4tp6ku",
             "name": "Gorila praga",
             "url": "https://lh3.googleusercontent.com/d/1vGrqKJVJjMGW-EcH2zRSSKDq7i6XFeSc=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "dd765753-2153-4ad1-987e-003c17de8ad5"
           },
           {
             "id": "epy7ff",
             "name": "Entrando na masmorra",
             "url": "https://lh3.googleusercontent.com/d/1MCF5aXJEaw_qXJD1mTvK8IMknTe695uf=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "dd765753-2153-4ad1-987e-003c17de8ad5"
           },
           {
             "id": "cotz7f",
             "name": "Corredor da prisão",
             "url": "https://lh3.googleusercontent.com/d/1eBZC2Z50XW3o3vQ8c3X-PlPVBR-kiTJV=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "dd765753-2153-4ad1-987e-003c17de8ad5"
           },
           {
             "id": "hdk4z",
             "name": "Sala do altar",
             "url": "https://lh3.googleusercontent.com/d/1N7adw7FIc_V_uqQw51HhVAkTbLm0kTUt=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "dd765753-2153-4ad1-987e-003c17de8ad5"
           },
           {
             "id": "rnuty",
             "name": "Prisioneiro",
             "url": "https://lh3.googleusercontent.com/d/1TN8goH_4Shzolakno5RwPAIosGNcaWc0=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "dd765753-2153-4ad1-987e-003c17de8ad5"
           },
           {
             "id": "tf7re",
             "name": "Marca Vampirica",
             "url": "https://lh3.googleusercontent.com/d/1dLlvMN9jH6NacHTibLVvnGcsa4PasZ0j=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "root"
           },
           {
             "id": "sko6kw",
             "name": "Vampiro gigante",
             "url": "https://lh3.googleusercontent.com/d/1s23iH6SOvk5JGnRo6XqjTR4ULscTYmBf=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "root"
           },
           {
             "id": "xwweee",
             "name": "2 corvos",
             "url": "https://lh3.googleusercontent.com/d/1ByvSF6aXs74p1c-cmQF-HllfT_rNKQ6d=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "dd765753-2153-4ad1-987e-003c17de8ad5"
           },
           {
             "id": "kn7ppz",
             "name": "Nexidium",
             "url": "https://lh3.googleusercontent.com/d/14u73mmq-HfbrxKHMkP3gG87OloK6AZI8=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true,
+            "folderId": "root"
           },
           {
             "id": "97kyn5",
             "name": "Exorcismo de Miguel",
             "url": "https://lh3.googleusercontent.com/d/1aQxGwjMMmtwJxGTRNX68qWfAqeLqjRZk=w1000?authuser=0",
-            "isPublic": false
+            "isPublic": true,
+            "folderId": "root"
           },
           {
             "id": "gtowx48",
             "name": "Kael na floresta",
             "url": "https://lh3.googleusercontent.com/d/1bKonUuWpNWuTV5VHAqp_Qm5SYKNj-uEg=w1000?authuser=0",
-            "isPublic": true
+            "isPublic": true,
+            "folderId": "root"
           },
           {
             "id": "qhkn2",
             "name": "Montando nos corvos",
             "url": "http://zipline.sinapselabs.com.br/u/FAjMr9.png",
-            "isPublic": false
+            "isPublic": true,
+            "folderId": "root"
           },
           {
             "id": "oswggq",
             "name": "Em frente a tenda",
             "url": "http://zipline.sinapselabs.com.br/u/2WB7d5.png",
-            "isPublic": false
+            "isPublic": true,
+            "folderId": "root"
           },
           {
             "id": "rzwrrn",
             "name": "Profecia",
             "url": "http://zipline.sinapselabs.com.br/u/iwodoJ.png",
-            "isPublic": false
+            "isPublic": true,
+            "folderId": "root"
           },
           {
             "id": "w2f5p",
             "name": "Caverna com velas vermelhas",
             "url": "http://zipline.sinapselabs.com.br/u/2T6RfH.png",
-            "isPublic": false
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "8tyn5o",
+            "name": "Mapa mundi detalhado",
+            "url": "http://zipline.sinapselabs.com.br/u/CjMbAc.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "3mydmf",
+            "name": "Vislumbre de nova genesis",
+            "url": "http://zipline.sinapselabs.com.br/u/UkSpLV.webp",
+            "isPublic": false,
+            "folderId": "root"
+          },
+          {
+            "id": "dzpxv",
+            "name": "Pantano",
+            "url": "http://zipline.sinapselabs.com.br/u/tDJZ8d.webp",
+            "isPublic": false,
+            "folderId": "root"
+          },
+          {
+            "id": "nccqi3",
+            "name": "Chegada no castelo pantano",
+            "url": "http://zipline.sinapselabs.com.br/u/pDAwDX.webp",
+            "isPublic": false,
+            "folderId": "root"
+          },
+          {
+            "id": "mlmtch",
+            "name": "Interior do castelo",
+            "url": "http://zipline.sinapselabs.com.br/u/l3aAob.webp",
+            "isPublic": false,
+            "folderId": "root"
+          },
+          {
+            "id": "taqp9",
+            "name": "Rei inanimado",
+            "url": "http://zipline.sinapselabs.com.br/u/FdktMK.webp",
+            "isPublic": false,
+            "folderId": "root"
+          },
+          {
+            "id": "mrquut",
+            "name": "Sanguessuga marinho",
+            "url": "http://zipline.sinapselabs.com.br/u/o4kwYO.jpg",
+            "isPublic": false,
+            "folderId": "root"
+          },
+          {
+            "id": "2n9gzd",
+            "name": "Ataque das sanguessugas",
+            "url": "http://zipline.sinapselabs.com.br/u/YGwnSB.png",
+            "isPublic": false,
+            "folderId": "root"
+          },
+          {
+            "id": "yvzuri",
+            "name": "Abrindo o vortice",
+            "url": "http://zipline.sinapselabs.com.br/u/rpILUP.webp",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "ml79mg",
+            "name": "Aberracao maritima",
+            "url": "http://zipline.sinapselabs.com.br/u/kgBvmY.jpg",
+            "isPublic": false,
+            "folderId": "root"
+          },
+          {
+            "id": "2whls",
+            "name": "Chegada no galeao",
+            "url": "http://zipline.sinapselabs.com.br/u/VEMxsi.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "ba1kgi",
+            "name": "Criando a bolha",
+            "url": "http://zipline.sinapselabs.com.br/u/cpX1hE.webp",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "zqr3jy",
+            "name": "Descendo no abismo",
+            "url": "http://zipline.sinapselabs.com.br/u/2zsbYK.jpg",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "awe0fc",
+            "name": "Transpassando o pantano",
+            "url": "http://zipline.sinapselabs.com.br/u/OayTwa.webp",
+            "isPublic": false,
+            "folderId": "root"
+          },
+          {
+            "id": "qrng9e",
+            "name": "Item de apego",
+            "url": "http://zipline.sinapselabs.com.br/u/YF7yxt.png",
+            "isPublic": false,
+            "folderId": "root"
+          },
+          {
+            "id": "0zwdd6",
+            "name": "Julgamento em vanaheim",
+            "url": "http://zipline.sinapselabs.com.br/u/3rCpnT.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "p0scnb",
+            "name": "Gorian",
+            "url": "http://zipline.sinapselabs.com.br/u/M1iB14.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "fk6gv",
+            "name": "Bariston esperando",
+            "url": "http://zipline.sinapselabs.com.br/u/k957IK.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "plzr6g",
+            "name": "Jogadores cercados",
+            "url": "http://zipline.sinapselabs.com.br/u/ll0g0i.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "sopcai",
+            "name": "Invocação de miguel",
+            "url": "http://zipline.sinapselabs.com.br/u/oWg9T3.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "9dhq6m",
+            "name": "Miguel salva eles denovo",
+            "url": "http://zipline.sinapselabs.com.br/u/K2mSSB.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "8811lh",
+            "name": "Kael e o pai",
+            "url": "http://zipline.sinapselabs.com.br/u/5e1dMh.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "z7hg3",
+            "name": "Gorian pega Kael",
+            "url": "http://zipline.sinapselabs.com.br/u/ctxb5b.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "7ncpeq",
+            "name": "Ataque do barco",
+            "url": "http://zipline.sinapselabs.com.br/u/31NmQP.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "fz03yq",
+            "name": "Encarada pirata",
+            "url": "http://zipline.sinapselabs.com.br/u/ow0gtt.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "cmuxga",
+            "name": "Bolhas separadas",
+            "url": "http://zipline.sinapselabs.com.br/u/9RvpJV.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "729x4q",
+            "name": "Bolhas individuais",
+            "url": "http://zipline.sinapselabs.com.br/u/WbYK1M.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "7mguje",
+            "name": "Peixeluz",
+            "url": "http://zipline.sinapselabs.com.br/u/ajRXXr.jpg",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "vg6kox",
+            "name": "Veus de névoa",
+            "url": "http://zipline.sinapselabs.com.br/u/Q4FrI0.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "dum4l",
+            "name": "Arraias fantasma",
+            "url": "http://zipline.sinapselabs.com.br/u/p8F27f.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "v6ie9",
+            "name": "Carangueijos cristal",
+            "url": "http://zipline.sinapselabs.com.br/u/3ekaz9.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "72goj",
+            "name": "Devoraluz",
+            "url": "http://zipline.sinapselabs.com.br/u/jH1Bbo.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "i7p79",
+            "name": "galeao afundado",
+            "url": "http://zipline.sinapselabs.com.br/u/cF05Sd.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "pnca1a",
+            "name": "Miguel na aberracao",
+            "url": "http://zipline.sinapselabs.com.br/u/7G7X0r.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "9dtjc6",
+            "name": "devoraluz Contra aberração",
+            "url": "http://zipline.sinapselabs.com.br/u/DaUvrj.png",
+            "isPublic": true,
+            "folderId": "root"
+          },
+          {
+            "id": "z5hug4",
+            "name": "Anel De Prismarina",
+            "url": "http://zipline.sinapselabs.com.br/u/m6vdlW.png",
+            "isPublic": true,
+            "folderId": "root"
           }
         ],
         "lore": [
@@ -110759,75 +111090,58 @@
                 "content": "https://youtu.be/Y450A7VJYhs"
               }
             ]
+          },
+          {
+            "id": "hlwk3k",
+            "name": "Kael Background",
+            "scenes": [
+              {
+                "id": "rkokf",
+                "type": "video",
+                "content": "https://youtu.be/mTRXE2l0D1g"
+              }
+            ]
           }
         ],
         "customNPCs": [
           {
-            "id": "npc-25o3b54",
-            "name": "Moira",
-            "avatarUrl": "http://zipline.sinapselabs.com.br/u/HRbCOn.png",
-            "origin": "Moira nasceu em uma pequena vila comercial na estrada entre Nazir e Ravenkhar. Filha de camponeses, passou a infância entre carroças, mercadores e viajantes que paravam na vila para descansar.\n\nAinda jovem, casou-se com um viajante chamado Elias. Juntos abriram uma pequena loja de artigos diversos. Não era uma loja importante. Vendiam comida, ferramentas, remédios, cordas, velas, quinquilharias e tudo aquilo que alguém poderia precisar durante uma viagem.\n\nEles tiveram uma filha.\n\nLina.\n\nLina cresceu atrás do balcão, ajudando a mãe a organizar as prateleiras e o pai a receber os viajantes. Moira dizia que a menina tinha \"mais conversa que mercador em dia de feira\".\n\nQuando Lina cresceu, começou a acompanhar caravanas como mensageira.\n\nAté que, certa noite, uma caravana que vinha de Ravenkhar chegou à vila.\n\nSem Lina.\n\nDisseram que a caravana havia sido atacada.\n\nAlguns morreram.\n\nOutros desapareceram.\n\nO corpo de Lina nunca foi encontrado.\n\nElias nunca conseguiu aceitar aquilo.\n\nMeses depois, partiu sozinho em busca da filha.\n\nTambém nunca voltou.\n\nMoira ficou.",
-            "identity": "Hoje, Moira é a pequena senhoria da lojinha da estrada.\n\nBaixinha, curvada, sempre com um avental velho e os óculos escorregando pelo nariz.\n\nEla conhece praticamente todo mundo que passa pela região.",
-            "theme": "Esperança.\n\nMas não uma esperança alegre.\n\nUma esperança cansada.\n\nAquela que existe quando você já perdeu quase tudo, mas ainda não consegue fechar a porta.\n\nMoira continua abrindo sua lojinha todas as manhãs porque, em algum lugar dentro dela, ainda existe uma menina de cabelos bagunçados correndo pelo estabelecimento.",
-            "classes": [
-              {
-                "classId": "tinkerer",
-                "level": 1
-              },
-              {
-                "classId": "merchant",
-                "level": 4
-              }
-            ],
-            "skills": {
-              "ti-gadgets": 1,
-              "me-heard": 3,
-              "me-stock": 1
-            },
-            "attributes": {
-              "dex": "d6",
-              "ins": "d8",
-              "mig": "d6",
-              "wlp": "d12"
-            },
-            "equipment": []
-          },
-          {
-            "id": "npc-15rlxwo",
-            "name": "Miguel de'la Fantasy",
-            "avatarUrl": "https://i.pinimg.com/736x/80/2b/7f/802b7fa2c02baebdf0fd52fc97c5408e.jpg",
+            "id": "npc-rn1xara",
+            "name": "Miguel de'la Fantasy Lestat",
+            "avatarUrl": "http://zipline.sinapselabs.com.br/u/whDKKq.webp",
             "origin": "",
             "identity": "Um homem de cabelos brancos, um blazer preto por cima de uma camisa branca e um cachecol vermelho. Ele tem marcas vermelhas em um dos braços e uma luva de couro no outro. junto dele um ser alado, pequeno e redondo o acompanha",
             "theme": "",
             "classes": [
               {
                 "classId": "exorcist",
-                "level": 2
+                "level": 5
               },
               {
                 "classId": "puppeteer",
-                "level": 13
+                "level": 12
               }
             ],
             "skills": {
-              "pu-thread": 5,
-              "pu-pull": 5,
-              "pu-hands": 1,
-              "pu-dance": 1,
-              "pu-master": 1,
               "ex-you-dont-belong": 1,
-              "ex-seal": 1
+              "ex-purification": 1,
+              "ex-seal": 1,
+              "ex-banishing": 1,
+              "ex-mark": 1,
+              "pu-thread": 5,
+              "pu-master": 1,
+              "pu-dance": 1,
+              "pu-hands": 1,
+              "pu-pull": 4
             },
             "attributes": {
-              "dex": "d6",
-              "ins": "d10",
-              "mig": "d6",
-              "wlp": "d10"
+              "dex": "d10",
+              "ins": "d8",
+              "mig": "d8",
+              "wlp": "d6"
             },
             "equipment": [
-              "eq-nexidium",
-              "eq-bloodstained-journal",
-              "eq-sword"
+              "eq-marionette-thread",
+              "eq-nexidium"
             ]
           },
           {
@@ -111270,11 +111584,447 @@
             "url": "http://zipline.sinapselabs.com.br/u/Y3mARA.mp3",
             "loopable": true,
             "isCustom": true
+          },
+          {
+            "id": "snd_custom_jx1kstz",
+            "name": "Jornada á nova genesis",
+            "url": "http://zipline.sinapselabs.com.br/u/Md2LsY.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_5e342gj",
+            "name": "Combate chefe nova genesis",
+            "url": "http://zipline.sinapselabs.com.br/u/rsmWq7.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_pk5yfys",
+            "name": "Descendo no fundo do oceano",
+            "url": "http://zipline.sinapselabs.com.br/u/CMQQrO.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_93cqek3",
+            "name": "Som do Mar",
+            "url": "http://zipline.sinapselabs.com.br/u/yKAFd4.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_qykm4hr",
+            "name": "Fundo do mar",
+            "url": "http://zipline.sinapselabs.com.br/u/qzeVHK.MP3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_y015i3q",
+            "name": "Combate medio mar",
+            "url": "http://zipline.sinapselabs.com.br/u/FVH4Wf.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_68j50li",
+            "name": "Sala do julgamento",
+            "url": "http://zipline.sinapselabs.com.br/u/ZFcLhJ.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_52qo908",
+            "name": "Julgamento por combate intro",
+            "url": "http://zipline.sinapselabs.com.br/u/JjiUh2.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_nxx4iir",
+            "name": "Abrindo os portoes",
+            "url": "http://zipline.sinapselabs.com.br/u/vI7Cj1.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_d2483qq",
+            "name": "Fim da linha",
+            "url": "http://zipline.sinapselabs.com.br/u/adk7aF.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_cdqekae",
+            "name": "Tiro",
+            "url": "http://zipline.sinapselabs.com.br/u/J93bzs.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_ztov796",
+            "name": "Spring meadow",
+            "url": "http://zipline.sinapselabs.com.br/u/WJo6Se.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_uf9krgt",
+            "name": "World Map",
+            "url": "http://zipline.sinapselabs.com.br/u/9tK8Zi.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_zbxnrk1",
+            "name": "Avasa apasatara",
+            "url": "http://zipline.sinapselabs.com.br/u/joINZu.mp3",
+            "loopable": true,
+            "isCustom": true
+          },
+          {
+            "id": "snd_custom_5zf4qgw",
+            "name": "Anciente Village",
+            "url": "http://zipline.sinapselabs.com.br/u/QlxgTS.mp3",
+            "loopable": true,
+            "isCustom": true
           }
         ],
-        "weather": "clear",
-        "updatedAt": 1787765424674,
-        "customCreatures": [],
+        "weather": "cloudy",
+        "updatedAt": 1788226159567,
+        "customCreatures": [
+          {
+            "id": "custom-xsopkvsd",
+            "name": "Aberracao maritima",
+            "imageUrl": "http://zipline.sinapselabs.com.br/u/SbWlUI.jpg",
+            "level": 15,
+            "species": "Aberração",
+            "maxHp": 167,
+            "maxMp": 20,
+            "def": 13,
+            "mdef": 13,
+            "attributes": {
+              "dex": "d12",
+              "ins": "d6",
+              "mig": "d12",
+              "wlp": "d6"
+            },
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Ataque com pata",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 21,
+                "type": "físico"
+              }
+            ],
+            "spells": [
+              "Jato de agua quente: Causa 15 pontos de dano mágico"
+            ],
+            "equipment": []
+          },
+          {
+            "id": "custom-ykarjywu",
+            "name": "Devoraluz",
+            "imageUrl": "http://zipline.sinapselabs.com.br/u/jH1Bbo.png",
+            "level": 5,
+            "species": "Peixe",
+            "maxHp": 40,
+            "maxMp": 20,
+            "def": 10,
+            "mdef": 10,
+            "attributes": {
+              "dex": "d12",
+              "ins": "d6",
+              "mig": "d6",
+              "wlp": "d6"
+            },
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Investida",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 10,
+                "type": "físico"
+              }
+            ],
+            "spells": [],
+            "equipment": []
+          },
+          {
+            "id": "custom-6qh11acs",
+            "name": "Gorian",
+            "imageUrl": "http://zipline.sinapselabs.com.br/u/Woi1xY.png",
+            "level": 7,
+            "species": "Humanoid",
+            "maxHp": 70,
+            "maxMp": 20,
+            "def": 12,
+            "mdef": 10,
+            "attributes": {
+              "dex": "d10",
+              "ins": "d6",
+              "mig": "d10",
+              "wlp": "d6"
+            },
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Golpe com maça",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 13,
+                "type": "físico"
+              }
+            ],
+            "spells": [],
+            "equipment": []
+          },
+          {
+            "id": "custom-yf73hges",
+            "name": "Texugo d' Mel",
+            "imageUrl": "https://i.redd.it/t3mnsxwn49kf1.jpeg",
+            "level": 10,
+            "species": "Besta",
+            "maxHp": 80,
+            "maxMp": 20,
+            "def": 14,
+            "mdef": 10,
+            "attributes": {
+              "dex": "d8",
+              "ins": "d6",
+              "mig": "d12",
+              "wlp": "d6"
+            },
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Mordida",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 13,
+                "type": "físico"
+              }
+            ],
+            "spells": [],
+            "equipment": []
+          },
+          {
+            "id": "custom-aal5xfgv",
+            "name": "Planta carnivora",
+            "imageUrl": "http://zipline.sinapselabs.com.br/u/1zVZt5.png",
+            "level": 8,
+            "species": "Besta",
+            "maxHp": 40,
+            "maxMp": 20,
+            "def": 10,
+            "mdef": 10,
+            "attributes": {
+              "dex": "d12",
+              "ins": "d6",
+              "mig": "d6",
+              "wlp": "d6"
+            },
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Mordida",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 10,
+                "type": "físico"
+              }
+            ],
+            "spells": [],
+            "equipment": []
+          },
+          {
+            "id": "custom-0n1wx34t",
+            "name": "Esqueleto afogado",
+            "imageUrl": "http://zipline.sinapselabs.com.br/u/hak1qd.png",
+            "level": 5,
+            "species": "Besta",
+            "maxHp": 20,
+            "maxMp": 6,
+            "def": 5,
+            "mdef": 2,
+            "attributes": {
+              "dex": "d6",
+              "ins": "d6",
+              "mig": "d6",
+              "wlp": "d6"
+            },
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Espadada",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 5,
+                "type": "físico"
+              }
+            ],
+            "spells": [],
+            "equipment": []
+          },
+          {
+            "id": "custom-ttcj2m6f",
+            "name": "Sanguessuga Marinho",
+            "imageUrl": "http://zipline.sinapselabs.com.br/u/o4kwYO.jpg",
+            "level": 5,
+            "species": "Besta",
+            "maxHp": 30,
+            "maxMp": 6,
+            "def": 5,
+            "mdef": 2,
+            "attributes": {
+              "dex": "d8",
+              "ins": "d8",
+              "mig": "d8",
+              "wlp": "d6"
+            },
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Abocanhada",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 5,
+                "type": "físico"
+              }
+            ],
+            "spells": [],
+            "equipment": []
+          },
+          {
+            "id": "custom-msxckyos",
+            "name": "Rei morto",
+            "imageUrl": "http://zipline.sinapselabs.com.br/u/idQ8Sz.jpg",
+            "level": 12,
+            "species": "Aberração",
+            "maxHp": 140,
+            "maxMp": 56,
+            "def": 14,
+            "mdef": 15,
+            "attributes": {
+              "dex": "d12",
+              "ins": "d6",
+              "mig": "d12",
+              "wlp": "d6"
+            },
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Raizes fétidas",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 25,
+                "type": "físico"
+              }
+            ],
+            "spells": [],
+            "equipment": []
+          }
+        ],
         "customEquipment": [
           {
             "id": "custom-eq-p5pwv2kk",
@@ -111289,9 +112039,139 @@
             "type": "",
             "bonus": "",
             "effect": ""
+          },
+          {
+            "id": "custom-eq-u26mxku6",
+            "name": "Anel de prismarina",
+            "category": "accessory",
+            "cost": 1500,
+            "purchasable": false,
+            "detail": "Manipula pressão do ar/água para criar gravidade que imobiliza inimigos, ou dispara água fervente que derrete armaduras.\nFôlego do Afogado: Exige prender a respiração. Uso prolongado aplica pressão abissal aos pulmões, causando sangramento, asfixia e risco de desmaio.",
+            "damage": "d12",
+            "defense": "0",
+            "mdef": "8",
+            "type": "Água, Mágico",
+            "bonus": "+6 Fôlego +3 Resistência +2 Força Bruta",
+            "effect": "Risco de Asfixia/Desmaio (Usuário)"
+          },
+          {
+            "id": "custom-eq-156iasrj",
+            "name": "Anel de Simbiose Verdejante",
+            "category": "accessory",
+            "cost": 1500,
+            "purchasable": false,
+            "detail": "Simbiose Verdejante: Força o terreno a brotar raízes enegrecidas para imobilizar inimigos ou tecer uma armadura viva de casca de carvalho.\nPreço da Seiva: Raízes farpadas perfuram os dedos e veias do usuário ao ativar, drenando seu sangue para alimentar a magia.",
+            "damage": "d10",
+            "defense": "0",
+            "mdef": "8",
+            "type": "Planta, Mágico",
+            "bonus": "+10 Bontânica e Venenos +3 Sobrevivência Selvagem +4 Força Bruta",
+            "effect": "Dano de Sangramento (Usuário)"
+          },
+          {
+            "id": "custom-eq-8mth39oh",
+            "name": "Osso de tibia de afogado",
+            "category": "weapon",
+            "cost": 100,
+            "purchasable": false,
+            "detail": "Osso arrancado da tibia de um afogado",
+            "damage": "3",
+            "defense": "",
+            "mdef": "",
+            "type": "",
+            "bonus": "",
+            "effect": ""
+          },
+          {
+            "id": "custom-eq-2h9c6v8u",
+            "name": "Roupa de Capitão",
+            "category": "armor",
+            "cost": 63,
+            "purchasable": true,
+            "detail": "Roupa de capitão",
+            "damage": "",
+            "defense": "3",
+            "mdef": "",
+            "type": "",
+            "bonus": "+2 em Destreza",
+            "effect": ""
+          },
+          {
+            "id": "custom-eq-r6x9dd0y",
+            "name": "Dentadura de ouro",
+            "category": "weapon",
+            "cost": 200,
+            "purchasable": true,
+            "detail": "Dentadura de outro tirada dos piratas",
+            "damage": "",
+            "defense": "1",
+            "mdef": "",
+            "type": "",
+            "bonus": "",
+            "effect": "",
+            "folderId": "custom"
+          },
+          {
+            "id": "custom-eq-9c813zh3",
+            "name": "Pólvora",
+            "category": "accessory",
+            "cost": 29,
+            "purchasable": true,
+            "detail": "500 gramas de pólvora",
+            "damage": "",
+            "defense": "",
+            "mdef": "",
+            "type": "",
+            "bonus": "",
+            "effect": "",
+            "folderId": "folder-audyawb"
           }
         ],
-        "customClasses": []
+        "customClasses": [
+          {
+            "id": "custom-class-2ylmlnr2",
+            "name": "Vampiro",
+            "archetype": "Devorador",
+            "description": "Aquele cujo nome não deve ser dito, que surge da noite, o empalador...",
+            "hpPerLevel": 9,
+            "mpPerLevel": 5,
+            "primaryAttribute": "mig",
+            "skills": [
+              {
+                "id": "cskill-bnub-0",
+                "name": "Cheiro de sangue",
+                "maxLevel": 6,
+                "description": "Quando ativada, você pode selecionar uma criatura ou pessoa alvo, você ganha [Nível da Perícia x 3] nos próximos 3 testes contra, recupera após um descanso longo"
+              }
+            ]
+          }
+        ],
+        "storeFolders": [
+          {
+            "id": "folder-n6oo5a4",
+            "name": "Teste",
+            "isVisible": true,
+            "isSystem": false
+          }
+        ],
+        "galleryFolders": [
+          {
+            "id": "root",
+            "name": "Todas as imagens"
+          },
+          {
+            "id": "a407158b-5c05-450a-bf75-b3c231b9095b",
+            "name": "Capitulo 1"
+          },
+          {
+            "id": "939e091c-c782-445c-a43e-7ed38469fe0c",
+            "name": "Capitulo 2"
+          },
+          {
+            "id": "dd765753-2153-4ad1-987e-003c17de8ad5",
+            "name": "Capitulo 3"
+          }
+        ]
       }
     ]
   ],
@@ -111331,6 +112211,13 @@
       {
         "notes": [
           {
+            "id": "note_3w5td61imtesrg8y",
+            "title": "Receitas",
+            "content": "Água e hortelã fazem chá que ajudam a melhorar a gripe.\n\n",
+            "createdAt": 1788033134337,
+            "updatedAt": 1788033170969
+          },
+          {
             "id": "note_h794laklmt52dj0t",
             "title": "Moira",
             "content": "Moira e Jorge são velhos amigos.",
@@ -111347,16 +112234,16 @@
           {
             "id": "note_78ueka7lmt4wtgso",
             "title": "Ravenkhar",
-            "content": "Porto em que saímos Althafen\n\nUm homem chamado jorge era carroceiro e estava nos esperando\n\nBicho que nos faz ver o nosso pior pesadelo do passado.\n\nDarin cidade risonha, agora abandonada e conhecida como cidade abandonada.\n\nBabuíno das montanhas, são territorialistas, porém não são agressivos se vc não for brusco.\n\nFruta do piril.\n\nGorila aproximadamente 30 metros, sangue preto, olhos putrefatos e cinzas cheio de feridas.",
+            "content": "Porto em que saímos Althafen\n\nUm homem chamado jorge era carroceiro e estava nos esperando\n\nBicho que nos faz ver o nosso pior pesadelo do passado.\n\nDarin cidade risonha, agora abandonada e conhecida como cidade abandonada.\n\nBabuíno das montanhas, são territorialistas, porém não são agressivos se vc não for brusco.\n\nFruta do piril.\n\nGorila aproximadamente 30 metros, sangue preto, olhos putrefatos e cinzas cheio de feridas.\n\nMarca vampiríca\n\nMonstro vampírico lutando contra gorila, diálogo entre os dois sobre um passado onde o gorila achava não ter sobrado nenhum da raça do monstro vampírico invocado pela marca na minha mão.\n\nBriga entre cultos, homem que nos salvou era de um monastério, um culto dentro da cidade de Darin começou a ganhar muitos apoiadores, eles adoram uma espécie de fungo, como se fosse uma forma de libertação espiritual.\n\nNome do homem é Miguel.\n\nTomo Nexidium.\n\n2 corvos gigantes Hugin e Munin.\n\nSphynx um objeto que o miguel controla com as intenções dele.\n\n",
             "createdAt": 1787435285064,
-            "updatedAt": 1787522601346
+            "updatedAt": 1788036198729
           },
           {
             "id": "note_ifcefjbamt4vq9bj",
             "title": "Itens da bolsa",
-            "content": "Saco com sal na mochila.\n\nColete estou usando +2 em defesa fisica e +1 em defesa mágica\n\nEstou usando colar de coração +3 de hp máximo\n\nCantil.",
+            "content": "Saco com sal na mochila.\n\nColete estou usando +2 em defesa fisica e +1 em defesa mágica\n\nEstou usando colar de coração +3 de hp máximo\n\nCantil cheio de seiva de piril.",
             "createdAt": 1787433455791,
-            "updatedAt": 1787514804828
+            "updatedAt": 1788035517309
           },
           {
             "id": "note_tzrdkp6mmt4vjyj3",
@@ -111396,12 +112283,12 @@
           {
             "id": "note_hnil777umt4u19fd",
             "title": "Vanaheim",
-            "content": "Paguei 4 zenits ao Bariston pela conta do Kael\nLoja da Moira.\nOrmand dono de Bordel da cidade Vanaheim\nJorge funcionário da estalagem em frente a loja da Moira.\nMark funcionário da estalagem que me deu a informação do dono do bordel.\nQuarto 56.\n\n",
+            "content": "Paguei 4 zenits ao Bariston pela conta do Kael\nLoja da Moira.\nOrmand dono de Bordel da cidade Vanaheim\nJorge funcionário da estalagem em frente a loja da Moira.\nMark funcionário da estalagem que me deu a informação do dono do bordel.\nQuarto 56.\nMagistrado Valerius, ganhamos julgamento por combate do carrasco Gorian e  nos livramos de todas as acusações.\nEstamos no mar entre nova genese e  Vanaheim no mar sententrionale.\n\n",
             "createdAt": 1787430609913,
-            "updatedAt": 1787433657521
+            "updatedAt": 1788056794736
           }
         ],
-        "updatedAt": 1787522601346
+        "updatedAt": 1788056794736
       }
     ],
     [
