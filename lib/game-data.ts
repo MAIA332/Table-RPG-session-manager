@@ -41,6 +41,12 @@ export const ATTRIBUTE_META: Record<
 
 export const DIE_ORDER: DieSize[] = ["d6", "d8", "d10", "d12"]
 
+export interface GameSkillBonus {
+  id: string
+  name: string
+  description: string
+}
+
 export interface GameSkill {
   id: string
   name: string
@@ -50,6 +56,7 @@ export interface GameSkill {
     cost: number
     resource: "mp" | "hp" | "ip"
   }
+  bonuses?: Record<number, GameSkillBonus[]>
 }
 
 export interface GameClass {
@@ -251,7 +258,7 @@ export const CLASSES: GameClass[] = [
     skills: [
       { id: "ch-magisong", name: "Magicanção", maxLevel: 10, description: "Teca voz e música em um Verso mágico gastando PM (combina Volume, Clave e Tom)." },
       { id: "ch-resonance", name: "Ressonância", maxLevel: 3, description: "Após afetar inimigos com Versos, aliados causam [Nível] extra de dano, ou você recupera [Nível] PM ao feri-los." },
-      { id: "ch-siren", name: "Canção da Sereia", maxLevel: 1, description: "Permite rituais de Ritualismo voltados para criar ilusões auditivas." },
+      { id: "ch-siren", name: "Canção da Sereia", maxLevel: 1, description: "Gaste 10 PM para cantar em volume alto/médio permite criar ilusões auditivas em área para até [Nível x 5] alvos, essa habilidade usa WLP x [Nível x 2]. Alvos podem usar testes de foco e vontade para resistir.", action: { cost: 10, resource: "mp" } },
       { id: "ch-barrier", name: "Barreira Sonora", maxLevel: 5, description: "Após cantar com volume médio/alto, todo dano físico sofrido é reduzido em [Nível]." },
       { id: "ch-vibrato", name: "Vibrato", maxLevel: 1, description: "Após cantar em volume baixo/médio, você pode realizar um ataque gratuito ignorando sua RA." }
     ]
@@ -409,11 +416,11 @@ export const CLASSES: GameClass[] = [
     mpPerLevel: 5,
     primaryAttribute: "ins",
     skills: [
-      { id: "lo-flash", name: "Flash de Intuição", maxLevel: 3, description: "Obtendo 13+ em investigações, faça [Nível] perguntas gratuitas e definitivas ao Mestre." },
-      { id: "lo-focus", name: "Focado", maxLevel: 6, description: "Aumenta seus PM totais em [Nível x 5]. Ganha bônus ao realizar Testes Abertos de Inteligência pura." },
+      { id: "lo-flash", name: "Flash de Intuição", maxLevel: 3, description: "Obtendo 14+ em investigações, faça [Nível x 1] perguntas gratuitas e objetivasSimbiose ao Mestre sobre a cena especifica que se encontra e no tempo presente." },
+      { id: "lo-focus", name: "Focado", maxLevel: 6, description: "Gaste 5 PM para aumentar seus PM totais em [Nível x 2]. Ganha bônus +2 ao realizar Testes Abertos de Intuição pura.", action: { cost: 5, resource: "mp" } },
       { id: "lo-knowledge", name: "Conhecimento é Poder", maxLevel: 1, description: "Permite usar a Intuição como parâmetro balístico no lugar do principal para Precisão." },
       { id: "lo-assess", name: "Avaliação Rápida", maxLevel: 6, description: "Gaste [Nível x 5] PM no início do combate para ler Traços e Afinidades de todos os inimigos." },
-      { id: "lo-memory", name: "Memória Treinada", maxLevel: 1, description: "Pode 'voltar no tempo' na própria mente para reviver investigações recentes da última semana." }
+      { id: "lo-memory", name: "Memória Treinada", maxLevel: 1, description: "Gaste 15 PM para 'voltar no tempo' na própria mente para reviver investigações recentes da última semana, você pode realizar uma pergunta objetiva ao mestre sobre eventos passados em que você esteve inserido.", action: { cost: 15, resource: "mp" } }
     ]
   },
   {
@@ -509,13 +516,13 @@ export const CLASSES: GameClass[] = [
         id: "cl-aura",
         name: "Aura Curativa",
         maxLevel: 5,
-        description: "Sempre que restaurar os PV de um ou mais aliados através de magias ou habilidades, eles recuperam [Nível da Perícia x 2] PV adicionais."
+        description: "Sempre que restaurar os PV de um ou mais aliados através de magias, eles recuperam [Nível da Perícia x 2] PV adicionais."
       },
       {
         id: "cl-purify",
         name: "Mãos Purificadoras",
         maxLevel: 3,
-        description: "Ao aplicar um efeito de cura em um aliado, você pode remover até [Nível da Perícia] condições de status negativas dele sem nenhum custo de PM adicional."
+        description: "Ao tirar 13+ em testes de Medicina em um aliado, você pode curar [Nível da Perícia x 2] PV adicionais e remover até [Nível da Perícia] condições de status negativas dele sem nenhum custo de PM adicional."
       },
       {
         id: "cl-sanctuary",
@@ -527,8 +534,8 @@ export const CLASSES: GameClass[] = [
         id: "cl-breath",
         name: "Sopro de Vida",
         maxLevel: 1,
-        description: "Uma vez por cena, se um aliado for reduzido a 0 PV, você pode gastar 20 PM como uma reação imediata para evitar que ele caia, restaurando-o com metade dos PV máximos dele.",
-        action: { cost: 20, resource: "mp" }
+        description: "Uma vez por cena, se um aliado for reduzido a 0 PV, você pode gastar 25 PM como uma reação imediata (você deve tirar 5+ em um teste de reflexo) para evitar que ele caia, restaurando-o com metade dos PV máximos dele.",
+        action: { cost: 25, resource: "mp" }
       },
       {
         id: "cl-martyr",
@@ -549,7 +556,7 @@ export const CLASSES: GameClass[] = [
     primaryAttribute: "dex",
     skills: [
       { id: "mk-ironfist", name: "Punhos de Ferro", maxLevel: 5, description: "Seus ataques desarmados passam a ser considerados armas da categoria Briga. Eles causam [Nível da Perícia x 2] de dano físico extra." },
-      { id: "mk-chakra", name: "Chakra", maxLevel: 4, description: "Gaste uma ação para canalizar seu Ki. Você cura [Nível x 10] PV e pode remover as condições Enfraquecido ou Lento de si mesmo.", action: { cost: 5, resource: "mp" } },
+      { id: "mk-chakra", name: "Chakra", maxLevel: 4, description: "Gaste uma cena ou rodada para canalizar seu Ki. Você cura Nível x 10: [Nível x 10] PV e pode remover todas as condições negativas de si mesmo.", action: { cost: 20, resource: "mp" } },
       { id: "mk-flurry", name: "Rajada de Golpes", maxLevel: 3, description: "Gaste 10 PM. Ao realizar um ataque desarmado, você ataca duas vezes. O segundo ataque causa metade do dano normal e não aplica efeitos adicionais.", action: { cost: 10, resource: "mp" } },
       { id: "mk-windstep", name: "Passo do Vento", maxLevel: 1, description: "Enquanto não estiver vestindo armaduras marciais ou escudos, você ganha Resistência a dano de ataques à distância." },
       { id: "mk-flow", name: "Fluxo Contínuo", maxLevel: 5, description: "Sempre que você acerta um ataque crítico ou reduz um inimigo a 0 PV, você recupera [Nível da Perícia x 3] Pontos de Mente." }
@@ -583,7 +590,7 @@ export const CLASSES: GameClass[] = [
       { id: "nj-ninjutsu", name: "Ninjutsu", maxLevel: 5, description: "Desbloqueia pergaminhos ninja elementais. Você pode realizar Rituais de ilusão, movimento e fumaça rapidamente rolando [DES + INT]." },
       { id: "nj-ambush", name: "Ataque Surpresa", maxLevel: 5, description: "Você causa [Nível da Perícia x 4] de dano extra contra inimigos que ainda não agiram na primeira rodada do combate." },
       { id: "nj-clone", name: "Clone das Sombras", maxLevel: 3, description: "Gaste 15 PM como uma ação livre. O próximo ataque ou feitiço de alvo único que atingiria você automaticamente erra e destrói o clone.", action: { cost: 15, resource: "mp" } },
-      { id: "nj-dualwield", name: "Lâminas Gêmeas", maxLevel: 1, description: "Permite empunhar duas armas da categoria Adaga ou Espada de uma mão simultaneamente, ganhando multi (2) em ataques básicos mas perdendo seu bônus de escudo." },
+      { id: "nj-dualwield", name: "Lâminas Gêmeas", maxLevel: 1, description: "Permite empunhar duas armas da categoria Adaga ou Espada de uma mão simultaneamente, ganhando +[Nível da Perícia x 2] em ataques básicos usando laminas mas perdendo seu bônus de escudo." },
       { id: "nj-shuriken", name: "Chuva de Estrelas", maxLevel: 4, description: "Quando usar a ação Atacar com uma arma de arremesso, gaste 5 PM para atingir [Nível da Perícia] alvos adicionais com metade do dano.", action: { cost: 5, resource: "mp" } }
     ]
   },
@@ -620,435 +627,712 @@ export const CLASSES: GameClass[] = [
     ]
   },
   {
-  id: "hemomancer",
-  name: "Hemomante",
-  archetype: "Mago de Sangue",
-  description: "Magos que transformam o próprio sangue em combustível arcano, sacrificando a própria vitalidade para produzir efeitos sobrenaturais devastadores.",
-  hpPerLevel: 4,
-  mpPerLevel: 5,
-  primaryAttribute: "wlp",
-  skills: [
-    {
-      id: "he-bloodfuel",
-      name: "Sangue como Combustível",
-      maxLevel: 5,
-      description: "Ao lançar uma magia, você pode pagar até [Nível da Perícia x 2] PM usando PV. Cada 2 PV gastos reduz o custo da magia em 1 PM."
-    },
-    {
-      id: "he-coagulation",
-      name: "Coagulação",
-      maxLevel: 4,
-      description: "Gaste 5 PM para criar uma barreira de sangue que absorve [Nível da Perícia x 5] de dano até o início do seu próximo turno.",
-      action: { cost: 5, resource: "mp" }
-    },
-    {
-      id: "he-transfusion",
-      name: "Transfusão",
-      maxLevel: 5,
-      description: "Gaste uma ação e até [Nível da Perícia x 5] PV para curar um aliado. Para cada 2 PV sacrificados, o alvo recupera 3 PV."
-    },
-    {
-      id: "he-hemorrhage",
-      name: "Hemorragia",
-      maxLevel: 5,
-      description: "Uma vez por turno, quando causar dano com um ataque ou magia, você pode gastar 5 PM para aplicar Sangramento. Alvos Sangrando sofrem [Nível da Perícia] de dano adicional sempre que sofrerem dano físico."
-    },
-    {
-      id: "he-redheart",
-      name: "Coração Vermelho",
-      maxLevel: 1,
-      description: "Enquanto estiver em Crise, suas magias custam 5 PM a menos, mínimo 1 PM. Sempre que usar esse benefício, você perde 5 PV após a magia."
-    }
-  ]
-},
+    id: "hemomancer",
+    name: "Hemomante",
+    archetype: "Mago de Sangue",
+    description: "Magos que transformam o próprio sangue em combustível arcano, sacrificando a própria vitalidade para produzir efeitos sobrenaturais devastadores.",
+    hpPerLevel: 4,
+    mpPerLevel: 5,
+    primaryAttribute: "wlp",
+    skills: [
+      {
+        id: "he-bloodfuel",
+        name: "Sangue como Combustível",
+        maxLevel: 5,
+        description: "Ao lançar uma magia, você pode pagar até [Nível da Perícia x 2] PM usando PV. Cada 2 PV gastos reduz o custo da magia em 1 PM."
+      },
+      {
+        id: "he-coagulation",
+        name: "Coagulação",
+        maxLevel: 4,
+        description: "Gaste 5 PM e 3 PV (seu ou dos seus aliados) para criar uma barreira de sangue que absorve [Nível da Perícia x 8] de dano até o início do seu próximo turno.",
+        action: { cost: 5, resource: "mp" }
+      },
+      {
+        id: "he-transfusion",
+        name: "Transfusão",
+        maxLevel: 5,
+        description: "Gaste uma ação e até [Nível da Perícia x 5] PV para curar um aliado. Para cada 2 PV sacrificados, o alvo recupera 3 PV."
+      },
+      {
+        id: "he-hemorrhage",
+        name: "Hemorragia",
+        maxLevel: 5,
+        description: "Uma vez por turno, quando causar dano com um ataque ou magia, você pode gastar 5 PM para aplicar Sangramento. Alvos Sangrando sofrem [Nível da Perícia] de dano adicional sempre que sofrerem dano físico."
+      },
+      {
+        id: "he-redheart",
+        name: "Coração Vermelho",
+        maxLevel: 1,
+        description: "Enquanto estiver em Crise, suas magias custam 5 PM a menos, mínimo 1 PM. Sempre que usar esse benefício, você perde 5 PV após a magia."
+      }
+    ]
+  },
 
-{
-  id: "trickster",
-  name: "Trapaceiro",
-  archetype: "Manipulador de Probabilidade",
-  description: "Especialistas em blefes, truques e coincidências impossíveis que parecem sempre encontrar uma maneira de quebrar as regras.",
-  hpPerLevel: 4,
-  mpPerLevel: 4,
-  primaryAttribute: "dex",
-  skills: [
-    {
-      id: "tr-tricks",
-      name: "Trapaça",
-      maxLevel: 5,
-      description: "Você possui [Nível da Perícia] Pontos de Trapaça por cena. Gaste 1 ponto após uma rolagem para adicionar ou subtrair 2 do resultado."
-    },
-    {
-      id: "tr-bluff",
-      name: "Blefe Impossível",
-      maxLevel: 4,
-      description: "Após falhar em um Teste social, de Furtividade ou Enganação, gaste 5 PM para transformar a falha em um sucesso parcial. O Mestre determina uma complicação."
-    },
-    {
-      id: "tr-markedcard",
-      name: "Carta Marcada",
-      maxLevel: 3,
-      description: "No início da cena, escolha um número entre 1 e 10. Uma vez por rodada, quando você ou um inimigo rolar esse número em um dado, você pode gastar 5 PM para repetir esse dado."
-    },
-    {
-      id: "tr-notthere",
-      name: "Isso Não Estava Aí",
-      maxLevel: 2,
-      description: "Gaste 10 PM para declarar que possui um pequeno item comum que poderia razoavelmente ter carregado. O item desaparece ou deixa de ser útil ao final da cena.",
-      action: { cost: 10, resource: "mp" }
-    },
-    {
-      id: "tr-plotarmor",
-      name: "O Roteiro Me Ama",
-      maxLevel: 1,
-      description: "Gaste 1 Ponto de Fábula para transformar uma falha crítica em um sucesso normal. O Mestre pode impor uma consequência narrativa significativa."
-    }
-  ]
-},
+  {
+    id: "trickster",
+    name: "Trapaceiro",
+    archetype: "Manipulador de Probabilidade",
+    description: "Especialistas em blefes, truques e coincidências impossíveis que parecem sempre encontrar uma maneira de quebrar as regras.",
+    hpPerLevel: 4,
+    mpPerLevel: 4,
+    primaryAttribute: "dex",
+    skills: [
+      {
+        id: "tr-tricks",
+        name: "Trapaça",
+        maxLevel: 5,
+        description: "Você possui [Nível da Perícia] Pontos de Trapaça por cena. Gaste 1 ponto após uma rolagem para adicionar ou subtrair 2 do resultado."
+      },
+      {
+        id: "tr-bluff",
+        name: "Blefe Impossível",
+        maxLevel: 4,
+        description: "Após falhar em um Teste social, de Furtividade ou Enganação, gaste 5 PM para transformar a falha em um sucesso parcial. O Mestre determina uma complicação."
+      },
+      {
+        id: "tr-markedcard",
+        name: "Carta Marcada",
+        maxLevel: 3,
+        description: "No início da cena, escolha um número entre 1 e 10. Uma vez por rodada, quando você ou um inimigo rolar esse número em um dado, você pode gastar 5 PM para repetir esse dado."
+      },
+      {
+        id: "tr-notthere",
+        name: "Isso Não Estava Aí",
+        maxLevel: 2,
+        description: "Gaste 10 PM para declarar que possui um pequeno item comum que poderia razoavelmente ter carregado. O item desaparece ou deixa de ser útil ao final da cena.",
+        action: { cost: 10, resource: "mp" }
+      },
+      {
+        id: "tr-plotarmor",
+        name: "O Roteiro Me Ama",
+        maxLevel: 1,
+        description: "Gaste 1 Ponto de Fábula para transformar uma falha crítica em um sucesso normal. O Mestre pode impor uma consequência narrativa significativa."
+      }
+    ]
+  },
 
-{
-  id: "warlock",
-  name: "Bruxo",
-  archetype: "Pactuário Sobrenatural",
-  description: "Mortais que obtiveram poder através de pactos com entidades sobrenaturais, pagando lentamente o preço de seus dons.",
-  hpPerLevel: 4,
-  mpPerLevel: 5,
-  primaryAttribute: "wlp",
-  skills: [
-    {
-      id: "wo-pact",
-      name: "Pacto",
-      maxLevel: 1,
-      description: "Escolha uma entidade patrona. Você recebe um Dom de Pacto definido com o Mestre, como visão sobrenatural, resistência elemental, arma espiritual ou uma pequena magia."
-    },
-    {
-      id: "wo-debt",
-      name: "Dívida Sobrenatural",
-      maxLevel: 5,
-      description: "Você possui [Nível da Perícia] Pontos de Dívida por cena. Gaste 1 Ponto de Dívida para reduzir em 5 PM o custo de uma habilidade do Bruxo. Cada Dívida não paga concede uma pequena complicação determinada pelo Mestre."
-    },
-    {
-      id: "wo-eldritch",
-      name: "Manifestação Profana",
-      maxLevel: 5,
-      description: "Gaste 10 PM para manifestar parcialmente seu patrono durante uma cena. Receba +[Nível da Perícia] em Testes de Magia e seus ataques causam [Nível da Perícia] de dano sobrenatural extra.",
-      action: { cost: 10, resource: "mp" }
-    },
-    {
-      id: "wo-bargain",
-      name: "Barganha",
-      maxLevel: 4,
-      description: "Uma vez por cena, após falhar em um teste, você pode aceitar uma complicação do patrono para receber +[Nível da Perícia] no teste."
-    },
-    {
-      id: "wo-possession",
-      name: "Possessão",
-      maxLevel: 1,
-      description: "Uma vez por cena, permita que seu patrono controle parcialmente seu corpo durante uma ação. A ação recebe +5 de bônus e causa +10 de dano ou produz um efeito sobrenatural equivalente."
-    }
-  ]
-},
+  {
+    id: "warlock",
+    name: "Bruxo",
+    archetype: "Pactuário Sobrenatural",
+    description: "Mortais que obtiveram poder através de pactos com entidades sobrenaturais, pagando lentamente o preço de seus dons.",
+    hpPerLevel: 4,
+    mpPerLevel: 5,
+    primaryAttribute: "wlp",
+    skills: [
+      {
+        id: "wo-pact",
+        name: "Pacto",
+        maxLevel: 1,
+        description: "Escolha uma entidade patrona. Você recebe um Dom de Pacto definido com o Mestre, como visão sobrenatural, resistência elemental, arma espiritual ou uma pequena magia."
+      },
+      {
+        id: "wo-debt",
+        name: "Dívida Sobrenatural",
+        maxLevel: 5,
+        description: "Você possui [Nível da Perícia] Pontos de Dívida por cena. Gaste 1 Ponto de Dívida para reduzir em 5 PM o custo de uma habilidade do Bruxo. Cada Dívida não paga concede uma pequena complicação determinada pelo Mestre."
+      },
+      {
+        id: "wo-eldritch",
+        name: "Manifestação Profana",
+        maxLevel: 5,
+        description: "Gaste 10 PM para manifestar parcialmente seu patrono durante uma cena. Receba +[Nível da Perícia] em Testes de Magia e seus ataques causam [Nível da Perícia] de dano sobrenatural extra.",
+        action: { cost: 10, resource: "mp" }
+      },
+      {
+        id: "wo-bargain",
+        name: "Barganha",
+        maxLevel: 4,
+        description: "Uma vez por cena, após falhar em um teste, você pode aceitar uma complicação do patrono para receber +[Nível da Perícia] no teste."
+      },
+      {
+        id: "wo-possession",
+        name: "Possessão",
+        maxLevel: 1,
+        description: "Uma vez por cena, permita que seu patrono controle parcialmente seu corpo durante uma ação. A ação recebe +5 de bônus e causa +10 de dano ou produz um efeito sobrenatural equivalente."
+      }
+    ]
+  },
 
-{
-  id: "alchemist",
-  name: "Alquimista",
-  archetype: "Químico Arcano",
-  description: "Especialistas em transformar ingredientes, monstros e materiais mágicos em poções, bombas e compostos impossíveis.",
-  hpPerLevel: 4,
-  mpPerLevel: 4,
-  primaryAttribute: "ins",
-  skills: [
-    {
-      id: "al-reagents",
-      name: "Reagentes",
-      maxLevel: 5,
-      description: "Após cada descanso, você recebe [Nível da Perícia + 1] Reagentes. Cada reagente pode possuir uma propriedade: Fogo, Gelo, Raio, Veneno, Vida ou Morte."
-    },
-    {
-      id: "al-mixture",
-      name: "Mistura Instável",
-      maxLevel: 5,
-      description: "Gaste 5 PM e dois Reagentes para criar um composto. Combinações elementais causam [Nível da Perícia x 3] de dano adicional ou aplicam uma condição relacionada."
-    },
-    {
-      id: "al-catalyst",
-      name: "Catalisador",
-      maxLevel: 4,
-      description: "Quando criar uma poção ou bomba, pode gastar 5 PM para aumentar seu efeito em [Nível da Perícia x 5]."
-    },
-    {
-      id: "al-transmutation",
-      name: "Transmutação",
-      maxLevel: 3,
-      description: "Uma vez por cena, transforme um material comum em outro material de valor semelhante ou crie temporariamente uma ferramenta simples."
-    },
-    {
-      id: "al-forbidden",
-      name: "Fórmula Proibida",
-      maxLevel: 1,
-      description: "Uma vez por cena, misture três Reagentes para produzir um efeito extraordinário. Depois do efeito, você perde 10 PV e fica Abalado."
-    }
-  ]
-},
+  {
+    id: "alchemist",
+    name: "Alquimista",
+    archetype: "Químico Arcano",
+    description: "Especialistas em transformar ingredientes, monstros e materiais mágicos em poções, bombas e compostos impossíveis.",
+    hpPerLevel: 4,
+    mpPerLevel: 4,
+    primaryAttribute: "ins",
+    skills: [
+      {
+        id: "al-reagents",
+        name: "Reagentes",
+        maxLevel: 5,
+        description: "Após cada descanso, você recebe [Nível da Perícia + 1] Reagentes. Cada reagente pode possuir uma propriedade: Fogo, Gelo, Raio, Veneno, Vida ou Morte."
+      },
+      {
+        id: "al-mixture",
+        name: "Mistura Instável",
+        maxLevel: 5,
+        description: "Gaste 5 PM e dois Reagentes para criar um composto. Combinações elementais causam [Nível da Perícia x 3] de dano adicional ou aplicam uma condição relacionada."
+      },
+      {
+        id: "al-catalyst",
+        name: "Catalisador",
+        maxLevel: 4,
+        description: "Quando criar uma poção ou bomba, pode gastar 5 PM para aumentar seu efeito em [Nível da Perícia x 5]."
+      },
+      {
+        id: "al-transmutation",
+        name: "Transmutação",
+        maxLevel: 3,
+        description: "Uma vez por cena, transforme um material comum em outro material de valor semelhante ou crie temporariamente uma ferramenta simples."
+      },
+      {
+        id: "al-forbidden",
+        name: "Fórmula Proibida",
+        maxLevel: 1,
+        description: "Uma vez por cena, misture três Reagentes para produzir um efeito extraordinário. Depois do efeito, você perde 10 PV e fica Abalado."
+      }
+    ]
+  },
 
-{
-  id: "prophet",
-  name: "Profeta",
-  archetype: "Vidente do Futuro",
-  description: "Místicos capazes de enxergar fragmentos do futuro e manipular acontecimentos através de presságios e previsões.",
-  hpPerLevel: 3,
-  mpPerLevel: 5,
-  primaryAttribute: "ins",
-  skills: [
-    {
-      id: "pr-omens",
-      name: "Presságios",
-      maxLevel: 5,
-      description: "No início de uma cena, receba [Nível da Perícia] Presságios. Gaste 1 Presságio para adicionar +2 a uma rolagem sua ou de um aliado."
-    },
-    {
-      id: "pr-premonition",
-      name: "Premonição",
-      maxLevel: 5,
-      description: "Gaste 5 PM para receber +[Nível da Perícia] em Defesa ou Defesa Mágica contra o próximo ataque de uma criatura que você possa ver.",
-      action: { cost: 5, resource: "mp" }
-    },
-    {
-      id: "pr-vision",
-      name: "Visão Fragmentada",
-      maxLevel: 3,
-      description: "Gaste 10 PM para fazer ao Mestre uma pergunta sobre algo que provavelmente acontecerá nos próximos minutos. A resposta pode ser simbólica ou incompleta.",
-      action: { cost: 10, resource: "mp" }
-    },
-    {
-      id: "pr-warning",
-      name: "Eu Avisei",
-      maxLevel: 4,
-      description: "Quando um aliado falhar em um teste que você possa perceber, gaste 5 PM para permitir que ele repita a rolagem. O novo resultado deve ser usado."
-    },
-    {
-      id: "pr-apocalypse",
-      name: "Apocalipse Anunciado",
-      maxLevel: 1,
-      description: "Uma vez por cena, declare um acontecimento futuro plausível. O Mestre deve incorporá-lo à narrativa, mas pode determinar uma consequência ou custo significativo."
-    }
-  ]
-},
+  {
+    id: "prophet",
+    name: "Profeta",
+    archetype: "Vidente do Futuro",
+    description: "Místicos capazes de enxergar fragmentos do futuro e manipular acontecimentos através de presságios e previsões.",
+    hpPerLevel: 3,
+    mpPerLevel: 5,
+    primaryAttribute: "ins",
+    skills: [
+      {
+        id: "pr-omens",
+        name: "Presságios",
+        maxLevel: 5,
+        description: "No início de uma cena, receba [Nível da Perícia] Presságios. Gaste 1 Presságio para adicionar +2 a uma rolagem sua ou de um aliado."
+      },
+      {
+        id: "pr-premonition",
+        name: "Premonição",
+        maxLevel: 5,
+        description: "Gaste 5 PM para receber +[Nível da Perícia] em Defesa ou Defesa Mágica contra o próximo ataque de uma criatura que você possa ver.",
+        action: { cost: 5, resource: "mp" }
+      },
+      {
+        id: "pr-vision",
+        name: "Visão Fragmentada",
+        maxLevel: 3,
+        description: "Gaste 10 PM para fazer ao Mestre uma pergunta sobre algo que provavelmente acontecerá nos próximos minutos. A resposta pode ser simbólica ou incompleta.",
+        action: { cost: 10, resource: "mp" }
+      },
+      {
+        id: "pr-warning",
+        name: "Eu Avisei",
+        maxLevel: 4,
+        description: "Quando um aliado falhar em um teste que você possa perceber, gaste 5 PM para permitir que ele repita a rolagem. O novo resultado deve ser usado."
+      },
+      {
+        id: "pr-apocalypse",
+        name: "Apocalipse Anunciado",
+        maxLevel: 1,
+        description: "Uma vez por cena, declare um acontecimento futuro plausível. O Mestre deve incorporá-lo à narrativa, mas pode determinar uma consequência ou custo significativo."
+      }
+    ]
+  },
 
-{
-  id: "exorcist",
-  name: "Exorcista",
-  archetype: "Caçador de Entidades",
-  description: "Especialistas em enfrentar possessões, maldições e criaturas sobrenaturais que não pertencem ao mundo material.",
-  hpPerLevel: 5,
-  mpPerLevel: 3,
-  primaryAttribute: "wlp",
-  skills: [
-    {
-      id: "ex-mark",
-      name: "Marca Profana",
-      maxLevel: 5,
-      description: "Ao atingir uma criatura sobrenatural, você pode marcá-la por [Nível da Perícia] rodadas. Você recebe +[Nível da Perícia] em Testes de Precisão e Magia contra ela."
-    },
-    {
-      id: "ex-banishing",
-      name: "Banimento",
-      maxLevel: 5,
-      description: "Gaste 10 PM ao acertar uma criatura marcada para ignorar até [Nível da Perícia x 2] pontos de Resistência sobrenatural nesse ataque.",
-      action: { cost: 10, resource: "mp" }
-    },
-    {
-      id: "ex-seal",
-      name: "Selo de Contenção",
-      maxLevel: 4,
-      description: "Gaste 10 PM para selar temporariamente uma habilidade sobrenatural de uma criatura marcada. O alvo pode realizar um teste de VON para resistir.",
-      action: { cost: 10, resource: "mp" }
-    },
-    {
-      id: "ex-purification",
-      name: "Purificação",
-      maxLevel: 5,
-      description: "Gaste 5 PM para remover [Nível da Perícia] condições sobrenaturais de uma criatura ou reduzir uma possessão, corrupção ou maldição em um estágio."
-    },
-    {
-      id: "ex-you-dont-belong",
-      name: "Você Não Pertence Aqui",
-      maxLevel: 1,
-      description: "Uma vez por cena, uma entidade sobrenatural marcada deve realizar um Teste de VON. Em caso de falha, ela é expulsa temporariamente de seu hospedeiro ou perde suas habilidades sobrenaturais por 1 rodada."
-    }
-  ]
-},
+  {
+    id: "exorcist",
+    name: "Exorcista",
+    archetype: "Caçador de Entidades",
+    description: "Especialistas em enfrentar possessões, maldições e criaturas sobrenaturais que não pertencem ao mundo material.",
+    hpPerLevel: 5,
+    mpPerLevel: 3,
+    primaryAttribute: "wlp",
+    skills: [
+      {
+        id: "ex-mark",
+        name: "Marca Profana",
+        maxLevel: 5,
+        description: "Ao atingir uma criatura sobrenatural, você pode marcá-la por [Nível da Perícia] rodadas. Você recebe +[Nível da Perícia] em Testes de Precisão e Magia contra ela."
+      },
+      {
+        id: "ex-banishing",
+        name: "Banimento",
+        maxLevel: 5,
+        description: "Gaste 10 PM ao acertar uma criatura marcada para ignorar até [Nível da Perícia x 2] pontos de Resistência sobrenatural nesse ataque.",
+        action: { cost: 10, resource: "mp" }
+      },
+      {
+        id: "ex-seal",
+        name: "Selo de Contenção",
+        maxLevel: 4,
+        description: "Gaste 10 PM para selar temporariamente uma habilidade sobrenatural de uma criatura marcada. O alvo pode realizar um teste de VON para resistir.",
+        action: { cost: 10, resource: "mp" }
+      },
+      {
+        id: "ex-purification",
+        name: "Purificação",
+        maxLevel: 5,
+        description: "Gaste 5 PM para remover [Nível da Perícia] condições sobrenaturais de uma criatura ou reduzir uma possessão, corrupção ou maldição em um estágio."
+      },
+      {
+        id: "ex-you-dont-belong",
+        name: "Você Não Pertence Aqui",
+        maxLevel: 1,
+        description: "Uma vez por cena, uma entidade sobrenatural marcada deve realizar um Teste de VON. Em caso de falha, ela é expulsa temporariamente de seu hospedeiro ou perde suas habilidades sobrenaturais por 1 rodada."
+      }
+    ]
+  },
 
-{
-  id: "puppeteer",
-  name: "Marionetista",
-  archetype: "Mestre dos Fios",
-  description: "Controladores sobrenaturais que conectam fios espirituais a criaturas e objetos, transformando o campo de batalha em um palco.",
-  hpPerLevel: 4,
-  mpPerLevel: 4,
-  primaryAttribute: "ins",
-  skills: [
-    {
-      id: "pu-thread",
-      name: "Fio Espiritual",
-      maxLevel: 5,
-      description: "Gaste 5 PM para conectar um Fio a uma criatura que você possa ver. Você pode manter [Nível da Perícia] Fios simultaneamente."
-    },
-    {
-      id: "pu-pull",
-      name: "Puxar",
-      maxLevel: 5,
-      description: "Enquanto possuir um Fio conectado, gaste 5 PM para mover o alvo até [Nível da Perícia x 2] metros, se ele falhar em um teste de MIG ou DES."
-    },
-    {
-      id: "pu-hands",
-      name: "Mãos Invisíveis",
-      maxLevel: 4,
-      description: "Gaste 5 PM para manipular remotamente um objeto conectado ou realizar uma tarefa física simples através de um Fio."
-    },
-    {
-      id: "pu-dance",
-      name: "Dançar Conforme Minha Música",
-      maxLevel: 4,
-      description: "Gaste 10 PM. Uma criatura conectada deve realizar um movimento ou ação simples escolhida por você caso falhe em um Teste de VON.",
-      action: { cost: 10, resource: "mp" }
-    },
-    {
-      id: "pu-master",
-      name: "Mestre das Marionetes",
-      maxLevel: 1,
-      description: "Uma vez por cena, gaste 20 PM para controlar parcialmente uma criatura conectada durante uma rodada. A criatura recebe um novo Teste de VON no final da rodada.",
-      action: { cost: 20, resource: "mp" }
-    }
-  ]
-},
+  {
+    id: "puppeteer",
+    name: "Marionetista",
+    archetype: "Mestre dos Fios",
+    description: "Controladores sobrenaturais que conectam fios espirituais a criaturas e objetos, transformando o campo de batalha em um palco.",
+    hpPerLevel: 4,
+    mpPerLevel: 4,
+    primaryAttribute: "ins",
+    skills: [
+      {
+        id: "pu-thread",
+        name: "Fio Espiritual",
+        maxLevel: 5,
+        description: "Gaste 5 PM para conectar um Fio a uma criatura que você possa ver. Você pode manter [Nível da Perícia] Fios simultaneamente."
+      },
+      {
+        id: "pu-pull",
+        name: "Puxar",
+        maxLevel: 5,
+        description: "Enquanto possuir um Fio conectado, gaste 5 PM para mover o alvo até [Nível da Perícia x 2] metros, se ele falhar em um teste de MIG ou DES."
+      },
+      {
+        id: "pu-hands",
+        name: "Mãos Invisíveis",
+        maxLevel: 4,
+        description: "Gaste 5 PM para manipular remotamente um objeto conectado ou realizar uma tarefa física simples através de um Fio."
+      },
+      {
+        id: "pu-dance",
+        name: "Dançar Conforme Minha Música",
+        maxLevel: 4,
+        description: "Gaste 10 PM. Uma criatura conectada deve realizar um movimento ou ação simples escolhida por você caso falhe em um Teste de VON.",
+        action: { cost: 10, resource: "mp" }
+      },
+      {
+        id: "pu-master",
+        name: "Mestre das Marionetes",
+        maxLevel: 1,
+        description: "Uma vez por cena, gaste 20 PM para controlar parcialmente uma criatura conectada durante uma rodada. A criatura recebe um novo Teste de VON no final da rodada.",
+        action: { cost: 20, resource: "mp" }
+      }
+    ]
+  },
 
-{
-  id: "predator",
-  name: "Predador",
-  archetype: "Caçador Apex",
-  description: "Caçadores especializados em estudar uma presa, descobrir suas fraquezas e transformar cada confronto em uma execução planejada.",
-  hpPerLevel: 5,
-  mpPerLevel: 3,
-  primaryAttribute: "ins",
-  skills: [
-    {
-      id: "prx-prey",
-      name: "Presa",
-      maxLevel: 1,
-      description: "No início de uma cena, escolha uma criatura como sua Presa. Você recebe +1 em testes para rastreá-la, estudá-la ou descobrir informações sobre ela."
-    },
-    {
-      id: "prx-track",
-      name: "Rastrear Presa",
-      maxLevel: 5,
-      description: "Após estudar sua Presa, você recebe +[Nível da Perícia] em testes de Percepção, Sobrevivência e Investigação relacionados a ela."
-    },
-    {
-      id: "prx-weakness",
-      name: "Conhecer Fraqueza",
-      maxLevel: 5,
-      description: "Após estudar sua Presa, seus ataques contra ela ignoram [Nível da Perícia] pontos de Resistência."
-    },
-    {
-      id: "prx-killer",
-      name: "Golpe Mortal",
-      maxLevel: 4,
-      description: "Contra sua Presa, seus ataques causam [Nível da Perícia x 2] de dano extra quando ela estiver abaixo de metade dos PV."
-    },
-    {
-      id: "prx-trophy",
-      name: "Caçador de Monstros",
-      maxLevel: 1,
-      description: "Ao derrotar uma criatura especial, escolha uma característica dela. Uma vez por cena futura, você pode manifestar uma versão limitada dessa característica durante 1 rodada."
-    }
-  ]
-},
+  {
+    id: "predator",
+    name: "Predador",
+    archetype: "Caçador Apex",
+    description: "Caçadores especializados em estudar uma presa, descobrir suas fraquezas e transformar cada confronto em uma execução planejada.",
+    hpPerLevel: 5,
+    mpPerLevel: 3,
+    primaryAttribute: "ins",
+    skills: [
+      {
+        id: "prx-prey",
+        name: "Presa",
+        maxLevel: 1,
+        description: "No início de uma cena, escolha um alvo como sua Presa. Você recebe +[Nível da Perícia x 2] em testes de percepção, investigação e sobrevivência contra ela."
+      },
+      {
+        id: "prx-track",
+        name: "Rastrear Presa",
+        maxLevel: 5,
+        description: "Após estudar uma Presa alvo que possua, você recebe +[Nível da Perícia x 2] em testes ofensivos contra ela."
+      },
+      {
+        id: "prx-weakness",
+        name: "Conhecer Fraqueza",
+        maxLevel: 5,
+        description: "Após estudar sua Presa, seus ataques contra ela ignoram [Nível da Perícia] pontos de Resistência."
+      },
+      {
+        id: "prx-killer",
+        name: "Golpe Mortal",
+        maxLevel: 4,
+        description: "Contra sua Presa, seus ataques causam [Nível da Perícia x 2] de dano extra quando ela estiver abaixo de metade dos PV."
+      },
+      {
+        id: "prx-trophy",
+        name: "Caçador de Monstros",
+        maxLevel: 1,
+        description: "Ao derrotar uma criatura especial, escolha uma característica dela. Uma vez por cena futura, você pode manifestar uma versão limitada dessa característica durante 1 rodada."
+      }
+    ]
+  },
 
-{
-  id: "parasite",
-  name: "Parasita",
-  archetype: "Simbionte Monstruoso",
-  description: "Hospedeiros de organismos sobrenaturais que vivem dentro de seus corpos e concedem mutações poderosas em troca de influência crescente.",
-  hpPerLevel: 6,
-  mpPerLevel: 3,
-  primaryAttribute: "mig",
-  skills: [
-    {
-      id: "pa-mutation",
-      name: "Mutação",
-      maxLevel: 5,
-      description: "Escolha uma Mutação: Armadura Óssea, Garras, Tentáculos, Olho Extra, Veneno ou Regeneração. Você pode trocar sua Mutação após um descanso."
-    },
-    {
-      id: "pa-instinct",
-      name: "Instinto do Parasita",
-      maxLevel: 4,
-      description: "Quando estiver em Crise, recebe +[Nível da Perícia] em testes físicos e seus ataques causam [Nível da Perícia] de dano extra."
-    },
-    {
-      id: "pa-symbiosis",
-      name: "Simbiose",
-      maxLevel: 5,
-      description: "Gaste 5 PM para ativar uma Mutação durante uma cena. Cada Mutação recebe um efeito adicional baseado no nível desta Perícia."
-    },
-    {
-      id: "pa-regeneration",
-      name: "Regeneração",
-      maxLevel: 4,
-      description: "Uma vez por turno, quando estiver abaixo da metade dos PV, você pode gastar 5 PM para recuperar [Nível da Perícia x 3] PV."
-    },
-    {
-      id: "pa-monster",
-      name: "Forma Monstruosa",
-      maxLevel: 1,
-      description: "Uma vez por cena, gaste 15 PM para assumir sua forma monstruosa por 3 rodadas. Você recebe +2 de Precisão, +2 de Defesa e causa +5 de dano em ataques físicos. Ao terminar, fica Enfraquecido.",
-      action: { cost: 15, resource: "mp" }
-    }
-  ]
-},
+  {
+    id: "parasite",
+    name: "Parasita",
+    archetype: "Simbionte Monstruoso",
+    description: "Hospedeiros de organismos sobrenaturais que vivem dentro de seus corpos e concedem mutações poderosas em troca de influência crescente.",
+    hpPerLevel: 6,
+    mpPerLevel: 3,
+    primaryAttribute: "mig",
+    skills: [
+      {
+        id: "pa-mutation",
+        name: "Mutação",
+        maxLevel: 5,
 
-{
-  id: "reaper",
-  name: "Ceifador",
-  archetype: "Executor da Morte",
-  description: "Guerreiros que transformam o enfraquecimento dos inimigos em sentenças de morte inevitáveis.",
-  hpPerLevel: 5,
-  mpPerLevel: 3,
-  primaryAttribute: "mig",
-  skills: [
-    {
-      id: "re-sentence",
-      name: "Sentença",
-      maxLevel: 5,
-      description: "Ao atingir uma criatura, você pode marcá-la com uma Sentença. Contra criaturas Sentenciadas abaixo da metade dos PV, seus ataques causam [Nível da Perícia] de dano extra."
-    },
-    {
-      id: "re-reap",
-      name: "Ceifar",
-      maxLevel: 5,
-      description: "Contra uma criatura Sentenciada, cause [Nível da Perícia x 2] de dano extra para cada condição negativa que ela possuir, até o máximo de [Nível da Perícia x 4]."
-    },
-    {
-      id: "re-soulcut",
-      name: "Corte da Alma",
-      maxLevel: 4,
-      description: "Gaste 5 PM para que seu próximo ataque ignore [Nível da Perícia x 2] pontos de Armadura ou Resistência física.",
-      action: { cost: 5, resource: "mp" }
-    },
-    {
-      id: "re-lastbreath",
-      name: "Último Suspiro",
-      maxLevel: 5,
-      description: "Quando uma criatura Sentenciada morrer, recupere [Nível da Perícia] PM. Se ela estiver abaixo de 25% dos PV máximos, recupere o dobro."
-    },
-    {
-      id: "re-inevitable",
-      name: "Morte Inevitável",
-      maxLevel: 1,
-      description: "Uma vez por cena, marque uma criatura como Condenada. Se ela entrar em Crise durante a cena, você pode realizar imediatamente um ataque gratuito contra ela."
-    }
-  ]
-}
+        description:
+          "Gaste 10 PM e escolha uma Mutação. Cada Mutação concede um bônus em testes relacionados às suas características. Você pode trocar sua Mutação após um descanso.",
+
+        bonuses: {
+          1: [
+            {
+              id: "bone-armor",
+              name: "Armadura Óssea",
+              description:
+                "Seu corpo desenvolve placas e estruturas ósseas protetoras. Receba +3 em seu dado de destreza para defesa, impacto ou efeitos que exijam resistência corporal."
+            },
+            {
+              id: "claws",
+              name: "Garras",
+              description:
+                "Suas mãos ou pés desenvolvem garras afiadas. Receba +2 em testes de ataque, escalada e ações que dependam de força física ou precisão corporal."
+            },
+            {
+              id: "tentacles",
+              name: "Tentáculos",
+              description:
+                "Você desenvolve tentáculos capazes de agarrar e manipular objetos. Receba +2 em testes de Imobilização, precisão e destreza para manipular algo à distância."
+            },
+            {
+              id: "extra-eye",
+              name: "Olho Extra",
+              description:
+                "Um olho adicional surge em seu corpo, ampliando sua percepção. Receba +2 em testes de Percepção, investigação visual e para detectar criaturas ou objetos ocultos."
+            },
+            {
+              id: "poison",
+              name: "Veneno",
+              description:
+                "Seu corpo produz uma toxina que pode ser aplicada através de seus ataques. Receba +2 em testes para envenenar, contaminar ou resistir a substâncias tóxicas."
+            },
+            {
+              id: "regeneration",
+              name: "Regeneração",
+              description:
+                "Seu corpo se recupera de ferimentos com velocidade anormal. Receba +2 em testes para resistir a sangramento, exaustão, dor e efeitos que prejudiquem seu corpo."
+            }
+          ],
+
+          2: [
+            {
+              id: "bone-armor",
+              name: "Armadura Óssea — Fortificação",
+              description:
+                "O bônus da Armadura Óssea aumenta para +3 em testes de resistência física."
+            },
+            {
+              id: "claws",
+              name: "Garras — Predador",
+              description:
+                "O bônus das Garras aumenta para +3 em testes de ataque e ações físicas que dependam de precisão ou força."
+            },
+            {
+              id: "tentacles",
+              name: "Tentáculos — Controle",
+              description:
+                "O bônus dos Tentáculos aumenta para +3 em testes de agarrar, imobilizar e manipular objetos."
+            },
+            {
+              id: "extra-eye",
+              name: "Olho Extra — Percepção Aguçada",
+              description:
+                "O bônus do Olho Extra aumenta para +3 em testes de Percepção e investigação visual."
+            },
+            {
+              id: "poison",
+              name: "Veneno — Toxina Potente",
+              description:
+                "O bônus do Veneno aumenta para +3 em testes relacionados a venenos e toxinas."
+            },
+            {
+              id: "regeneration",
+              name: "Regeneração — Recuperação",
+              description:
+                "O bônus da Regeneração aumenta para +3 em testes para resistir a dor, exaustão, sangramento e ferimentos."
+            }
+          ],
+
+          3: [
+            {
+              id: "bone-armor",
+              name: "Armadura Óssea — Carapaça",
+              description:
+                "Receba +4 em testes de resistência física. Além disso, você recebe vantagem em testes para resistir a impactos violentos."
+            },
+            {
+              id: "claws",
+              name: "Garras — Carnificina",
+              description:
+                "Receba +4 em testes de ataque usando suas garras e em testes para causar ou manter ferimentos físicos."
+            },
+            {
+              id: "tentacles",
+              name: "Tentáculos — Dominação",
+              description:
+                "Receba +4 em testes de agarrar e imobilizar. Você também pode realizar manipulações complexas usando seus tentáculos."
+            },
+            {
+              id: "extra-eye",
+              name: "Olho Extra — Sentidos Sobrenaturais",
+              description:
+                "Receba +4 em testes de Percepção. Você pode perceber detalhes que normalmente seriam difíceis de enxergar."
+            },
+            {
+              id: "poison",
+              name: "Veneno — Toxina Persistente",
+              description:
+                "Receba +4 em testes relacionados ao Veneno. Seus efeitos tóxicos também são mais difíceis de neutralizar."
+            },
+            {
+              id: "regeneration",
+              name: "Regeneração — Regeneração Acelerada",
+              description:
+                "Receba +4 em testes para resistir a ferimentos, dor e exaustão. Você também pode tentar resistir a condições físicas incapacitantes."
+            }
+          ],
+
+          4: [
+            {
+              id: "bone-armor",
+              name: "Armadura Óssea — Fortaleza Viva",
+              description:
+                "Receba +5 em testes de resistência física e vantagem para resistir a impactos, fraturas e efeitos que tentem derrubar ou deslocar você."
+            },
+            {
+              id: "claws",
+              name: "Garras — Caçador Perfeito",
+              description:
+                "Receba +5 em testes de ataque e perseguição que utilizem suas garras ou capacidades físicas predatórias."
+            },
+            {
+              id: "tentacles",
+              name: "Tentáculos — Múltiplos Membros",
+              description:
+                "Receba +5 em testes de agarrar, imobilizar e manipular objetos. Você pode executar múltiplas ações de manipulação simultaneamente."
+            },
+            {
+              id: "extra-eye",
+              name: "Olho Extra — Visão Absoluta",
+              description:
+                "Receba +5 em testes de Percepção e investigação visual. Você recebe vantagem para perceber criaturas escondidas ou detalhes sutis."
+            },
+            {
+              id: "poison",
+              name: "Veneno — Toxina Letal",
+              description:
+                "Receba +5 em testes relacionados ao Veneno. Criaturas afetadas têm maior dificuldade para resistir ou remover seus efeitos."
+            },
+            {
+              id: "regeneration",
+              name: "Regeneração — Corpo Imortal",
+              description:
+                "Receba +5 em testes para resistir a ferimentos, dor, exaustão e condições físicas debilitantes."
+            }
+          ],
+
+          5: [
+            {
+              id: "bone-armor",
+              name: "Armadura Óssea — Forma Colossal",
+              description:
+                "Sua estrutura óssea se torna extremamente resistente. Receba +6 em testes de resistência física e vantagem para resistir a qualquer efeito baseado em força ou impacto."
+            },
+            {
+              id: "claws",
+              name: "Garras — Predador Supremo",
+              description:
+                "Suas garras tornam-se armas naturais perfeitas. Receba +6 em testes de ataque, perseguição e ações físicas predatórias."
+            },
+            {
+              id: "tentacles",
+              name: "Tentáculos — Aberração Perfeita",
+              description:
+                "Seus tentáculos possuem força e coordenação excepcionais. Receba +6 em testes de agarrar, imobilizar e manipulação."
+            },
+            {
+              id: "extra-eye",
+              name: "Olho Extra — Percepção Total",
+              description:
+                "Seu olho adicional percebe o mundo de maneira extraordinária. Receba +6 em testes de Percepção e investigação e vantagem contra tentativas de ocultação."
+            },
+            {
+              id: "poison",
+              name: "Veneno — Toxina Primordial",
+              description:
+                "Seu corpo produz um veneno extremamente poderoso. Receba +6 em testes relacionados a toxinas e vantagem para aplicar ou resistir aos efeitos de venenos."
+            },
+            {
+              id: "regeneration",
+              name: "Regeneração — Regeneração Monstruosa",
+              description:
+                "Seu corpo desafia os limites da biologia. Receba +6 em testes para resistir a ferimentos, dor, exaustão e condições físicas debilitantes."
+            }
+          ]
+        },
+         action: {
+          cost: 10,
+          resource: "mp"
+        }
+      },
+      {
+        id: "pa-instinct",
+        name: "Instinto do Parasita",
+        maxLevel: 4,
+        description: "Quando estiver em Crise, recebe +[Nível da Perícia] em testes físicos e seus ataques causam [Nível da Perícia] de dano extra."
+      },
+      {
+        id: "pa-symbiosis",
+        name: "Simbiose",
+        maxLevel: 5,
+        description:
+          "Ative esta Perícia gastando 10 PM para ativar um modificador em uma Mutação que possua durante um cena livre ou 3 rodadas, recupera após descanso curto. Ao ativá-la, escolha uma das opções de Simbiose disponíveis para o seu nível. A Mutação escolhida recebe o bônus até o fim da cena.",
+        action: {
+          cost: 10,
+          resource: "mp"
+        },
+
+        bonuses: {
+          1: [
+            {
+              id: "simbiose-potencia",
+              name: "Potência",
+              description: "Aumente em +2 o dano ou em +2 testes relacionados a Mutação."
+            },
+            {
+              id: "simbiose-eficiency",
+              name: "Eficiência",
+              description: "Reduza em 2 PM o próximo custo de ativação ou manutenção da Mutação."
+            }
+          ],
+
+          2: [
+            {
+              id: "simbiose-potencia-upgraded",
+              name: "Potência Aprimorada",
+              description: "Aumente em +3 o dano ou em +3 testes relacionados a Mutação."
+            },
+            {
+              id: "simbiose-alcance",
+              name: "Alcance",
+              description: "Receba +3 em testes de precisão da Mutação."
+            },
+            {
+              id: "simbiose-duracao",
+              name: "Duração",
+              description: "Aumente a duração da Mutação em +1 rodada."
+            }
+          ],
+
+          3: [
+            {
+              id: "simbiose-intensufy",
+              name: "Intensidade",
+              description: "Aumente em +4 o dano ou +4 em testes relacionados á Mutação."
+            },
+            {
+              id: "simbiose-penetration",
+              name: "Penetração",
+              description: "Ignore 2 pontos de Resistência, Defesa ou redução de dano aplicável à Mutação."
+            },
+            {
+              id: "simbiose-versatility",
+              name: "Versatilidade",
+              description: "Escolha um segundo alvo válido para a Mutação, se ela normalmente afetar apenas um, o segundo alvo recebe metade do dano que seria causado ao primeiro alvo."
+            }
+          ],
+
+          4: [
+            {
+              id: "simbiose-exalt",
+              name: "Exaltação",
+              description: "Aumente em +5 o dano ou +5 em testes relacionados á Mutação."
+            },
+            {
+              id: "simbiose-sustain",
+              name: "Sustentação",
+              description: "A Mutação não exige manutenção durante esta cena podendo ser trocada sem custo adicional ou descanso."
+            },
+            {
+              id: "simbiose-transmutaation",
+              name: "Transmutação",
+              description: "Adapte a Mutação para alterar seu tipo de dano ou efeito para outro tipo apropriado."
+            }
+          ]
+        }
+      },
+      {
+        id: "pa-regeneration",
+        name: "Regeneração",
+        maxLevel: 4,
+        description: "Uma vez por turno, quando estiver abaixo da metade dos PV, você pode gastar 5 PM para recuperar [Nível da Perícia x 3] PV."
+      },
+      {
+        id: "pa-monster",
+        name: "Forma Monstruosa",
+        maxLevel: 1,
+        description: "Uma vez por cena, gaste 20 PM para assumir sua forma monstruosa por 3 rodadas ou uma cena livre. Você recebe +2 de Precisão, +2 de Defesa e causa +10 de dano em ataques físicos. Ao terminar, fica Enfraquecido.",
+        action: { cost: 20, resource: "mp" }
+      }
+    ]
+  },
+
+  {
+    id: "reaper",
+    name: "Ceifador",
+    archetype: "Executor da Morte",
+    description: "Guerreiros que transformam o enfraquecimento dos inimigos em sentenças de morte inevitáveis.",
+    hpPerLevel: 5,
+    mpPerLevel: 3,
+    primaryAttribute: "mig",
+    skills: [
+      {
+        id: "re-sentence",
+        name: "Sentença",
+        maxLevel: 5,
+        description: "Ao atingir uma criatura, você pode marcá-la com uma Sentença. Contra criaturas Sentenciadas abaixo da metade dos PV, seus ataques causam [Nível da Perícia] de dano extra."
+      },
+      {
+        id: "re-reap",
+        name: "Ceifar",
+        maxLevel: 5,
+        description: "Contra uma criatura Sentenciada, cause [Nível da Perícia x 2] de dano extra para cada condição negativa que ela possuir, até o máximo de [Nível da Perícia x 4]."
+      },
+      {
+        id: "re-soulcut",
+        name: "Corte da Alma",
+        maxLevel: 4,
+        description: "Gaste 5 PM para que seu próximo ataque ignore [Nível da Perícia x 2] pontos de Armadura ou Resistência física.",
+        action: { cost: 5, resource: "mp" }
+      },
+      {
+        id: "re-lastbreath",
+        name: "Último Suspiro",
+        maxLevel: 5,
+        description: "Quando uma criatura Sentenciada morrer, recupere [Nível da Perícia] PM. Se ela estiver abaixo de 25% dos PV máximos, recupere o dobro."
+      },
+      {
+        id: "re-inevitable",
+        name: "Morte Inevitável",
+        maxLevel: 1,
+        description: "Uma vez por cena, marque uma criatura como Condenada. Se ela entrar em Crise durante a cena, você pode realizar imediatamente um ataque gratuito contra ela."
+      }
+    ]
+  }
 ];
 
 export function getClass(id: string): GameClass | undefined {
@@ -2499,12 +2783,12 @@ export const BESTIARY: Creature[] = [
     mdef: 8,
     affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "VU" },
     basicAttacks: [
-      { 
-        name: "Clava Cheia de Pregos", 
-        attributes: ["mig", "mig"], 
-        damage: 10, 
-        type: "físico", 
-        description: "Um ataque bruto que foca em esmagar ossos." 
+      {
+        name: "Clava Cheia de Pregos",
+        attributes: ["mig", "mig"],
+        damage: 10,
+        type: "físico",
+        description: "Um ataque bruto que foca em esmagar ossos."
       }
     ],
     spells: [
@@ -2526,19 +2810,19 @@ export const BESTIARY: Creature[] = [
     mdef: 9,
     affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "VU", ice: "none", light: "none", poison: "RS" },
     basicAttacks: [
-      { 
-        name: "Besta de Mão", 
-        attributes: ["dex", "ins"], 
-        damage: 8, 
-        type: "físico", 
-        description: "Dispara virotes de uma distância segura." 
+      {
+        name: "Besta de Mão",
+        attributes: ["dex", "ins"],
+        damage: 8,
+        type: "físico",
+        description: "Dispara virotes de uma distância segura."
       },
-      { 
-        name: "Faca Escondida", 
-        attributes: ["dex", "mig"], 
-        damage: 4, 
-        type: "físico", 
-        description: "Usado apenas se o inimigo chegar muito perto." 
+      {
+        name: "Faca Escondida",
+        attributes: ["dex", "mig"],
+        damage: 4,
+        type: "físico",
+        description: "Usado apenas se o inimigo chegar muito perto."
       }
     ],
     spells: [
@@ -2560,12 +2844,12 @@ export const BESTIARY: Creature[] = [
     mdef: 12,
     affinities: { physical: "none", air: "none", bolt: "none", dark: "RS", earth: "none", fire: "none", ice: "none", light: "VU", poison: "none" },
     basicAttacks: [
-      { 
-        name: "Cajado de Madeira Quebrada", 
-        attributes: ["ins", "wlp"], 
-        damage: 6, 
-        type: "físico", 
-        description: "Um ataque mágico simples com o cajado." 
+      {
+        name: "Cajado de Madeira Quebrada",
+        attributes: ["ins", "wlp"],
+        damage: 6,
+        type: "físico",
+        description: "Um ataque mágico simples com o cajado."
       }
     ],
     spells: [
@@ -2588,12 +2872,12 @@ export const BESTIARY: Creature[] = [
     mdef: 9,
     affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" },
     basicAttacks: [
-      { 
-        name: "Balestra Pesada", 
-        attributes: ["dex", "ins"], 
-        damage: 10, 
-        type: "físico", 
-        description: "Dispara um poderoso virote perfurante a longas distâncias." 
+      {
+        name: "Balestra Pesada",
+        attributes: ["dex", "ins"],
+        damage: 10,
+        type: "físico",
+        description: "Dispara um poderoso virote perfurante a longas distâncias."
       }
     ],
     spells: [
@@ -2614,12 +2898,12 @@ export const BESTIARY: Creature[] = [
     mdef: 8,
     affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" },
     basicAttacks: [
-      { 
-        name: "Lança Longa", 
-        attributes: ["dex", "mig"], 
-        damage: 9, 
-        type: "físico", 
-        description: "Uma estocada de longo alcance. Pode atingir alvos Inalcançáveis ou Voadores." 
+      {
+        name: "Lança Longa",
+        attributes: ["dex", "mig"],
+        damage: 9,
+        type: "físico",
+        description: "Uma estocada de longo alcance. Pode atingir alvos Inalcançáveis ou Voadores."
       }
     ],
     spells: [
@@ -2640,12 +2924,12 @@ export const BESTIARY: Creature[] = [
     mdef: 9,
     affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" },
     basicAttacks: [
-      { 
-        name: "Investida Pesada", 
-        attributes: ["mig", "mig"], 
-        damage: 12, 
-        type: "físico", 
-        description: "O peso do cavalo e a arma do cavaleiro atacam como um só." 
+      {
+        name: "Investida Pesada",
+        attributes: ["mig", "mig"],
+        damage: 12,
+        type: "físico",
+        description: "O peso do cavalo e a arma do cavaleiro atacam como um só."
       }
     ],
     spells: [
@@ -2667,12 +2951,12 @@ export const BESTIARY: Creature[] = [
     mdef: 10,
     affinities: { physical: "RS", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" },
     basicAttacks: [
-      { 
-        name: "Corte Disciplinado", 
-        attributes: ["dex", "mig"], 
-        damage: 9, 
-        type: "físico", 
-        description: "Um ataque marcial limpo, focado em precisão." 
+      {
+        name: "Corte Disciplinado",
+        attributes: ["dex", "mig"],
+        damage: 9,
+        type: "físico",
+        description: "Um ataque marcial limpo, focado em precisão."
       }
     ],
     spells: [

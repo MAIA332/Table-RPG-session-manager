@@ -1,6 +1,35 @@
 import { BASE_HP, BASE_MP, BASE_MAX_IP, getClass } from "./game-data"
 import type { AttributeKey, Character, ClassLevel, DieSize } from "./types"
 
+export const OVERWEIGHT_MODIFIER_ID = "system:inventory-overweight"
+
+export function applyInventoryRules<T extends Character>(character: T): T {
+  const equipment = Array.isArray(character.equipment) ? character.equipment : []
+  const maxIp = Math.max(0, Number(character.resources?.maxIp) || 0)
+  const customItems = Array.isArray((character as any).customItems) ? (character as any).customItems : []
+  const overloaded = equipment.length + customItems.length > maxIp
+  const modifiers = Array.isArray((character as any).customModifiers)
+    ? (character as any).customModifiers.filter((modifier: any) => modifier?.id !== OVERWEIGHT_MODIFIER_ID)
+    : []
+
+  if (overloaded) {
+    modifiers.push({
+      id: OVERWEIGHT_MODIFIER_ID,
+      name: "Peso da mochila",
+      target: "dex",
+      value: -2,
+      system: true,
+    })
+  }
+
+  return {
+    ...character,
+    equipment,
+    resources: { ...character.resources, ip: Math.max(0, maxIp - equipment.length - customItems.length) },
+    customModifiers: modifiers,
+  } as T
+}
+
 export function dieValue(die: DieSize): number {
   return Number(die.slice(1))
 }
@@ -28,7 +57,7 @@ export function clamp(value: number, min: number, max: number): number {
 // Garante que os recursos atuais respeitem os limites
 export function normalizeResources(character: Character): Character {
   const { resources } = character
-  return {
+  return applyInventoryRules({
     ...character,
     resources: {
       ...resources,
@@ -37,5 +66,5 @@ export function normalizeResources(character: Character): Character {
       ip: clamp(resources.ip, 0, resources.maxIp),
       fp: Math.max(0, resources.fp),
     },
-  }
+  })
 }

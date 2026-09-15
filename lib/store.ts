@@ -1,3 +1,4 @@
+import type { CombatSession } from "./combat-types"
 import fs from "fs"
 import path from "path"
 import type {
@@ -9,10 +10,15 @@ import type {
   PersonalNote,
 } from "./types"
 import type { GameMap } from "@/lib/map-types"
+import { applyInventoryRules } from "./character"
 
 type Subscriber = (event: RealtimeEvent) => void
 type PresenceSubscriber = (snapshot: Record<string, number>) => void
-type PresenceConnection = { campaignId: string; userId: string; registrationId: string }
+type PresenceConnection = {
+  campaignId: string
+  userId: string
+  registrationId: string
+}
 type PersonalNotesRecord = { notes: PersonalNote[]; updatedAt: number }
 
 interface StoreShape {
@@ -23,6 +29,7 @@ interface StoreShape {
   characterTombstones: Map<string, number>
   maps: Map<string, GameMap>
   lore: Map<string, any[]>
+  combatSessions: Map<string, CombatSession>
   campaignState: Map<string, Record<string, unknown>>
   personalNotes: Map<string, PersonalNotesRecord>
   activeSounds: Map<string, any[]>
@@ -41,6 +48,7 @@ interface PersistedStore {
   characterTombstones: [string, number][]
   maps: [string, GameMap][]
   lore: [string, any[]][]
+  combatSessions: [string, CombatSession][]
   campaignState: [string, Record<string, unknown>][]
   personalNotes: [string, PersonalNotesRecord][]
 }
@@ -61,6 +69,7 @@ function createEmptyStore(): StoreShape {
     characterTombstones: new Map(),
     maps: new Map(),
     lore: new Map(),
+    combatSessions: new Map(),
     campaignState: new Map(),
     personalNotes: new Map(),
     activeSounds: new Map(),
@@ -74,10 +83,15 @@ function createEmptyStore(): StoreShape {
 
 function parseEntries<T>(value: unknown, field: string): Map<string, T> {
   if (value === undefined) return new Map()
-  if (!Array.isArray(value)) throw new Error(`Campo ${field} inválido no banco de dados.`)
+  if (!Array.isArray(value))
+    throw new Error(`Campo ${field} inválido no banco de dados.`)
 
   const entries = value.map((entry) => {
-    if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== "string") {
+    if (
+      !Array.isArray(entry) ||
+      entry.length !== 2 ||
+      typeof entry[0] !== "string"
+    ) {
       throw new Error(`Entrada inválida em ${field}.`)
     }
     return [entry[0], entry[1] as T] as [string, T]
@@ -87,8 +101,12 @@ function parseEntries<T>(value: unknown, field: string): Map<string, T> {
 }
 
 function readStoreFile(filePath: string): StoreShape {
-  const parsed = JSON.parse(fs.readFileSync(filePath, "utf-8")) as Record<string, unknown>
-  if (!parsed || typeof parsed !== "object") throw new Error("Formato inválido do banco de dados.")
+  const parsed = JSON.parse(fs.readFileSync(filePath, "utf-8")) as Record<
+    string,
+    unknown
+  >
+  if (!parsed || typeof parsed !== "object")
+    throw new Error("Formato inválido do banco de dados.")
 
   return {
     ...createEmptyStore(),
@@ -96,50 +114,81 @@ function readStoreFile(filePath: string): StoreShape {
     sessions: parseEntries<SessionToken>(parsed.sessions, "sessions"),
     campaigns: parseEntries<Campaign>(parsed.campaigns, "campaigns"),
     characters: parseEntries<Character>(parsed.characters, "characters"),
-    characterTombstones: parseEntries<number>(parsed.characterTombstones, "characterTombstones"),
+    characterTombstones: parseEntries<number>(
+      parsed.characterTombstones,
+      "characterTombstones",
+    ),
     maps: parseEntries<GameMap>(parsed.maps, "maps"),
     lore: parseEntries<any[]>(parsed.lore, "lore"),
-    campaignState: parseEntries<Record<string, unknown>>(parsed.campaignState, "campaignState"),
-    personalNotes: parseEntries<PersonalNotesRecord>(parsed.personalNotes, "personalNotes"),
+    combatSessions: parseEntries<CombatSession>(
+      parsed.combatSessions,
+      "combatSessions",
+    ),
+    campaignState: parseEntries<Record<string, unknown>>(
+      parsed.campaignState,
+      "campaignState",
+    ),
+    personalNotes: parseEntries<PersonalNotesRecord>(
+      parsed.personalNotes,
+      "personalNotes",
+    ),
   }
 }
 
 function characterTimestamp(character: Character): number {
-  return Math.max(Number(character.updatedAt) || 0, Number(character.createdAt) || 0)
+  return Math.max(
+    Number(character.updatedAt) || 0,
+    Number(character.createdAt) || 0,
+  )
 }
 
 function reconcileCharacters(target: StoreShape, source: StoreShape): void {
   for (const [id, deletedAt] of source.characterTombstones) {
     const currentDeletedAt = target.characterTombstones.get(id) ?? 0
-    if (deletedAt > currentDeletedAt) target.characterTombstones.set(id, deletedAt)
+    if (deletedAt > currentDeletedAt)
+      target.characterTombstones.set(id, deletedAt)
   }
 
   for (const [id, persistedCharacter] of source.characters) {
     const currentCharacter = target.characters.get(id)
-    if (!currentCharacter || characterTimestamp(persistedCharacter) > characterTimestamp(currentCharacter)) {
+    if (
+      !currentCharacter ||
+      characterTimestamp(persistedCharacter) >
+        characterTimestamp(currentCharacter)
+    ) {
       target.characters.set(id, persistedCharacter)
     }
   }
 
   for (const [id, deletedAt] of target.characterTombstones) {
     const character = target.characters.get(id)
-    if (character && deletedAt >= characterTimestamp(character)) target.characters.delete(id)
+    if (character && deletedAt >= characterTimestamp(character))
+      target.characters.delete(id)
   }
 }
 
 function reconcileCampaignState(target: StoreShape, source: StoreShape): void {
+  for (const [id, session] of source.combatSessions) {
+    const current = target.combatSessions.get(id)
+    if (!current || session.revision > current.revision)
+      target.combatSessions.set(id, session)
+  }
   for (const [campaignId, persistedState] of source.campaignState) {
     const currentState = target.campaignState.get(campaignId)
     const persistedAt = Number(persistedState.updatedAt) || 0
     const currentAt = Number(currentState?.updatedAt) || 0
-    if (!currentState || persistedAt > currentAt) target.campaignState.set(campaignId, persistedState)
+    if (!currentState || persistedAt > currentAt)
+      target.campaignState.set(campaignId, persistedState)
   }
 }
 
 function reconcilePersonalNotes(target: StoreShape, source: StoreShape): void {
   for (const [key, persistedRecord] of source.personalNotes) {
     const currentRecord = target.personalNotes.get(key)
-    if (!currentRecord || Number(persistedRecord.updatedAt) > Number(currentRecord.updatedAt)) {
+    if (
+      !currentRecord ||
+      Number(persistedRecord.updatedAt) > Number(currentRecord.updatedAt)
+    ) {
       target.personalNotes.set(key, persistedRecord)
     }
   }
@@ -148,7 +197,8 @@ function reconcilePersonalNotes(target: StoreShape, source: StoreShape): void {
 function serializeStore(storeData: StoreShape): PersistedStore {
   const lore = new Map(storeData.lore)
   for (const [campaignId, campaignState] of storeData.campaignState) {
-    if (Array.isArray(campaignState.lore)) lore.set(campaignId, campaignState.lore)
+    if (Array.isArray(campaignState.lore))
+      lore.set(campaignId, campaignState.lore)
   }
 
   return {
@@ -159,6 +209,7 @@ function serializeStore(storeData: StoreShape): PersistedStore {
     characterTombstones: Array.from(storeData.characterTombstones.entries()),
     maps: Array.from(storeData.maps.entries()),
     lore: Array.from(lore.entries()),
+    combatSessions: Array.from(storeData.combatSessions.entries()),
     campaignState: Array.from(storeData.campaignState.entries()),
     personalNotes: Array.from(storeData.personalNotes.entries()),
   }
@@ -186,8 +237,12 @@ function acquireDatabaseLock(): number {
 }
 
 function releaseDatabaseLock(handle: number): void {
-  try { fs.closeSync(handle) } catch {}
-  try { fs.unlinkSync(DB_LOCK_PATH) } catch {}
+  try {
+    fs.closeSync(handle)
+  } catch {}
+  try {
+    fs.unlinkSync(DB_LOCK_PATH)
+  } catch {}
 }
 
 function replaceFile(sourcePath: string, targetPath: string): void {
@@ -208,7 +263,10 @@ function replaceFile(sourcePath: string, targetPath: string): void {
   }
 }
 
-function writeStoreFile(storeData: StoreShape, preservePrimaryAsBackup: boolean): void {
+function writeStoreFile(
+  storeData: StoreShape,
+  preservePrimaryAsBackup: boolean,
+): void {
   const serialized = JSON.stringify(serializeStore(storeData), null, 2)
   const tempPath = `${DB_FILE_PATH}.tmp-${process.pid}-${Date.now()}`
   const tempHandle = fs.openSync(tempPath, "wx")
@@ -240,14 +298,23 @@ export function saveToDisk(storeData: StoreShape): void {
     let primaryReadError: unknown = null
 
     if (fs.existsSync(DB_FILE_PATH)) {
-      try { primaryStore = readStoreFile(DB_FILE_PATH) } catch (error) { primaryReadError = error }
+      try {
+        primaryStore = readStoreFile(DB_FILE_PATH)
+      } catch (error) {
+        primaryReadError = error
+      }
     }
     if (fs.existsSync(DB_BACKUP_PATH)) {
-      try { backupStore = readStoreFile(DB_BACKUP_PATH) } catch {}
+      try {
+        backupStore = readStoreFile(DB_BACKUP_PATH)
+      } catch {}
     }
 
     if (primaryReadError && !backupStore) {
-      throw new Error("O banco principal está inválido e não há backup válido. A gravação foi cancelada para proteger os dados.", { cause: primaryReadError })
+      throw new Error(
+        "O banco principal está inválido e não há backup válido. A gravação foi cancelada para proteger os dados.",
+        { cause: primaryReadError },
+      )
     }
 
     if (primaryStore) {
@@ -280,15 +347,26 @@ export function loadFromDisk(): StoreShape {
   let backupReadError: unknown = null
 
   if (primaryExists) {
-    try { primaryStore = readStoreFile(DB_FILE_PATH) } catch (error) { primaryReadError = error }
+    try {
+      primaryStore = readStoreFile(DB_FILE_PATH)
+    } catch (error) {
+      primaryReadError = error
+    }
   }
   if (backupExists) {
-    try { backupStore = readStoreFile(DB_BACKUP_PATH) } catch (error) { backupReadError = error }
+    try {
+      backupStore = readStoreFile(DB_BACKUP_PATH)
+    } catch (error) {
+      backupReadError = error
+    }
   }
 
   if (!primaryStore && !backupStore) {
     if (!primaryExists && !backupExists) return createEmptyStore()
-    throw new Error("Não foi possível carregar o banco principal nem o backup.", { cause: primaryReadError ?? backupReadError })
+    throw new Error(
+      "Não foi possível carregar o banco principal nem o backup.",
+      { cause: primaryReadError ?? backupReadError },
+    )
   }
 
   const loadedStore = primaryStore ?? backupStore!
@@ -305,6 +383,7 @@ const globalForStore = globalThis as unknown as { __vttStore?: StoreShape }
 
 export const store: StoreShape = globalForStore.__vttStore ?? loadFromDisk()
 
+if (!store.combatSessions) store.combatSessions = new Map()
 if (!store.maps) store.maps = new Map()
 if (!store.lore) store.lore = new Map()
 if (!store.campaignState) store.campaignState = new Map()
@@ -313,19 +392,25 @@ if (!store.activeSounds) store.activeSounds = new Map()
 if (!store.characterTombstones) store.characterTombstones = new Map()
 if (!store.presence) store.presence = new Map()
 if (!store.presenceConnections) store.presenceConnections = new Map()
-if (!store.releasedPresenceConnections) store.releasedPresenceConnections = new Map()
+if (!store.releasedPresenceConnections)
+  store.releasedPresenceConnections = new Map()
 if (!store.presenceSubscribers) store.presenceSubscribers = new Set()
 
 globalForStore.__vttStore = store
 
 export function deleteCharacterFromStore(characterId: string): void {
   const character = store.characters.get(characterId)
-  const deletedAt = Math.max(Date.now(), character ? characterTimestamp(character) + 1 : 0)
+  const deletedAt = Math.max(
+    Date.now(),
+    character ? characterTimestamp(character) + 1 : 0,
+  )
   store.characters.delete(characterId)
   store.characterTombstones.set(characterId, deletedAt)
 }
 
-export function genId(prefix = "id"): string { return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}` }
+export function genId(prefix = "id"): string {
+  return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`
+}
 
 export function subscribe(campaignId: string, fn: Subscriber): () => void {
   let set = store.subscribers.get(campaignId)
@@ -334,14 +419,18 @@ export function subscribe(campaignId: string, fn: Subscriber): () => void {
     store.subscribers.set(campaignId, set)
   }
   set.add(fn)
-  return () => { set?.delete(fn) }
+  return () => {
+    set?.delete(fn)
+  }
 }
 
 export function publish(campaignId: string, event: RealtimeEvent): void {
   const set = store.subscribers.get(campaignId)
   if (!set) return
   for (const fn of set) {
-    try { fn(event) } catch {}
+    try {
+      fn(event)
+    } catch {}
   }
 }
 
@@ -350,20 +439,37 @@ export function getCampaignPresenceCount(campaignId: string): number {
 }
 
 export function getPresenceSnapshot(): Record<string, number> {
-  return Object.fromEntries([...store.presence.entries()].map(([campaignId, users]) => [campaignId, users.size]))
+  return Object.fromEntries(
+    [...store.presence.entries()].map(([campaignId, users]) => [
+      campaignId,
+      users.size,
+    ]),
+  )
 }
 
 function notifyPresence(campaignId: string): void {
-  publish(campaignId, { type: "presence:updated", activeCount: getCampaignPresenceCount(campaignId) })
+  publish(campaignId, {
+    type: "presence:updated",
+    activeCount: getCampaignPresenceCount(campaignId),
+  })
   const snapshot = getPresenceSnapshot()
   for (const fn of store.presenceSubscribers) {
-    try { fn(snapshot) } catch {}
+    try {
+      fn(snapshot)
+    } catch {}
   }
 }
 
-function removePresenceConnection(connectionId: string, registrationId?: string): boolean {
+function removePresenceConnection(
+  connectionId: string,
+  registrationId?: string,
+): boolean {
   const connection = store.presenceConnections.get(connectionId)
-  if (!connection || (registrationId && connection.registrationId !== registrationId)) return false
+  if (
+    !connection ||
+    (registrationId && connection.registrationId !== registrationId)
+  )
+    return false
   store.presenceConnections.delete(connectionId)
 
   const currentUsers = store.presence.get(connection.campaignId)
@@ -383,21 +489,34 @@ function pruneReleasedPresenceConnections(): void {
   }
 }
 
-export function releaseCampaignPresence(campaignId: string, userId: string, connectionId: string): void {
+export function releaseCampaignPresence(
+  campaignId: string,
+  userId: string,
+  connectionId: string,
+): void {
   pruneReleasedPresenceConnections()
   const connection = store.presenceConnections.get(connectionId)
-  if (!connection || (connection.campaignId === campaignId && connection.userId === userId)) {
-    if (connection) removePresenceConnection(connectionId, connection.registrationId)
+  if (
+    !connection ||
+    (connection.campaignId === campaignId && connection.userId === userId)
+  ) {
+    if (connection)
+      removePresenceConnection(connectionId, connection.registrationId)
     store.releasedPresenceConnections.set(connectionId, Date.now() + 60_000)
   }
 }
 
-export function registerCampaignPresence(campaignId: string, userId: string, connectionId = genId("presence")): () => void {
+export function registerCampaignPresence(
+  campaignId: string,
+  userId: string,
+  connectionId = genId("presence"),
+): () => void {
   pruneReleasedPresenceConnections()
   if (store.releasedPresenceConnections.has(connectionId)) return () => {}
 
   const previousConnection = store.presenceConnections.get(connectionId)
-  if (previousConnection) removePresenceConnection(connectionId, previousConnection.registrationId)
+  if (previousConnection)
+    removePresenceConnection(connectionId, previousConnection.registrationId)
 
   let users = store.presence.get(campaignId)
   if (!users) {
@@ -405,7 +524,11 @@ export function registerCampaignPresence(campaignId: string, userId: string, con
     store.presence.set(campaignId, users)
   }
   const registrationId = genId("presence-registration")
-  store.presenceConnections.set(connectionId, { campaignId, userId, registrationId })
+  store.presenceConnections.set(connectionId, {
+    campaignId,
+    userId,
+    registrationId,
+  })
   users.set(userId, (users.get(userId) ?? 0) + 1)
   notifyPresence(campaignId)
 
@@ -419,15 +542,22 @@ export function registerCampaignPresence(campaignId: string, userId: string, con
 
 export function subscribeToPresence(fn: PresenceSubscriber): () => void {
   store.presenceSubscribers.add(fn)
-  return () => { store.presenceSubscribers.delete(fn) }
+  return () => {
+    store.presenceSubscribers.delete(fn)
+  }
 }
 
 export function getCampaignCharacters(campaignId: string): Character[] {
-  return [...store.characters.values()].filter((c) => c.campaignId === campaignId).sort((a, b) => a.createdAt - b.createdAt)
+  return [...store.characters.values()]
+    .filter((c) => c.campaignId === campaignId)
+    .map(applyInventoryRules)
+    .sort((a, b) => a.createdAt - b.createdAt)
 }
 
 export function getUserCampaigns(userId: string): Campaign[] {
-  return [...store.campaigns.values()].filter((c) => c.members.some((m) => m.userId === userId)).sort((a, b) => b.createdAt - a.createdAt)
+  return [...store.campaigns.values()]
+    .filter((c) => c.members.some((m) => m.userId === userId))
+    .sort((a, b) => b.createdAt - a.createdAt)
 }
 
 export function findCampaignByCode(code: string): Campaign | undefined {
@@ -437,4 +567,46 @@ export function findCampaignByCode(code: string): Campaign | undefined {
 
 export function getMemberRole(campaign: Campaign, userId: string) {
   return campaign.members.find((m) => m.userId === userId)?.role
+}
+
+/** Read, resolve and persist under the same disk lock. Callback MUST be synchronous.
+ * Nothing is published or applied to the live store before the disk write succeeds.
+ */
+export function transactStore<T>(
+  callback: (draft: StoreShape) => { value: T; changed: boolean },
+): T {
+  fs.mkdirSync(path.dirname(DB_FILE_PATH), { recursive: true })
+  const lock = acquireDatabaseLock()
+  try {
+    const draft = loadFromDisk()
+    const result = callback(draft)
+    if (result && typeof (result as any).then === "function")
+      throw new Error("Transação assíncrona não permitida")
+    if (result.changed) {
+      let primaryValid = false
+      if (fs.existsSync(DB_FILE_PATH)) {
+        try {
+          readStoreFile(DB_FILE_PATH)
+          primaryValid = true
+        } catch {
+          fs.renameSync(DB_FILE_PATH, `${DB_FILE_PATH}.corrupt-${Date.now()}`)
+        }
+      }
+      writeStoreFile(draft, primaryValid)
+    }
+    // Keep live subscriptions and presence. Replace only persisted collections.
+    store.users = draft.users
+    store.sessions = draft.sessions
+    store.campaigns = draft.campaigns
+    store.characters = draft.characters
+    store.characterTombstones = draft.characterTombstones
+    store.maps = draft.maps
+    store.lore = draft.lore
+    store.campaignState = draft.campaignState
+    store.personalNotes = draft.personalNotes
+    store.combatSessions = draft.combatSessions
+    return result.value
+  } finally {
+    releaseDatabaseLock(lock)
+  }
 }

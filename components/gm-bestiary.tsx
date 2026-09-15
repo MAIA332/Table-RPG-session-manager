@@ -1,5 +1,8 @@
 "use client"
 
+import { AttackEditor, AbilityEditor } from "./creature-combat-editor"
+import { defaultAttack, validateCombat, type Ability, type CreatureCombat } from "@/lib/combat-model"
+
 import { useState } from "react"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
@@ -28,7 +31,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set())
 
   // Junta o bestiário fixo com as criaturas criadas pelo mestre
-  const allCreatures = [...customCreatures, ...BESTIARY]
+  const allCreatures = [...customCreatures, ...BESTIARY.filter(base => !customCreatures.some(custom => custom.id === base.id))]
 
   // Filtra as criaturas com base na pesquisa
   const filteredBestiary = allCreatures.filter(c =>
@@ -69,17 +72,19 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
     def: 10,
     mdef: 10,
     attributes: { dex: "d6", ins: "d6", mig: "d6", wlp: "d6" },
-    attackName: "Golpe",
-    attackDamage: 10,
-    attackType: "físico",
-    spells: ""
+
   })
 
+  const [attack, setAttack] = useState(defaultAttack)
+  const [abilities, setAbilities] = useState<Ability[]>([])
+
   function handleSaveDraft() {
+    const combatError = validateCombat([attack], abilities)
+    if (combatError) return alert(combatError)
     if (!draft.name.trim()) return alert("Dê um nome à criatura.")
     
-    const newCreature: Creature = {
-      id: "custom-" + Math.random().toString(36).substring(2, 10),
+    const newCreature: Creature & CreatureCombat = {
+      id: "custom-" + crypto.randomUUID(),
       name: draft.name,
       imageUrl: draft.imageUrl || "/mystic-adventurer-portrait.png",
       level: draft.level,
@@ -91,9 +96,12 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
       attributes: draft.attributes as any,
       affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" },
       basicAttacks: [
-        { name: draft.attackName, attributes: ["mig", "mig"], damage: draft.attackDamage, type: draft.attackType }
+        { name: attack.name, attributes: attack.attributes as any, damage: /^\d+$/.test(attack.damage.trim()) ? Number(attack.damage) : 0, type: attack.type, description: `Dano: ${attack.damage}; alvo: ${attack.targetDefense === "physical" ? "Defesa Física" : "Defesa Mágica"}` }
       ],
-      spells: draft.spells.split('\n').filter(s => s.trim().length > 0),
+      combatVersion: 2,
+      basicAttacksV2: [attack],
+      abilities,
+      spells: abilities.map(a => a.kind === "passive" ? `${a.name}: ${a.trigger} — ${a.effect}` : a.kind === "attack" ? `${a.name} (${a.cost.amount} ${a.cost.resource}): ${a.attack.damage} ${a.attack.type}. ${a.attack.description || ""}` : `${a.name}: QTE ${a.seconds}s, dificuldade ${a.difficulty}. Falha: ${a.failureDamage} ${a.failureEffect}. Sucesso: ${a.successDamage} ${a.successEffect}`),
       equipment: []
     }
 
@@ -102,7 +110,9 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
     setHoveredCreature(newCreature)
     
     // Reseta o draft para a próxima
-    setDraft({ ...draft, name: "", imageUrl: "", spells: "" })
+    setDraft({ ...draft, name: "", imageUrl: "" })
+    setAttack(defaultAttack())
+    setAbilities([])
   }
 
   return (
@@ -181,11 +191,11 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                               className="flex flex-col gap-2 pl-2 border-l border-white/5 ml-2 overflow-hidden"
                             >
                               {folderCreatures.map(c => {
-                                const isCustom = c.id.startsWith("custom-");
+                                const isCustom = customCreatures.some(custom => custom.id === c.id);
                                 return (
                                   <button 
                                     key={c.id} 
-                                    onMouseEnter={() => { setHoveredCreature(c); setIsCreating(false); }} 
+                                    onClick={() => { if (!isCreating || confirm("Sair do formulário? O rascunho será mantido até fechar a página.")) { setHoveredCreature(c); setIsCreating(false); } }} 
                                     // IMPORTANTE: O shrink-0 previne o esmagamento dos botões como na imagem que você mandou
                                     className={`shrink-0 text-left p-3 rounded-lg border transition-colors relative overflow-hidden ${hoveredCreature?.id === c.id && !isCreating ? "bg-destructive/10 border-destructive/50 shadow-[0_0_10px_rgba(255,0,0,0.1)]" : "bg-card/40 border-border/30 hover:border-destructive/30"}`}
                                   >
@@ -258,17 +268,9 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
 
                       <div className="col-span-2 border border-border/30 rounded-lg p-4 bg-card/10 mt-2">
                         <p className="text-xs font-bold text-destructive mb-3">Ataque Básico</p>
-                        <div className="grid grid-cols-3 gap-3">
-                          <input type="text" value={draft.attackName} onChange={e => setDraft({...draft, attackName: e.target.value})} className="col-span-3 sm:col-span-1 bg-black/50 border border-white/10 rounded p-2 text-xs outline-none" placeholder="Nome do Ataque" />
-                          <input type="number" value={draft.attackDamage} onChange={e => setDraft({...draft, attackDamage: Number(e.target.value)})} className="bg-black/50 border border-white/10 rounded p-2 text-xs font-mono outline-none" placeholder="Dano" />
-                          <input type="text" value={draft.attackType} onChange={e => setDraft({...draft, attackType: e.target.value})} className="bg-black/50 border border-white/10 rounded p-2 text-xs outline-none" placeholder="Tipo (físico, fogo...)" />
-                        </div>
+                        <AttackEditor value={attack} onChange={setAttack} />
                       </div>
-
-                      <label className="flex flex-col gap-1.5 col-span-2 mt-2">
-                        <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Habilidades, Magias ou Passivas</span>
-                        <textarea value={draft.spells} onChange={e => setDraft({...draft, spells: e.target.value})} rows={3} className="bg-black/50 border border-white/10 rounded p-2.5 text-sm focus:border-destructive/50 outline-none resize-none custom-scrollbar-sepia" placeholder="Use quebras de linha para separar várias magias/passivas. Ex:&#10;Sopro de Fogo: Causa 20 de dano&#10;Voo: Ignora terreno" />
-                      </label>
+                      <div className="col-span-2"><AbilityEditor value={abilities} onChange={setAbilities} /></div>
 
                     </div>
 
@@ -295,7 +297,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                         </div>
                       </div>
                       
-                      {hoveredCreature.id.startsWith("custom-") && (
+                      {customCreatures.some(custom => custom.id === hoveredCreature.id) && (
                         <Button variant="outline" size="icon" className="border-red-500/50 text-red-500 hover:bg-red-500/20" title="Deletar criatura customizada" onClick={() => {
                           if (confirm("Deletar esta criatura customizada permanentemente?")) {
                             onDelete(hoveredCreature.id)
@@ -323,7 +325,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                       <div className="bg-black/30 border border-white/5 rounded-lg p-4">
                         <p className="text-xs font-bold text-destructive uppercase tracking-widest mb-3">Ataques</p>
                         <div className="space-y-3">
-                          {hoveredCreature.basicAttacks?.map((atk: any, idx) => (
+                          {((hoveredCreature as Creature & Partial<CreatureCombat>).basicAttacksV2 || hoveredCreature.basicAttacks)?.map((atk: any, idx) => (
                             <div key={idx} className="text-sm">
                               <span className="font-bold text-foreground">{atk.name}</span> <span className="text-muted-foreground">({atk.attributes?.join("+")?.toUpperCase()})</span>
                               <p className="text-xs text-muted-foreground mt-0.5">Dano: <span className="text-white font-mono">{atk.damage}</span> {atk.type}</p>

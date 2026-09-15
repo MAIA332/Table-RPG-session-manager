@@ -66,6 +66,9 @@ export async function PATCH(
   const nextZenit = body?.zenit !== undefined ? Math.max(0, Number(body.zenit) || 0) : (character as any).zenit
   const nextCustomModifiers = body?.customModifiers !== undefined ? body.customModifiers : (character as any).customModifiers || [] // <-- Pega as condições
   const nextCustomItems = body?.customItems !== undefined ? body.customItems : (character as any).customItems || [] // <-- Pega os itens costumizados
+  const nextOrigin = body?.origin !== undefined ? String(body.origin).trim().slice(0, 20_000) : character.origin
+  const nextIdentity = body?.identity !== undefined ? String(body.identity).trim().slice(0, 20_000) : character.identity
+  const nextTheme = body?.theme !== undefined ? String(body.theme).trim().slice(0, 20_000) : character.theme
 
   const nextPortraitFrame = body?.portraitFrame !== undefined ? normalizePortraitFrame(body.portraitFrame) : normalizePortraitFrame(character.portraitFrame)
   const nextPortraitCrop = body?.portraitCrop !== undefined ? normalizePortraitCrop(body.portraitCrop) : normalizePortraitCrop(character.portraitCrop)
@@ -79,6 +82,9 @@ export async function PATCH(
     zenit: nextZenit,
     customModifiers: nextCustomModifiers,
     customItems: nextCustomItems,
+    origin: nextOrigin,
+    identity: nextIdentity,
+    theme: nextTheme,
     avatarUrl: requestedAvatar,
     portraitFrame: nextPortraitFrame,
     portraitCrop: nextPortraitCrop,
@@ -91,7 +97,6 @@ export async function PATCH(
   ;(updated as any).skills = nextSkills;
   ;(updated as any).zenit = nextZenit;
   ;(updated as any).resources.xp = nextRes.xp;
-  ;(updated as any).customModifiers = nextCustomModifiers;
   ;(updated as any).customItems = nextCustomItems;
   updated.portraitFrame = nextPortraitFrame;
   updated.portraitCrop = nextPortraitCrop;
@@ -99,7 +104,6 @@ export async function PATCH(
   // Clampa o HP e MP dentro do limite seguro
   updated.resources.hp = Math.min(nextRes.hp, updated.resources.maxHp);
   updated.resources.mp = Math.min(nextRes.mp, updated.resources.maxMp);
-  updated.resources.ip = Math.min(nextRes.ip, updated.resources.maxIp);
   updated.resources.fp = nextRes.fp;
 
   store.characters.set(id, updated)

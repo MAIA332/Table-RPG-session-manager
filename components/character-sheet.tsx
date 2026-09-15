@@ -1,11 +1,16 @@
 "use client"
 
+import { PRESET_CHECKS } from "@/lib/combat-checks"
+import { CreatureVitals } from "./creature-vitals"
+
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { createPortal } from "react-dom"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 
 import { apiFetch } from "@/lib/client"
+import { InventoryEquipment } from "./inventory-equipment"
+import { equippedItemBonuses, isItemState, sumItemBonus } from "@/lib/item-mechanics"
 import { ResourceBar } from "@/components/resource-bar"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
@@ -19,7 +24,8 @@ import {
   CLASSES,
   EQUIPMENT,
   ATTRIBUTE_PROFILES,
-  STARTING_ZENIT
+  STARTING_ZENIT,
+  GameSkillBonus
 } from "@/lib/game-data"
 import { computeMaxResources } from "@/lib/character"
 import { formatSkillDescription, EssenceStep, ClassesStep, EquipmentStep } from "@/components/creator-steps"
@@ -33,10 +39,11 @@ import {
   ArrowLeft, ArrowRight, Check, Swords, ChevronDown,
   Sword, Gem, Eye, SearchX, ShoppingCart, PackageOpen, BookOpen, PenTool,
   AlertTriangle, Archive, Flame, Droplets, ShieldOff, Brain, Ghost, SwatchBook,
-  WandSparkles, TrendingDown, Pencil, Link2 // <-- Link2 Adicionado para os Laços
+  WandSparkles, TrendingDown, Pencil, Link2, Send
 } from "lucide-react"
 import { HazardBanner, HazardData } from "./condition-manager"
 import { StoreModal } from "./store-modal"
+import { span } from "motion/react-client"
 
 // ==========================================
 // TIPAGENS EXPORTADAS PARA A ROOM
@@ -56,7 +63,6 @@ export interface Modifier {
   target: string;
 }
 
-// NOVA TIPAGEM: Laços do Personagem
 export interface Bond {
   id: string;
   target: string;
@@ -85,15 +91,16 @@ export interface NPCDraft {
 
 const ATTR_KEYS: AttributeKey[] = ["dex", "ins", "mig", "wlp"]
 
-const EL_CHECK_MINIMUMS: Record<string, number> = {
-  c1: 7,
-  c2: 12,
+const CHECK_MINIMUMS: Record<string, number> = {
+  c1: 9,
+  c2: 13,
   c3: 6,
-  c20: 6,
-  c22: 9,
-  c23: 10,
+  c20: 12,
+  c22: 11,
+  c23: 12,
   c27: 9,
   c28: 10,
+  c29: 10,
 }
 
 function rollDicePool(dieSizes: number[], minimum?: number, modifier = 0) {
@@ -146,80 +153,8 @@ const modalVariants = {
   exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } }
 } as any
 
-export const PRESET_CHECKS = [
-  { id: "c1", name: "Percepção", attrs: ["ins", "dex"], desc: "Notar detalhes, movimentos sutis, armadilhas, emboscadas ou objetos escondidos." },
-  { id: "c2", name: "Investigação", attrs: ["ins", "wlp"], desc: "Reconstruir acontecimentos em uma cena, interpretar pistas e ligar informações." },
-  { id: "c3", name: "Empatia", attrs: ["ins", "wlp"], desc: "Ler emoções, identificar blefes, nervosismo e compreender as reais intenções de alguém." },
-  { id: "c4", name: "Avaliação", attrs: ["ins", "ins"], desc: "Estimar o valor financeiro de mercadorias, reconhecer antiguidades e identificar falsificações." },
-  { id: "c5", name: "Interrogatório", attrs: ["wlp", "ins"], desc: "Extrair informações de prisioneiros ou suspeitos através de pressão psicológica ou blefe tático." },
-  { id: "c6", name: "Sobrevivência Selvagem", attrs: ["ins", "mig"], desc: "Encontrar alimento, preparar abrigos rudimentares e prever tempestades ou perigos naturais." },
-  { id: "c7", name: "Rastreamento", attrs: ["ins", "dex"], desc: "Identificar e seguir pegadas, rastros de sangue e sinais de passagem de animais ou pessoas." },
-  { id: "c8", name: "Orientação", attrs: ["ins", "ins"], desc: "Ler mapas terrestres ou astrais, guiar o grupo e evitar que se percam durante viagens." },
-  { id: "c9", name: "Sobrevivência Urbana", attrs: ["ins", "wlp"], desc: "Encontrar rotas seguras em becos, localizar o mercado negro e entender as regras não ditas das ruas." },
-  { id: "c10", name: "Vigília", attrs: ["ins", "mig"], desc: "Manter-se alerta durante o turno de guarda, lutando contra o sono para proteger o grupo." },
-  { id: "c11", name: "Medicina", attrs: ["ins", "dex"], desc: "Realizar cirurgias de emergência, suturar feridas, estabilizar aliados e aplicar primeiros socorros." },
-  { id: "c12", name: "Botânica e Venenos", attrs: ["ins", "ins"], desc: "Identificar plantas seguras, extrair toxinas, fabricar antídotos naturais e unguentos." },
-  { id: "c13", name: "História e Cultura", attrs: ["ins", "ins"], desc: "Lembrar fatos antigos, reconhecer brasões de nobreza, leis locais e costumes regionais." },
-  { id: "c14", name: "Engenharia e Mecânica", attrs: ["ins", "dex"], desc: "Desarmar armadilhas complexas, compreender maquinários, relógios e construir engenhocas." },
-  { id: "c15", name: "Criptografia", attrs: ["ins", "wlp"], desc: "Decodificar mensagens secretas, traduzir dialetos mortos e resolver enigmas lógicos." },
-  { id: "c16", name: "Estratégia", attrs: ["wlp", "ins"], desc: "Planejar táticas de batalha, prever a movimentação inimiga e vencer jogos de tabuleiro." },
-  { id: "c17", name: "Furtividade", attrs: ["dex", "ins"], desc: "Esconder-se nas sombras, mover-se sem fazer ruído e infiltrar-se em áreas vigiadas." },
-  { id: "c18", name: "Prestidigitação", attrs: ["dex", "ins"], desc: "Bater carteiras, esconder itens pequenos nas mangas ou realizar truques de mãos rápidos." },
-  { id: "c19", name: "Arrombamento", attrs: ["dex", "ins"], desc: "Usar gazuas para abrir fechaduras de portas, baús ou destrancar algemas silenciosamente." },
-  { id: "c20", name: "Enganação", attrs: ["wlp", "dex"], desc: "Mentir de forma convincente, usar disfarces, forjar sotaques e improvisar histórias." },
-  { id: "c21", name: "Falsificação", attrs: ["dex", "ins"], desc: "Criar cópias exatas de documentos, assinaturas, selos oficiais e passaportes." },
-  { id: "c22", name: "Acrobacia", attrs: ["dex", "mig"], desc: "Saltar entre telhados, amortecer quedas, equilibrar-se em cordas e rolar durante o combate." },
-  { id: "c23", name: "Reflexos", attrs: ["dex", "ins"], desc: "Reagir a ataques surpresa, segurar objetos caindo ou acionar alavancas sob pressão extrema." },
-  { id: "c24", name: "Precisão", attrs: ["dex", "ins"], desc: "Fazer arremessos difíceis, atirar facas em alvos pequenos ou acertar pontos fracos." },
-  { id: "c25", name: "Condução", attrs: ["dex", "ins"], desc: "Manobrar carroças em alta velocidade, pilotar barcos ou montar a cavalo em terrenos difíceis." },
-  { id: "c26", name: "Contorcionismo", attrs: ["dex", "dex"], desc: "Escapar de amarras de corda, espremer-se em tubulações e passar por grades estreitas." },
-  { id: "c27", name: "Atletismo", attrs: ["mig", "dex"], desc: "Escalar paredões, nadar contra a correnteza, correr em disparada e empurrar pedras pesadas." },
-  { id: "c28", name: "Força Bruta", attrs: ["mig", "mig"], desc: "Quebrar portas de madeira, erguer pesos descomunais, dobrar barras de ferro e intimidar fisicamente." },
-  { id: "c29", name: "Resistência", attrs: ["mig", "wlp"], desc: "Suportar marchas forçadas, ignorar a dor crônica, resistir ao frio/calor e aguentar tortura." },
-  { id: "c30", name: "Fôlego", attrs: ["mig", "mig"], desc: "Prender a respiração por longos minutos debaixo d'água ou em ambientes com gás tóxico." },
-  { id: "c31", name: "Briga", attrs: ["mig", "dex"], desc: "Entrar em combate corpo a corpo desarmado, imobilizar adversários e aplicar chaves de braço." },
-  { id: "c32", name: "Diplomacia", attrs: ["wlp", "ins"], desc: "Convencer, apaziguar ânimos, negociar pagamentos justos e resolver conflitos sem violência." },
-  { id: "c33", name: "Intimidação", attrs: ["wlp", "mig"], desc: "Amedrontar usando tom de voz agressivo, ameaças verbais e postura corporal hostil." },
-  { id: "c34", name: "Liderança", attrs: ["wlp", "ins"], desc: "Inspirar coragem nos aliados, coordenar pessoas em pânico e dar ordens claras sob fogo inimigo." },
-  { id: "c35", name: "Etiqueta", attrs: ["wlp", "ins"], desc: "Portar-se em eventos da alta nobreza, usar os talheres certos e falar com a realeza sem ofender." },
-  { id: "c36", name: "Atuação", attrs: ["wlp", "dex"], desc: "Chamar a atenção de uma multidão, dançar, cantar ou atuar para criar uma distração perfeita." },
-  { id: "c37", name: "Trato com Animais", attrs: ["ins", "wlp"], desc: "Acalmar cães de guarda, adestrar montarias e entender o comportamento de feras selvagens." },
-  { id: "c38", name: "Foco e Vontade", attrs: ["wlp", "wlp"], desc: "Manter a mente fria diante do horror, resistir a provocações e focar em uma tarefa durante o caos." },
-  { id: "c39", name: "Ofícios e Forja", attrs: ["dex", "ins"], desc: "Consertar armaduras rachadas, afiar lâminas, costurar couro e criar ferramentas improvisadas." },
-  { id: "c40", name: "Culinária", attrs: ["ins", "dex"], desc: "Limpar e preparar carne de caça, racionar mantimentos e cozinhar refeições que recuperam o ânimo." },
-  // ========================================================
-  // --- AÇÕES COMPLEXAS E DE ALTA TENSÃO (3 DADOS) ---
-  // ========================================================
-  { id: "c41", name: "Ritual Arcano", attrs: ["ins", "wlp", "dex"], desc: "Canalizar magias antigas e imprevisíveis, desenhando selos perfeitos enquanto luta para manter a própria sanidade." },
-  { id: "c42", name: "Desarme Crítico", attrs: ["dex", "ins", "wlp"], desc: "Desativar uma bomba ou reator complexo com mãos firmes, desarmar um ataque fatal iminente, dedução lógica veloz e nervos de aço sob extrema pressão." },
-  { id: "c43", name: "Fuga", attrs: ["dex", "ins", "mig"], desc: "Correr por ruínas em colapso total: saltar destroços, ler o ambiente caindo aos pedaços e não perder o fôlego." },
-  { id: "c44", name: "Segurar os Portões", attrs: ["mig", "mig", "wlp"], desc: "Feito insano de resistência: usar o próprio corpo para segurar o avanço de uma horda ou impedir que um teto desabe sobre os aliados." },
-  { id: "c45", name: "Cirurgia Milagrosa", attrs: ["dex", "ins", "wlp"], desc: "Salvar um aliado à beira da morte em pleno campo de batalha, exigindo mãos cirúrgicas, genialidade médica e foco ignorando o caos." },
-  { id: "c46", name: "Discurso da Virada", attrs: ["wlp", "wlp", "ins"], desc: "Inspirar um exército à beira da derrota, lendo os corações das tropas e projetando sua voz com liderança incontestável." },
-  { id: "c47", name: "Resistir à Corrupção", attrs: ["wlp", "wlp", "mig"], desc: "Lutar com a mente e o corpo simultaneamente contra uma possessão demoníaca ou toxina mágica letal no sangue." },
-  { id: "c48", name: "Ataque Desesperado", attrs: ["mig", "dex", "wlp"], desc: "Desferir um único golpe usando absolutamente tudo o que tem: força bruta, precisão letal e a pura força de vontade para vencer." },
+export { PRESET_CHECKS } from "@/lib/combat-checks"
 
-  // ========================================================
-  // --- FEITOS LENDÁRIOS E LIMIT BREAKS (4 DADOS) ---
-  // ========================================================
-  { id: "c49", name: "Milagre", attrs: ["wlp", "wlp", "ins", "ins"], desc: "Realizar um feito impossível com auxilio do roteiro." },
-  { id: "c50", name: "Forjar Relíquia Mítica", attrs: ["dex", "dex", "ins", "wlp"], desc: "Semanas de trabalho ininterrupto combinando técnica perfeita, alta compreensão mágica e dedicação cega para criar um item lendário." },
-  { id: "c51", name: "Sobrevivência Impossível", attrs: ["mig", "mig", "wlp", "ins"], desc: "Atravessar uma Anomalia Geográfica (como uma Nevasca Eterna ou Deserto de Fogo) liderando o grupo e ignorando a dor extrema." },
-  { id: "c52", name: "Comandar o Fim do Mundo", attrs: ["ins", "ins", "wlp", "wlp"], desc: "Orquestrar a Grande Tática contra uma ameaça colossal: prever os movimentos do inimigo e coordenar continentes inteiros mentalmente." },
-  { id: "c53", name: "Limit Break: Omnigolpe", attrs: ["mig", "dex", "ins", "wlp"], desc: "Atingir o ápice do seu ser. Uma ação explosiva e perfeita que une a Força (Mig), a Agilidade (Dex), a Leitura do Inimigo (Ins) e o Espírito (Wlp)." },
-  { id: "c54", name: "Dança da Enganação Perfeita", attrs: ["dex", "dex", "wlp", "ins"], desc: "Convencer a corte inteira ou enganar uma criatura onisciente, combinando linguagem corporal impecável, mentiras complexas e audácia." },
-  { id: "c55", name: "Controle de Multidões", attrs: ["wlp", "wlp", "ins"], desc: "Acalmar um tumulto violento ou guiar uma multidão em pânico em meio a um desastre, usando presença imponente e leitura rápida da situação." },
-  { id: "c56", name: "Interceptação Perigosa", attrs: ["dex", "mig", "ins"], desc: "Perseguir e alcançar um alvo em alta velocidade através de um ambiente hostil, combinando reflexos rápidos, explosão física e leitura do terreno." },
-  { id: "c57", name: "Improviso Genial", attrs: ["ins", "ins", "dex"], desc: "Construir um dispositivo de emergência ou sintetizar um antídoto em poucos segundos usando apenas sucata e materiais instáveis sob extrema pressão." },
-  { id: "c58", name: "Infiltração Impossível", attrs: ["dex", "dex", "ins"], desc: "Atravessar uma rede de segurança milimetricamente, controlando a respiração e os nervos enquanto lida com patrulhas em tempo real." },
-
-  //=============================================================
-  { id: "c59", name: "Leitura de comportamento", attrs: ["ins", "wlp", "wlp"], desc: "Ler expressões faciais e movimentos do corpo com o intuito de entender as emoções dos outros." },
-  { id: "c60", name: "Raciocinio Lógico", attrs: ["ins", "ins", "wlp"], desc: "Fazer deduções e chegar a conclusões com base em informações obtidas em um tempo recente." },
-  { id: "c61", name: "Iniciativa", attrs: ["dex", "dex", "wlp"], desc: "Realizar um movimento ou ação mais rápido do que outros." }
-
-
-];
 
 // ==========================================
 // FUNÇÕES AUXILIARES
@@ -566,7 +501,7 @@ export function NPCCreator({ onCreated, onCancel }: { onCreated: (npc: NPCDraft)
 // ==========================================
 // FICHA DA CRIATURA
 // ==========================================
-export function CreatureSheet({ creature, isGm, customEquipment = [], onUpdate, onRoll, onKill }: { creature: any, isGm: boolean, customEquipment?: any[], onUpdate: (id: string, updates: any) => void, onRoll: (attr: string, res: number) => void, onKill?: () => void }) {
+export function CreatureSheet({ creature, isGm, customEquipment = [], onUpdate, onRoll, onKill, onUseAttack, onOpenCombat }: { creature: any, isGm: boolean, customEquipment?: any[], onUpdate: (id: string, updates: any) => void, onRoll: (attr: string, res: number) => void, onKill?: () => void, onUseAttack?: (index?: number, abilityId?: string) => void, onOpenCombat?: () => void }) {
   const [showInventory, setShowInventory] = useState(false)
   const [rollingAttr, setRollingAttr] = useState<string | null>(null)
 
@@ -691,6 +626,7 @@ export function CreatureSheet({ creature, isGm, customEquipment = [], onUpdate, 
         )}
       </div>
 
+      {isGm && <>
       <div className="mt-6 grid grid-cols-4 gap-2">
         {ATTR_KEYS.map((k: AttributeKey) => {
           const isRolling = rollingAttr === k
@@ -723,18 +659,23 @@ export function CreatureSheet({ creature, isGm, customEquipment = [], onUpdate, 
         ))}
       </div>
 
+      </>}
+      {isGm ? (
       <div className="mt-6 flex flex-col gap-4">
         <ResourceBar label="Pontos de Vida" short="HP" icon={<Heart className="size-4" />} current={currentHp} max={creature.maxHp} colorVar="--hp" editable={isGm} onChange={(d) => patchVital("currentHp", Math.max(0, Math.min(creature.maxHp, currentHp + d)))} />
         <ResourceBar label="Pontos de Mana" short="MP" icon={<Zap className="size-4" />} current={currentMp} max={creature.maxMp} colorVar="--mp" editable={isGm} onChange={(d) => patchVital("currentMp", Math.max(0, Math.min(creature.maxMp, currentMp + d)))} />
       </div>
+      ) : <div className="mt-6 grid grid-cols-2 gap-4"><CreatureVitals current={currentHp} max={creature.maxHp} /><CreatureVitals current={currentMp} max={creature.maxMp} mana /></div>}
 
+      {isGm && onOpenCombat && <button type="button" onClick={onOpenCombat} className="mt-4 rounded-lg border border-amber-300/40 p-3 font-bold text-amber-200">Abrir habilidades e QTEs no combate</button>}
       <div className="mt-6 pt-5 border-t border-destructive/20 flex flex-col gap-4">
         {creature.basicAttacks && creature.basicAttacks.length > 0 && (
           <div>
             <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ataques Básicos</p>
             <div className="flex flex-col gap-2">
-              {creature.basicAttacks.map((atk: any, i: number) => (
+              {(creature.basicAttacksV2 || creature.basicAttacks).map((atk: any, i: number) => (
                 <div key={i} className="bg-card/40 border border-border/30 p-2 rounded text-sm">
+                  {isGm && onUseAttack && <button type="button" onClick={() => onUseAttack(i)} className="mb-2 rounded border border-red-400/40 bg-red-950 px-3 py-2 text-sm font-bold text-red-100">Usar ataque · selecionar alvo</button>}
                   <p className="font-bold text-destructive">{atk.name} <span className="font-mono text-xs text-muted-foreground ml-2">[{atk.attributes.join(' + ').toUpperCase()}]</span></p>
                   <p className="text-xs text-muted-foreground mt-1">Dano: <span className="font-bold text-foreground">{atk.damage}</span> ({atk.type}) {atk.description && `- ${atk.description}`}</p>
                 </div>
@@ -800,12 +741,250 @@ function CharacterStatusBadges({ modifiers }: { modifiers: Modifier[] }) {
   )
 }
 
+function SkillBonuses({
+  bonuses,
+  level
+}: {
+  bonuses?: Record<number, GameSkillBonus[]>
+  level: number
+}) {
+  if (!bonuses) return null
+
+  const currentBonuses = bonuses[level]
+
+  if (!currentBonuses?.length) return null
+
+  return (
+    <div className="mt-4 rounded-lg border border-primary/20 bg-black/20 overflow-hidden">
+      <div className="px-3 py-2.5 border-b border-primary/10 bg-primary/5">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4 text-primary" />
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+              Bônus disponíveis
+            </p>
+
+            <p className="text-[11px] text-muted-foreground">
+              Nível {level} — escolha uma opção ao ativar a habilidade
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3">
+        {currentBonuses.map((bonus) => (
+          <div
+            key={bonus.id}
+            className="
+              group rounded-md border border-border/40
+              bg-card/30 p-3
+              transition-all duration-200
+              hover:border-primary/40
+              hover:bg-primary/5
+              hover:shadow-[0_0_15px_rgba(var(--primary),0.08)]
+            "
+          >
+            <div className="flex items-start gap-2.5">
+              <div
+                className="
+                  flex size-7 shrink-0 items-center justify-center
+                  rounded-md border border-primary/20
+                  bg-primary/10
+                  text-primary
+                "
+              >
+                <Plus className="size-3.5" />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
+                  {bonus.name}
+                </p>
+
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {bonus.description}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Registros internos: não são condições e nunca entram nas rolagens.
+const FREE_SKILL_PREFIX = "free_skill:"
+const isFreeSkillRecord = (mod: any) => typeof mod.id === "string" && mod.id.startsWith(FREE_SKILL_PREFIX)
+const skillRank = (value: unknown): number => {
+  const rank = Number(value)
+  return Number.isFinite(rank) ? Math.max(0, Math.floor(rank)) : 0
+}
+const skillMaxRank = (skill: any): number => Math.max(1, skillRank(skill.maxLevel ?? 1))
+
+function getFreeSkillRanks(skillId: string, level: number, modifiers: any[], legacyCustomIds: Set<string>): number {
+  const record = modifiers.find(mod => mod.id === `${FREE_SKILL_PREFIX}${skillId}`)
+  // Compatibilidade: habilidades personalizadas antigas já eram gratuitas.
+  return Math.min(level, record ? skillRank(record.value) : legacyCustomIds.has(skillId) ? level : 0)
+}
+
+function getSpentSkillPoints(skills: Record<string, number>, classes: any[], catalog: any[], modifiers: any[], customIds: Set<string>): number {
+  const counted = new Set<string>()
+  let spent = 0
+  for (const owned of classes) {
+    const classId = owned.classId ?? owned.id
+    const definition = catalog.find(c => c.id === classId)
+    const classSkills = (definition?.skills ?? []).filter((skill: any) => !counted.has(skill.id))
+    let ranks = 0
+    let free = 0
+    for (const skill of classSkills) {
+      counted.add(skill.id)
+      const level = skillRank(skills[skill.id])
+      ranks += level
+      free += getFreeSkillRanks(skill.id, level, modifiers, customIds)
+    }
+    // Preserva níveis iniciais de fichas antigas que não detalham todas as habilidades.
+    const legacyLevels = Math.max(0, skillRank(owned.level) - ranks)
+    const isLegacyCustom = definition && classSkills.length > 0 && classSkills.every((skill: any) => customIds.has(skill.id))
+    spent += ranks - free + (isLegacyCustom ? 0 : legacyLevels)
+  }
+  for (const [skillId, rawLevel] of Object.entries(skills)) {
+    if (counted.has(skillId)) continue
+    const level = skillRank(rawLevel)
+    spent += level - getFreeSkillRanks(skillId, level, modifiers, customIds)
+  }
+  return spent
+}
+
+// Valores manuais persistidos na coleção já usada pela ficha.
+const MANUAL_DEFENSE_IDS = { defense: "sheet_defense:physical", magicDefense: "sheet_defense:magical" } as const
+const isManualDefenseRecord = (mod: any) => Object.values(MANUAL_DEFENSE_IDS).some(id => mod.id === id)
+const defenseBaseValue = (die: unknown): number => {
+  const match = String(die || "").match(/^d(\d+)$/i)
+  return match ? Number(match[1]) : 6
+}
+function readManualDefense(modifiers: any[], id: string): number | undefined {
+  const value = modifiers.find(mod => mod.id === id)?.value
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined
+}
+function buildManualDefenseUpdates(modifiers: any[], defense: number, magicDefense: number) {
+  if (![defense, magicDefense].every(value => Number.isSafeInteger(value) && value >= 0)) {
+    throw new Error("Informe números inteiros iguais ou maiores que zero.")
+  }
+  return {
+    customModifiers: [
+      ...modifiers.filter(mod => !isManualDefenseRecord(mod)),
+      { id: MANUAL_DEFENSE_IDS.defense, name: "Defesa manual", target: "sheet_defense_hidden", value: defense },
+      { id: MANUAL_DEFENSE_IDS.magicDefense, name: "Defesa mágica manual", target: "sheet_defense_hidden", value: magicDefense }
+    ]
+  }
+}
+
+function ManualDefenseFields({ character, editable, busy, onSave }: {
+  character: any
+  editable: boolean
+  busy: boolean
+  onSave: (updates: any) => Promise<any>
+}) {
+  const modifiers = character.customModifiers || []
+  const savedDefense = readManualDefense(modifiers, MANUAL_DEFENSE_IDS.defense)
+  const savedMagicDefense = readManualDefense(modifiers, MANUAL_DEFENSE_IDS.magicDefense)
+  const initialDefense = savedDefense ?? defenseBaseValue(character.attributes.dex)
+  const initialMagicDefense = savedMagicDefense ?? defenseBaseValue(character.attributes.ins)
+  const [draft, setDraft] = useState({ defense: String(initialDefense), magicDefense: String(initialMagicDefense) })
+  const [dirty, setDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const saveLock = useRef(false)
+
+  useEffect(() => {
+    // Atualizações em tempo real não apagam uma edição em andamento.
+    if (dirty || saving) return
+    setDraft({ defense: String(initialDefense), magicDefense: String(initialMagicDefense) })
+  }, [initialDefense, initialMagicDefense, dirty, saving])
+
+  const needsSave = dirty || savedDefense === undefined || savedMagicDefense === undefined
+  async function save() {
+    if (!editable || busy || saveLock.current || !needsSave) return
+    if (!draft.defense.trim() || !draft.magicDefense.trim()) {
+      setError("Preencha os dois campos antes de salvar.")
+      return
+    }
+    const defense = Number(draft.defense)
+    const magicDefense = Number(draft.magicDefense)
+    saveLock.current = true
+    setSaving(true)
+    setError(null)
+    try {
+      const updates = buildManualDefenseUpdates(modifiers, defense, magicDefense)
+      const updated = await onSave(updates)
+      if (readManualDefense(updated.customModifiers || [], MANUAL_DEFENSE_IDS.defense) !== defense ||
+          readManualDefense(updated.customModifiers || [], MANUAL_DEFENSE_IDS.magicDefense) !== magicDefense) {
+        throw new Error("A API não confirmou as defesas. Confira se a rota de personagens preserva customModifiers.")
+      }
+      setDirty(false)
+    } catch (err) {
+      setDirty(true)
+      setError(err instanceof Error ? err.message : "Não foi possível salvar as defesas.")
+    } finally {
+      saveLock.current = false
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section className="mt-5 rounded-xl border border-primary/25 bg-card/40 p-4">
+      <div className="mb-3 flex items-center gap-2 text-sm font-bold text-primary"><Shield className="size-4" /> Defesas</div>
+      <div className="grid grid-cols-2 gap-3">
+        {([
+          { key: "defense", label: "Defesa", base: "DEX", icon: <Shield className="size-4" /> },
+          { key: "magicDefense", label: "Defesa Mágica", base: "INS", icon: <WandSparkles className="size-4" /> }
+        ] as const).map(field => (
+          <label key={field.key} className="flex min-w-0 flex-col gap-2 rounded-lg border border-border/50 bg-background/50 p-3">
+            <span className="flex items-center gap-2 text-xs font-semibold text-foreground">{field.icon}{field.label}</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={draft[field.key]}
+              readOnly={!editable}
+              disabled={saving || (editable && busy)}
+              aria-label={field.label}
+              onChange={event => {
+                setDraft(current => ({ ...current, [field.key]: event.target.value }))
+                setDirty(true)
+                setError(null)
+              }}
+              onKeyDown={event => {
+                if (event.key === "Enter") { event.preventDefault(); void save() }
+              }}
+              className="w-full rounded-md border border-primary/25 bg-background px-3 py-2 text-center font-mono text-2xl font-bold text-primary outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+            />
+            <span className="text-[10px] text-muted-foreground">Valor inicial: dado de {field.base}</span>
+          </label>
+        ))}
+      </div>
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Ajuste manualmente conforme seus itens e habilidades. Os valores salvos não são recalculados.</p>
+      {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
+      {editable && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <span role="status" className="text-[11px] text-muted-foreground">{saving ? "Salvando..." : needsSave ? "Salve para manter estes valores na ficha." : "Defesas salvas."}</span>
+          <Button type="button" size="sm" disabled={busy || saving || !needsSave} onClick={() => void save()} className="gap-1.5 text-xs"><Save className="size-3.5" /> Salvar defesas</Button>
+        </div>
+      )}
+    </section>
+  )
+}
+
 export function CharacterSheet({
   character,
   editable,
   isGm,
   isOwned = false,
   campaignMembers = [],
+  campaignCharacters = [],
   customClasses = [],
   activeHazards = [],
   customEquipment = [],
@@ -816,10 +995,25 @@ export function CharacterSheet({
   shouldOpenInventory,
   onClearInventoryRequest,
   onArchive,
+  spotlightActive = false,
   defaultExpanded = false,
   expanded,
   onExpandedChange
 }: any) {
+  // --- INICIO SOLUÇÃO PERSISTENCIA LAÇOS ---
+  // Extrai e separa os Laços escondidos dentro de customModifiers para que o Backend consiga persistir os dados nativamente
+  const allMods = (character as any).customModifiers || [];
+  const bondsFromMods: Bond[] = allMods
+    .filter((m: any) => m.type === 'bond')
+    .map((m: any) => ({ id: m.id, target: m.bondTarget, type: m.bondType, value: m.value }));
+
+  // Mescla para compatibilidade com versões antigas se o usuário ainda tiver dados no obj raiz
+  const oldBonds: Bond[] = character.bonds || [];
+  const bonds: Bond[] = [...bondsFromMods, ...oldBonds.filter(ob => !bondsFromMods.some(bm => bm.id === ob.id))];
+
+  const displayModifiers = allMods.filter((m: any) => m.type !== 'bond' && !isFreeSkillRecord(m) && !isItemState(m) && !isManualDefenseRecord(m));
+  // --- FIM SOLUÇÃO PERSISTENCIA LAÇOS ---
+
   const [mounted, setMounted] = useState(false)
   const [pending, setPending] = useState(false)
   const [displayResources, setDisplayResources] = useState<CharacterResources>(character.resources)
@@ -829,9 +1023,13 @@ export function CharacterSheet({
   const [rollingAttr, setRollingAttr] = useState<string | null>(null)
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null)
   const [showLevelUp, setShowLevelUp] = useState(false)
+  const [skillSaveError, setSkillSaveError] = useState<string | null>(null)
+  const skillWriteRef = useRef(false)
   const [showInventory, setShowInventory] = useState(false)
   const [showStore, setShowStore] = useState(false)
   const [showLore, setShowLore] = useState(false)
+  const [loreDraft, setLoreDraft] = useState({ origin: character.origin || "", identity: character.identity || "", theme: character.theme || "" })
+  const [savingLore, setSavingLore] = useState(false)
   const [showBondsModal, setShowBondsModal] = useState(false) // <-- Modal de Laços
   const [showFrameGallery, setShowFrameGallery] = useState(false)
   const [showPortraitEditor, setShowPortraitEditor] = useState(false)
@@ -851,6 +1049,7 @@ export function CharacterSheet({
 
   const [sheetTab, setSheetTab] = useState<"main" | "checks" | "modifiers">("main")
   const [viewingItem, setViewingItem] = useState<any | null>(null)
+  const [customTransferTarget, setCustomTransferTarget] = useState("")
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [transferUserId, setTransferUserId] = useState<string>("")
   const [storeSearch, setStoreSearch] = useState("")
@@ -858,7 +1057,7 @@ export function CharacterSheet({
   const [selectedStoreItem, setSelectedStoreItem] = useState<any>(null)
 
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
-  const hasKaelCheckMinimums = character.name === "Kael Veyr" && campaignMembers.some((member: Member) => member.userId === character.ownerId && member.name === "Mateus Lopes de Deus")
+  const hasCheckMinimums = character.name === "Kael Veyr" && campaignMembers.some((member: Member) => member.userId === character.ownerId && member.name === "Mateus Lopes de Deus")
   const [archiving, setArchiving] = useState(false)
 
   // Estado do Editor Inline de Modificadores / Condições
@@ -866,7 +1065,6 @@ export function CharacterSheet({
   const [modDraft, setModDraft] = useState<any>({})
 
   // Estado e Rascunhos de Laços (Bonds)
-  const bonds: Bond[] = character.bonds || [];
   const [activeBond, setActiveBond] = useState<Bond | null>(null);
   const [bondDraft, setBondDraft] = useState<Partial<Bond>>({ target: "", type: "Amizade", value: 1 });
 
@@ -952,9 +1150,22 @@ export function CharacterSheet({
 
   const totalXp = displayResources?.xp || 0
   const { charLevel, currentLevelXp, xpRequired } = getLevelInfo(totalXp)
+  const itemCatalog = [...customEquipment, ...EQUIPMENT.filter(base => !customEquipment.some((item: any) => item.id === base.id))]
+  const activeItemBonuses = equippedItemBonuses(character, itemCatalog)
+  const itemCommitRef = useRef(false)
   const currentZenit = character.zenit || 0
   const skillsObj = character.skills || {}
   const customItems = character.customItems || []
+  const inventoryCount = (Array.isArray(character.equipment) ? character.equipment.length : 0) + customItems.length
+  const inventoryCapacity = Math.max(0, Number(displayResources.maxIp) || 0)
+  const inventoryOverflow = Math.max(0, inventoryCount - inventoryCapacity)
+  const transferTargets = (campaignCharacters as Character[])
+    .filter(target => target.id !== character.id && target.ownerId !== character.ownerId)
+    .map(target => ({ id: target.id, name: target.name, ownerName: campaignMembers.find((member: Member) => member.userId === target.ownerId)?.name }))
+
+  useEffect(() => {
+    if (!showLore) setLoreDraft({ origin: character.origin || "", identity: character.identity || "", theme: character.theme || "" })
+  }, [character.origin, character.identity, character.theme, showLore])
 
   useEffect(() => {
     if (!editingZenit) return
@@ -962,18 +1173,39 @@ export function CharacterSheet({
     zenitInputRef.current?.select()
   }, [editingZenit])
 
-  let totalSkillPointsSpent = Object.values(skillsObj).reduce((a: any, b: any) => a + b, 0) as number
-  if (totalSkillPointsSpent === 0 && character.classes?.length > 0) {
-    const baseClassLevels = character.classes.reduce((acc: number, c: any) => acc + c.level, 0);
-    totalSkillPointsSpent = baseClassLevels;
-  }
-  const unspentPoints = charLevel - totalSkillPointsSpent
+  const allClasses = useMemo<any[]>(() => {
+    const catalog = new Map<string, any>()
+    for (const definition of [...CLASSES, ...(customClasses || [])]) {
+      catalog.set(definition.id, { ...definition, skills: definition.skills || [] })
+    }
+    return [...catalog.values()]
+  }, [customClasses])
+  const customSkillIds = new Set<string>((customClasses || []).flatMap((c: any) => (c.skills || []).map((skill: any) => skill.id)))
+  const totalSkillPointsSpent = getSpentSkillPoints(skillsObj, character.classes || [], allClasses, allMods, customSkillIds)
+  const unspentPoints = Math.max(0, charLevel - totalSkillPointsSpent)
+  const learnedSkillGroups = allClasses.map((definition: any) => {
+    const learnedSkills = definition.skills.filter((skill: any) => skillRank(skillsObj[skill.id]) > 0)
+    const owned = (character.classes || []).find((c: any) => (c.classId ?? c.id) === definition.id)
+    return {
+      ...definition,
+      learnedSkills,
+      level: Math.max(skillRank(owned?.level), learnedSkills.reduce((sum: number, skill: any) => sum + skillRank(skillsObj[skill.id]), 0)),
+      freeRanks: learnedSkills.reduce((sum: number, skill: any) => sum + getFreeSkillRanks(skill.id, skillRank(skillsObj[skill.id]), allMods, customSkillIds), 0)
+    }
+  }).filter((group: any) => group.learnedSkills.length > 0)
+  const unresolvedSkills = Object.entries(skillsObj).filter(([id, level]) => skillRank(level) > 0 && !allClasses.some(c => c.skills.some((skill: any) => skill.id === id)))
+
 
   const currentAttrPoints = Object.values(character.attributes).reduce((acc: number, die: any) => {
     if (die === "d6") return acc + 1;
     if (die === "d8") return acc + 2;
     if (die === "d10") return acc + 3;
     if (die === "d12") return acc + 4;
+    // --- ADICIONADO ESCALONAMENTO ATÉ d20 ---
+    if (die === "d14") return acc + 5;
+    if (die === "d16") return acc + 6;
+    if (die === "d18") return acc + 7;
+    if (die === "d20") return acc + 8;
     return acc;
   }, 0) as number;
 
@@ -997,13 +1229,22 @@ export function CharacterSheet({
   }
 
   const spentAttrPoints = currentAttrPoints - 8;
-  const earnedAttrPoints = Math.floor((charLevel - 5) / 10);
+  // --- A CADA 3 LEVELS GANHA PONTO (Mudança do divisor de 10 para 3) ---
+  const earnedAttrPoints = Math.floor((charLevel - 5) / 3);
   const unspentAttrPoints = earnedAttrPoints - spentAttrPoints;
 
   async function handleUpgradeAttribute(attrKey: AttributeKey) {
     if (!editable || unspentAttrPoints <= 0) return;
     const currentDie = character.attributes[attrKey];
-    const nextDie = currentDie === "d6" ? "d8" : currentDie === "d8" ? "d10" : currentDie === "d10" ? "d12" : null;
+    // --- PROGRESSÃO ATÉ d20 ---
+    const nextDie = currentDie === "d6" ? "d8"
+      : currentDie === "d8" ? "d10"
+        : currentDie === "d10" ? "d12"
+          : currentDie === "d12" ? "d14"
+            : currentDie === "d14" ? "d16"
+              : currentDie === "d16" ? "d18"
+                : currentDie === "d18" ? "d20"
+                  : null;
     if (!nextDie) return;
 
     const newAttributes = { ...character.attributes, [attrKey]: nextDie };
@@ -1034,7 +1275,30 @@ export function CharacterSheet({
     } finally { setPending(false); }
   }
 
+  async function commitItemUpdate(updates: any) {
+    if ((!editable && !isGm) || pending || itemCommitRef.current || resourceWriteCountRef.current > 0) {
+      throw new Error("Aguarde o salvamento em andamento da ficha.")
+    }
+    itemCommitRef.current = true
+    setPending(true)
+    try {
+      const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, {
+        method: "PATCH", body: JSON.stringify(updates)
+      })
+      resourceDraftRef.current = updated.resources
+      resourceConfirmedRef.current = updated.resources
+      resourceCharacterRef.current = updated
+      setDisplayResources(updated.resources)
+      onOptimistic(updated)
+      return updated
+    } finally {
+      itemCommitRef.current = false
+      setPending(false)
+    }
+  }
+
   function patchResource(key: string, delta: number) {
+    if (itemCommitRef.current) return
     const res = resourceDraftRef.current as any;
     const next = { ...res }
 
@@ -1150,52 +1414,92 @@ export function CharacterSheet({
   }
 
   async function saveNewSkillPoint(skillId: string) {
-    if (!editable && !isGm) return;
-    const newSkills = { ...skillsObj, [skillId]: (skillsObj[skillId] || 0) + 1 }
-    let newClasses = JSON.parse(JSON.stringify(character.classes || []));
-    const classMatch = CLASSES.find((c: any) => c.skills.some((s: any) => s.id === skillId));
+    if ((!editable && !isGm) || pending || skillWriteRef.current || resourceWriteCountRef.current > 0) return
+    const classMatch = allClasses.find(c => c.skills.some((skill: any) => skill.id === skillId))
+    const skill = classMatch?.skills.find((entry: any) => entry.id === skillId)
+    const currentRank = skillRank(skillsObj[skillId])
+    if (!classMatch || !skill || currentRank >= skillMaxRank(skill)) return
+    if (!isGm && unspentPoints <= 0) return
 
-    if (classMatch) {
-      const existingClass = newClasses.find((c: any) => c.classId === classMatch.id || c.id === classMatch.id);
-      if (existingClass) existingClass.level += 1;
-      else newClasses.push({ classId: classMatch.id, level: 1 });
-    }
-
-    const oldMaxes = computeMaxResources(character.classes || [], character.attributes);
-    const newMaxes = computeMaxResources(newClasses, character.attributes);
-
-    // Salva a diferença para preservar alterações manuais feitas pelo Mestre
-    const hpDiff = newMaxes.maxHp - oldMaxes.maxHp;
-    const mpDiff = newMaxes.maxMp - oldMaxes.maxMp;
-    const ipDiff = newMaxes.maxIp - oldMaxes.maxIp;
-
-    const newResources = {
-      ...character.resources,
-      maxHp: (character.resources.maxHp || oldMaxes.maxHp) + hpDiff,
-      maxMp: (character.resources.maxMp || oldMaxes.maxMp) + mpDiff,
-      maxIp: (character.resources.maxIp || oldMaxes.maxIp) + ipDiff
-    };
-
-    onOptimistic({ ...character, skills: newSkills, classes: newClasses, resources: newResources })
-    setShowLevelUp(false)
+    skillWriteRef.current = true
     setPending(true)
+    setSkillSaveError(null)
+    const newSkills = { ...skillsObj, [skillId]: currentRank + 1 }
+    const newClasses = (character.classes || []).map((c: any) => ({ ...c }))
+    const existingClass = newClasses.find((c: any) => (c.classId ?? c.id) === classMatch.id)
+    const previousRanks = classMatch.skills.reduce((sum: number, entry: any) => sum + skillRank(skillsObj[entry.id]), 0)
+    if (existingClass) existingClass.level = Math.max(skillRank(existingClass.level), previousRanks) + 1
+    else newClasses.push({ classId: classMatch.id, level: previousRanks + 1 })
+
+    const freeRanks = getFreeSkillRanks(skillId, currentRank, allMods, customSkillIds) + (isGm ? 1 : 0)
+    const grantId = `${FREE_SKILL_PREFIX}${skillId}`
+    const newMods = [
+      ...allMods.filter((mod: any) => mod.id !== grantId),
+      { id: grantId, name: `Concessão gratuita: ${skill.name}`, target: "skill_grant_hidden", value: freeRanks }
+    ]
+    // Não envia XP nem recalcula recursos ao conceder habilidades gratuitas.
+    const updates: any = { skills: newSkills, classes: newClasses, customModifiers: newMods }
+
     try {
+      if (!isGm) {
+        // O cálculo existente conhece apenas as classes padrão.
+        const baseClasses = (classes: any[]) => classes.filter(c => CLASSES.some(base => base.id === (c.classId ?? c.id)))
+        const oldMaxes = computeMaxResources(baseClasses(character.classes || []), character.attributes)
+        const newMaxes = computeMaxResources(baseClasses(newClasses), character.attributes)
+        updates.resources = {
+          maxHp: (displayResources.maxHp ?? oldMaxes.maxHp) + newMaxes.maxHp - oldMaxes.maxHp,
+          maxMp: (displayResources.maxMp ?? oldMaxes.maxMp) + newMaxes.maxMp - oldMaxes.maxMp,
+          maxIp: (displayResources.maxIp ?? oldMaxes.maxIp) + newMaxes.maxIp - oldMaxes.maxIp
+        }
+      }
       const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ skills: newSkills, classes: newClasses, resources: newResources })
+        method: "PATCH", body: JSON.stringify(updates)
       })
+      // Só exibe sucesso com os dados confirmados pela API.
       onOptimistic(updated)
-    } finally { setPending(false) }
+      const saved = updated as any
+      if (skillRank(saved.skills?.[skillId]) !== newSkills[skillId] ||
+          !(saved.classes || []).some((c: any) => (c.classId ?? c.id) === classMatch.id && skillRank(c.level) === newClasses.find((c: any) => (c.classId ?? c.id) === classMatch.id).level) ||
+          !(saved.customModifiers || []).some((mod: any) => mod.id === grantId && skillRank(mod.value) === freeRanks)) {
+        setSkillSaveError("A API não confirmou todos os dados da concessão. Recarregue a ficha e revise a rota PATCH de personagens antes de tentar novamente.")
+        return
+      }
+      if (!isGm) setShowLevelUp(false)
+    } catch (error) {
+      setSkillSaveError(error instanceof Error ? error.message : "Não foi possível salvar a habilidade. Tente novamente.")
+    } finally {
+      skillWriteRef.current = false
+      setPending(false)
+    }
   }
 
+  // --- SOLUÇÃO DE PERSISTÊNCIA DOS LAÇOS DENTRO DO MODIFIERS ---
   async function updateBonds(newBonds: Bond[]) {
-    onOptimistic({ ...character, bonds: newBonds });
+    // 1. Pega os modificadores atuais removendo todos que são do tipo 'bond'
+    const baseMods = ((character as any).customModifiers || []).filter((m: any) => m.type !== 'bond');
+
+    // 2. Transforma a array nova de laços em modificadores falsos que o backend aceita e salva com certeza
+    const bondMods = newBonds.map(b => ({
+      id: b.id,
+      name: `Laço: ${b.target}`,
+      target: 'bond_hidden', // Isso aqui impede de ser aplicado em rolagens normais pela interface
+      bondTarget: b.target,
+      bondType: b.type,
+      value: b.value,
+      type: 'bond' // Flag que nossa UI usa para desenhar ele na tela de Laços em vez de Modificadores
+    }));
+
+    const newMods = [...baseMods, ...bondMods];
+
+    // Atualiza optimisticamente mantendo a visualização e os mods novos
+    onOptimistic({ ...character, customModifiers: newMods, bonds: newBonds });
     setPending(true);
     try {
+      // Dispara o update garantindo passar só os modificadores, que temos certeza que o backend já processa
       const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, {
-        method: "PATCH", body: JSON.stringify({ bonds: newBonds })
+        method: "PATCH", body: JSON.stringify({ customModifiers: newMods })
       });
-      onOptimistic({ ...updated, bonds: newBonds });
+      onOptimistic({ ...updated, customModifiers: newMods, bonds: newBonds });
     } finally {
       setPending(false);
     }
@@ -1267,7 +1571,7 @@ export function CharacterSheet({
       const result = Math.floor(Math.random() * sides) + 1;
       const attrLabel = ATTRIBUTE_META[attr].label;
 
-      let modTotal = 0;
+      let modTotal = sumItemBonus(activeItemBonuses, [attr, ATTRIBUTE_META[attr].label]);
       const mods = (character as any).customModifiers || [];
       mods.forEach((m: any) => {
         if (m.target === 'all' || m.target === attr) {
@@ -1304,7 +1608,7 @@ export function CharacterSheet({
         diceLabels.push(dieLabel);
       });
 
-      let modTotal = 0;
+      let modTotal = sumItemBonus(activeItemBonuses, [check.name, ...check.attrs]);
       const mods = (character as any).customModifiers || [];
       mods.forEach((m: any) => {
         if (m.target === 'all' || check.attrs.includes(m.target) || m.target === check.name) {
@@ -1317,7 +1621,7 @@ export function CharacterSheet({
         modTotal += activeBond.value;
       }
 
-      const minimum = hasKaelCheckMinimums ? EL_CHECK_MINIMUMS[check.id] : undefined;
+      const minimum = hasCheckMinimums ? CHECK_MINIMUMS[check.id] : undefined;
       const rolledPool = rollDicePool(dieSizes, minimum, modTotal);
       const details = rolledPool.details;
       const totalDice = rolledPool.total;
@@ -1381,6 +1685,28 @@ export function CharacterSheet({
     } finally { setPending(false); }
   }
 
+  async function transferItem(index: number, itemName: string, recipientCharacterId: string, itemKind: "equipment" | "custom" = "equipment") {
+    if (!editable && !isGm) return
+    const { donor } = await apiFetch<{ donor: Character }>("/api/item-transfers", {
+      method: "POST",
+      body: JSON.stringify({ donorCharacterId: character.id, recipientCharacterId, itemIndex: index, itemName, itemKind })
+    })
+    onOptimistic(donor)
+  }
+
+  async function saveLore() {
+    if (!editable || savingLore) return
+    setSavingLore(true)
+    try {
+      const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${character.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(loreDraft)
+      })
+      onOptimistic(updated)
+      setShowLore(false)
+    } finally { setSavingLore(false) }
+  }
+
   async function handleTransferOwnership() {
     if (!transferUserId) return alert("Selecione um jogador na lista.");
     if (!confirm(`Deseja transferir o controle permanente desta ficha para este jogador?`)) return;
@@ -1430,12 +1756,13 @@ export function CharacterSheet({
                 <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col border border-primary/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
                   <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
                     <div>
-                      <h4 className="font-serif text-2xl font-black text-primary flex items-center gap-2"><TrendingUp className="size-6" /> Evolução</h4>
-                      <p className="text-sm text-muted-foreground mt-1">Você tem {unspentPoints} ponto(s) para investir em Classes.</p>
+                      <h4 className="font-serif text-2xl font-black text-primary flex items-center gap-2"><TrendingUp className="size-6" /> {isGm ? "Conceder habilidades" : "Evolução"}</h4>
+                      <p className="text-sm text-muted-foreground mt-1">{isGm ? "Concessão gratuita: não consome pontos de evolução nem altera o XP." : `Você tem ${unspentPoints} ponto(s) para investir em Classes.`}</p>
                     </div>
                     <button onClick={() => setShowLevelUp(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
                   </div>
 
+                  {skillSaveError && <p role="alert" className="mx-6 mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{skillSaveError}</p>}
                   {/* Barra de Busca */}
                   <div className="px-6 py-4 border-b border-border/30 bg-black/20 shrink-0">
                     <div className="relative">
@@ -1452,11 +1779,10 @@ export function CharacterSheet({
 
                   <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1 relative">
                     {(() => {
-                      const allClasses = [...CLASSES, ...(customClasses || [])];
                       // Filtra e prepara as classes antes de renderizar
                       const filteredClasses = allClasses.map(c => {
                         // Pega apenas as habilidades que o jogador ainda pode upar
-                        const availableSkills = c.skills.filter((s: any) => (skillsObj[s.id] || 0) < s.maxLevel);
+                        const availableSkills = c.skills.filter((s: any) => skillRank(skillsObj[s.id]) < skillMaxRank(s));
                         return { ...c, availableSkills };
                       }).filter(c => {
                         // Remove a classe se não houver mais habilidades para upar
@@ -1517,10 +1843,10 @@ export function CharacterSheet({
                                   <Button
                                     size="default"
                                     className="shrink-0 self-end sm:self-auto font-bold shadow-md"
-                                    disabled={unspentPoints <= 0 && !isGm}
+                                    disabled={pending || (!isGm && unspentPoints <= 0)}
                                     onClick={() => saveNewSkillPoint(s.id)}
                                   >
-                                    Aprender
+                                    {pending ? "Salvando..." : isGm ? "Conceder grátis" : "Aprender"}
                                   </Button>
                                 </div>
                               )
@@ -1542,8 +1868,8 @@ export function CharacterSheet({
                 <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col border border-pink-500/40 bg-zinc-950 shadow-[0_0_40px_rgba(236,72,153,0.15)]" onClick={(event) => event.stopPropagation()}>
                   <div className="flex justify-between items-center p-6 border-b border-pink-500/20 bg-pink-950/10 shrink-0">
                     <div>
-                      <h4 className="font-serif text-2xl font-black text-pink-400 flex items-center gap-2"><Link2 className="size-6" /> Laços e Conexões</h4>
-                      <p className="text-sm text-pink-200/60 mt-1">Invoque a força de seus sentimentos para receber bônus vitais em momentos críticos.</p>
+                      <h4 className="font-serif text-2xl font-black text-muted-foreground flex items-center gap-2"><Link2 className="size-6" /> Laços e Conexões</h4>
+                      <p className="text-sm text-muted-foreground mt-1">Invoque a força de seus sentimentos para receber bônus vitais em momentos críticos.</p>
                     </div>
                     <button onClick={() => setShowBondsModal(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10"><X className="size-5 text-muted-foreground hover:text-white" /></button>
                   </div>
@@ -1551,7 +1877,7 @@ export function CharacterSheet({
                   <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1 flex flex-col gap-6">
                     {/* LISTA DE LAÇOS */}
                     <div className="flex flex-col gap-3">
-                      <h5 className="text-[10px] font-bold uppercase tracking-widest text-pink-400 flex items-center gap-2">Seus Laços</h5>
+                      <h5 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">Seus Laços</h5>
                       {bonds.length === 0 ? (
                         <div className="text-sm text-muted-foreground italic text-center py-6 border border-dashed border-white/10 rounded-lg bg-black/20">Você ainda não formou laços fortes com ninguém.</div>
                       ) : (
@@ -1650,34 +1976,22 @@ export function CharacterSheet({
                     <h4 className="font-serif text-2xl md:text-3xl font-black text-[#eee3cf] flex items-center gap-3"><Package className="size-6 text-primary md:size-8" /> Mochila do Herói</h4>
                     <button onClick={() => setShowInventory(false)} className="rounded-full p-2 bg-white/5 hover:bg-white/10"><X className="size-5 md:size-6 text-muted-foreground hover:text-white" /></button>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6 md:p-10 flex flex-col md:flex-row gap-10 custom-scrollbar-sepia">
+                  <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6 custom-scrollbar-sepia">
                     <section className="flex-1 space-y-4">
                       <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground border-b border-white/10 pb-2">Equipamento Atual</h5>
-                      {!character.equipment || character.equipment.length === 0 ? (
-                        <div className="p-6 text-center rounded-lg border border-dashed border-border/40 bg-card/20"><p className="text-sm text-muted-foreground italic">Nenhum equipamento.</p></div>
-                      ) : (
-                        <div className="flex flex-col gap-3">
-                          {character.equipment.map((id: string, idx: number) => {
-                            const item = customEquipment.find((e: any) => e.id === id) || getEquipment(id)
-                            return item ? (
-                              <div key={`${id}-${idx}`} className="flex items-start justify-between gap-2 p-3 rounded-lg bg-card border border-border/50">
-                                <div className="flex items-start gap-3">
-                                  <Info className="size-4 text-primary shrink-0 mt-0.5" />
-                                  <div>
-                                    <p className="font-bold text-sm text-foreground">{item.name}{(item as any).purchasable === false && <span className="ml-2 text-[8px] bg-purple-500/20 text-purple-400 border border-purple-500/30 px-1 py-0.5 rounded">LOOT RARO</span>}</p>
-                                    <div className="text-xs text-muted-foreground mt-1"><ItemModifiers text={item.detail} /></div>
-                                  </div>
-                                </div>
-                                {isGm && (
-                                  <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 h-8 w-8 p-0" onClick={() => removeEquipmentItem(idx)} title="O Mestre pode remover este item da mochila do jogador">
-                                    <Trash2 className="size-4" />
-                                  </Button>
-                                )}
-                              </div>
-                            ) : null
-                          })}
-                        </div>
-                      )}
+                      <InventoryEquipment
+                        character={{ ...character, resources: displayResources }}
+                        catalog={itemCatalog}
+                        editable={editable || isGm}
+                        isGm={isGm}
+                        busy={pending}
+                        onCommit={commitItemUpdate}
+                        onRoll={onRoll}
+                        onRemove={removeEquipmentItem}
+                        transferTargets={transferTargets}
+                        onTransfer={transferItem}
+                        renderDetail={(text: string) => <ItemModifiers text={text} />}
+                      />
 
                       {customItems.length > 0 && (
                         <div className="mt-6 pt-6 border-t border-white/10">
@@ -1716,22 +2030,14 @@ export function CharacterSheet({
                     </section>
                     <section className="flex-1 space-y-4">
                       <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                        <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Consumíveis</h5>
-                        <span className="text-sm font-mono font-bold text-primary bg-primary/10 px-2 py-1 rounded">IP Atual: {displayResources.ip}/{displayResources.maxIp}</span>
+                        <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Capacidade</h5>
+                        <span className="text-sm font-mono font-bold text-primary bg-primary/10 px-2 py-1 rounded">IP: {displayResources.ip}/{displayResources.maxIp}</span>
                       </div>
-                      {editable ? (
-                        <div className="flex flex-col gap-3">
-                          {INVENTORY_ACTIONS.map((act: any) => (
-                            <Button key={act.id} variant="secondary" className="h-auto py-3 px-4 justify-between items-center group border border-border/50 hover:border-primary/50" onClick={() => useInventoryItem(act.id)}>
-                              <div className="text-left flex flex-col gap-0.5">
-                                <span className="font-bold text-foreground group-hover:text-primary transition-colors">{act.name}</span>
-                                <span className="text-xs font-normal text-muted-foreground">{act.description}</span>
-                              </div>
-                              <span className="font-mono text-sm font-bold text-accent shrink-0 ml-4 bg-background px-2 py-1 rounded">-{act.cost} IP</span>
-                            </Button>
-                          ))}
-                        </div>
-                      ) : <div className="p-6 text-center rounded-lg border border-dashed border-border/40 bg-card/20"><p className="text-sm text-muted-foreground">Apenas o jogador acessa.</p></div>}
+                      <div className={`rounded-xl border p-4 ${inventoryOverflow ? "border-red-500/40 bg-red-500/10" : "border-emerald-500/30 bg-emerald-500/5"}`}>
+                        <p className="font-bold">{inventoryCount} item(ns) / {inventoryCapacity} espaços</p>
+                        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Cada item ocupa automaticamente 1 ponto de inventário. Ao remover ou transferir um item, o ponto é devolvido.</p>
+                        {inventoryOverflow > 0 && <p className="mt-3 flex items-center gap-2 text-sm font-bold text-red-300"><AlertTriangle className="size-4" /> Sobrecarga: {inventoryOverflow} item(ns) excedente(s), −2 em testes com DEX.</p>}
+                      </div>
                     </section>
                   </div>
                 </motion.div>
@@ -1777,7 +2083,11 @@ export function CharacterSheet({
                   </div>
 
                   {(editable || isGm) && (
-                    <div className={`p-4 border-t shrink-0 flex justify-end ${viewingItem.type === 'text' ? 'border-[#d4af37]/30' : 'border-white/10 bg-black/40'}`}>
+                    <div className={`p-4 border-t shrink-0 flex flex-wrap justify-end gap-2 ${viewingItem.type === 'text' ? 'border-[#d4af37]/30' : 'border-white/10 bg-black/40'}`}>
+                      {transferTargets.length > 0 && <>
+                        <select aria-label="Receptor do item" value={customTransferTarget} onChange={event => setCustomTransferTarget(event.target.value)} className="min-w-[180px] rounded-md border border-border/60 bg-background px-3 py-2 text-xs text-foreground"><option value="">Transferir para...</option>{transferTargets.map(target => <option key={target.id} value={target.id}>{target.name}{target.ownerName ? ` — ${target.ownerName}` : ""}</option>)}</select>
+                        <Button variant="outline" size="sm" disabled={!customTransferTarget || pending} onClick={async () => { const index = customItems.findIndex((item: any) => item.id === viewingItem.id); if (index < 0) return; await transferItem(index, viewingItem.name, customTransferTarget, "custom"); setCustomTransferTarget(""); setViewingItem(null) }} className="gap-2"><Send className="size-4" /> Enviar</Button>
+                      </>}
                       <Button variant="outline" size="sm" onClick={() => deleteCustomItem(viewingItem.id)} className={`gap-2 ${viewingItem.type === 'text' ? 'border-red-500/50 text-red-700 hover:bg-red-500/10' : 'border-red-500/50 text-red-400 hover:bg-red-500/20'}`}>
                         <Trash2 className="size-4" /> Destruir Item
                       </Button>
@@ -1876,31 +2186,29 @@ export function CharacterSheet({
           <AnimatePresence>
             {showLore && (
               <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden" onClick={() => setShowLore(false)}>
-                <motion.div variants={modalVariants} className="rpg-paper relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden border-2 border-[#d4af37] text-[#3e2723]" onClick={(event) => event.stopPropagation()}>
+                <motion.div variants={modalVariants} className="relative flex h-[82vh] w-full max-w-5xl flex-col overflow-hidden rounded-md border-8 border-[#5b3824] bg-[#d8bd82] text-[#3e2723] shadow-[0_30px_90px_rgba(0,0,0,.8),inset_0_0_40px_rgba(76,44,20,.35)]" onClick={(event) => event.stopPropagation()}>
                   <div className="flex justify-between items-center p-5 border-b border-[#d4af37]/40 shrink-0 bg-black/5">
                     <h4 className="font-serif text-2xl font-bold flex items-center gap-3 text-[#5d4037]">
-                      <ScrollText className="size-6" /> História do personagem
+                      <BookOpen className="size-6" /> Livro do personagem
                     </h4>
                     <button onClick={() => setShowLore(false)} className="rounded-full p-2 hover:bg-black/10 transition-colors">
                       <X className="size-5 text-[#5d4037]" />
                     </button>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar-sepia space-y-6">
-                    <div>
-                      <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2"><BookOpenText className="size-4" /> Origem</div>
-                      <div className="font-serif text-base leading-loose whitespace-pre-wrap">{character.origin || "Desconhecida"}</div>
-                    </div>
-                    <div className="w-full h-px bg-[#d4af37]/30" />
-                    <div>
-                      <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2"><Shield className="size-4" /> Identidade</div>
-                      <div className="font-serif text-base leading-loose whitespace-pre-wrap">{character.identity || "Nenhuma"}</div>
-                    </div>
-                    <div className="w-full h-px bg-[#d4af37]/30" />
-                    <div>
-                      <div className="text-sm font-sans font-bold uppercase tracking-widest text-[#8d6e63] mb-2 flex items-center gap-2"><Sparkles className="size-4" /> Tema</div>
-                      <div className="font-serif text-lg leading-relaxed italic text-[#4e342e]">"{character.theme || "Nenhum"}"</div>
-                    </div>
+                  <div className="relative grid flex-1 overflow-y-auto bg-[#ead8aa] md:grid-cols-2 custom-scrollbar-sepia">
+                    <div className="pointer-events-none absolute bottom-0 left-1/2 top-0 hidden w-8 -translate-x-1/2 bg-gradient-to-r from-black/15 via-white/20 to-black/15 md:block" />
+                    {([
+                      { key: "origin", label: "Origem", icon: <BookOpenText className="size-4" />, rows: 15 },
+                      { key: "identity", label: "Identidade", icon: <Shield className="size-4" />, rows: 8 },
+                      { key: "theme", label: "Tema", icon: <Sparkles className="size-4" />, rows: 5 },
+                    ] as const).map((field, index) => (
+                      <label key={field.key} className={`relative p-7 sm:p-10 ${index > 0 ? "border-t border-[#8b653d]/25 md:border-t-0" : ""} ${field.key === "origin" ? "md:row-span-2" : ""}`}>
+                        <span className="mb-3 flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-[.2em] text-[#795548]">{field.icon}{field.label}</span>
+                        {editable ? <textarea rows={field.rows} value={loreDraft[field.key]} onChange={event => setLoreDraft(current => ({ ...current, [field.key]: event.target.value }))} className="w-full resize-none border-0 border-b border-[#8b653d]/25 bg-transparent p-1 font-serif text-base leading-loose text-[#3e2723] outline-none placeholder:text-[#795548]/50 focus:border-[#795548]" placeholder={`Escreva ${field.label.toLowerCase()}...`} /> : <div className="whitespace-pre-wrap font-serif text-base leading-loose">{character[field.key] || "Ainda não escrito."}</div>}
+                      </label>
+                    ))}
                   </div>
+                  {editable && <div className="flex justify-end border-t border-[#8b653d]/30 bg-[#dfc78f] p-4"><Button disabled={savingLore} onClick={saveLore} className="gap-2 bg-[#5d4037] text-[#f5e6c8] hover:bg-[#4e342e]"><Save className="size-4" /> {savingLore ? "Salvando..." : "Salvar no livro"}</Button></div>}
                 </motion.div>
               </motion.div>
             )}
@@ -1919,7 +2227,7 @@ export function CharacterSheet({
               alt={`Retrato de ${character.name}`}
               frame={character.portraitFrame}
               crop={character.portraitCrop}
-              className={`${isExpanded ? "size-[88px] sm:size-[104px]" : "size-[72px] sm:size-[80px]"} cursor-pointer transition-[width,height] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)]`}
+              className={`${spotlightActive ? "rounded-full ring-2 ring-amber-300 shadow-[0_0_24px_rgba(252,211,77,0.65)] motion-safe:animate-pulse" : ""} ${isExpanded ? "size-[88px] sm:size-[104px]" : "size-[72px] sm:size-[80px]"} cursor-pointer transition-[width,height] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)]`}
               sizes="104px"
               role={isOwned ? "button" : undefined}
               tabIndex={isOwned ? 0 : undefined}
@@ -1958,7 +2266,7 @@ export function CharacterSheet({
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[13px] font-semibold tabular-nums">
                   <span><b className="text-[color:var(--hp)]">HP:</b> <strong className="text-foreground">{displayResources.hp}/{displayResources.maxHp}</strong></span>
                   <span><b className="text-[color:var(--mp)]">MP:</b> <strong className="text-foreground">{displayResources.mp}/{displayResources.maxMp}</strong></span>
-                  <CharacterStatusBadges modifiers={(character.customModifiers || []) as Modifier[]} />
+                  <CharacterStatusBadges modifiers={displayModifiers as Modifier[]} />
                 </div>
               </div>
             ) : (
@@ -2044,7 +2352,7 @@ export function CharacterSheet({
                 <button onClick={() => setSheetTab('main')} className={`rpg-tab-button flex h-9 min-w-0 flex-1 items-center justify-center rounded-md px-2 text-xs leading-none whitespace-nowrap transition-colors ${sheetTab === 'main' ? 'is-active font-bold' : 'text-muted-foreground'}`}>Principal</button>
                 <button onClick={() => setSheetTab('checks')} className={`rpg-tab-button flex h-9 min-w-0 flex-1 items-center justify-center rounded-md px-2 text-xs leading-none whitespace-nowrap transition-colors ${sheetTab === 'checks' ? 'is-active font-bold' : 'text-muted-foreground'}`}><span className="truncate">Testes e Perícias</span></button>
                 <button onClick={() => setSheetTab('modifiers')} className={`rpg-tab-button relative flex h-9 min-w-0 items-center justify-center rounded-md px-7 text-xs leading-none whitespace-nowrap transition-colors ${sheetTab === 'modifiers' ? 'is-active font-bold' : 'text-muted-foreground'}`}>
-                  <span className="truncate">Condições</span>{sheetTab !== 'modifiers' && (character as any).customModifiers?.length > 0 && <span className="condition-count absolute right-2 flex size-5 items-center justify-center rounded-full text-[10px] font-bold leading-none">{(character as any).customModifiers.length}</span>}
+                  <span className="truncate">Condições</span>{sheetTab !== 'modifiers' && displayModifiers.length > 0 && <span className="condition-count absolute right-2 flex size-5 items-center justify-center rounded-full text-[10px] font-bold leading-none">{displayModifiers.length}</span>}
                 </button>
               </div>
 
@@ -2061,7 +2369,7 @@ export function CharacterSheet({
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {(unspentPoints > 0 || isGm) ? (
-                        <Button size="sm" variant="default" disabled={!editable && !isGm} className="h-8 text-xs animate-pulse bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 shrink-0" onClick={() => setShowLevelUp(true)}>
+                        <Button size="sm" variant="default" disabled={!editable && !isGm} className="h-8 text-xs animate-pulse bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 shrink-0" onClick={() => { setSkillSaveError(null); setShowLevelUp(true); }}>
                           <TrendingUp className="size-3.5 mr-1.5" /> Classes {unspentPoints > 0 ? `(${unspentPoints})` : "(Mestre)"}
                         </Button>
                       ) : <div />}
@@ -2102,7 +2410,7 @@ export function CharacterSheet({
                   <div className="mt-5 grid grid-cols-4 gap-2">
                     {ATTR_KEYS.map((k: AttributeKey) => {
                       const isRolling = rollingAttr === k
-                      const canUpgradeAttribute = editable && unspentAttrPoints > 0 && character.attributes[k] !== "d12"
+                      const canUpgradeAttribute = editable && unspentAttrPoints > 0 && character.attributes[k] !== "d20"
 
                       return (
                         <div key={k} className="relative">
@@ -2126,6 +2434,14 @@ export function CharacterSheet({
                       )
                     })}
                   </div>
+
+                  <ManualDefenseFields
+                    key={character.id}
+                    character={character}
+                    editable={editable || isGm}
+                    busy={pending}
+                    onSave={commitItemUpdate}
+                  />
 
                   {/* BARRAS DE RECURSOS E CONTROLE MANUAL DO MESTRE */}
                   <div className="mt-6 flex flex-col gap-4">
@@ -2153,7 +2469,7 @@ export function CharacterSheet({
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="flex-1">
-                        <ResourceBar label="Inventario" short="IP" icon={<Backpack className="size-4" />} current={displayResources.ip} max={displayResources.maxIp} colorVar="--ip" editable={editable} onChange={(d) => patchResource("ip", d)} />
+                        <ResourceBar label="Inventário automático" short="IP" icon={<Backpack className="size-4" />} current={Math.max(0, inventoryCapacity - inventoryCount)} max={inventoryCapacity} colorVar="--ip" editable={false} onChange={() => {}} />
                       </div>
                       {isGm && (
                         <div className="flex flex-col gap-1 shrink-0">
@@ -2165,9 +2481,9 @@ export function CharacterSheet({
                   </div>
 
                   <div className="flex flex-wrap gap-2 mt-5">
-                    {/* FABULA */}
+                    {/* INSPIRAÇÃO (mantém a chave fp por compatibilidade com fichas existentes) */}
                     <div className="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-[color:var(--fp)]/30 bg-[color:var(--fp)]/5 px-3 py-2">
-                      <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[color:var(--fp)]"><Sparkles className="size-3.5" /> Fabula</span>
+                      <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[color:var(--fp)]"><Sparkles className="size-3.5" /> Inspiração</span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {editable && <button onClick={() => patchResource("fp", -1)} className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-[color:var(--fp)] hover:bg-[color:var(--fp)]/10 transition-colors"><Minus className="size-3" /></button>}
                         <span className="w-5 text-center font-mono text-sm font-bold text-[color:var(--fp)]">{displayResources.fp}</span>
@@ -2194,57 +2510,76 @@ export function CharacterSheet({
                         <Store className="size-4 mr-2 shrink-0" /> <span className="text-[#eee3cf]">Loja</span>
                       </Button>
 
-                      <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-pink-500/30 bg-pink-500/5 text-pink-400 hover:bg-pink-500/20 hover:border-pink-500/50 transition-colors" onClick={() => setShowBondsModal(true)}>
+                      <Button variant="outline" size="sm" className="flex-1 h-auto py-2.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors" onClick={() => setShowBondsModal(true)}>
                         <Link2 className="size-4 mr-2 shrink-0" /> <span className="text-[#eee3cf]">Laços</span>
                       </Button>
                     </div>
                   </div>
 
                   <div className="mt-8 pt-5 border-t border-border/30">
-                    <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Habilidades de Classe Ativas</p>
-                    <div className="flex flex-col gap-2">
-                      {Object.entries(skillsObj).map(([skillId, lvl]) => {
-                        const classMatch = CLASSES.find(c => c.skills.some(s => s.id === skillId))
-                        const skill = classMatch?.skills.find(s => s.id === skillId)
-                        if (!skill || lvl === 0) return null
-
-                        const isExpanded = expandedSkillId === skill.id;
-
-                        return (
-                          <div key={skill.id} className={`overflow-hidden rounded-sm border-l-2 transition-colors shadow-sm ${isExpanded ? 'border-primary bg-primary/10' : 'border-primary/40 bg-primary/5 hover:border-primary/70'}`}>
-                            <button
-                              onClick={() => setExpandedSkillId(isExpanded ? null : skill.id)}
-                              className="flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-primary/5"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className={`text-sm font-bold transition-colors ${isExpanded ? 'text-primary' : 'text-foreground'}`}>{skill.name}</span>
-                                <span className="opacity-70 font-mono ml-1 text-[10px] text-muted-foreground bg-black/40 px-1.5 py-0.5 rounded">Nv. {lvl as React.ReactNode}</span>
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <h3 className="flex items-center gap-2 text-sm font-bold text-foreground"><BookOpenText className="size-4 text-primary" /> Habilidades por classe</h3>
+                      <span className="text-xs text-muted-foreground">{learnedSkillGroups.length} classe(s)</span>
+                    </div>
+                    <div className="space-y-4">
+                      {learnedSkillGroups.map((group: any) => (
+                        <section key={group.id} className="overflow-hidden rounded-xl border border-primary/25 bg-card/30 shadow-sm">
+                          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-primary/15 bg-gradient-to-r from-primary/15 to-transparent px-4 py-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/10"><BookOpen className="size-4 text-primary" /></div>
+                              <div className="min-w-0">
+                                <h4 className="break-words font-serif text-base font-bold text-primary">{group.name}</h4>
+                                <p className="text-xs text-muted-foreground">{group.learnedSkills.length} habilidade(s) aprendida(s)</p>
                               </div>
-                              <ChevronDown className={`size-4 text-muted-foreground transition-transform duration-300 ${isExpanded ? "rotate-180 text-primary" : ""}`} />
-                            </button>
-
-                            <div className="rpg-skill-expansion" data-open={isExpanded} aria-hidden={!isExpanded}>
-                              <div className="rpg-skill-expansion-clip">
-                                <div className="px-3 pb-3 pt-1 border-t border-primary/10 mt-1">
-                                  <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                                    {formatSkillDescription(skill.description, lvl as number)}
-                                  </div>
-                                  {skill.action && editable && (
-                                    <div className="mt-3 flex justify-end">
-                                      <Button size="sm" onClick={() => useSkill(skill)} className="gap-1.5 text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-bold">
-                                        <Zap className="size-3" /> Usar (-{skill.action.cost} {skill.action.resource.toUpperCase()})
-                                      </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2 text-[10px] font-bold">
+                              {group.freeRanks > 0 && <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">{group.freeRanks} nível(is) grátis</span>}
+                              <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-primary">Classe Nv. {group.level}</span>
+                            </div>
+                          </header>
+                          <div className="space-y-2 p-3">
+                            {group.learnedSkills.map((skill: any) => {
+                              const lvl = skillRank(skillsObj[skill.id])
+                              const freeRanks = getFreeSkillRanks(skill.id, lvl, allMods, customSkillIds)
+                              const skillKey = `${group.id}:${skill.id}`
+                              const skillExpanded = expandedSkillId === skillKey
+                              return (
+                                <div key={skill.id} className={`overflow-hidden rounded-lg border transition-colors ${skillExpanded ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background/30 hover:border-primary/25"}`}>
+                                  <button type="button" aria-expanded={skillExpanded} onClick={() => setExpandedSkillId(skillExpanded ? null : skillKey)} className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left">
+                                    <div className="min-w-0">
+                                      <span className="block break-words text-sm font-bold text-foreground">{skill.name}</span>
+                                      <span className="mt-1 block text-[11px] text-muted-foreground">{group.name}{freeRanks > 0 ? ` · ${freeRanks} nível(is) grátis` : ""}</span>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                      <span className="rounded-md bg-primary/10 px-2 py-1 font-mono text-[10px] text-primary">Nv. {lvl}/{skillMaxRank(skill)}</span>
+                                      <ChevronDown className={`size-4 text-muted-foreground transition-transform ${skillExpanded ? "rotate-180" : ""}`} />
+                                    </div>
+                                  </button>
+                                  {skillExpanded && (
+                                    <div className="border-t border-primary/10 px-3 pb-3 pt-3">
+                                      <div className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{formatSkillDescription(skill.description || "", lvl)}</div>
+                                      <SkillBonuses bonuses={skill.bonuses} level={lvl} />
+                                      {skill.action && editable && (
+                                        <div className="mt-3 flex justify-end">
+                                          <Button size="sm" onClick={() => useSkill(skill)} className="h-8 gap-1.5 text-xs font-bold"><Zap className="size-3" /> Usar (-{skill.action.cost} {String(skill.action.resource).toUpperCase()})</Button>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
-                              </div>
-                            </div>
+                              )
+                            })}
                           </div>
-                        )
-                      })}
-                      {totalSkillPointsSpent === 0 && (
-                        <p className="text-xs text-muted-foreground italic mt-1">Nenhuma habilidade aprendida ainda.</p>
+                        </section>
+                      ))}
+                      {unresolvedSkills.length > 0 && (
+                        <section className="rounded-xl border border-border/50 bg-card/30 p-4">
+                          <h4 className="text-sm font-bold">Classe não disponível no catálogo</h4>
+                          <p className="mt-1 text-xs text-muted-foreground">Os níveis estão preservados. Carregue a classe para ver os nomes e descrições.</p>
+                          {unresolvedSkills.map(([id, level]) => <p key={id} className="mt-2 break-all text-xs text-muted-foreground">{id} · Nv. {skillRank(level)}</p>)}
+                        </section>
                       )}
+                      {learnedSkillGroups.length === 0 && unresolvedSkills.length === 0 && <p className="rounded-xl border border-dashed border-border/50 p-5 text-center text-xs text-muted-foreground">Nenhuma habilidade aprendida ainda.</p>}
                     </div>
                   </div>
                 </div>
@@ -2277,7 +2612,7 @@ export function CharacterSheet({
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    {(character as any).customModifiers?.map((mod: any) => (
+                    {displayModifiers?.map((mod: any) => (
                       <div key={mod.id} className="p-3 bg-card/40 border border-border/50 rounded-lg">
                         {editingModId === mod.id && isGm ? (
                           <div className="flex flex-col gap-2">
@@ -2375,7 +2710,7 @@ export function CharacterSheet({
                       </div>
                     )}
 
-                    {!(character as any).customModifiers?.length && editingModId !== "new" && (
+                    {!displayModifiers?.length && editingModId !== "new" && (
                       <p className="text-xs text-muted-foreground text-center italic py-4">Nenhuma condição ativa no momento.</p>
                     )}
                   </div>

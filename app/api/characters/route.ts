@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { genId, getMemberRole, publish, saveToDisk, store } from "@/lib/store"
-import { computeMaxResources } from "@/lib/character"
+import { applyInventoryRules, computeMaxResources } from "@/lib/character"
 import { STARTING_ZENIT, getClass, getEquipment } from "@/lib/game-data"
 import type { AttributeKey, Character, ClassLevel, DieSize } from "@/lib/types"
 
@@ -64,10 +64,11 @@ export async function POST(request: Request) {
     updatedAt: now,
   }
   
-  store.characters.set(character.id, character as Character)
+  const normalizedCharacter = applyInventoryRules(character as Character)
+  store.characters.set(character.id, normalizedCharacter)
   store.characterTombstones.delete(character.id)
   saveToDisk(store)
-  publish(campaignId, { type: "character:created", character })
+  publish(campaignId, { type: "character:created", character: normalizedCharacter })
 
-  return NextResponse.json({ character })
+  return NextResponse.json({ character: normalizedCharacter })
 }

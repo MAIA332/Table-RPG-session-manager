@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
@@ -37,6 +36,19 @@ const ROOT_FOLDER: GalleryFolder = {
   name: "Todas as imagens"
 }
 
+/*
+ * FUNÇÃO UTILITÁRIA DE HIGIENIZAÇÃO DE URL
+ * Garante que a URL comece com https:// e remove espaços vazios.
+ */
+const ensureHttps = (url?: string) => {
+  if (!url) return ""
+  const cleanUrl = url.trim()
+  if (cleanUrl.toLowerCase().startsWith("http://")) {
+    return "https://" + cleanUrl.slice(7)
+  }
+  return cleanUrl
+}
+
 export function Imagepad({
   isGm,
   images,
@@ -64,28 +76,42 @@ export function Imagepad({
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState("")
 
-  /*
-   * Estado local.
-   *
-   * É importante não depender diretamente de `folders` e `images`
-   * para as operações internas, pois o componente pai pode demorar
-   * um render para devolver os dados atualizados.
-   */
   const [localFolders, setLocalFolders] = useState<GalleryFolder[]>([
     ROOT_FOLDER
   ])
 
   const [localImages, setLocalImages] = useState<SharedImage[]>([])
-
-  /*
-   * Indica se já inicializamos os dados vindos do pai.
-   */
   const [initialized, setInitialized] = useState(false)
 
   /*
+   * AUTO-HEALING (Auto-Cura) DO LOCALSTORAGE
+   * Detecta se o pai mandou alguma imagem com http://.
+   * Se sim (e for o Mestre), força uma atualização persistente
+   * para corrigir o banco de dados/localStorage definitivamente.
+   */
+  useEffect(() => {
+    if (!isGm || !Array.isArray(images) || !Array.isArray(folders)) return
+
+    let needsHealing = false
+    const healedImages = images.map(img => {
+      const safeUrl = ensureHttps(img.url)
+      if (safeUrl !== img.url) {
+        needsHealing = true
+        return { ...img, url: safeUrl }
+      }
+      return img
+    })
+
+    if (needsHealing) {
+      // Usamos setTimeout para não dar conflito no ciclo de renderização síncrono do React
+      setTimeout(() => {
+        onUpdateGallery(healedImages, folders)
+      }, 0)
+    }
+  }, [images, folders, isGm, onUpdateGallery])
+
+  /*
    * Sincroniza as pastas vindas do componente pai.
-   *
-   * Não resetamos activeFolderId aqui.
    */
   useEffect(() => {
     const incomingFolders = Array.isArray(folders)
@@ -100,13 +126,6 @@ export function Imagepad({
       ? incomingFolders
       : [ROOT_FOLDER, ...incomingFolders]
 
-    /*
-     * Se já temos uma pasta local que ainda não apareceu
-     * nas props do pai, preservamos ela temporariamente.
-     *
-     * Isso evita que a pasta recém-criada desapareça
-     * durante o ciclo de atualização do componente pai.
-     */
     setLocalFolders(current => {
       if (!initialized) {
         return normalized
@@ -136,24 +155,21 @@ export function Imagepad({
   }, [folders, initialized])
 
   /*
-   * Sincroniza as imagens.
+   * Sincroniza as imagens para o estado local, 
+   * garantindo o HTTPS na memória do componente.
    */
   useEffect(() => {
     const normalizedImages = (
       Array.isArray(images) ? images : []
     ).map(image => ({
       ...image,
+      url: ensureHttps(image.url),
       folderId: image.folderId || "root"
     }))
 
     setLocalImages(normalizedImages)
   }, [images])
 
-  /*
-   * Garante que a pasta atualmente selecionada ainda existe.
-   *
-   * Se ela foi removida, voltamos para root.
-   */
   useEffect(() => {
     const exists = localFolders.some(
       folder => folder.id === activeFolderId
@@ -164,9 +180,6 @@ export function Imagepad({
     }
   }, [localFolders, activeFolderId])
 
-  /*
-   * Pastas normalizadas.
-   */
   const normalizedFolders = useMemo(() => {
     const hasRoot = localFolders.some(
       folder => folder.id === "root"
@@ -182,9 +195,6 @@ export function Imagepad({
     ]
   }, [localFolders])
 
-  /*
-   * Imagens normalizadas.
-   */
   const normalizedImages = useMemo(() => {
     return localImages.map(image => ({
       ...image,
@@ -192,11 +202,6 @@ export function Imagepad({
     }))
   }, [localImages])
 
-  /*
-   * Atualiza o estado local E comunica o componente pai.
-   *
-   * Todas as operações de galeria passam por essa função.
-   */
   const updateGallery = (
     nextImages: SharedImage[],
     nextFolders: GalleryFolder[]
@@ -214,28 +219,19 @@ export function Imagepad({
       )
         ? nextFolders
         : [
-            ROOT_FOLDER,
-            ...nextFolders
-          ]
+          ROOT_FOLDER,
+          ...nextFolders
+        ]
 
-    /*
-     * Atualização imediata da interface.
-     */
     setLocalImages(normalizedNextImages)
     setLocalFolders(normalizedNextFolders)
 
-    /*
-     * Persistência no componente pai.
-     */
     onUpdateGallery(
       normalizedNextImages,
       normalizedNextFolders
     )
   }
 
-  /*
-   * ADICIONAR IMAGEM
-   */
   const addImage = () => {
     const name = newName.trim()
     const url = newUrl.trim()
@@ -244,9 +240,6 @@ export function Imagepad({
       return
     }
 
-    /*
-     * Confirma que a pasta selecionada ainda existe.
-     */
     const targetFolderExists =
       activeFolderId === "root" ||
       normalizedFolders.some(
@@ -261,7 +254,8 @@ export function Imagepad({
     const newImage: SharedImage = {
       id: crypto.randomUUID(),
       name,
-      url,
+      // Passa a URL pelo sanitizador antes de salvar
+      url: ensureHttps(url),
       isPublic: false,
       folderId: targetFolderId
     }
@@ -278,9 +272,6 @@ export function Imagepad({
     setNewUrl("")
   }
 
-  /*
-   * REMOVER IMAGEM
-   */
   const removeImage = (id: string) => {
     const updatedImages =
       normalizedImages.filter(
@@ -293,17 +284,14 @@ export function Imagepad({
     )
   }
 
-  /*
-   * ALTERAR VISIBILIDADE
-   */
   const toggleVisibility = (id: string) => {
     const updatedImages =
       normalizedImages.map(image =>
         image.id === id
           ? {
-              ...image,
-              isPublic: !image.isPublic
-            }
+            ...image,
+            isPublic: !image.isPublic
+          }
           : image
       )
 
@@ -313,9 +301,6 @@ export function Imagepad({
     )
   }
 
-  /*
-   * MOVER IMAGEM
-   */
   const moveImage = (
     imageId: string,
     folderId: string
@@ -334,9 +319,9 @@ export function Imagepad({
       normalizedImages.map(image =>
         image.id === imageId
           ? {
-              ...image,
-              folderId
-            }
+            ...image,
+            folderId
+          }
           : image
       )
 
@@ -346,25 +331,16 @@ export function Imagepad({
     )
   }
 
-  /*
-   * ABRIR FORMULÁRIO DE NOVA PASTA
-   */
   const openNewFolder = () => {
     setNewFolderName("")
     setShowNewFolder(true)
   }
 
-  /*
-   * CANCELAR NOVA PASTA
-   */
   const cancelNewFolder = () => {
     setNewFolderName("")
     setShowNewFolder(false)
   }
 
-  /*
-   * CRIAR PASTA
-   */
   const createFolder = () => {
     const name = newFolderName.trim()
 
@@ -372,15 +348,12 @@ export function Imagepad({
       return
     }
 
-    /*
-     * Evita criar duas pastas com o mesmo nome.
-     */
     const alreadyExists =
       normalizedFolders.some(
         folder =>
           folder.id !== "root" &&
           folder.name.trim().toLowerCase() ===
-            name.toLowerCase()
+          name.toLowerCase()
       )
 
     if (alreadyExists) {
@@ -400,34 +373,18 @@ export function Imagepad({
       newFolder
     ]
 
-    /*
-     * Atualiza primeiro a interface.
-     */
     setLocalFolders(updatedFolders)
-
-    /*
-     * Entra na pasta criada.
-     */
     setActiveFolderId(newFolder.id)
 
-    /*
-     * Persiste no componente pai.
-     */
     onUpdateGallery(
       normalizedImages,
       updatedFolders
     )
 
-    /*
-     * Fecha o formulário.
-     */
     setNewFolderName("")
     setShowNewFolder(false)
   }
 
-  /*
-   * RENOMEAR PASTA
-   */
   const renameFolder = (
     folder: GalleryFolder
   ) => {
@@ -452,7 +409,7 @@ export function Imagepad({
           item.id !== folder.id &&
           item.id !== "root" &&
           item.name.trim().toLowerCase() ===
-            trimmedName.toLowerCase()
+          trimmedName.toLowerCase()
       )
 
     if (alreadyExists) {
@@ -466,9 +423,9 @@ export function Imagepad({
       normalizedFolders.map(item =>
         item.id === folder.id
           ? {
-              ...item,
-              name: trimmedName
-            }
+            ...item,
+            name: trimmedName
+          }
           : item
       )
 
@@ -478,9 +435,6 @@ export function Imagepad({
     )
   }
 
-  /*
-   * EXCLUIR PASTA
-   */
   const deleteFolder = (
     folder: GalleryFolder
   ) => {
@@ -496,31 +450,21 @@ export function Imagepad({
       return
     }
 
-    /*
-     * Imagens da pasta excluída vão para root.
-     */
     const updatedImages =
       normalizedImages.map(image =>
         image.folderId === folder.id
           ? {
-              ...image,
-              folderId: "root"
-            }
+            ...image,
+            folderId: "root"
+          }
           : image
       )
 
-    /*
-     * Remove a pasta.
-     */
     const updatedFolders =
       normalizedFolders.filter(
         item => item.id !== folder.id
       )
 
-    /*
-     * Se estamos dentro da pasta excluída,
-     * voltamos imediatamente para root.
-     */
     if (activeFolderId === folder.id) {
       setActiveFolderId("root")
     }
@@ -531,17 +475,11 @@ export function Imagepad({
     )
   }
 
-  /*
-   * TODAS AS IMAGENS DA GALERIA.
-   */
   const totalVisibleImages =
     normalizedImages.filter(
       image => isGm || image.isPublic
     ).length
 
-  /*
-   * IMAGENS DA PASTA ATUAL.
-   */
   const visibleImages = useMemo(() => {
     const query =
       searchQuery.trim().toLowerCase()
@@ -552,17 +490,10 @@ export function Imagepad({
           isGm || image.isPublic
       )
       .filter(image => {
-        /*
-         * ROOT mostra todas as imagens.
-         */
         if (activeFolderId === "root") {
           return true
         }
 
-        /*
-         * Pasta normal mostra somente
-         * as imagens daquela pasta.
-         */
         return (
           image.folderId ===
           activeFolderId
@@ -584,18 +515,12 @@ export function Imagepad({
     searchQuery
   ])
 
-  /*
-   * PASTA ATUAL.
-   */
   const activeFolder =
     normalizedFolders.find(
       folder =>
         folder.id === activeFolderId
     ) || ROOT_FOLDER
 
-  /*
-   * Contador de imagens de uma pasta.
-   */
   const getFolderCount = (
     folderId: string
   ) => {
@@ -618,23 +543,15 @@ export function Imagepad({
   return (
     <div className="rpg-themed-workspace flex h-full min-h-0 flex-col overflow-hidden bg-[#15100c] p-4 text-foreground sm:p-6">
 
-      {/* ========================================================= */}
-      {/* HEADER                                                     */}
-      {/* ========================================================= */}
-
       <div className="mb-5 flex shrink-0 items-start justify-between gap-4 border-b border-primary/25 pb-5">
-
         <div className="min-w-0 flex-1">
-
           <span className="rpg-kicker mb-2">
             Acervo visual
           </span>
-
           <h2 className="rpg-title flex items-center gap-2 text-2xl font-black">
             <ImageIcon className="size-6" />
             Galeria arcana
           </h2>
-
           <p className="mt-1 text-sm text-muted-foreground">
             {isGm
               ? "Organize suas imagens por pastas."
@@ -642,9 +559,7 @@ export function Imagepad({
           </p>
 
           <div className="relative mt-4 max-w-md">
-
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-
             <input
               type="text"
               placeholder="Buscar imagem por nome..."
@@ -656,9 +571,7 @@ export function Imagepad({
               }
               className="w-full rounded-sm border border-white/10 bg-black/40 py-2 pl-9 pr-4 text-sm text-foreground focus:border-primary focus:outline-none"
             />
-
           </div>
-
         </div>
 
         {onClose && (
@@ -671,25 +584,11 @@ export function Imagepad({
             <X className="size-5 text-muted-foreground hover:text-white" />
           </button>
         )}
-
       </div>
 
-      {/* ========================================================= */}
-      {/* ÁREA PRINCIPAL                                             */}
-      {/* ========================================================= */}
-
       <div className="flex min-h-0 flex-1 gap-4">
-
-        {/* ======================================================= */}
-        {/* SIDEBAR                                                  */}
-        {/* ======================================================= */}
-
         <aside className="hidden w-64 shrink-0 flex-col overflow-hidden rounded-sm border border-primary/20 bg-black/20 md:flex">
-
-          {/* CABEÇALHO DAS PASTAS */}
-
           <div className="flex shrink-0 items-center justify-between border-b border-primary/15 p-3">
-
             <span className="text-xs font-black uppercase tracking-widest">
               Pastas
             </span>
@@ -706,40 +605,27 @@ export function Imagepad({
                 <FolderPlus className="size-4" />
               </Button>
             )}
-
           </div>
 
-          {/* LISTA DE PASTAS */}
-
           <div className="min-h-0 flex-1 overflow-y-auto p-2 custom-scrollbar-sepia">
-
-            {/* ROOT */}
-
             <button
               type="button"
               onClick={() =>
                 setActiveFolderId("root")
               }
-              className={`mb-1 flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm transition-colors ${
-                activeFolderId === "root"
+              className={`mb-1 flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm transition-colors ${activeFolderId === "root"
                   ? "bg-primary/15 text-primary"
                   : "hover:bg-white/5"
-              }`}
+                }`}
             >
-
               <Folder className="size-4 shrink-0" />
-
               <span className="min-w-0 flex-1 truncate">
                 Todas as imagens
               </span>
-
               <span className="text-[10px] text-muted-foreground">
                 {getFolderCount("root")}
               </span>
-
             </button>
-
-            {/* PASTAS CRIADAS */}
 
             {normalizedFolders
               .filter(
@@ -747,7 +633,6 @@ export function Imagepad({
                   folder.id !== "root"
               )
               .map(folder => {
-
                 const selected =
                   activeFolderId ===
                   folder.id
@@ -755,15 +640,11 @@ export function Imagepad({
                 return (
                   <div
                     key={folder.id}
-                    className={`group mb-1 flex w-full items-center rounded-sm transition-colors ${
-                      selected
+                    className={`group mb-1 flex w-full items-center rounded-sm transition-colors ${selected
                         ? "bg-primary/15 text-primary"
                         : "hover:bg-white/5"
-                    }`}
+                      }`}
                   >
-
-                    {/* BOTÃO DA PASTA */}
-
                     <button
                       type="button"
                       onClick={() =>
@@ -774,28 +655,19 @@ export function Imagepad({
                       className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm"
                       title={`Abrir pasta ${folder.name}`}
                     >
-
                       <Folder className="size-4 shrink-0" />
-
                       <span className="min-w-0 flex-1 truncate">
                         {folder.name}
                       </span>
-
                       <span className="text-[10px] text-muted-foreground">
                         {getFolderCount(
                           folder.id
                         )}
                       </span>
-
                     </button>
-
-                    {/* AÇÕES */}
 
                     {isGm && (
                       <div className="mr-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-
-                        {/* RENOMEAR */}
-
                         <button
                           type="button"
                           className="rounded p-1 hover:bg-white/10"
@@ -809,9 +681,6 @@ export function Imagepad({
                         >
                           <Pencil className="size-3" />
                         </button>
-
-                        {/* EXCLUIR */}
-
                         <button
                           type="button"
                           className="rounded p-1 text-red-400 hover:bg-red-400/10"
@@ -825,38 +694,29 @@ export function Imagepad({
                         >
                           <Trash2 className="size-3" />
                         </button>
-
                       </div>
                     )}
-
                   </div>
                 )
               })}
-
-            {/* EMPTY STATE DE PASTAS */}
 
             {normalizedFolders.filter(
               folder =>
                 folder.id !== "root"
             ).length === 0 && (
-              <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-                {isGm
-                  ? "Nenhuma pasta criada."
-                  : "Nenhuma pasta disponível."}
-              </div>
-            )}
-
+                <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                  {isGm
+                    ? "Nenhuma pasta criada."
+                    : "Nenhuma pasta disponível."}
+                </div>
+              )}
           </div>
-
-          {/* FORMULÁRIO NOVA PASTA */}
 
           {isGm && showNewFolder && (
             <div className="shrink-0 border-t border-primary/15 bg-black/20 p-3">
-
               <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Nova pasta
               </div>
-
               <input
                 autoFocus
                 type="text"
@@ -868,7 +728,6 @@ export function Imagepad({
                   )
                 }
                 onKeyDown={event => {
-
                   if (
                     event.key ===
                     "Enter"
@@ -876,7 +735,6 @@ export function Imagepad({
                     event.preventDefault()
                     createFolder()
                   }
-
                   if (
                     event.key ===
                     "Escape"
@@ -884,13 +742,10 @@ export function Imagepad({
                     event.preventDefault()
                     cancelNewFolder()
                   }
-
                 }}
                 className="mb-2 w-full rounded-sm border border-white/10 bg-black/40 p-2 text-xs text-foreground focus:border-primary focus:outline-none"
               />
-
               <div className="flex gap-2">
-
                 <Button
                   type="button"
                   size="sm"
@@ -900,7 +755,6 @@ export function Imagepad({
                 >
                   Criar
                 </Button>
-
                 <Button
                   type="button"
                   size="sm"
@@ -910,44 +764,26 @@ export function Imagepad({
                 >
                   Cancelar
                 </Button>
-
               </div>
-
             </div>
           )}
-
         </aside>
 
-        {/* ======================================================= */}
-        {/* CONTEÚDO                                                 */}
-        {/* ======================================================= */}
-
         <div className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
-
-          {/* TÍTULO / NAVEGAÇÃO */}
-
           <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
-
             <div className="flex min-w-0 items-center gap-2">
-
               <Folder className="size-5 shrink-0 text-primary" />
-
               <span
                 className="truncate text-sm font-bold"
                 title={activeFolder.name}
               >
                 {activeFolder.name}
               </span>
-
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-
               <span className="shrink-0 text-xs text-muted-foreground">
                 {visibleImages.length} imagem(ns)
               </span>
-
             </div>
-
-            {/* BOTÃO MOBILE */}
 
             {isGm && (
               <Button
@@ -960,23 +796,18 @@ export function Imagepad({
                 Pasta
               </Button>
             )}
-
           </div>
 
-          {/* NAVEGAÇÃO MOBILE DE PASTAS */}
-
           <div className="mb-4 flex shrink-0 gap-2 overflow-x-auto pb-1 md:hidden">
-
             <button
               type="button"
               onClick={() =>
                 setActiveFolderId("root")
               }
-              className={`flex shrink-0 items-center gap-2 rounded-sm border px-3 py-2 text-xs font-bold ${
-                activeFolderId === "root"
+              className={`flex shrink-0 items-center gap-2 rounded-sm border px-3 py-2 text-xs font-bold ${activeFolderId === "root"
                   ? "border-primary/40 bg-primary/15 text-primary"
                   : "border-white/10 bg-black/20 text-muted-foreground"
-              }`}
+                }`}
             >
               <Folder className="size-3.5" />
               Todas
@@ -996,31 +827,23 @@ export function Imagepad({
                       folder.id
                     )
                   }
-                  className={`flex max-w-40 shrink-0 items-center gap-2 rounded-sm border px-3 py-2 text-xs font-bold ${
-                    activeFolderId ===
-                    folder.id
+                  className={`flex max-w-40 shrink-0 items-center gap-2 rounded-sm border px-3 py-2 text-xs font-bold ${activeFolderId ===
+                      folder.id
                       ? "border-primary/40 bg-primary/15 text-primary"
                       : "border-white/10 bg-black/20 text-muted-foreground"
-                  }`}
+                    }`}
                   title={folder.name}
                 >
                   <Folder className="size-3.5 shrink-0" />
-
                   <span className="truncate">
                     {folder.name}
                   </span>
                 </button>
               ))}
-
           </div>
-
-          {/* ===================================================== */}
-          {/* ADIÇÃO DE IMAGEM                                       */}
-          {/* ===================================================== */}
 
           {isGm && (
             <div className="panel mb-5 flex shrink-0 flex-col gap-3 rounded-sm border border-primary/20 p-4 sm:flex-row">
-
               <input
                 type="text"
                 placeholder="Nome da imagem"
@@ -1041,7 +864,6 @@ export function Imagepad({
                 }}
                 className="flex-1 rounded-sm border border-white/10 bg-black/40 p-2 text-sm focus:border-primary focus:outline-none"
               />
-
               <input
                 type="text"
                 placeholder="URL da imagem (https://...)"
@@ -1062,7 +884,6 @@ export function Imagepad({
                 }}
                 className="flex-1 rounded-sm border border-white/10 bg-black/40 p-2 text-sm focus:border-primary focus:outline-none"
               />
-
               <Button
                 type="button"
                 variant="magical"
@@ -1072,36 +893,27 @@ export function Imagepad({
                 <Plus className="mr-2 size-4" />
                 Adicionar
               </Button>
-
             </div>
           )}
 
-          {/* ===================================================== */}
-          {/* GRID DE IMAGENS                                        */}
-          {/* ===================================================== */}
-
           <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 content-start gap-5 overflow-y-auto pb-10 pr-2 custom-scrollbar-sepia sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-
             {visibleImages.map(img => (
-
               <div
                 key={img.id}
                 className="rpg-gallery-card rpg-themed-card group relative flex flex-col overflow-hidden border border-white/10 bg-zinc-900 shadow-md transition-all duration-300 hover:shadow-xl"
               >
-
-                {/* IMAGEM */}
-
                 <div
                   className="relative aspect-video shrink-0 cursor-pointer overflow-hidden bg-black/80"
                   onClick={() =>
+                    // Passa a URL garantidamente HTTPS para a função do pai (Expansão)
                     onShowImage(
-                      img.url
+                      ensureHttps(img.url)
                     )
                   }
                 >
-
                   <img
-                    src={img.url}
+                    // Renderiza também forçando o HTTPS (Miniatura)
+                    src={ensureHttps(img.url)}
                     alt={img.name}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
@@ -1121,15 +933,11 @@ export function Imagepad({
                     )}
                   </div>
 
-                  {/* STATUS */}
-
                   {isGm && (
                     <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md border border-white/10 bg-black/80 px-2 py-1">
-
                       {img.isPublic ? (
                         <>
                           <Eye className="size-3 text-green-400" />
-
                           <span className="text-[9px] font-bold uppercase text-green-400">
                             Pública
                           </span>
@@ -1137,34 +945,25 @@ export function Imagepad({
                       ) : (
                         <>
                           <EyeOff className="size-3 text-muted-foreground" />
-
                           <span className="text-[9px] font-bold uppercase text-muted-foreground">
                             Privada
                           </span>
                         </>
                       )}
-
                     </div>
                   )}
-
                 </div>
 
-                {/* RODAPÉ */}
-
                 <div className="relative z-20 flex w-full shrink-0 items-center justify-between gap-2 border-t border-primary/15 bg-[#1b140f] p-3">
-
                   <div className="min-w-0 flex-1">
-
                     <span
                       className="block truncate text-sm font-bold text-zinc-200"
                       title={img.name}
                     >
                       {img.name}
                     </span>
-
                     {isGm && (
                       <span className="block truncate text-[9px] text-muted-foreground">
-
                         {normalizedFolders.find(
                           folder =>
                             folder.id ===
@@ -1172,26 +971,20 @@ export function Imagepad({
                               "root")
                         )?.name ||
                           "Todas as imagens"}
-
                       </span>
                     )}
-
                   </div>
 
                   {isGm && (
                     <div className="flex shrink-0 items-center gap-1">
-
-                      {/* VISIBILIDADE */}
-
                       <Button
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className={`h-8 w-8 p-0 ${
-                          img.isPublic
+                        className={`h-8 w-8 p-0 ${img.isPublic
                             ? "text-green-400 hover:bg-green-400/20"
                             : "text-muted-foreground hover:bg-white/10"
-                        }`}
+                          }`}
                         onClick={event => {
                           event.stopPropagation()
                           toggleVisibility(
@@ -1211,8 +1004,6 @@ export function Imagepad({
                         )}
                       </Button>
 
-                      {/* MOVER */}
-
                       <select
                         value={
                           img.folderId ||
@@ -1231,7 +1022,6 @@ export function Imagepad({
                         className="h-8 max-w-28 rounded-sm border border-white/10 bg-black/50 px-1 text-[10px] text-zinc-300 outline-none"
                         title="Mover para pasta"
                       >
-
                         {normalizedFolders.map(
                           folder => (
                             <option
@@ -1246,10 +1036,7 @@ export function Imagepad({
                             </option>
                           )
                         )}
-
                       </select>
-
-                      {/* EXCLUIR */}
 
                       <Button
                         type="button"
@@ -1266,23 +1053,15 @@ export function Imagepad({
                       >
                         <Trash2 className="size-4" />
                       </Button>
-
                     </div>
                   )}
-
                 </div>
-
               </div>
-
             ))}
-
-            {/* EMPTY STATE */}
 
             {visibleImages.length === 0 && (
               <div className="rpg-empty col-span-full flex flex-col items-center justify-center border border-dashed border-border/40 bg-black/20 py-16 text-muted-foreground">
-
                 <Folder className="mb-3 size-8 opacity-20" />
-
                 <span className="italic">
                   {searchQuery
                     ? "Nenhuma imagem corresponde à sua busca."
@@ -1290,37 +1069,22 @@ export function Imagepad({
                       ? "Nenhuma imagem nesta pasta."
                       : "Nenhuma imagem foi liberada pelo Mestre nesta pasta."}
                 </span>
-
               </div>
             )}
-
           </div>
-
         </div>
-
       </div>
-
-      {/* ========================================================= */}
-      {/* MODAL MOBILE / NOVA PASTA                                 */}
-      {/* ========================================================= */}
 
       {isGm && showNewFolder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 md:hidden">
-
           <div className="w-full max-w-sm rounded-sm border border-primary/30 bg-[#15100c] p-4 shadow-2xl">
-
             <div className="mb-3 flex items-center justify-between">
-
               <div className="flex items-center gap-2">
-
                 <FolderPlus className="size-5 text-primary" />
-
                 <span className="font-bold">
                   Nova pasta
                 </span>
-
               </div>
-
               <button
                 type="button"
                 onClick={cancelNewFolder}
@@ -1328,7 +1092,6 @@ export function Imagepad({
               >
                 <X className="size-4" />
               </button>
-
             </div>
 
             <input
@@ -1342,7 +1105,6 @@ export function Imagepad({
                 )
               }
               onKeyDown={event => {
-
                 if (
                   event.key ===
                   "Enter"
@@ -1350,7 +1112,6 @@ export function Imagepad({
                   event.preventDefault()
                   createFolder()
                 }
-
                 if (
                   event.key ===
                   "Escape"
@@ -1358,13 +1119,11 @@ export function Imagepad({
                   event.preventDefault()
                   cancelNewFolder()
                 }
-
               }}
               className="mb-3 w-full rounded-sm border border-white/10 bg-black/40 p-2 text-sm text-foreground focus:border-primary focus:outline-none"
             />
 
             <div className="flex gap-2">
-
               <Button
                 type="button"
                 variant="magical"
@@ -1373,7 +1132,6 @@ export function Imagepad({
               >
                 Criar
               </Button>
-
               <Button
                 type="button"
                 variant="ghost"
@@ -1381,14 +1139,10 @@ export function Imagepad({
               >
                 Cancelar
               </Button>
-
             </div>
-
           </div>
-
         </div>
       )}
-
     </div>
   )
 }

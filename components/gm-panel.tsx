@@ -2,11 +2,13 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Gift, Search, ChevronDown, Package, Info, Coins, Loader2, Send, Sword, Shield, Gem, Plus, Save, Trash2, GraduationCap, Heart, Zap, Dices, FolderOpen, FolderPlus, EyeOff, Eye, ArrowRightLeft } from "lucide-react"
+import { X, Gift, Search, ChevronDown, Package, Info, Coins, Loader2, Send, Sword, Shield, Gem, Plus, Save, Trash2, GraduationCap, Heart, Zap, Dices, FolderOpen, FolderPlus, EyeOff, Eye, ArrowRightLeft, Sparkles, Check, Pencil } from "lucide-react"
 
+import { ItemActionsEditor } from "./inventory-equipment"
+import { getItemActions, validateItemAction } from "@/lib/item-mechanics"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
-import { EQUIPMENT } from "@/lib/game-data"
+import { EQUIPMENT, GameClass, GameSkill, GameSkillBonus } from "@/lib/game-data"
 import type { Character, ActiveCreature, CustomItem } from "@/lib/types"
 import { GMHazardPanel, HazardData } from "./condition-manager"
 import type { StoreFolder } from "@/lib/types"
@@ -28,7 +30,7 @@ interface GmPanelProps {
   members: Member[]
   customEquipment: any[]
   customClasses: any[]
-  onCreateEquipment: (eq: any) => void
+  onCreateEquipment: (eq: any) => void | Promise<void>
   onDeleteEquipment: (id: string) => void
   onCreateClass: (cls: any) => void
   onDeleteClass: (id: string) => void
@@ -54,6 +56,555 @@ interface GmPanelProps {
     targetCharacterIds: string[] | null
   ) => void
 }
+
+function SkillForgeCard({
+  skill,
+  expanded,
+  onToggle,
+  onUpdate,
+  onRemove,
+  setClassDraft,
+}: {
+  skill: GameSkill
+  expanded: boolean
+  onToggle: () => void
+  onUpdate: (updates: Partial<GameSkill>) => void
+  onRemove: () => void
+  setClassDraft: React.Dispatch<React.SetStateAction<GameClass>>
+}) {
+  const levels = Array.from(
+    { length: skill.maxLevel },
+    (_, index) => index + 1
+  )
+
+  function toggleSkillAction(skillId: string) {
+    setClassDraft(prev => ({
+      ...prev,
+      skills: prev.skills.map(skill => {
+        if (skill.id !== skillId) return skill
+
+        return {
+          ...skill,
+          action: skill.action
+            ? undefined
+            : {
+              cost: 5,
+              resource: "mp",
+            },
+        }
+      }),
+    }))
+  }
+
+  function updateSkillAction(
+    skillId: string,
+    updates: Partial<NonNullable<GameSkill["action"]>>
+  ) {
+    setClassDraft(prev => ({
+      ...prev,
+      skills: prev.skills.map(skill =>
+        skill.id === skillId
+          ? {
+            ...skill,
+            action: skill.action
+              ? {
+                ...skill.action,
+                ...updates,
+              }
+              : {
+                cost: 0,
+                resource: "mp",
+                ...updates,
+              },
+          }
+          : skill
+      ),
+    }))
+  }
+
+  function addSkillBonus(skillId: string, level: number) {
+    const bonus = createBonusDraft()
+
+    setClassDraft(prev => ({
+      ...prev,
+      skills: prev.skills.map(skill => {
+        if (skill.id !== skillId) return skill
+
+        const bonuses = {
+          ...(skill.bonuses || {}),
+        }
+
+        bonuses[level] = [
+          ...(bonuses[level] || []),
+          bonus,
+        ]
+
+        return {
+          ...skill,
+          bonuses,
+        }
+      }),
+    }))
+  }
+
+  function updateSkillBonus(
+    skillId: string,
+    level: number,
+    bonusId: string,
+    updates: Partial<GameSkillBonus>
+  ) {
+    setClassDraft(prev => ({
+      ...prev,
+      skills: prev.skills.map(skill => {
+        if (skill.id !== skillId) return skill
+
+        const bonuses = {
+          ...(skill.bonuses || {}),
+        }
+
+        bonuses[level] = (bonuses[level] || []).map(bonus =>
+          bonus.id === bonusId
+            ? { ...bonus, ...updates }
+            : bonus
+        )
+
+        return {
+          ...skill,
+          bonuses,
+        }
+      }),
+    }))
+  }
+
+  function removeSkillBonus(
+    skillId: string,
+    level: number,
+    bonusId: string
+  ) {
+    setClassDraft(prev => ({
+      ...prev,
+      skills: prev.skills.map(skill => {
+        if (skill.id !== skillId) return skill
+
+        const bonuses = {
+          ...(skill.bonuses || {}),
+        }
+
+        bonuses[level] = (bonuses[level] || [])
+          .filter(bonus => bonus.id !== bonusId)
+
+        if (bonuses[level].length === 0) {
+          delete bonuses[level]
+        }
+
+        return {
+          ...skill,
+          bonuses,
+        }
+      }),
+    }))
+  }
+
+  return (
+    <div
+      className={`
+        rounded-xl border overflow-hidden transition-all
+        ${expanded
+          ? "border-amber-600/40 bg-amber-600/[0.04]"
+          : "border-white/5 bg-black/40 hover:border-white/15"
+        }
+      `}
+    >
+      {/* HEADER */}
+      <div className="flex items-center gap-3 p-3">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex-1 min-w-0 flex items-center gap-3 text-left"
+        >
+          <div className="size-9 rounded-lg bg-amber-600/10 border border-amber-600/20 flex items-center justify-center shrink-0">
+            <GraduationCap className="size-4 text-amber-500" />
+          </div>
+
+          <div className="min-w-0">
+            <div className="font-bold text-sm text-foreground truncate">
+              {skill.name || "Nova Habilidade"}
+            </div>
+
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                Máx. Nv. {skill.maxLevel}
+              </span>
+
+              {skill.action && (
+                <span className="text-[9px] uppercase tracking-widest text-blue-400">
+                  • Ação
+                </span>
+              )}
+
+              {skill.bonuses &&
+                Object.keys(skill.bonuses).length > 0 && (
+                  <span className="text-[9px] uppercase tracking-widest text-purple-400">
+                    • Bônus
+                  </span>
+                )}
+            </div>
+          </div>
+
+          <ChevronDown
+            className={`
+              size-4 text-muted-foreground transition-transform
+              ${expanded ? "rotate-180 text-amber-500" : ""}
+            `}
+          />
+        </button>
+
+        <button
+          type="button"
+          onClick={e => {
+            e.stopPropagation()
+            onRemove()
+          }}
+          className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          title="Remover habilidade"
+        >
+          <Trash2 className="size-4" />
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 1 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+            onClick={e => e.stopPropagation()}
+            onMouseDown={e => e.stopPropagation()}
+          >
+            <div className="p-4 pt-1 border-t border-white/5 space-y-4">
+
+              {/* DADOS BÁSICOS */}
+              <div className="grid grid-cols-[1fr_100px] gap-3">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[9px] uppercase tracking-widest font-bold text-amber-500">
+                    Nome
+                  </span>
+
+                  <input
+                    value={skill.name}
+                    onChange={e =>
+                      onUpdate({ name: e.target.value })
+                    }
+                    placeholder="Ex: Golpe Sombrio"
+                    className="bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-amber-600/50"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[9px] uppercase tracking-widest font-bold text-amber-500">
+                    Máx. Nível
+                  </span>
+
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={skill.maxLevel}
+                    onChange={e =>
+                      onUpdate({
+                        maxLevel: Math.max(
+                          1,
+                          Number(e.target.value)
+                        ),
+                      })
+                    }
+                    className="bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-sm font-mono text-center outline-none focus:border-amber-600/50"
+                  />
+                </label>
+              </div>
+
+              {/* DESCRIÇÃO */}
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[9px] uppercase tracking-widest font-bold text-amber-500">
+                  Descrição / Regra
+                </span>
+
+                <textarea
+                  value={skill.description}
+                  onChange={e =>
+                    onUpdate({
+                      description: e.target.value,
+                    })
+                  }
+                  rows={4}
+                  placeholder="Descreva exatamente o funcionamento da habilidade..."
+                  className="bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-xs leading-relaxed resize-none outline-none focus:border-amber-600/50"
+                />
+
+                <span className="text-[9px] text-muted-foreground">
+                  Você pode usar [Nível da Perícia] e outras fórmulas
+                  utilizadas pelas classes oficiais.
+                </span>
+              </label>
+
+              {/* AÇÃO */}
+              <div className="rounded-xl border border-blue-500/15 bg-blue-500/[0.03] overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleSkillAction(skill.id)}
+                  className="w-full flex items-center justify-between p-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <Zap className="size-4 text-blue-400" />
+
+                    <div className="text-left">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-blue-400">
+                        Ação / Custo
+                      </div>
+
+                      <div className="text-[10px] text-muted-foreground">
+                        Permite configurar um custo como nas classes oficiais.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`
+                      size-5 rounded-full border flex items-center justify-center
+                      ${skill.action
+                        ? "border-blue-400 bg-blue-400"
+                        : "border-white/20"
+                      }
+                    `}
+                  >
+                    {skill.action && (
+                      <Check className="size-3 text-black" />
+                    )}
+                  </div>
+                </button>
+
+                {skill.action && (
+                  <div className="grid grid-cols-2 gap-3 p-3 pt-0">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                        Custo
+                      </span>
+
+                      <input
+                        type="number"
+                        min={0}
+                        value={skill.action.cost}
+                        onChange={e =>
+                          onUpdate({
+                            action: {
+                              ...skill.action!,
+                              cost: Number(e.target.value),
+                            },
+                          })
+                        }
+                        className="bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-sm font-mono outline-none"
+                      />
+                    </label>
+
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                        Recurso
+                      </span>
+
+                      <select
+                        value={skill.action.resource}
+                        onChange={e =>
+                          onUpdate({
+                            action: {
+                              ...skill.action!,
+                              resource:
+                                e.target.value as
+                                | "mp"
+                                | "hp"
+                                | "ip",
+                            },
+                          })
+                        }
+                        className="bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                      >
+                        <option value="mp">PM — Pontos de Mente</option>
+                        <option value="hp">PV — Pontos de Vida</option>
+                        <option value="ip">PI — Pontos de Inventário</option>
+                      </select>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* BÔNUS */}
+              <div className="rounded-xl border border-purple-500/15 bg-purple-500/[0.03] overflow-hidden">
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="size-4 text-purple-400" />
+
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-purple-400">
+                        Bônus por Nível
+                      </div>
+
+                      <div className="text-[10px] text-muted-foreground">
+                        Crie escolhas como Mutação ou aprimoramentos como Simbiose.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-3 pb-3 space-y-2">
+                  {levels.map(level => {
+                    const bonuses =
+                      skill.bonuses?.[level] || []
+
+                    return (
+                      <div
+                        key={level}
+                        className="rounded-lg border border-white/5 bg-black/30"
+                      >
+                        <div className="flex items-center justify-between px-3 py-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-purple-300">
+                            Nível {level}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const bonus = createBonusDraft()
+
+                              onUpdate({
+                                bonuses: {
+                                  ...(skill.bonuses || {}),
+                                  [level]: [
+                                    ...bonuses,
+                                    bonus,
+                                  ],
+                                },
+                              })
+                            }}
+                            className="text-[9px] font-bold uppercase tracking-wider text-purple-400 hover:text-purple-300"
+                          >
+                            + Opção
+                          </button>
+                        </div>
+
+                        {bonuses.length > 0 && (
+                          <div className="p-2 pt-0 space-y-2">
+                            {bonuses.map(bonus => (
+                              <div
+                                key={bonus.id}
+                                className="relative rounded-lg border border-purple-500/10 bg-[#111] p-3 space-y-2"
+                              >
+                                <div className="flex gap-2">
+                                  <input
+                                    value={bonus.name}
+                                    onChange={e => {
+                                      const next = {
+                                        ...(skill.bonuses || {}),
+                                      }
+
+                                      next[level] =
+                                        bonuses.map(item =>
+                                          item.id === bonus.id
+                                            ? {
+                                              ...item,
+                                              name: e.target.value,
+                                            }
+                                            : item
+                                        )
+
+                                      onUpdate({
+                                        bonuses: next,
+                                      })
+                                    }}
+                                    placeholder="Nome da opção"
+                                    className="flex-1 bg-black/50 border border-white/10 rounded px-2 py-1.5 text-xs font-bold outline-none focus:border-purple-500/40"
+                                  />
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const next = {
+                                        ...(skill.bonuses || {}),
+                                      }
+
+                                      next[level] =
+                                        bonuses.filter(
+                                          item =>
+                                            item.id !== bonus.id
+                                        )
+
+                                      if (
+                                        next[level].length === 0
+                                      ) {
+                                        delete next[level]
+                                      }
+
+                                      onUpdate({
+                                        bonuses: next,
+                                      })
+                                    }}
+                                    className="p-1.5 text-muted-foreground hover:text-red-400"
+                                  >
+                                    <Trash2 className="size-3" />
+                                  </button>
+                                </div>
+
+                                <textarea
+                                  value={bonus.description}
+                                  onChange={e => {
+                                    const next = {
+                                      ...(skill.bonuses || {}),
+                                    }
+
+                                    next[level] =
+                                      bonuses.map(item =>
+                                        item.id === bonus.id
+                                          ? {
+                                            ...item,
+                                            description:
+                                              e.target.value,
+                                          }
+                                          : item
+                                      )
+
+                                    onUpdate({
+                                      bonuses: next,
+                                    })
+                                  }}
+                                  rows={2}
+                                  placeholder="O que esta opção concede?"
+                                  className="w-full bg-black/50 border border-white/10 rounded px-2 py-1.5 text-[11px] resize-none outline-none focus:border-purple-500/40"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+
+function createBonusDraft(): GameSkillBonus {
+  return {
+    id: `bonus-${Math.random().toString(36).substring(2, 9)}`,
+    name: "",
+    description: "",
+  }
+}
+
 
 export function GmPanel({
   isOpen,
@@ -96,23 +647,42 @@ export function GmPanel({
   const [customItemType, setCustomItemType] = useState<"text" | "image" | "video" | "app-blueprints">("text")
   const [customItemContent, setCustomItemContent] = useState("")
 
-  // 3. APAGUEI O STATE activeHazards DAQUI, ELE AGORA VEM DAS PROPS LÁ DE CIMA
-  // 4. APAGUEI O handleLaunchHazard E O handleStopHazard DAQUI TAMBÉM
-
   // Rascunho Equipamentos de Sistema
   const [creationMode, setCreationMode] = useState<"relic" | "system">("system")
-  const [sysDraft, setSysDraft] = useState({
+  const [sysDraft, setSysDraft] = useState<any>({
     name: "", category: "weapon", cost: 100, purchasable: true,
-    detail: "", damage: "", defense: "", mdef: "", type: "", bonus: "", effect: ""
+    detail: "", damage: "", defense: "", mdef: "", type: "", bonus: "", effect: "", actions: []
   })
 
   // Rascunho de Classe (Homebrew)
-  const [classDraft, setClassDraft] = useState({
-    name: "", archetype: "", description: "", hpPerLevel: 5, mpPerLevel: 5, primaryAttribute: "mig",
-    skills: [
-      { id: "sk1", name: "", maxLevel: 5, description: "" }
-    ]
+  const createSkillDraft = (): GameSkill => ({
+    id: `sk-${Math.random().toString(36).substring(2, 9)}`,
+    name: "",
+    maxLevel: 5,
+    description: "",
   })
+
+  const createBonusDraft = (): GameSkillBonus => ({
+    id: `bonus-${Math.random().toString(36).substring(2, 9)}`,
+    name: "",
+    description: "",
+  })
+
+  const [classDraft, setClassDraft] = useState<GameClass>({
+    id: "",
+    name: "",
+    archetype: "",
+    description: "",
+    hpPerLevel: 5,
+    mpPerLevel: 5,
+    primaryAttribute: "mig",
+    skills: [createSkillDraft()],
+  })
+
+  const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null)
+
+  // Estado para expandir os detalhes da classe homebrew
+  const [expandedClassId, setExpandedClassId] = useState<string | null>(null)
 
   const defaultFolders: StoreFolder[] = [
     {
@@ -167,13 +737,370 @@ export function GmPanel({
     item.detail.toLowerCase().includes(lootSearchQuery.toLowerCase())
   )
 
+  function CreatedClassCard({
+    cls,
+    expanded,
+    onToggle,
+    onDelete,
+  }: {
+    cls: GameClass
+    expanded: boolean
+    onToggle: () => void
+    onDelete: () => void
+  }) {
+    const attributeLabels: Record<GameClass["primaryAttribute"], string> = {
+      mig: "Vigor (MIG)",
+      dex: "Destreza (DEX)",
+      ins: "Intuição (INS)",
+      wlp: "Vontade (WLP)",
+    }
+
+    return (
+      <div
+        className={`
+        rounded-2xl border overflow-hidden transition-all
+        ${expanded
+            ? "border-amber-500/40 bg-amber-500/[0.04]"
+            : "border-white/10 bg-black/40 hover:border-white/20"
+          }
+      `}
+      >
+        {/* CABEÇALHO */}
+        <div className="flex items-center gap-3 p-4">
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex-1 min-w-0 flex items-center gap-3 text-left"
+          >
+            <div className="size-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+              <GraduationCap className="size-5 text-amber-500" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h4 className="font-serif font-black text-base text-foreground truncate">
+                  {cls.name}
+                </h4>
+
+                <span className="text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 shrink-0">
+                  Homebrew
+                </span>
+              </div>
+
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5 truncate">
+                {cls.archetype}
+              </p>
+
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                <span className="text-[9px] font-mono px-2 py-1 rounded bg-red-500/10 text-red-300 border border-red-500/10">
+                  {cls.hpPerLevel} PV/Nv
+                </span>
+
+                <span className="text-[9px] font-mono px-2 py-1 rounded bg-blue-500/10 text-blue-300 border border-blue-500/10">
+                  {cls.mpPerLevel} PM/Nv
+                </span>
+
+                <span className="text-[9px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10">
+                  {attributeLabels[cls.primaryAttribute]}
+                </span>
+
+                <span className="text-[9px] px-2 py-1 rounded bg-amber-500/10 text-amber-300 border border-amber-500/10">
+                  {cls.skills.length} perícia{cls.skills.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+            </div>
+
+            <ChevronDown
+              className={`
+              size-4 text-muted-foreground shrink-0 transition-transform
+              ${expanded ? "rotate-180 text-amber-500" : ""}
+            `}
+            />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+
+              if (
+                confirm(
+                  `Excluir a classe "${cls.name}"? Esta ação não pode ser desfeita.`
+                )
+              ) {
+                onDelete()
+              }
+            }}
+            className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            title="Excluir classe"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+              onClick={e => e.stopPropagation()}
+              onMouseDown={e => e.stopPropagation()}
+            >
+              <div className="border-t border-white/5 p-4 space-y-5">
+
+                {/* IDENTIDADE */}
+                <div className="rounded-xl border border-amber-500/10 bg-amber-500/[0.02] p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Info className="size-4 text-amber-500" />
+
+                    <span className="text-[10px] uppercase tracking-widest font-black text-amber-500">
+                      Identidade da Classe
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                    {cls.description || "Sem descrição."}
+                  </p>
+                </div>
+
+                {/* ATRIBUTOS */}
+                <div>
+                  <div className="text-[9px] uppercase tracking-widest font-black text-muted-foreground mb-2">
+                    Progressão
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-lg border border-red-500/10 bg-red-500/[0.03] p-3">
+                      <div className="text-[8px] uppercase tracking-widest text-red-400">
+                        Vida
+                      </div>
+                      <div className="font-mono font-bold text-sm mt-1">
+                        +{cls.hpPerLevel} PV
+                      </div>
+                      <div className="text-[8px] text-muted-foreground">
+                        por nível
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-blue-500/10 bg-blue-500/[0.03] p-3">
+                      <div className="text-[8px] uppercase tracking-widest text-blue-400">
+                        Mente
+                      </div>
+                      <div className="font-mono font-bold text-sm mt-1">
+                        +{cls.mpPerLevel} PM
+                      </div>
+                      <div className="text-[8px] text-muted-foreground">
+                        por nível
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-purple-500/10 bg-purple-500/[0.03] p-3">
+                      <div className="text-[8px] uppercase tracking-widest text-purple-400">
+                        Atributo
+                      </div>
+                      <div className="font-bold text-sm mt-1">
+                        {cls.primaryAttribute.toUpperCase()}
+                      </div>
+                      <div className="text-[8px] text-muted-foreground">
+                        {attributeLabels[cls.primaryAttribute]}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* HABILIDADES */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-[9px] uppercase tracking-widest font-black text-amber-500">
+                        Habilidades
+                      </div>
+
+                      <div className="text-[9px] text-muted-foreground mt-0.5">
+                        Todas as regras configuradas para esta classe
+                      </div>
+                    </div>
+
+                    <span className="text-[9px] font-mono text-muted-foreground">
+                      {cls.skills.length} total
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {cls.skills.map((skill, index) => (
+                      <div
+                        key={skill.id || index}
+                        className="rounded-xl border border-white/5 bg-black/40 overflow-hidden"
+                      >
+                        {/* SKILL HEADER */}
+                        <div className="p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="size-6 rounded-md bg-amber-500/10 text-amber-500 flex items-center justify-center text-[9px] font-black">
+                                  {index + 1}
+                                </span>
+
+                                <h5 className="font-bold text-sm truncate">
+                                  {skill.name || "Habilidade sem nome"}
+                                </h5>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-1.5 shrink-0">
+                              <span className="text-[8px] font-mono px-2 py-1 rounded bg-white/5 text-muted-foreground">
+                                Máx. Nv. {skill.maxLevel}
+                              </span>
+
+                              {skill.action && (
+                                <span className="text-[8px] px-2 py-1 rounded bg-blue-500/10 text-blue-300 border border-blue-500/10 flex items-center gap-1">
+                                  <Zap className="size-2.5" />
+                                  Ação
+                                </span>
+                              )}
+
+                              {skill.bonuses &&
+                                Object.keys(skill.bonuses).length > 0 && (
+                                  <span className="text-[8px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10 flex items-center gap-1">
+                                    <Sparkles className="size-2.5" />
+                                    Bônus
+                                  </span>
+                                )}
+                            </div>
+                          </div>
+
+                          {/* DESCRIÇÃO */}
+                          <div className="mt-3 text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                            {skill.description || "Sem descrição."}
+                          </div>
+
+                          {/* AÇÃO */}
+                          {skill.action && (
+                            <div className="mt-3 rounded-lg border border-blue-500/10 bg-blue-500/[0.03] p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Zap className="size-3.5 text-blue-400" />
+
+                                <span className="text-[9px] uppercase tracking-widest font-black text-blue-400">
+                                  Custo de Ação
+                                </span>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <span className="text-[10px] font-mono px-2 py-1 rounded bg-blue-500/10 text-blue-200">
+                                  {skill.action.cost}
+                                </span>
+
+                                <span className="text-[10px] uppercase px-2 py-1 rounded bg-white/5 text-muted-foreground">
+                                  {skill.action.resource === "mp"
+                                    ? "PM — Pontos de Mente"
+                                    : skill.action.resource === "hp"
+                                      ? "PV — Pontos de Vida"
+                                      : "PI — Pontos de Inventário"}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* BÔNUS */}
+                          {skill.bonuses &&
+                            Object.keys(skill.bonuses).length > 0 && (
+                              <div className="mt-3 rounded-lg border border-purple-500/10 bg-purple-500/[0.03] p-3">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <Sparkles className="size-3.5 text-purple-400" />
+
+                                  <span className="text-[9px] uppercase tracking-widest font-black text-purple-400">
+                                    Bônus por Nível
+                                  </span>
+                                </div>
+
+                                <div className="space-y-3">
+                                  {Object.entries(skill.bonuses)
+                                    .sort(
+                                      ([a], [b]) =>
+                                        Number(a) - Number(b)
+                                    )
+                                    .map(([level, bonuses]) => (
+                                      <div key={level}>
+                                        <div className="text-[8px] uppercase tracking-widest font-black text-purple-300 mb-2">
+                                          Nível {level}
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                          {bonuses.map(bonus => (
+                                            <div
+                                              key={bonus.id}
+                                              className="rounded-lg border border-purple-500/10 bg-black/30 p-2.5"
+                                            >
+                                              <div className="flex items-center gap-2">
+                                                <Check className="size-3 text-purple-400 shrink-0" />
+
+                                                <span className="text-[10px] font-bold">
+                                                  {bonus.name ||
+                                                    "Opção sem nome"}
+                                                </span>
+                                              </div>
+
+                                              <p className="text-[9px] text-muted-foreground mt-1.5 leading-relaxed whitespace-pre-wrap pl-5">
+                                                {bonus.description ||
+                                                  "Sem descrição."}
+                                              </p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ))}
+                                </div>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                    ))}
+
+                    {cls.skills.length === 0 && (
+                      <div className="py-8 text-center border border-dashed border-white/10 rounded-xl">
+                        <GraduationCap className="size-7 mx-auto mb-2 text-muted-foreground opacity-30" />
+                        <p className="text-xs text-muted-foreground">
+                          Esta classe não possui habilidades.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ID TÉCNICO */}
+                <div className="pt-2 border-t border-white/5 flex justify-between gap-3">
+                  <span className="text-[8px] uppercase tracking-widest text-muted-foreground">
+                    ID da classe
+                  </span>
+
+                  <code className="text-[8px] font-mono text-muted-foreground break-all text-right">
+                    {cls.id}
+                  </code>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    )
+  }
 
 
-  function handleSaveSystemItem() {
+
+  const [savingEquipment, setSavingEquipment] = useState(false)
+
+  async function handleSaveSystemItem() {
+    if (savingEquipment) return
     if (!sysDraft.name.trim() || !sysDraft.detail.trim()) return alert("Preencha o nome e a descrição do equipamento.")
 
+    const actions = Array.isArray(sysDraft.actions) ? sysDraft.actions : []
+    try { actions.forEach((action: any) => validateItemAction(action)) } catch (error) { return alert(error instanceof Error ? error.message : "Revise as ações do item.") }
     const newEq = {
-      id: "custom-eq-" + Math.random().toString(36).substring(2, 10),
+      ...sysDraft,
+      actions,
+      id: sysDraft.id || "custom-eq-" + Math.random().toString(36).substring(2, 10),
       name: sysDraft.name,
       category: sysDraft.category,
       cost: Number(sysDraft.cost),
@@ -187,12 +1114,16 @@ export function GmPanel({
       effect: sysDraft.effect,
 
       // Todo item custom começa na pasta CUSTOM
-      folderId: "custom"
+      folderId: sysDraft.folderId || "custom"
     }
-    onCreateEquipment(newEq)
-    setSysDraft({ name: "", category: "weapon", cost: 100, purchasable: true, detail: "", damage: "", defense: "", mdef: "", type: "", bonus: "", effect: "" })
-    alert("Equipamento Forjado com sucesso! Ele agora aparece no Catálogo e na Loja.")
+    setSavingEquipment(true)
+    try {
+    await onCreateEquipment(newEq)
+    setSysDraft({ name: "", category: "weapon", cost: 100, purchasable: true, detail: "", damage: "", defense: "", mdef: "", type: "", bonus: "", effect: "", actions: [] })
+    alert(sysDraft.id ? "Equipamento atualizado no catálogo e nas mochilas que usam este item." : "Equipamento forjado! Ele agora aparece no catálogo e na loja.")
     setGmPanelTab("catalog")
+    } catch (error) { alert(error instanceof Error ? error.message : "Não foi possível salvar o equipamento.") }
+    finally { setSavingEquipment(false) }
   }
 
   const customDestinationFolders = [
@@ -200,37 +1131,133 @@ export function GmPanel({
     ...allFolders.filter(folder => !folder.isSystem)
   ].filter(Boolean) as StoreFolder[]
 
+  function updateClass<K extends keyof GameClass>(
+    key: K,
+    value: GameClass[K]
+  ) {
+    setClassDraft(prev => ({
+      ...prev,
+      [key]: value,
+    }))
+  }
+
+  function updateSkill(
+    skillId: string,
+    updates: Partial<GameSkill>
+  ) {
+    setClassDraft(prev => ({
+      ...prev,
+      skills: prev.skills.map(skill =>
+        skill.id === skillId
+          ? { ...skill, ...updates }
+          : skill
+      ),
+    }))
+  }
+
+  function addSkill() {
+    const skill = createSkillDraft()
+
+    setClassDraft(prev => ({
+      ...prev,
+      skills: [...prev.skills, skill],
+    }))
+
+    setExpandedSkillId(skill.id)
+  }
+
+  function removeSkill(skillId: string) {
+    setClassDraft(prev => ({
+      ...prev,
+      skills: prev.skills.filter(skill => skill.id !== skillId),
+    }))
+  }
+
+
+
   function handleSaveClass() {
-    if (!classDraft.name.trim() || !classDraft.archetype.trim() || !classDraft.description.trim()) {
-      return alert("Preencha nome, arquétipo e descrição da classe.")
+    if (
+      !classDraft.name.trim() ||
+      !classDraft.archetype.trim() ||
+      !classDraft.description.trim()
+    ) {
+      return alert(
+        "Preencha nome, arquétipo e descrição da classe."
+      )
     }
 
-    const validSkills = classDraft.skills.filter(s => s.name.trim() !== "" && s.description.trim() !== "");
+    const validSkills = classDraft.skills.filter(
+      skill =>
+        skill.name.trim() !== "" &&
+        skill.description.trim() !== ""
+    )
+
     if (validSkills.length === 0) {
-      return alert("A classe precisa ter pelo menos 1 habilidade válida preenchida.")
+      return alert(
+        "A classe precisa ter pelo menos 1 habilidade válida."
+      )
     }
 
-    const newClass = {
-      id: "custom-class-" + Math.random().toString(36).substring(2, 10),
-      name: classDraft.name,
-      archetype: classDraft.archetype,
-      description: classDraft.description,
+    const newClass: GameClass = {
+      id:
+        "custom-class-" +
+        Math.random().toString(36).substring(2, 10),
+
+      name: classDraft.name.trim(),
+      archetype: classDraft.archetype.trim(),
+      description: classDraft.description.trim(),
+
       hpPerLevel: Number(classDraft.hpPerLevel),
       mpPerLevel: Number(classDraft.mpPerLevel),
       primaryAttribute: classDraft.primaryAttribute,
-      skills: validSkills.map((s, idx) => ({
-        id: `cskill-${Math.random().toString(36).substring(2, 6)}-${idx}`,
-        name: s.name,
-        maxLevel: Number(s.maxLevel),
-        description: s.description
-      }))
+
+      skills: validSkills.map(skill => ({
+        ...skill,
+
+        id:
+          "cskill-" +
+          Math.random().toString(36).substring(2, 8),
+
+        name: skill.name.trim(),
+        maxLevel: Number(skill.maxLevel),
+        description: skill.description.trim(),
+
+        ...(skill.action
+          ? {
+            action: {
+              cost: Number(skill.action.cost),
+              resource: skill.action.resource,
+            },
+          }
+          : {}),
+
+        ...(skill.bonuses &&
+          Object.keys(skill.bonuses).length > 0
+          ? {
+            bonuses: skill.bonuses,
+          }
+          : {}),
+      })),
     }
+
     onCreateClass(newClass)
+
     setClassDraft({
-      name: "", archetype: "", description: "", hpPerLevel: 5, mpPerLevel: 5, primaryAttribute: "mig",
-      skills: [{ id: "sk1", name: "", maxLevel: 5, description: "" }]
+      id: "",
+      name: "",
+      archetype: "",
+      description: "",
+      hpPerLevel: 5,
+      mpPerLevel: 5,
+      primaryAttribute: "mig",
+      skills: [createSkillDraft()],
     })
-    alert("Classe criada! Jogadores agora poderão subir o nível dela.")
+
+    setExpandedSkillId(null)
+
+    alert(
+      "Classe criada! Jogadores agora poderão escolhê-la."
+    )
   }
 
   async function handleGiveLoot() {
@@ -332,7 +1359,7 @@ export function GmPanel({
                           return (
                             <div key={item.id} className="relative group/card">
                               <button onClick={() => setSelectedLoot(isSelected ? null : item.id)} className={`w-full flex flex-col text-left p-4 rounded-xl border transition-all duration-300 overflow-hidden ${isSelected ? 'border-accent bg-accent/5 shadow-[0_0_20px_rgba(var(--accent-rgb, 212,175,55),0.1)]' : 'border-white/5 bg-[#161616] hover:border-white/20 hover:bg-[#1a1a1a]'}`}>
-                                <div className="flex justify-between items-start w-full gap-2 pr-6">
+                                <div className="flex justify-between items-start w-full gap-2">
                                   <div className="flex flex-col items-start gap-1.5">
                                     <p className={`font-bold text-sm transition-colors ${isSelected ? 'text-accent' : 'text-foreground'}`}>{item.name}</p>
                                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -364,9 +1391,14 @@ export function GmPanel({
                               </button>
 
                               {isCustom && (
-                                <button onClick={(e) => { e.stopPropagation(); onDeleteEquipment(item.id); if (selectedLoot === item.id) setSelectedLoot(null); }} className="absolute top-2 right-2 p-2 rounded-full text-muted-foreground hover:bg-destructive/20 hover:text-destructive opacity-0 group-hover/card:opacity-100 transition-all z-10" title="Apagar equipamento">
-                                  <Trash2 className="size-4" />
-                                </button>
+                                <div className="mt-2 flex items-center justify-end gap-2 px-1">
+                                  <button type="button" onClick={() => { setSysDraft({ ...item, actions: getItemActions(item) }); setCreationMode("system"); setGmPanelTab("custom"); }} className="inline-flex items-center gap-1.5 rounded-lg border border-accent/25 bg-accent/5 px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label={`Editar ${item.name}`}>
+                                    <Pencil className="size-3.5 shrink-0" /> Editar
+                                  </button>
+                                  <button type="button" onClick={() => { onDeleteEquipment(item.id); if (selectedLoot === item.id) setSelectedLoot(null); }} className="inline-flex items-center justify-center rounded-lg border border-border/40 p-2 text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive" aria-label={`Excluir ${item.name}`}>
+                                    <Trash2 className="size-3.5" />
+                                  </button>
+                                </div>
                               )}
                             </div>
                           )
@@ -430,7 +1462,9 @@ export function GmPanel({
                             <input type="text" value={sysDraft.effect} onChange={e => setSysDraft({ ...sysDraft, effect: e.target.value })} placeholder="Efeito Secundário" className="bg-[#111] border border-white/10 rounded p-2 text-xs outline-none" />
                           </div>
 
-                          <Button className="col-span-2 mt-2 bg-accent text-black hover:bg-accent/90 font-bold" onClick={handleSaveSystemItem}><Save className="size-4 mr-2" /> Salvar Equipamento</Button>
+                          <div className="col-span-2"><ItemActionsEditor actions={sysDraft.actions || []} onChange={actions => setSysDraft({ ...sysDraft, actions })} /></div>
+                          {sysDraft.id && <p className="col-span-2 text-xs text-cyan-200">Editando {sysDraft.name}. As alterações mantêm o ID e atualizam também as cópias nas mochilas.</p>}
+                          <Button className="col-span-2 mt-2 bg-accent text-black hover:bg-accent/90 font-bold" disabled={savingEquipment} onClick={handleSaveSystemItem}><Save className="size-4 mr-2" /> {sysDraft.id ? "Salvar alterações" : "Salvar Equipamento"}</Button>
                         </div>
                       )}
                     </div>
@@ -443,57 +1477,347 @@ export function GmPanel({
                       onStop={onStopHazard}
                     />
                   ) : gmPanelTab === 'classes' ? (
-                    <div className="flex flex-col lg:flex-row gap-6">
-                      <div className="flex-[2] flex flex-col gap-4 border border-amber-600/30 rounded-xl p-5 bg-black/40 shadow-inner">
-                        <div className="grid grid-cols-2 gap-4 border-b border-white/5 pb-4">
-                          <label className="flex flex-col gap-1.5"><span className="text-[10px] uppercase tracking-widest font-bold text-amber-500">Nome da Classe</span><input type="text" value={classDraft.name} onChange={e => setClassDraft({ ...classDraft, name: e.target.value })} className="bg-[#111] border border-white/10 rounded p-2 text-sm outline-none focus:border-amber-600/50" placeholder="Ex: Necromante" /></label>
-                          <label className="flex flex-col gap-1.5"><span className="text-[10px] uppercase tracking-widest font-bold text-amber-500">Arquétipo</span><input type="text" value={classDraft.archetype} onChange={e => setClassDraft({ ...classDraft, archetype: e.target.value })} className="bg-[#111] border border-white/10 rounded p-2 text-sm outline-none focus:border-amber-600/50" placeholder="Ex: Invocador das Trevas" /></label>
-                          <label className="col-span-2 flex flex-col gap-1.5"><span className="text-[10px] uppercase tracking-widest font-bold text-amber-500">Descrição Visual e Narrativa</span><textarea value={classDraft.description} onChange={e => setClassDraft({ ...classDraft, description: e.target.value })} rows={2} className="bg-[#111] border border-white/10 rounded p-2 text-sm outline-none resize-none focus:border-amber-600/50 custom-scrollbar-sepia" placeholder="Surgem das cinzas..." /></label>
-                        </div>
-                        <div className="grid grid-cols-3 gap-4 border-b border-white/5 pb-4">
-                          <label className="flex flex-col gap-1.5"><span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground flex items-center gap-1"><Heart className="size-3 text-red-500" /> HP p/ Nível</span><input type="number" value={classDraft.hpPerLevel} onChange={e => setClassDraft({ ...classDraft, hpPerLevel: Number(e.target.value) })} className="bg-[#111] border border-white/10 rounded p-2 text-sm outline-none focus:border-amber-600/50 font-mono" /></label>
-                          <label className="flex flex-col gap-1.5"><span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground flex items-center gap-1"><Zap className="size-3 text-blue-500" /> MP p/ Nível</span><input type="number" value={classDraft.mpPerLevel} onChange={e => setClassDraft({ ...classDraft, mpPerLevel: Number(e.target.value) })} className="bg-[#111] border border-white/10 rounded p-2 text-sm outline-none focus:border-amber-600/50 font-mono" /></label>
-                          <label className="flex flex-col gap-1.5"><span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground flex items-center gap-1"><Dices className="size-3 text-purple-500" /> Atributo Chave</span>
-                            <select value={classDraft.primaryAttribute} onChange={e => setClassDraft({ ...classDraft, primaryAttribute: e.target.value })} className="bg-[#111] border border-white/10 rounded p-2 text-sm outline-none focus:border-amber-600/50 uppercase font-mono">
-                              <option value="mig">Vigor (MIG)</option><option value="dex">Destreza (DEX)</option><option value="ins">Intuição (INS)</option><option value="wlp">Vontade (WLP)</option>
-                            </select>
-                          </label>
-                        </div>
-                        <div className="flex flex-col gap-4 max-h-[300px] overflow-y-auto custom-scrollbar-sepia pr-2">
-                          <div className="flex items-center justify-between mt-2">
-                            <span className="text-[10px] uppercase tracking-widest font-bold text-amber-500 flex items-center gap-2"><GraduationCap className="size-4" /> Habilidades da Classe</span>
-                            <Button size="sm" variant="outline" className="h-6 text-[10px] border-amber-600/30 text-amber-500 hover:bg-amber-600/20" onClick={() => setClassDraft({ ...classDraft, skills: [...classDraft.skills, { id: "sk" + Math.random(), name: "", maxLevel: 5, description: "" }] })}>+ Habilidade</Button>
-                          </div>
-                          {classDraft.skills.map((sk, idx) => (
-                            <div key={sk.id} className="p-3 bg-black/50 border border-white/5 rounded-lg flex flex-col gap-2 relative group/skill">
-                              <div className="flex gap-2">
-                                <input type="text" value={sk.name} onChange={e => { const newSkills = [...classDraft.skills]; newSkills[idx].name = e.target.value; setClassDraft({ ...classDraft, skills: newSkills }); }} placeholder="Nome da Habilidade" className="flex-[3] bg-[#111] border border-white/10 rounded p-1.5 text-xs outline-none focus:border-amber-600/50 font-bold text-primary" />
-                                <input type="number" value={sk.maxLevel} onChange={e => { const newSkills = [...classDraft.skills]; newSkills[idx].maxLevel = Number(e.target.value); setClassDraft({ ...classDraft, skills: newSkills }); }} placeholder="Nv Máx" className="flex-1 min-w-[60px] bg-[#111] border border-white/10 rounded p-1.5 text-xs outline-none focus:border-amber-600/50 font-mono text-center" title="Nível Máximo" />
+                    <div className="flex flex-col gap-6">
+
+                      {/* =========================================================
+    CLASSES JÁ CRIADAS
+========================================================= */}
+                      <div className="rounded-2xl border border-purple-500/20 bg-black/30 overflow-hidden">
+
+                        <div className="p-4 border-b border-white/5 bg-purple-500/[0.03]">
+                          <div className="flex items-center justify-between gap-4">
+
+                            <div className="flex items-center gap-3">
+                              <div className="size-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                                <FolderOpen className="size-5 text-purple-400" />
                               </div>
-                              <textarea value={sk.description} onChange={e => { const newSkills = [...classDraft.skills]; newSkills[idx].description = e.target.value; setClassDraft({ ...classDraft, skills: newSkills }); }} rows={2} placeholder="Descreva o que a habilidade faz..." className="bg-[#111] border border-white/10 rounded p-1.5 text-xs outline-none resize-none focus:border-amber-600/50 custom-scrollbar-sepia text-muted-foreground" />
-                              {classDraft.skills.length > 1 && (
-                                <button onClick={() => { const newSkills = [...classDraft.skills]; newSkills.splice(idx, 1); setClassDraft({ ...classDraft, skills: newSkills }); }} className="absolute -top-2 -right-2 bg-destructive/80 text-white rounded-full p-1 opacity-0 group-hover/skill:opacity-100 transition-opacity"><X className="size-3" /></button>
-                              )}
+
+                              <div>
+                                <h3 className="text-[11px] font-black uppercase tracking-widest text-purple-400">
+                                  Classes Criadas
+                                </h3>
+
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                  {Array.isArray(customClasses)
+                                    ? customClasses.length
+                                    : 0}{" "}
+                                  classe(s) homebrew disponível(is)
+                                </p>
+                              </div>
                             </div>
-                          ))}
+
+                            <div className="text-[9px] uppercase tracking-widest text-muted-foreground hidden sm:block">
+                              Clique para ver todos os detalhes
+                            </div>
+                          </div>
                         </div>
-                        <Button className="mt-2 bg-amber-600 text-white hover:bg-amber-700 font-bold" onClick={handleSaveClass}><Save className="size-4 mr-2" /> Oficializar Classe</Button>
+
+                        <div className="p-3 space-y-2">
+
+                          {!Array.isArray(customClasses) || customClasses.length === 0 ? (
+                            <div className="py-10 flex flex-col items-center justify-center text-center border border-dashed border-white/10 rounded-xl">
+                              <GraduationCap className="size-9 text-muted-foreground opacity-20 mb-3" />
+
+                              <p className="text-sm font-bold text-muted-foreground">
+                                Nenhuma classe homebrew criada
+                              </p>
+
+                              <p className="text-[10px] text-muted-foreground/60 mt-1 max-w-xs">
+                                As classes que você oficializar pelo editor aparecerão aqui.
+                              </p>
+                            </div>
+                          ) : (
+                            customClasses.map((cls: GameClass) => (
+                              <CreatedClassCard
+                                key={cls.id}
+                                cls={cls}
+                                expanded={expandedClassId === cls.id}
+                                onToggle={() =>
+                                  setExpandedClassId(
+                                    expandedClassId === cls.id
+                                      ? null
+                                      : cls.id
+                                  )
+                                }
+                                onDelete={() => {
+                                  onDeleteClass(cls.id)
+
+                                  if (expandedClassId === cls.id) {
+                                    setExpandedClassId(null)
+                                  }
+                                }}
+                              />
+                            ))
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex-1 flex flex-col gap-3 bg-black/20 border-l border-white/5 pl-6">
-                        <h5 className="text-[10px] font-black uppercase tracking-widest text-amber-600 flex items-center gap-2">Classes Existentes</h5>
-                        <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto custom-scrollbar-sepia pr-2">
-                          {customClasses.length === 0 ? <p className="text-xs text-muted-foreground italic border border-dashed border-white/5 p-4 rounded-lg text-center">Nenhuma classe homebrew forjada.</p> : customClasses.map(c => (
-                            <div key={c.id} className="p-3 border border-amber-600/20 bg-amber-600/5 rounded-lg flex justify-between items-center group/class">
-                              <div className="flex flex-col">
-                                <span className="font-bold text-sm text-amber-500">{c.name}</span>
-                                <span className="text-[9px] uppercase tracking-widest text-muted-foreground">{c.skills?.length || 0} Habilidades</span>
-                              </div>
-                              <button onClick={() => { if (confirm("Deletar a classe? (Jogadores que já possuem ela não a perderão, mas novos jogadores não poderão pegá-la)")) onDeleteClass(c.id); }} className="p-2 bg-destructive/20 text-destructive rounded-md opacity-0 group-hover/class:opacity-100 transition-opacity"><Trash2 className="size-3" /></button>
+                      <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-white/5" />
+
+                        <span className="text-[9px] uppercase tracking-[0.25em] text-muted-foreground font-black">
+                          Nova Classe
+                        </span>
+
+                        <div className="h-px flex-1 bg-white/5" />
+                      </div>
+
+                      {/* CABEÇALHO DA CLASSE */}
+                      <div className="rounded-2xl border border-amber-600/30 bg-black/40 overflow-hidden">
+
+                        <div className="p-4 border-b border-white/5 bg-amber-600/[0.03]">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-xl bg-amber-600/10 border border-amber-600/20 flex items-center justify-center">
+                              <GraduationCap className="size-5 text-amber-500" />
                             </div>
+
+                            <div>
+                              <h3 className="font-serif text-lg font-black text-amber-500">
+                                Forjar Classe
+                              </h3>
+
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                                Editor completo de classe homebrew
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-4 space-y-4">
+
+                          <div className="grid grid-cols-2 gap-3">
+
+                            <label className="flex flex-col gap-1.5">
+                              <span className="text-[9px] uppercase tracking-widest font-bold text-amber-500">
+                                Nome
+                              </span>
+
+                              <input
+                                value={classDraft.name}
+                                onChange={e =>
+                                  updateClass("name", e.target.value)
+                                }
+                                placeholder="Ex: Necromante"
+                                className="bg-[#111] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-amber-600/50"
+                              />
+                            </label>
+
+                            <label className="flex flex-col gap-1.5">
+                              <span className="text-[9px] uppercase tracking-widest font-bold text-amber-500">
+                                Arquétipo
+                              </span>
+
+                              <input
+                                value={classDraft.archetype}
+                                onChange={e =>
+                                  updateClass("archetype", e.target.value)
+                                }
+                                placeholder="Ex: Invocador das Trevas"
+                                className="bg-[#111] border border-white/10 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-amber-600/50"
+                              />
+                            </label>
+
+                          </div>
+
+                          <label className="flex flex-col gap-1.5">
+                            <span className="text-[9px] uppercase tracking-widest font-bold text-amber-500">
+                              Descrição
+                            </span>
+
+                            <textarea
+                              value={classDraft.description}
+                              onChange={e =>
+                                updateClass("description", e.target.value)
+                              }
+                              rows={3}
+                              placeholder="Descreva a identidade e fantasia da classe..."
+                              className="bg-[#111] border border-white/10 rounded-lg px-3 py-2.5 text-sm resize-none outline-none focus:border-amber-600/50"
+                            />
+                          </label>
+
+                          <div className="grid grid-cols-3 gap-3">
+
+                            <label className="flex flex-col gap-1.5">
+                              <span className="text-[9px] uppercase tracking-widest font-bold text-red-400">
+                                PV / Nível
+                              </span>
+
+                              <input
+                                type="number"
+                                min={0}
+                                value={classDraft.hpPerLevel}
+                                onChange={e =>
+                                  updateClass(
+                                    "hpPerLevel",
+                                    Number(e.target.value)
+                                  )
+                                }
+                                className="bg-[#111] border border-white/10 rounded-lg px-3 py-2 font-mono text-sm"
+                              />
+                            </label>
+
+                            <label className="flex flex-col gap-1.5">
+                              <span className="text-[9px] uppercase tracking-widest font-bold text-blue-400">
+                                PM / Nível
+                              </span>
+
+                              <input
+                                type="number"
+                                min={0}
+                                value={classDraft.mpPerLevel}
+                                onChange={e =>
+                                  updateClass(
+                                    "mpPerLevel",
+                                    Number(e.target.value)
+                                  )
+                                }
+                                className="bg-[#111] border border-white/10 rounded-lg px-3 py-2 font-mono text-sm"
+                              />
+                            </label>
+
+                            <label className="flex flex-col gap-1.5">
+                              <span className="text-[9px] uppercase tracking-widest font-bold text-purple-400">
+                                Atributo-chave
+                              </span>
+
+                              <select
+                                value={classDraft.primaryAttribute}
+                                onChange={e =>
+                                  updateClass(
+                                    "primaryAttribute",
+                                    e.target.value as GameClass["primaryAttribute"]
+                                  )
+                                }
+                                className="bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-sm"
+                              >
+                                <option value="mig">Vigor (MIG)</option>
+                                <option value="dex">Destreza (DEX)</option>
+                                <option value="ins">Intuição (INS)</option>
+                                <option value="wlp">Vontade (WLP)</option>
+                              </select>
+                            </label>
+
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* HABILIDADES */}
+                      <div className="rounded-2xl border border-amber-600/20 bg-black/30 overflow-hidden">
+
+                        <div className="p-4 flex items-center justify-between border-b border-white/5">
+                          <div>
+                            <h3 className="text-[11px] font-black uppercase tracking-widest text-amber-500">
+                              Habilidades da Classe
+                            </h3>
+
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {classDraft.skills.length} habilidade(s) configurada(s)
+                            </p>
+                          </div>
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={addSkill}
+                            className="h-8 text-[10px] border-amber-600/30 text-amber-500"
+                          >
+                            <Plus className="size-3 mr-1" />
+                            Nova Habilidade
+                          </Button>
+                        </div>
+
+                        <div className="p-3 space-y-2">
+                          {classDraft.skills.map(skill => (
+                            <SkillForgeCard
+                              key={skill.id}
+                              skill={skill}
+                              expanded={expandedSkillId === skill.id}
+                              onToggle={() => {
+                                setExpandedSkillId(current =>
+                                  current === skill.id ? null : skill.id
+                                )
+                              }}
+                              onUpdate={updates => updateSkill(skill.id, updates)}
+                              onRemove={() => removeSkill(skill.id)}
+                              setClassDraft={setClassDraft}
+                            />
                           ))}
                         </div>
                       </div>
+
+                      {/* PRÉ-VISUALIZAÇÃO */}
+                      <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
+
+                        <div className="flex items-center gap-2 mb-3">
+                          <Eye className="size-4 text-amber-500" />
+
+                          <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">
+                            Prévia da Classe
+                          </span>
+                        </div>
+
+                        <div className="rounded-xl border border-amber-600/20 bg-amber-600/[0.03] p-4">
+
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h3 className="font-serif text-xl font-black text-amber-500">
+                                {classDraft.name || "Nome da Classe"}
+                              </h3>
+
+                              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                                {classDraft.archetype || "Arquétipo"}
+                              </p>
+                            </div>
+
+                            <div className="flex gap-2 text-[9px] font-mono">
+                              <span className="px-2 py-1 rounded bg-red-500/10 text-red-300">
+                                {classDraft.hpPerLevel} PV
+                              </span>
+
+                              <span className="px-2 py-1 rounded bg-blue-500/10 text-blue-300">
+                                {classDraft.mpPerLevel} PM
+                              </span>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+                            {classDraft.description || "Descrição da classe..."}
+                          </p>
+
+                          <div className="mt-4 grid gap-2">
+                            {classDraft.skills.map(skill => (
+                              <div
+                                key={skill.id}
+                                className="rounded-lg bg-black/40 border border-white/5 p-3"
+                              >
+                                <div className="flex justify-between gap-3">
+                                  <span className="font-bold text-xs">
+                                    {skill.name || "Habilidade sem nome"}
+                                  </span>
+
+                                  <span className="text-[9px] font-mono text-muted-foreground">
+                                    Nv. {skill.maxLevel}
+                                  </span>
+                                </div>
+
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                  {skill.description}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* SALVAR */}
+                      <Button
+                        className="h-11 bg-amber-600 text-white hover:bg-amber-700 font-bold"
+                        onClick={handleSaveClass}
+                      >
+                        <Save className="size-4 mr-2" />
+                        Oficializar Classe
+                      </Button>
+
                     </div>
 
                   ) : (

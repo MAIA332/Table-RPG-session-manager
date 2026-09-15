@@ -44,7 +44,7 @@ interface SoundpadProps {
   onStopAll?: () => void;
 }
 
-export function Soundpad({ isGm, activeSounds, customTracks = [], musicVolume = 0.5, effectsVolume = 0.75, onCustomTracksChange, onMusicVolumeChange, onEffectsVolumeChange, onPlaySound, onStopSound, onStopAll }: SoundpadProps) {
+export function Soundpad({ isGm, activeSounds, customTracks = [], musicVolume = 0.5, effectsVolume = 0.5, onCustomTracksChange, onMusicVolumeChange, onEffectsVolumeChange, onPlaySound, onStopSound, onStopAll }: SoundpadProps) {
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
   const [newSoundName, setNewSoundName] = useState("");
@@ -292,7 +292,7 @@ export function Soundpad({ isGm, activeSounds, customTracks = [], musicVolume = 
                    type="range"
                    min="0"
                    max="1"
-                   step="0.05"
+                   step="0.01"
                    value={effectsVolume}
                    onChange={(e) => {
                      const volume = parseFloat(e.target.value)
