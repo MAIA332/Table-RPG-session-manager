@@ -1,8 +1,9 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
+import { Swords, Wifi, WifiOff, X } from "lucide-react"
 import { CreatureAbilitiesManager } from "./creature-abilities-manager"
 import { SpotlightPanel } from "./spotlight-panel"
-import { CreatureResourceControls } from "./combat-monster-card"
+import { CreatureResourceControls, CreatureSheetDetails, CreatureAttackDetails, CreatureAbilityDetails } from "./combat-monster-card"
 import { QteOverlay } from "./qte-overlay"
 import { AttackEditor } from "./creature-combat-editor"
 import {
@@ -30,9 +31,9 @@ type Props = {
   actionRequest: CombatActionRequest | null
 }
 const button =
-  "rounded-lg border border-white/20 bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-40"
+  "rounded-md border border-primary/35 bg-primary/10 px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:border-primary/70 hover:bg-primary/20 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-40"
 const select =
-  "rounded-lg border border-white/20 bg-zinc-900 p-2.5 text-sm text-white"
+  "rounded-md border border-border/60 bg-background/75 p-2.5 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/20"
 export function CampaignCombat({
   controller,
   viewerId,
@@ -216,17 +217,25 @@ export function CampaignCombat({
       {(isGm || combat?.enabled) && (
         <button
           type="button"
-          className="fixed bottom-4 left-4 z-[350] rounded-full border border-amber-300/60 bg-zinc-950 px-5 py-3 font-bold text-amber-200 shadow-xl"
+          className="rpg-combat-launcher fixed bottom-4 left-4 z-[70] flex min-w-48 items-center gap-3 overflow-hidden rounded-xl border border-primary/45 bg-background/95 px-4 py-3 text-left text-foreground shadow-2xl backdrop-blur-md transition hover:-translate-y-0.5 hover:border-primary/75"
           onClick={() => setOpen(true)}
         >
-          ⚔ Combate {combat?.enabled ? "· Em andamento" : ""}
-          {status !== "live" && " · Conectando"}
+          <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-primary/35 bg-primary/15 text-primary shadow-inner">
+            <Swords className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <strong className="block font-serif text-sm font-black tracking-wide text-foreground">Combate</strong>
+            <span className="mt-0.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {status === "live" ? <Wifi className="size-3 text-primary" /> : <WifiOff className="size-3 text-destructive" />}
+              {status !== "live" ? "Conectando" : combat?.enabled ? "Em andamento" : "Preparação"}
+            </span>
+          </span>
         </button>
       )}
       {!open && (isGm || combat?.enabled) && (error || localError) && (
         <aside
           role="alert"
-          className="fixed bottom-20 left-4 z-[650] max-w-sm rounded-xl border border-red-400 bg-zinc-950 p-4 text-red-100"
+          className="fixed bottom-20 left-4 z-[650] max-w-sm rounded-xl border border-destructive/60 bg-background/95 p-4 text-red-200 shadow-2xl backdrop-blur-md"
         >
           {localError || error}
           <button className={`${button} mt-2`} onClick={() => setOpen(true)}>
@@ -237,7 +246,7 @@ export function CampaignCombat({
       {!open && mustApprove && request && (
         <aside
           role="alert"
-          className="fixed right-4 top-4 z-[600] max-w-sm rounded-xl border border-amber-300 bg-zinc-950 p-5 text-white shadow-2xl"
+          className="rpg-modal fixed right-4 top-4 z-[600] max-w-sm rounded-xl border border-primary/50 bg-background/95 p-5 text-foreground shadow-2xl backdrop-blur-md"
         >
           <p>
             {
@@ -257,33 +266,37 @@ export function CampaignCombat({
       )}
       {open && (isGm || combat?.enabled) && (
         <div
-          className="fixed inset-0 overflow-y-auto bg-black/90 p-3 sm:p-6"
-          style={{ zIndex: 9999 }}
+          className="custom-scrollbar-sepia fixed inset-0 z-[80] overflow-y-auto bg-black/85 p-3 backdrop-blur-md sm:p-6"
           role="dialog"
           aria-modal="true"
           onKeyDown={(e) => {
             if (e.key === "Escape") setOpen(false)
           }}
         >
-          <div className="mx-auto max-w-5xl rounded-2xl border border-amber-300/25 bg-zinc-950 p-4 pb-24 text-white sm:p-6">
-            <header className="mb-5 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-bold">Combate</h2>
-                <span className="text-xs text-zinc-400">
-                  {status === "live"
-                    ? "Sincronizado"
-                    : status === "connecting"
-                      ? "Conectando…"
-                      : "Reconectando…"}
-                  {pending && " · Confirmando ação…"}
-                </span>
+          <div className="rpg-combat-modal rpg-modal rpg-themed-workspace mx-auto max-w-5xl rounded-xl border border-primary/35 bg-background/95 p-4 pb-24 text-foreground shadow-2xl sm:p-6">
+            <header className="rpg-modal-header -mx-4 -mt-4 mb-5 flex items-center justify-between gap-3 border-b border-border/60 px-4 py-4 sm:-mx-6 sm:-mt-6 sm:px-6">
+              <div className="flex items-center gap-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-lg border border-primary/35 bg-primary/15 text-primary"><Swords className="size-5" /></span>
+                <div>
+                  <h2 className="font-serif text-2xl font-black text-foreground">Combate</h2>
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {status === "live" ? <Wifi className="size-3 text-primary" /> : <WifiOff className="size-3 text-destructive" />}
+                    {status === "live"
+                      ? "Sincronizado"
+                      : status === "connecting"
+                        ? "Conectando…"
+                        : "Reconectando…"}
+                    {pending && " · Confirmando ação…"}
+                  </span>
+                </div>
               </div>
               <button
                 autoFocus
-                className={button}
+                className="rounded-md border border-border/60 bg-background/50 p-2 text-muted-foreground transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
                 onClick={() => setOpen(false)}
+                aria-label="Fechar combate"
               >
-                Fechar
+                <X className="size-5" />
               </button>
             </header>
             {(error || localError) && (
@@ -327,7 +340,7 @@ export function CampaignCombat({
                   </div>
                 )}
                 {isGm && (!combat.enabled || settings) && (
-                  <section className="mb-5 space-y-4 rounded-xl border border-white/15 p-4">
+                  <section className="mb-5 space-y-4 rounded-xl border border-border/50 bg-card/20 p-4">
                     <h3 className="font-bold">
                       Participantes · inclua também os personagens do Mestre
                     </h3>
@@ -335,7 +348,7 @@ export function CampaignCombat({
                       {playerChars.map((c) => (
                         <label
                           key={c.id}
-                          className="flex gap-2 rounded-lg border border-white/10 p-3"
+                          className="flex gap-2 rounded-lg border border-border/40 bg-background/30 p-3"
                         >
                           <input
                             type="checkbox"
@@ -371,11 +384,11 @@ export function CampaignCombat({
                         ? "Atualizar participantes"
                         : "Iniciar combate"}
                     </button>
-                    <details className="border-t border-white/15 pt-4">
+                    <details className="border-t border-border/50 pt-4">
                       <summary className="cursor-pointer font-semibold">
                         Cadastrar ataques de jogadores
                       </summary>
-                      <p className="my-3 text-sm text-zinc-400">
+                      <p className="my-3 text-sm text-muted-foreground">
                         Defina uma vez o acerto e o dano de cada ataque. As
                         rolagens usarão os atributos e modificadores reais da
                         ficha.
@@ -427,7 +440,7 @@ export function CampaignCombat({
                         (a, i) => (
                           <div
                             key={i}
-                            className="mt-3 flex items-center justify-between gap-3 rounded border border-white/10 p-3"
+                            className="mt-3 flex items-center justify-between gap-3 rounded border border-border/40 bg-background/30 p-3"
                           >
                             <span>
                               {a.name} ·{" "}
@@ -458,7 +471,7 @@ export function CampaignCombat({
                 {isGm && combat.enabled && (
                   <p
                     role="status"
-                    className="my-4 rounded-xl bg-amber-300/10 p-4 text-amber-100"
+                    className="my-4 rounded-xl border border-primary/25 bg-primary/10 p-4 text-primary"
                   >
                     {combat.qte &&
                     !combat.qte.targets.every((id) => combat.qte!.outcomes[id])
@@ -496,7 +509,7 @@ export function CampaignCombat({
                       dispatch={handleSpotlight}
                       attackSlot={
                         myCharacter && canAttack(combat.spotlight, viewerId) ? (
-                          <div className="w-full space-y-3 rounded-xl border border-amber-300/30 p-4">
+                          <div className="w-full space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4">
                             <h3 className="font-bold">Seu ataque</h3>
                             {!pcAttacks.length ? (
                               <p>
@@ -516,7 +529,8 @@ export function CampaignCombat({
                                   >
                                     {pcAttacks.map((a, i) => (
                                       <option key={i} value={i}>
-                                        {a.name} · {a.damage}
+                                        {a.name}
+                                    <CreatureAttackDetails attack={a} />
                                       </option>
                                     ))}
                                   </select>
@@ -544,7 +558,7 @@ export function CampaignCombat({
                                   </select>
                                 </label>
                                 <button
-                                  className={`${button} border-amber-300`}
+                                  className={`${button} border-primary/70`}
                                   disabled={
                                     !target ||
                                     !pcAttacks[playerAttack] ||
@@ -596,10 +610,10 @@ export function CampaignCombat({
                     </select>
                   </label>
                 )}
-                <section className="mt-5 space-y-4 rounded-xl border border-white/15 p-4">
+                <section className="mt-5 space-y-4 rounded-xl border border-border/50 bg-card/20 p-4">
                   <h3 className="font-bold">Criaturas em cena</h3>
                   {!combat.creatures.length ? (
-                    <p className="text-zinc-400">
+                    <p className="text-muted-foreground">
                       Adicione criaturas pelo Bestiário do Mestre.
                     </p>
                   ) : (
@@ -695,6 +709,7 @@ export function CampaignCombat({
                               }}
                             />
                           )}
+                          {isGm && <CreatureSheetDetails creature={creature} />}
                           {isGm && (
                             <div className="space-y-3">
                               <div className="flex flex-wrap gap-3">
@@ -723,21 +738,23 @@ export function CampaignCombat({
                                       })
                                     }
                                   >
-                                    {a.name} · {a.damage}
+                                    {a.name}
+                                    <CreatureAttackDetails attack={a} />
                                   </button>
                                 ))}
                                 {(creature.abilities || []).map((a) =>
                                   a.kind === "passive" ? (
                                     <p
                                       key={a.id}
-                                      className="w-full rounded-lg bg-zinc-900 p-3 text-sm"
+                                      className="w-full rounded-lg border border-border/40 bg-background/40 p-3 text-sm"
                                     >
-                                      {a.name}: {a.trigger} — {a.effect}
+                                      {a.name}
+                                      <CreatureAbilityDetails ability={a} />
                                     </p>
                                   ) : (
                                     <button
                                       key={a.id}
-                                      className={`${button} ${a.kind === "qte" ? "border-red-400" : "border-violet-400"}`}
+                                      className={`${button} ${a.kind === "qte" ? "border-destructive/70" : "border-primary/60"}`}
                                       disabled={
                                         pending ||
                                         !canMonsterAct ||
@@ -758,10 +775,8 @@ export function CampaignCombat({
                                       }}
                                     >
                                       {a.kind === "qte" ? "QTE · " : ""}
-                                      {a.name} · {a.cost.amount}{" "}
-                                      {a.cost.resource === "mp"
-                                        ? "MP"
-                                        : "Tokens"}
+                                      {a.name}
+                                      <CreatureAbilityDetails ability={a} />
                                     </button>
                                   ),
                                 )}
@@ -806,7 +821,7 @@ export function CampaignCombat({
                                                 className="size-10 rounded-full object-cover"
                                               />
                                             ) : (
-                                              <span className="grid size-10 place-items-center rounded-full bg-zinc-800">
+                                              <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
                                                 {c.name.slice(0, 2)}
                                               </span>
                                             )}
@@ -834,7 +849,7 @@ export function CampaignCombat({
                       <summary className="cursor-pointer text-sm">
                         Reações e reforços
                       </summary>
-                      <p className="my-2 text-sm text-zinc-400">
+                      <p className="my-2 text-sm text-muted-foreground">
                         Desconte o custo e narre a reação; adicione reforços
                         pelo bestiário.
                       </p>
@@ -876,7 +891,7 @@ export function CampaignCombat({
                 )}
                 <section className="mt-5">
                   <h3 className="font-bold">Registro do combate</h3>
-                  <ol className="mt-3 max-h-60 space-y-2 overflow-auto text-sm text-zinc-300">
+                  <ol className="custom-scrollbar-sepia mt-3 max-h-60 space-y-2 overflow-auto text-sm text-muted-foreground">
                     {combat.log.map((entry) => (
                       <li key={entry.id}>{entry.text}</li>
                     ))}

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { CAMPAIGN_STATE_ARRAY_FIELDS, getCampaignState, getCampaignStateFields, updateCampaignState } from "@/lib/campaign-state"
 import { getMemberRole, store } from "@/lib/store"
+import { getGalleryFolders } from "@/lib/gallery-server"
 
 async function getAccess(params: Promise<{ id: string }>) {
   const user = await getCurrentUser()
@@ -48,7 +49,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (access.role !== "gm") {
     return NextResponse.json({
       state: {
-        gallery: state.gallery.filter((entry: any) => entry?.isPublic),
+        gallery: state.gallery.filter(
+          (entry: any) => entry?.isPublic || entry?.ownerId === access.user.id,
+        ),
         lore: state.lore.filter(
           (entry: any) =>
             entry?.isPublic ||
@@ -57,14 +60,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         weather: state.weather,
         customEquipment: state.customEquipment || [],
         customClasses: state.customClasses || [],
-        galleryFolders: Array.isArray(state.galleryFolders)
-          ? state.galleryFolders
-          : [
-            {
-              id: "root",
-              name: "Todas as imagens"
-            }
-          ],
+        galleryFolders: getGalleryFolders(
+          store.campaigns.get(access.campaignId)!,
+          state.galleryFolders,
+        ),
 
         // IMPORTANTE:
         // jogadores também precisam receber as pastas da loja
@@ -76,7 +75,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     })
   }
 
-  return NextResponse.json({ state, persistedFields })
+  return NextResponse.json({
+    state: {
+      ...state,
+      galleryFolders: getGalleryFolders(
+        store.campaigns.get(access.campaignId)!,
+        state.galleryFolders,
+      ),
+    },
+    persistedFields,
+  })
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {

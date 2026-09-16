@@ -1,9 +1,9 @@
 "use client"
 
 import { AttackEditor, AbilityEditor } from "./creature-combat-editor"
-import { defaultAttack, validateCombat, type Ability, type CreatureCombat } from "@/lib/combat-model"
+import { defaultAttack, validateCombat, type Ability, type Attack, type CreatureCombat } from "@/lib/combat-model"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { Skull, X, Search, Heart, Zap, Target, Plus, Save, Trash2, FolderOpen, ChevronDown } from "lucide-react"
@@ -20,11 +20,26 @@ interface GmBestiaryProps {
   onClose: () => void
   onSpawn: (creature: Creature) => void
   customCreatures: Creature[]
-  onCreate: (creature: Creature) => void
-  onDelete: (id: string) => void
+  onCreate: (creature: Creature) => void | Promise<void>
+  onUpdate: (creature: Creature) => void | Promise<void>
+  onDelete: (id: string) => void | Promise<void>
 }
 
-export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate, onDelete }: GmBestiaryProps) {
+export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate, onUpdate, onDelete }: GmBestiaryProps) {
+  const [editingCreature, setEditingCreature] = useState<Creature | null>(null)
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
+  const [error, setError] = useState("")
+  const [affinities, setAffinities] = useState<Creature["affinities"]>({ physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" })
+  const [equipmentText, setEquipmentText] = useState("")
+  const [spellsText, setSpellsText] = useState("")
+  function closeEditor() {
+    if (savingRef.current) return
+    if (isCreating && !confirm("Descartar as alterações não salvas?")) return
+    setIsCreating(false)
+    setError("")
+    onClose()
+  }
   const [searchQuery, setSearchQuery] = useState("")
   const [hoveredCreature, setHoveredCreature] = useState<Creature | null>(null)
   const [isCreating, setIsCreating] = useState(false)
@@ -75,50 +90,84 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
 
   })
 
-  const [attack, setAttack] = useState(defaultAttack)
+  const [attacks, setAttacks] = useState<Attack[]>([defaultAttack()])
   const [abilities, setAbilities] = useState<Ability[]>([])
 
-  function handleSaveDraft() {
-    const combatError = validateCombat([attack], abilities)
-    if (combatError) return alert(combatError)
-    if (!draft.name.trim()) return alert("Dê um nome à criatura.")
-    
-    const newCreature: Creature & CreatureCombat = {
-      id: "custom-" + crypto.randomUUID(),
-      name: draft.name,
-      imageUrl: draft.imageUrl || "/mystic-adventurer-portrait.png",
-      level: draft.level,
-      species: draft.species,
-      maxHp: draft.maxHp,
-      maxMp: draft.maxMp,
-      def: draft.def,
-      mdef: draft.mdef,
-      attributes: draft.attributes as any,
-      affinities: { physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" },
-      basicAttacks: [
-        { name: attack.name, attributes: attack.attributes as any, damage: /^\d+$/.test(attack.damage.trim()) ? Number(attack.damage) : 0, type: attack.type, description: `Dano: ${attack.damage}; alvo: ${attack.targetDefense === "physical" ? "Defesa Física" : "Defesa Mágica"}` }
-      ],
-      combatVersion: 2,
-      basicAttacksV2: [attack],
-      abilities,
-      spells: abilities.map(a => a.kind === "passive" ? `${a.name}: ${a.trigger} — ${a.effect}` : a.kind === "attack" ? `${a.name} (${a.cost.amount} ${a.cost.resource}): ${a.attack.damage} ${a.attack.type}. ${a.attack.description || ""}` : `${a.name}: QTE ${a.seconds}s, dificuldade ${a.difficulty}. Falha: ${a.failureDamage} ${a.failureEffect}. Sucesso: ${a.successDamage} ${a.successEffect}`),
-      equipment: []
-    }
+  function openEditor(creature?: Creature) {
+    if (savingRef.current) return
+    if (isCreating && !confirm("Descartar as alterações não salvas?")) return
+    setError("")
+    setEditingCreature(creature ? structuredClone(creature) : null)
+    setDraft(creature ? {
+      name: creature.name, imageUrl: creature.imageUrl, level: creature.level,
+      species: creature.species, maxHp: creature.maxHp, maxMp: creature.maxMp,
+      def: creature.def, mdef: creature.mdef, attributes: { ...creature.attributes },
+    } : { name: "", imageUrl: "", level: 5, species: "Monstro", maxHp: 40, maxMp: 20, def: 10, mdef: 10, attributes: { dex: "d6", ins: "d6", mig: "d6", wlp: "d6" } })
+    const modern = creature?.basicAttacksV2 as Attack[] | undefined
+    setAttacks(modern?.length ? structuredClone(modern) : creature?.basicAttacks?.length ? creature.basicAttacks.map(a => ({
+      ...a, damage: String(a.description?.match(/Dano:\s*([^;]+)/i)?.[1] || a.damage),
+      attributes: [...a.attributes], targetDefense: /Defesa Mágica/i.test(a.description || "") ? "magical" : "physical",
+    })) : [defaultAttack()])
+    setAbilities(structuredClone(creature?.abilities || []))
+    setAffinities({ physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none", ...creature?.affinities })
+    setEquipmentText((creature?.equipment || []).join("\n"))
+    setSpellsText((creature?.spells || []).join("\n"))
+    setIsCreating(true)
+  }
 
-    onCreate(newCreature)
-    setIsCreating(false)
-    setHoveredCreature(newCreature)
-    
-    // Reseta o draft para a próxima
-    setDraft({ ...draft, name: "", imageUrl: "" })
-    setAttack(defaultAttack())
-    setAbilities([])
+  async function handleSaveDraft() {
+    if (savingRef.current) return
+    const combatError = validateCombat(attacks, abilities)
+    if (combatError) return setError(combatError)
+    if (!draft.name.trim()) return setError("Dê um nome à criatura.")
+    if (!draft.species.trim()) return setError("Informe a espécie da criatura.")
+    if (![draft.level, draft.maxHp, draft.maxMp, draft.def, draft.mdef].every(n => Number.isSafeInteger(n) && n >= 0) || draft.level < 1 || draft.maxHp < 1) return setError("Use números inteiros positivos para nível e vida; mana e defesas não podem ser negativas.")
+    const newCreature: Creature & CreatureCombat = {
+      ...editingCreature,
+      ...draft,
+      id: editingCreature?.id || "custom-" + crypto.randomUUID(),
+      name: draft.name.trim(), species: draft.species.trim(),
+      imageUrl: draft.imageUrl.trim() || "/mystic-adventurer-portrait.png",
+      attributes: draft.attributes as Creature["attributes"],
+      affinities,
+      basicAttacks: attacks.map(attack => ({ name: attack.name, attributes: attack.attributes as Creature["basicAttacks"][number]["attributes"], damage: /^\d+$/.test(attack.damage.trim()) ? Number(attack.damage) : 0, type: attack.type, description: `Dano: ${attack.damage}; alvo: ${attack.targetDefense === "physical" ? "Defesa Física" : "Defesa Mágica"}${attack.description ? "; " + attack.description : ""}` })),
+      combatVersion: 2, basicAttacksV2: attacks, abilities,
+      spells: spellsText.split("\n").map(s => s.trim()).filter(Boolean),
+      equipment: equipmentText.split("\n").map(s => s.trim()).filter(Boolean),
+    }
+    savingRef.current = true
+    setSaving(true)
+    setError("")
+    try {
+      if (editingCreature) await onUpdate(newCreature)
+      else await onCreate(newCreature)
+      setHoveredCreature(newCreature)
+      setIsCreating(false)
+      setEditingCreature(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Não foi possível salvar. Tente novamente.")
+    } finally {
+      savingRef.current = false
+      setSaving(false)
+    }
+  }
+
+  async function deleteSelected() {
+    if (!hoveredCreature || savingRef.current || !confirm("Excluir esta criatura do bestiário?")) return
+    savingRef.current = true
+    setSaving(true)
+    setError("")
+    try {
+      await onDelete(hoveredCreature.id)
+      setHoveredCreature(null)
+    } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível excluir.") }
+    finally { savingRef.current = false; setSaving(false) }
   }
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden" onClick={onClose}>
+        <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden" onClick={closeEditor}>
           <motion.div variants={modalVariants} className="rpg-modal relative flex h-full w-full max-w-6xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             
             <div className="flex justify-between items-center gap-4 p-6 border-b border-white/10 bg-black/40 shrink-0">
@@ -127,7 +176,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                 <span className="text-foreground">Bestiário do Mestre</span>
               </h4>
               <div className="flex shrink-0 items-center gap-2">
-                <button onClick={onClose} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors">
+                <button onClick={closeEditor} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors">
                   <X className="size-5 md:size-6 text-muted-foreground hover:text-white" />
                 </button>
               </div>
@@ -147,7 +196,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                       className="w-full bg-black/40 border border-white/10 rounded-md py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-destructive/50 transition-colors" 
                     />
                   </div>
-                  <Button size="icon" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => setIsCreating(true)} title="Forjar nova criatura">
+                  <Button size="icon" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10 shrink-0" disabled={saving} onClick={() => openEditor()} title="Forjar nova criatura">
                     <Plus className="size-4" />
                   </Button>
                 </div>
@@ -195,7 +244,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                                 return (
                                   <button 
                                     key={c.id} 
-                                    onClick={() => { if (!isCreating || confirm("Sair do formulário? O rascunho será mantido até fechar a página.")) { setHoveredCreature(c); setIsCreating(false); } }} 
+                                    onClick={() => { if (!savingRef.current && (!isCreating || confirm("Descartar as alterações não salvas?"))) { setHoveredCreature(c); setIsCreating(false); } }} 
                                     // IMPORTANTE: O shrink-0 previne o esmagamento dos botões como na imagem que você mandou
                                     className={`shrink-0 text-left p-3 rounded-lg border transition-colors relative overflow-hidden ${hoveredCreature?.id === c.id && !isCreating ? "bg-destructive/10 border-destructive/50 shadow-[0_0_10px_rgba(255,0,0,0.1)]" : "bg-card/40 border-border/30 hover:border-destructive/30"}`}
                                   >
@@ -217,11 +266,12 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
 
               {/* COLUNA DIREITA: VISUALIZAÇÃO OU CRIAÇÃO */}
               <div className="lg:w-2/3 p-6 overflow-y-auto custom-scrollbar-sepia bg-black/20 relative">
+                {error && <p role="alert" className="mb-4 rounded-lg border border-red-400 bg-red-950 p-3 text-red-100">{error}</p>}
                 {isCreating ? (
-                  <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-right-4 max-w-2xl mx-auto">
+                  <fieldset disabled={saving} className="flex min-w-0 flex-col gap-6 animate-in fade-in slide-in-from-right-4 max-w-2xl mx-auto">
                     <div className="flex items-center justify-between border-b border-destructive/30 pb-4">
-                      <h2 className="font-serif text-2xl font-black text-foreground flex items-center gap-2"><Plus className="size-5 text-destructive" /> Forjar Nova Criatura</h2>
-                      <Button variant="ghost" size="sm" onClick={() => setIsCreating(false)}>Cancelar</Button>
+                      <h2 className="font-serif text-2xl font-black text-foreground flex items-center gap-2"><Plus className="size-5 text-destructive" /> {editingCreature ? "Editar Criatura" : "Forjar Nova Criatura"}</h2>
+                      <Button variant="ghost" size="sm" onClick={() => { if (confirm("Descartar as alterações não salvas?")) { setIsCreating(false); setError(""); } }}>Cancelar</Button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -267,8 +317,26 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                       </div>
 
                       <div className="col-span-2 border border-border/30 rounded-lg p-4 bg-card/10 mt-2">
-                        <p className="text-xs font-bold text-destructive mb-3">Ataque Básico</p>
-                        <AttackEditor value={attack} onChange={setAttack} />
+                        <p className="text-xs font-bold text-destructive mb-3">Ataques básicos</p>
+                        {attacks.map((attack, index) => <div key={index} className="mb-4 space-y-2 rounded-lg border border-white/10 p-3">
+                          <AttackEditor value={attack} onChange={value => setAttacks(previous => previous.map((entry, i) => i === index ? value : entry))} />
+                          <Button variant="ghost" size="sm" disabled={attacks.length === 1} onClick={() => setAttacks(previous => previous.filter((_, i) => i !== index))}>Remover ataque</Button>
+                        </div>)}
+                        <Button variant="outline" onClick={() => setAttacks(previous => [...previous, defaultAttack()])}>+ Adicionar ataque</Button>
+                      </div>
+                      <div className="col-span-2 space-y-3">
+                        <p className="text-sm font-bold">Afinidades</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {(Object.keys(affinities) as (keyof Creature["affinities"])[]).map(key => <label key={key} className="flex flex-col gap-1 text-xs">
+                            {{physical: "Físico", air: "Ar", bolt: "Raio", dark: "Trevas", earth: "Terra", fire: "Fogo", ice: "Gelo", light: "Luz", poison: "Veneno"}[key]}
+                            <select className="rounded bg-zinc-900 p-2" value={affinities[key]} onChange={e => setAffinities(previous => ({...previous, [key]: e.target.value as Creature["affinities"][typeof key]}))}>
+                              <option value="none">Normal</option><option value="VU">Vulnerável</option><option value="RS">Resistente</option><option value="IM">Imune</option><option value="AB">Absorve</option>
+                            </select>
+                          </label>)}
+                        </div>
+                        <label className="flex flex-col gap-2 text-sm">Equipamentos (um ID por linha)<textarea className="rounded bg-zinc-900 p-3" rows={3} value={equipmentText} onChange={e => setEquipmentText(e.target.value)} /></label>
+                        <label className="flex flex-col gap-2 text-sm">Anotações de magias antigas (uma por linha)<textarea className="rounded bg-zinc-900 p-3" rows={3} value={spellsText} onChange={e => setSpellsText(e.target.value)} /></label>
+                        <p className="text-xs text-muted-foreground">As anotações são preservadas. Cadastre abaixo as habilidades que deseja automatizar. Alterações no bestiário valem para as próximas invocações.</p>
                       </div>
                       <div className="col-span-2"><AbilityEditor value={abilities} onChange={setAbilities} /></div>
 
@@ -276,10 +344,10 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
 
                     <div className="flex justify-end pt-4 mt-2 border-t border-border/40">
                       <Button className="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-8 font-bold gap-2" onClick={handleSaveDraft}>
-                        <Save className="size-4" /> Registrar Criatura
+                        <Save className="size-4" /> {saving ? "Salvando..." : editingCreature ? "Salvar alterações" : "Registrar Criatura"}
                       </Button>
                     </div>
-                  </div>
+                  </fieldset>
                 ) : hoveredCreature ? (
                   <div className="flex flex-col gap-6 animate-in fade-in">
                     <div className="flex justify-between items-start">
@@ -298,14 +366,10 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                       </div>
                       
                       {customCreatures.some(custom => custom.id === hoveredCreature.id) && (
-                        <Button variant="outline" size="icon" className="border-red-500/50 text-red-500 hover:bg-red-500/20" title="Deletar criatura customizada" onClick={() => {
-                          if (confirm("Deletar esta criatura customizada permanentemente?")) {
-                            onDelete(hoveredCreature.id)
-                            setHoveredCreature(null)
-                          }
-                        }}>
-                          <Trash2 className="size-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button variant="outline" disabled={saving} onClick={() => openEditor(hoveredCreature)}>Editar criatura</Button>
+                          <Button variant="ghost" disabled={saving} onClick={deleteSelected} aria-label="Excluir criatura"><Trash2 className="size-4" /></Button>
+                        </div>
                       )}
                     </div>
                     
@@ -336,6 +400,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                       <div className="bg-black/30 border border-white/5 rounded-lg p-4">
                         <p className="text-xs font-bold text-primary uppercase tracking-widest mb-3">Habilidades / Passivas</p>
                         <ul className="space-y-2 list-disc list-inside text-sm text-muted-foreground ml-3">
+                          {hoveredCreature.abilities?.map((ability: Ability) => <li key={ability.id}>{ability.name} — {ability.kind === "passive" ? `${ability.trigger}: ${ability.effect}` : ability.kind === "attack" ? `${ability.attack.damage} ${ability.attack.type}` : `QTE ${ability.seconds}s · dificuldade ${ability.difficulty}`}</li>)}
                           {hoveredCreature.spells?.map((spell, idx) => (
                             <li key={idx} className="leading-relaxed">{spell}</li>
                           ))}

@@ -23,7 +23,11 @@ type PresenceConnection = {
   userId: string
   registrationId: string
 }
-type PersonalNotesRecord = { notes: PersonalNote[]; updatedAt: number }
+type PersonalNotesRecord = {
+  notes: PersonalNote[]
+  flowcharts?: import("./types").PersonalFlowchart[]
+  updatedAt: number
+}
 
 interface StoreShape {
   users: Map<string, User>

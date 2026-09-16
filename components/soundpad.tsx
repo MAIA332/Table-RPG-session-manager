@@ -44,8 +44,93 @@ interface SoundpadProps {
   onStopAll?: () => void;
 }
 
-export function Soundpad({ isGm, activeSounds, customTracks = [], musicVolume = 0.5, effectsVolume = 0.5, onCustomTracksChange, onMusicVolumeChange, onEffectsVolumeChange, onPlaySound, onStopSound, onStopAll }: SoundpadProps) {
+export function Soundpad({ campaignId, isGm, activeSounds, customTracks = [], musicVolume = 0.5, effectsVolume = 0.5, onCustomTracksChange, onMusicVolumeChange, onEffectsVolumeChange, onPlaySound, onStopSound, onStopAll }: SoundpadProps) {
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
+  const [folders, setFolders] = useState<SoundFolder[]>([])
+  const [activeFolder, setActiveFolder] = useState("all")
+  const [folderName, setFolderName] = useState("")
+  const [search, setSearch] = useState("")
+  const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [folderError, setFolderError] = useState("")
+  const [reload, setReload] = useState(0)
+  const savingRef = useRef(false)
+  const generation = useRef(0)
+
+  useEffect(() => {
+    const version = ++generation.current
+    const abort = new AbortController()
+    setLoaded(false)
+    setFolders([])
+    setActiveFolder("all")
+    setFolderError("")
+    setSaving(false)
+    savingRef.current = false
+    if (!isGm) return () => { abort.abort(); generation.current++ }
+    void fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/state`, { cache: "no-store", signal: abort.signal })
+      .then(async response => {
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error || "Não foi possível carregar as pastas.")
+        if (version !== generation.current) return
+        setFolders(normalizeSoundFolders(data.state?.soundFolders))
+        setLoaded(true)
+      }).catch(error => {
+        if (version === generation.current && !abort.signal.aborted) setFolderError(error instanceof Error ? error.message : "Erro ao carregar pastas.")
+      })
+    return () => { abort.abort(); generation.current++ }
+  }, [campaignId, isGm, reload])
+
+  async function saveFolders(next: SoundFolder[]): Promise<boolean> {
+    if (!isGm || !loaded || savingRef.current) return false
+    savingRef.current = true
+    setSaving(true)
+    setFolderError("")
+    const version = generation.current
+    try {
+      const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/state`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state: { soundFolders: next } }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Não foi possível salvar as pastas.")
+      if (!Array.isArray(data.state?.soundFolders)) throw new Error("Atualize lib/campaign-state.ts para habilitar o salvamento das pastas de sons.")
+      if (version !== generation.current) return false
+      setFolders(normalizeSoundFolders(data.state.soundFolders))
+      return true
+    } catch (error) {
+      if (version === generation.current) setFolderError(error instanceof Error ? error.message : "Erro ao salvar pastas.")
+      return false
+    } finally {
+      if (version === generation.current) { savingRef.current = false; setSaving(false) }
+    }
+  }
+
+  async function createFolder() {
+    const name = folderName.trim()
+    if (!name) return
+    const id = `sound-folder-${crypto.randomUUID()}`
+    if (await saveFolders([...folders, { id, name, trackIds: [] }])) {
+      setFolderName("")
+      setActiveFolder(id)
+    }
+  }
+
+  async function renameFolder(folder: SoundFolder) {
+    const name = prompt("Novo nome da pasta:", folder.name)?.trim()
+    if (name) await saveFolders(folders.map(entry => entry.id === folder.id ? { ...entry, name } : entry))
+  }
+
+  async function deleteFolder(folder: SoundFolder) {
+    if (!confirm(`Excluir a pasta "${folder.name}"? Os sons serão mantidos em Sem pasta.`)) return
+    if (await saveFolders(folders.filter(entry => entry.id !== folder.id))) setActiveFolder("all")
+  }
+
+  function moveTrack(trackId: string, folderId: string) {
+    void saveFolders(folders.map(folder => ({ ...folder, trackIds: [
+      ...folder.trackIds.filter(id => id !== trackId), ...(folder.id === folderId ? [trackId] : []),
+    ] })))
+  }
+
 
   const [newSoundName, setNewSoundName] = useState("");
   const [newSoundUrl, setNewSoundUrl] = useState("");
@@ -117,6 +202,11 @@ export function Soundpad({ isGm, activeSounds, customTracks = [], musicVolume = 
   }, []);
 
   const allTracks = [...SOUND_LIBRARY, ...customTracks];
+  const folderForTrack = (id: string) => folders.find(folder => folder.trackIds.includes(id))?.id || "unfiled"
+  const visibleTracks = allTracks.filter(track =>
+    (activeFolder === "all" || folderForTrack(track.id) === activeFolder) &&
+    track.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
+  )
   const getTrackName = (trackId: string) => allTracks.find(t => t.id === trackId)?.name || "Som Extra";
 
   return (
@@ -131,18 +221,29 @@ export function Soundpad({ isGm, activeSounds, customTracks = [], musicVolume = 
             <p className="text-sm text-zinc-400 mt-1">Organize e gerencie seus sons com facilidade</p>
           </div>
 
-          <div className="px-8 pb-4 flex justify-between items-center border-b border-white/5 shrink-0">
-             <div className="bg-white/5 border border-white/10 rounded-md px-3 py-1.5 text-xs font-bold text-zinc-300 uppercase tracking-wider">
-                Todos os Sons
-             </div>
-             <div className="hidden sm:flex text-[10px] font-bold text-zinc-500 uppercase tracking-widest gap-8 pr-12">
-                <span>Duração</span>
-                <span>Ação</span>
-             </div>
+          <div className="px-6 pb-4 space-y-3 border-b border-white/5">
+            <input aria-label="Pesquisar sons" placeholder="Pesquisar sons nesta pasta..." value={search} onChange={e => setSearch(e.target.value)} className="w-full rounded border border-white/15 bg-black/40 p-2 text-sm" />
+            <div className="flex gap-2">
+              <input aria-label="Nome da nova pasta" maxLength={100} placeholder="Nome da nova pasta" value={folderName} disabled={!loaded || saving} onChange={e => setFolderName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void createFolder() } }} className="min-w-0 flex-1 rounded border border-white/15 bg-black/40 p-2 text-sm" />
+              <Button disabled={!loaded || saving || !folderName.trim()} onClick={() => void createFolder()}>+ Nova pasta</Button>
+            </div>
+            <nav aria-label="Pastas de sons" className="flex max-h-40 flex-wrap gap-2 overflow-y-auto">
+              {[{ id: "all", name: "Todos os sons" }, { id: "unfiled", name: "Sem pasta" }, ...folders].map(folder => <button type="button" key={folder.id} disabled={!loaded || saving} aria-pressed={activeFolder === folder.id} onClick={() => setActiveFolder(folder.id)} className={`rounded border px-3 py-2 text-xs ${activeFolder === folder.id ? "border-amber-300 bg-amber-300/10 text-amber-100" : "border-white/15 text-zinc-300"}`}>
+                {folder.name} ({allTracks.filter(track => folder.id === "all" || folderForTrack(track.id) === folder.id).length})
+              </button>)}
+            </nav>
+            {folders.filter(folder => folder.id === activeFolder).map(folder => <div key={folder.id} className="flex gap-4 text-xs">
+              <button disabled={saving} onClick={() => void renameFolder(folder)} className="text-amber-200">Renomear pasta</button>
+              <button disabled={saving} onClick={() => void deleteFolder(folder)} className="text-red-300">Excluir pasta</button>
+            </div>)}
+            {saving && <p role="status" className="text-xs text-amber-200">Salvando organização...</p>}
+            {!loaded && !folderError && <p role="status" className="text-xs text-zinc-400">Carregando pastas...</p>}
+            {folderError && <div role="alert" className="text-sm text-red-300">{folderError}{!loaded && <button className="ml-3 underline" onClick={() => setReload(value => value + 1)}>Tentar novamente</button>}</div>}
           </div>
 
           <div className="flex-1 overflow-y-auto p-8 space-y-3 custom-scrollbar-sepia">
-            {allTracks.map(track => {
+            {loaded && visibleTracks.length === 0 && <p className="text-sm text-zinc-400">Nenhum som nesta pasta corresponde à pesquisa.</p>}
+            {visibleTracks.map(track => {
                const isPlaying = activeSounds.some(s => s.trackId === track.id);
                const activeInstances = activeSounds.filter(s => s.trackId === track.id);
                const isCustom = track.isCustom;
@@ -162,6 +263,10 @@ export function Soundpad({ isGm, activeSounds, customTracks = [], musicVolume = 
                              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded">MP3</span>
                              {isCustom && <span className="rounded-sm border border-primary/25 bg-primary/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-primary">Personalizado</span>}
                           </div>
+                          <select aria-label={`Mover ${track.name} para pasta`} value={folderForTrack(track.id)} disabled={!loaded || saving} onChange={e => moveTrack(track.id, e.target.value)} className="mt-2 max-w-full rounded border border-white/15 bg-zinc-900 p-1 text-xs">
+                            <option value="unfiled">Sem pasta</option>
+                            {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+                          </select>
                        </div>
                     </div>
                     
@@ -272,7 +377,7 @@ export function Soundpad({ isGm, activeSounds, customTracks = [], musicVolume = 
                 <input type="text" value={newSoundName} onChange={e=>setNewSoundName(e.target.value)} placeholder="Nome do Áudio" className="rpg-themed-deep rounded-sm border border-white/10 bg-[#0a0a0a] px-4 py-2.5 text-sm text-foreground transition-colors placeholder:text-zinc-600 focus:border-primary/60 focus:outline-none" />
                 <input type="text" value={newSoundUrl} onChange={e=>setNewSoundUrl(e.target.value)} placeholder="URL direta do arquivo" className="rpg-themed-deep rounded-sm border border-white/10 bg-[#0a0a0a] px-4 py-2.5 font-mono text-sm text-foreground transition-colors placeholder:text-zinc-600 focus:border-primary/60 focus:outline-none" />
                 <Button variant="default" className="mt-1 h-11 w-full gap-2 font-bold" onClick={handleAddCustomSound}>
-                   <Save className="size-4" /> Salvar Etiqueta
+                   <Save className="size-4" /> Salvar som em Sem pasta
                 </Button>
              </div>
           </div>
@@ -310,4 +415,26 @@ export function Soundpad({ isGm, activeSounds, customTracks = [], musicVolume = 
       </div>
     </div>
   )
+}
+
+
+interface SoundFolder {
+  id: string
+  name: string
+  trackIds: string[]
+}
+
+function normalizeSoundFolders(value: unknown): SoundFolder[] {
+  if (!Array.isArray(value)) return []
+  const ids = new Set<string>()
+  const tracks = new Set<string>()
+  return value.flatMap(entry => {
+    if (!entry || typeof entry.id !== "string" || !entry.id || ["all", "unfiled"].includes(entry.id) || ids.has(entry.id) || typeof entry.name !== "string" || !entry.name.trim()) return []
+    ids.add(entry.id)
+    const trackIds: string[] = []
+    for (const id of Array.isArray(entry.trackIds) ? entry.trackIds : []) {
+      if (typeof id === "string" && !tracks.has(id)) { tracks.add(id); trackIds.push(id) }
+    }
+    return [{ id: entry.id, name: entry.name.trim(), trackIds }]
+  })
 }

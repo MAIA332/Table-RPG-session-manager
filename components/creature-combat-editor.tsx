@@ -105,6 +105,11 @@ export function AttackEditor({
           ))}
         </select>
       </Field>
+      <div className="sm:col-span-2 xl:col-span-5">
+        <Field title="Descrição / efeito do ataque">
+          <textarea className={input} rows={2} value={value.description || ""} onChange={e => onChange({ ...value, description: e.target.value })} />
+        </Field>
+      </div>
     </div>
   )
 }

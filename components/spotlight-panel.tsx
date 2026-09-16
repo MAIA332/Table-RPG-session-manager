@@ -6,7 +6,7 @@ import {
   type SpotlightAction,
 } from "@/lib/combat-model"
 const button =
-  "rounded-lg border border-white/20 px-4 py-3 text-sm font-semibold transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-40"
+  "rounded-md border border-primary/35 bg-primary/10 px-4 py-3 text-sm font-semibold text-foreground transition hover:border-primary/70 hover:bg-primary/20 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-40"
 export function SpotlightAvatar({
   active,
   name,
@@ -27,17 +27,17 @@ export function SpotlightAvatar({
     >
       <div
         aria-label={`${name}${active ? ", com o Holofote" : ""}`}
-        className={`relative rounded-full border-2 ${active ? "border-amber-300 shadow-[0_0_24px_rgba(252,211,77,0.6)]" : "border-zinc-700"}`}
+        className={`relative rounded-full border-2 ${active ? "border-primary shadow-[0_0_20px_var(--primary)]" : "border-border"}`}
         style={{ width: 64, height: 64, minWidth: 64, minHeight: 64, flexShrink: 0, boxSizing: "border-box" }}
       >
         {active && (
           <span
             aria-hidden
-            className="pointer-events-none absolute -inset-2 rounded-full border border-amber-300 motion-safe:animate-pulse"
+            className="pointer-events-none absolute -inset-2 rounded-full border border-primary motion-safe:animate-pulse"
           />
         )}
         <div
-          className="bg-zinc-900"
+          className="bg-background"
           style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: "50%" }}
         >
           {children ?? (showImage ? (
@@ -58,7 +58,7 @@ export function SpotlightAvatar({
       <span className="w-full text-sm leading-snug" style={{ overflowWrap: "anywhere" }}>
         {name}
       </span>
-      {active && <span className="text-xs leading-snug text-amber-200">Sua vez de agir</span>}
+      {active && <span className="text-xs leading-snug text-primary">Sua vez de agir</span>}
     </div>
   )
 }
@@ -82,11 +82,11 @@ export function SpotlightPanel({
   const eligible = state.players.some((p) => p.id === viewerId)
   const approved = !!r?.approved.includes(viewerId)
   return (
-    <section className="rounded-2xl border border-amber-300/25 bg-zinc-950 p-5 text-zinc-100 space-y-5">
+    <section className="rounded-xl border border-primary/30 bg-card/30 p-5 text-foreground shadow-inner space-y-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-amber-100">Holofote</h2>
-          <p className="text-sm text-zinc-400" role="status">
+          <h2 className="font-serif text-xl font-black text-primary">Holofote</h2>
+          <p className="text-sm text-muted-foreground" role="status">
             {state.side === "gm"
               ? "O Mestre está agindo"
               : state.activePlayerId
@@ -133,7 +133,7 @@ export function SpotlightPanel({
             <label className="text-sm">
               Tokens a adquirir{" "}
               <select
-                className="ml-2 rounded bg-zinc-900 p-2"
+                className="ml-2 rounded border border-border/60 bg-background/70 p-2 text-foreground"
                 value={passive}
                 onChange={(e) =>
                   setPassive(Number(e.target.value) as 0 | 1 | 2)
@@ -157,7 +157,7 @@ export function SpotlightPanel({
             </button>
           </div>
           {r && (
-            <p role="status" className="text-sm text-zinc-300">
+            <p role="status" className="text-sm text-muted-foreground">
               {requester?.name}: {r.approved.length}/{r.required.length} aliados
               aprovaram.
             </p>
@@ -168,7 +168,7 @@ export function SpotlightPanel({
         {eligible && state.side === "group" && !state.activePlayerId && !r && (
           <button
             type="button"
-            className={`${button} bg-amber-300 text-zinc-950`}
+            className={`${button} border-primary/70 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground`}
             onClick={() =>
               dispatch({
                 type: "request",
@@ -183,10 +183,10 @@ export function SpotlightPanel({
         {r?.playerId === viewerId && (
           <div
             role="status"
-            className="rounded-xl border border-amber-300/30 bg-amber-300/5 p-4"
+            className="rounded-xl border border-primary/30 bg-primary/5 p-4"
           >
             <p>Aguardando aprovação do Mestre e dos aliados...</p>
-            <p className="mt-1 text-sm text-zinc-400">
+            <p className="mt-1 text-sm text-muted-foreground">
               {r.approved.length} de {r.required.length} aprovações.
             </p>
             <button
@@ -207,7 +207,7 @@ export function SpotlightPanel({
         {r && r.required.includes(viewerId) && (
           <div
             role="alert"
-            className="rounded-xl border border-sky-300/40 bg-sky-950/50 p-4"
+            className="rounded-xl border border-primary/35 bg-primary/10 p-4"
           >
             <p>{requester?.name} quer agir.</p>
             <button

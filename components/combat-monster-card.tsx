@@ -1,4 +1,7 @@
 "use client"
+import { QTE_CHECKS } from "@/lib/combat-checks"
+import { getEquipment } from "@/lib/game-data"
+import type { Attack, Ability } from "@/lib/combat-model"
 import type { CombatCreature } from "@/lib/combat-types"
 export function CombatMonsterCard({
   creature,
@@ -88,6 +91,7 @@ export function CombatMonsterCard({
         pending={pending}
         onChange={onVital}
       />
+      <CreatureSheetDetails creature={creature} />
       {!canAct && creature.currentHp > 0 && (
         <p className="mb-3 rounded-lg bg-amber-300/5 p-3 text-xs text-amber-200">
           Para atacar, inicie o combate e assuma o Holofote. Aguarde qualquer
@@ -106,9 +110,7 @@ export function CombatMonsterCard({
             onClick={() => onAttack(i)}
           >
             <span className="block text-amber-100">{a.name}</span>
-            <span className="text-xs text-zinc-400">
-              {a.damage} {a.type} · {a.attributes.join(" + ").toUpperCase()}
-            </span>
+            <CreatureAttackDetails attack={a} />
           </button>
         ))}
         {abilities
@@ -123,9 +125,7 @@ export function CombatMonsterCard({
                   onClick={() => onAttack(undefined, a.id)}
                 >
                   {a.name}
-                  <span className="ml-2 text-xs text-violet-300">
-                    {a.cost.amount} {a.cost.resource === "mp" ? "MP" : "Tokens"}
-                  </span>
+                  <CreatureAbilityDetails ability={a} />
                 </button>
               ),
           )}
@@ -146,9 +146,7 @@ export function CombatMonsterCard({
                   onClick={() => onQte(a.id)}
                 >
                   {a.name} · {a.seconds}s
-                  <span className="block text-xs text-red-200">
-                    {a.cost.amount} {a.cost.resource === "mp" ? "MP" : "Tokens"}
-                  </span>
+                  <CreatureAbilityDetails ability={a} />
                 </button>
               ),
           )
@@ -171,7 +169,8 @@ export function CombatMonsterCard({
           {abilities.map((a) =>
             a.kind === "passive" ? (
               <p key={a.id} className="mt-2 text-zinc-400">
-                <strong>{a.name}:</strong> {a.effect}
+                <strong>{a.name}</strong>
+                <CreatureAbilityDetails ability={a} />
               </p>
             ) : null,
           )}
@@ -238,5 +237,71 @@ export function CreatureResourceControls({
         )
       })}
     </div>
+  )
+}
+
+
+// Apresente estes detalhes apenas na visão do mestre.
+export function CreatureAttackDetails({ attack }: { attack: Attack }) {
+  return (
+    <span className="mt-1 block space-y-1 text-xs font-normal text-zinc-300">
+      <span className="block">Acerto: {attack.attributes.join(" + ").toUpperCase()} contra {attack.targetDefense === "magical" ? "Defesa Mágica" : "Defesa Física"}</span>
+      <span className="block">Dano: {attack.damage} · {attack.type}</span>
+      {attack.description && <span className="block whitespace-pre-wrap break-words">Efeito: {attack.description}</span>}
+    </span>
+  )
+}
+
+export function CreatureAbilityDetails({ ability }: { ability: Ability }) {
+  if (ability.kind === "passive") return (
+    <span className="mt-1 block space-y-1 whitespace-pre-wrap break-words text-xs font-normal text-zinc-300">
+      <span className="block">Gatilho: {ability.trigger || "Não informado"}</span>
+      <span className="block">Efeito: {ability.effect || "Não informado"}</span>
+    </span>
+  )
+  const check = ability.kind === "qte" ? QTE_CHECKS.find(entry => entry.id === ability.checkId) : undefined
+  return (
+    <span className="mt-1 block space-y-1 text-xs font-normal text-zinc-300">
+      <span className="block text-violet-200">Custo: {ability.cost.amount} {ability.cost.resource === "mp" ? "MP" : "Tokens de Ação"}</span>
+      {ability.kind === "attack" ? <CreatureAttackDetails attack={ability.attack} /> : <>
+        <span className="block">Reação: {ability.seconds}s · Dificuldade: {ability.difficulty}</span>
+        <span className="block">Teste: {check ? `${check.name} (${check.attrs.join(" + ").toUpperCase()})` : ability.checkId}</span>
+        <span className="block whitespace-pre-wrap break-words">Falha: {ability.failureDamage} de dano{ability.failureEffect ? ` · ${ability.failureEffect}` : ""}</span>
+        <span className="block whitespace-pre-wrap break-words">Sucesso: {ability.successDamage} de dano{ability.successEffect ? ` · ${ability.successEffect}` : ""}</span>
+      </>}
+    </span>
+  )
+}
+
+export function CreatureSheetDetails({ creature }: { creature: CombatCreature }) {
+  const elements: Record<string, string> = { physical: "Físico", air: "Ar", bolt: "Raio", dark: "Trevas", earth: "Terra", fire: "Fogo", ice: "Gelo", light: "Luz", poison: "Veneno" }
+  const affinityLabels: Record<string, string> = { none: "Normal", VU: "Vulnerável", RS: "Resistente", IM: "Imune", AB: "Absorve" }
+  const affinities = creature.affinities || {}
+  const affinityKeys = [...new Set([...Object.keys(elements), ...Object.keys(affinities)])]
+  return (
+    <section aria-label={`Propriedades de ${creature.name}`} className="my-4 space-y-4 rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
+      <div>
+        <h4 className="mb-2 text-xs font-bold uppercase text-amber-100">Atributos e defesas</h4>
+        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {(["dex", "ins", "mig", "wlp"] as const).map(key => <div key={key} className="rounded-lg bg-white/5 p-2 text-center"><dt className="text-xs uppercase text-zinc-400">{key}</dt><dd className="font-bold text-amber-100">{creature.attributes?.[key] || "—"}</dd></div>)}
+          <div className="col-span-2 rounded-lg bg-white/5 p-2"><dt className="text-xs text-zinc-400">Defesa Física</dt><dd className="font-bold">{creature.def}</dd></div>
+          <div className="col-span-2 rounded-lg bg-white/5 p-2"><dt className="text-xs text-zinc-400">Defesa Mágica</dt><dd className="font-bold">{creature.mdef}</dd></div>
+        </dl>
+      </div>
+      <div>
+        <h4 className="mb-2 text-xs font-bold uppercase text-amber-100">Afinidades</h4>
+        <dl className="grid grid-cols-2 gap-2">
+          {affinityKeys.map(key => { const value = affinities[key] || "none"; return <div key={key} className={`rounded-lg border p-2 ${value === "VU" ? "border-red-400/40 text-red-200" : value === "none" ? "border-white/5 text-zinc-400" : "border-sky-300/30 text-sky-200"}`}><dt className="text-xs">{elements[key] || key}</dt><dd className="font-semibold">{affinityLabels[value] || value}</dd></div> })}
+        </dl>
+      </div>
+      <div>
+        <h4 className="mb-2 text-xs font-bold uppercase text-amber-100">Equipamentos</h4>
+        {creature.equipment?.length ? <ul className="list-inside list-disc space-y-1 break-words text-zinc-300">{creature.equipment.map((id, index) => <li key={`${id}-${index}`}>{getEquipment(id)?.name || id}</li>)}</ul> : <p className="text-xs text-zinc-400">Nenhum equipamento cadastrado.</p>}
+      </div>
+      {!!creature.spells?.length && <div>
+        <h4 className="mb-2 text-xs font-bold uppercase text-amber-100">Anotações de magias</h4>
+        <ul className="list-inside list-disc space-y-2 whitespace-pre-wrap break-words text-zinc-300">{creature.spells.map((spell, index) => <li key={index}>{spell}</li>)}</ul>
+      </div>}
+    </section>
   )
 }

@@ -1654,19 +1654,19 @@ function ManualDefenseFields({
       )}
       {editable && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <span role="status" className="text-[11px] text-muted-foreground">
-            {saving
-              ? "Salvando..."
-              : needsSave
-                ? "Salve para manter estes valores na ficha."
-                : "Defesas salvas."}
-          </span>
+          {(saving || needsSave) && (
+            <span role="status" className="text-[11px] text-muted-foreground">
+              {saving
+                ? "Salvando..."
+                : "Salve para manter estes valores na ficha."}
+            </span>
+          )}
           <Button
             type="button"
             size="sm"
             disabled={busy || saving || !needsSave}
             onClick={() => void save()}
-            className="gap-1.5 text-xs"
+            className="ml-auto gap-1.5 text-xs"
           >
             <Save className="size-3.5" /> Salvar defesas
           </Button>
@@ -1783,12 +1783,8 @@ export function CharacterSheet({
 
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
   const hasCheckMinimums =
-    character.name === "Kael Veyr" &&
-    campaignMembers.some(
-      (member: Member) =>
-        member.userId === character.ownerId &&
-        member.name === "Mateus Lopes de Deus",
-    )
+    character.id === "char_jlhky6s9mstuuli0" &&
+    character.ownerId === "user_gd68ua63msnua1nb"
   const [archiving, setArchiving] = useState(false)
 
   // Estado do Editor Inline de Modificadores / Condições
@@ -3021,13 +3017,13 @@ export function CharacterSheet({
                 >
                   <motion.div
                     variants={modalVariants}
-                    className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col border border-pink-500/40 bg-zinc-950 shadow-[0_0_40px_rgba(236,72,153,0.15)]"
+                    className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col border border-primary/30 bg-zinc-950 shadow-2xl"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <div className="flex justify-between items-center p-6 border-b border-pink-500/20 bg-pink-950/10 shrink-0">
+                    <div className="rpg-modal-header flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
                       <div>
-                        <h4 className="font-serif text-2xl font-black text-muted-foreground flex items-center gap-2">
-                          <Link2 className="size-6" /> Laços e Conexões
+                        <h4 className="font-serif text-2xl font-black text-foreground flex items-center gap-2">
+                          <Link2 className="size-6 text-primary" /> Laços e Conexões
                         </h4>
                         <p className="text-sm text-muted-foreground mt-1">
                           Invoque a força de seus sentimentos para receber bônus
@@ -3049,7 +3045,7 @@ export function CharacterSheet({
                           Seus Laços
                         </h5>
                         {bonds.length === 0 ? (
-                          <div className="text-sm text-muted-foreground italic text-center py-6 border border-dashed border-white/10 rounded-lg bg-black/20">
+                          <div className="text-sm text-muted-foreground italic text-center py-6 border border-dashed border-border/50 rounded-lg bg-card/30">
                             Você ainda não formou laços fortes com ninguém.
                           </div>
                         ) : (
@@ -3057,19 +3053,19 @@ export function CharacterSheet({
                             {bonds.map((bond) => (
                               <div
                                 key={bond.id}
-                                className="flex flex-col gap-3 p-4 rounded-xl bg-black/40 border border-pink-500/20 hover:border-pink-500/40 transition-colors group"
+                                className="flex flex-col gap-3 p-4 rounded-xl bg-card/40 border border-border/50 hover:border-primary/40 transition-colors group"
                               >
                                 <div className="flex justify-between items-start gap-2">
                                   <div className="flex flex-col min-w-0">
                                     <span className="font-bold text-foreground truncate">
                                       {bond.target}
                                     </span>
-                                    <span className="text-[10px] uppercase tracking-widest text-pink-400/80">
+                                    <span className="text-[10px] uppercase tracking-widest text-primary/80">
                                       {bond.type}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
-                                    <span className="font-mono text-xs font-bold bg-pink-500/20 text-pink-300 px-2 py-1 rounded border border-pink-500/30">
+                                    <span className="font-mono text-xs font-bold bg-primary/15 text-primary px-2 py-1 rounded border border-primary/30">
                                       +{bond.value}
                                     </span>
                                   </div>
@@ -3082,7 +3078,7 @@ export function CharacterSheet({
                                       setActiveBond(bond)
                                       setShowBondsModal(false)
                                     }}
-                                    className="flex-1 gap-1.5 h-8 bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs"
+                                    className="flex-1 gap-1.5 h-8 font-bold text-xs"
                                   >
                                     <Zap className="size-3" /> Invocar
                                   </Button>
@@ -3116,11 +3112,11 @@ export function CharacterSheet({
 
                       {/* CRIAR LAÇO */}
                       {editable && (
-                        <div className="mt-4 pt-6 border-t border-white/10">
-                          <h5 className="text-[10px] font-bold uppercase tracking-widest text-pink-400 flex items-center gap-2 mb-4">
+                        <div className="mt-4 pt-6 border-t border-border/50">
+                          <h5 className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2 mb-4">
                             <Plus className="size-3" /> Formar Novo Laço
                           </h5>
-                          <div className="flex flex-col gap-3 bg-card/20 p-4 rounded-xl border border-white/5">
+                          <div className="flex flex-col gap-3 bg-card/40 p-4 rounded-xl border border-border/50">
                             <label className="flex flex-col gap-1.5">
                               <span className="text-[10px] uppercase font-bold text-muted-foreground">
                                 Personagem ou NPC Alvo
@@ -3135,7 +3131,7 @@ export function CharacterSheet({
                                   })
                                 }
                                 placeholder="Ex: Galadriel, O Rei Goblin..."
-                                className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-pink-500/50"
+                                className="bg-background/60 border border-border/60 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60"
                               />
                             </label>
                             <div className="flex gap-3">
@@ -3151,7 +3147,7 @@ export function CharacterSheet({
                                       type: e.target.value,
                                     })
                                   }
-                                  className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-pink-500/50"
+                                  className="bg-background/60 border border-border/60 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60"
                                 >
                                   {BOND_TYPES.map((t) => (
                                     <option key={t} value={t}>
@@ -3172,7 +3168,7 @@ export function CharacterSheet({
                                       value: Number(e.target.value),
                                     })
                                   }
-                                  className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-pink-500/50 font-mono"
+                                  className="bg-background/60 border border-border/60 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60 font-mono"
                                 >
                                   <option value={1}>+1</option>
                                   <option value={2}>+2</option>
@@ -3181,7 +3177,7 @@ export function CharacterSheet({
                               </label>
                             </div>
                             <Button
-                              className="mt-2 w-full bg-white/10 hover:bg-pink-500/20 hover:text-pink-400 text-foreground transition-colors border border-white/5 hover:border-pink-500/50"
+                              className="mt-2 w-full"
                               onClick={() => {
                                 if (!bondDraft.target?.trim())
                                   return alert("Dê um nome ao alvo do laço.")
@@ -3782,7 +3778,7 @@ export function CharacterSheet({
                 >
                   <motion.div
                     variants={modalVariants}
-                    className="relative flex h-[82vh] w-full max-w-5xl flex-col overflow-hidden rounded-md border-8 border-[#5b3824] bg-[#d8bd82] text-[#3e2723] shadow-[0_30px_90px_rgba(0,0,0,.8),inset_0_0_40px_rgba(76,44,20,.35)]"
+                    className="character-story-modal relative flex h-[min(94dvh,860px)] min-h-0 w-full max-w-6xl flex-col overflow-hidden rounded-md border-4 border-[#5b3824] bg-[#d8bd82] text-[#3e2723] shadow-[0_30px_90px_rgba(0,0,0,.8),inset_0_0_40px_rgba(76,44,20,.35)] sm:border-8"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <div className="flex justify-between items-center p-5 border-b border-[#d4af37]/40 shrink-0 bg-black/5">
@@ -3796,7 +3792,7 @@ export function CharacterSheet({
                         <X className="size-5 text-[#5d4037]" />
                       </button>
                     </div>
-                    <div className="relative grid flex-1 overflow-y-auto bg-[#ead8aa] md:grid-cols-2 custom-scrollbar-sepia">
+                    <div className="relative grid min-h-0 flex-1 grid-rows-3 overflow-hidden bg-[#ead8aa] md:grid-cols-2 md:grid-rows-2">
                       <div className="pointer-events-none absolute bottom-0 left-1/2 top-0 hidden w-8 -translate-x-1/2 bg-gradient-to-r from-black/15 via-white/20 to-black/15 md:block" />
                       {(
                         [
@@ -3822,7 +3818,7 @@ export function CharacterSheet({
                       ).map((field, index) => (
                         <label
                           key={field.key}
-                          className={`relative p-7 sm:p-10 ${index > 0 ? "border-t border-[#8b653d]/25 md:border-t-0" : ""} ${field.key === "origin" ? "md:row-span-2" : ""}`}
+                          className={`relative flex min-h-0 flex-col p-4 sm:p-6 ${index > 0 ? "border-t border-[#8b653d]/25 md:border-t-0" : ""} ${field.key === "origin" ? "md:row-span-2" : ""}`}
                         >
                           <span className="mb-3 flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-[.2em] text-[#795548]">
                             {field.icon}
@@ -3838,11 +3834,11 @@ export function CharacterSheet({
                                   [field.key]: event.target.value,
                                 }))
                               }
-                              className="w-full resize-none border-0 border-b border-[#8b653d]/25 bg-transparent p-1 font-serif text-base leading-loose text-[#3e2723] outline-none placeholder:text-[#795548]/50 focus:border-[#795548]"
+                              className="character-story-field custom-scrollbar-sepia min-h-0 w-full flex-1 resize-none overflow-y-auto border border-[#8b653d]/25 bg-[#f3e4ba]/55 p-3 font-serif text-base leading-relaxed text-[#3e2723] shadow-inner outline-none placeholder:text-[#795548]/60 focus:border-[#795548]"
                               placeholder={`Escreva ${field.label.toLowerCase()}...`}
                             />
                           ) : (
-                            <div className="whitespace-pre-wrap font-serif text-base leading-loose">
+                            <div className="custom-scrollbar-sepia min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap rounded-sm border border-[#8b653d]/20 bg-[#f3e4ba]/35 p-3 font-serif text-base leading-relaxed text-[#3e2723]">
                               {character[field.key] || "Ainda não escrito."}
                             </div>
                           )}
@@ -4217,17 +4213,17 @@ export function CharacterSheet({
                           exit={{ opacity: 0, height: 0, marginTop: 0 }}
                           className="overflow-hidden"
                         >
-                          <div className="flex items-center justify-between gap-3 bg-pink-500/10 border border-pink-500/30 p-3 rounded-lg">
+                          <div className="flex items-center justify-between gap-3 bg-primary/10 border border-primary/30 p-3 rounded-lg">
                             <div className="flex items-center gap-3">
-                              <div className="p-2 bg-pink-500/20 rounded-md border border-pink-500/30">
-                                <Heart className="size-4 text-pink-400" />
+                              <div className="p-2 bg-primary/15 rounded-md border border-primary/30">
+                                <Heart className="size-4 text-primary" />
                               </div>
                               <div>
-                                <p className="font-bold text-sm text-pink-200">
+                                <p className="font-bold text-sm text-foreground">
                                   Laço Invocado: {activeBond.target} (+
                                   {activeBond.value})
                                 </p>
-                                <p className="text-[10px] text-pink-400/80 uppercase tracking-widest mt-0.5">
+                                <p className="text-[10px] text-primary/80 uppercase tracking-widest mt-0.5">
                                   Motivo: {activeBond.type} • O bônus será
                                   aplicado na próxima rolagem!
                                 </p>
@@ -4237,7 +4233,7 @@ export function CharacterSheet({
                               size="sm"
                               variant="ghost"
                               onClick={() => setActiveBond(null)}
-                              className="h-8 px-3 text-pink-400 hover:bg-pink-500/20 hover:text-pink-300"
+                              className="h-8 px-3 text-primary hover:bg-primary/15 hover:text-primary"
                             >
                               Cancelar
                             </Button>
@@ -4432,28 +4428,28 @@ export function CharacterSheet({
                       </div>
 
                       {/* PONTOS DE LORE */}
-                      <div className="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-purple-500/30 bg-purple-500/5 px-3 py-2">
-                        <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-purple-400">
+                      <div className="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
+                        <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-primary">
                           <BookOpen className="size-3.5" /> Lore
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {isGm && (
                             <button
                               onClick={() => patchResource("lp", -1)}
-                              className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-purple-400 hover:bg-purple-400/10 transition-colors"
+                              className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-primary hover:bg-primary/10 transition-colors"
                             >
-                              <Minus className="size-3 text-purple-400" />
+                              <Minus className="size-3 text-primary" />
                             </button>
                           )}
-                          <span className="w-5 text-center font-mono text-sm font-bold text-purple-400">
+                          <span className="w-5 text-center font-mono text-sm font-bold text-primary">
                             {(displayResources as any).lp || 0}
                           </span>
                           {isGm && (
                             <button
                               onClick={() => patchResource("lp", 1)}
-                              className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-purple-400 hover:bg-purple-400/10 transition-colors"
+                              className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-primary hover:bg-primary/10 transition-colors"
                             >
-                              <Plus className="size-3 text-purple-400" />
+                              <Plus className="size-3 text-primary" />
                             </button>
                           )}
                         </div>

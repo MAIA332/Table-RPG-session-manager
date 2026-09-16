@@ -26,7 +26,11 @@ function getNotes(key: string) {
 function saveNotes(key: string, notes: PersonalNote[]) {
   const current = store.personalNotes.get(key)
   const updatedAt = Math.max(Date.now(), Number(current?.updatedAt || 0) + 1)
-  store.personalNotes.set(key, { notes, updatedAt })
+  store.personalNotes.set(key, {
+    ...current,
+    notes,
+    updatedAt,
+  })
   saveToDisk(store)
   return notes
 }

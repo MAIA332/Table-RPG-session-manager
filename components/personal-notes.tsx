@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { ChevronDown, Loader2, NotebookPen, Plus, Trash2, X } from "lucide-react"
+import { ChevronDown, FileText, GitBranch, Loader2, NotebookPen, Plus, Trash2, X } from "lucide-react"
 import { apiFetch } from "@/lib/client"
 import type { PersonalNote } from "@/lib/types"
 import { Button } from "@/components/ui/button"
+import { PersonalFlowcharts } from "@/components/personal-flowcharts"
 
 interface PersonalNotesProps {
   campaignId: string
@@ -23,6 +24,7 @@ export function PersonalNotes({ campaignId }: PersonalNotesProps) {
   const [error, setError] = useState("")
   const [mobileTop, setMobileTop] = useState<number | null>(null)
   const [showNoteList, setShowNoteList] = useState(false)
+  const [activeMode, setActiveMode] = useState<"notes" | "flowcharts">("notes")
   const rootRef = useRef<HTMLDivElement | null>(null)
   const loadStartedRef = useRef(false)
   const closeRequestedRef = useRef(false)
@@ -232,29 +234,38 @@ export function PersonalNotes({ campaignId }: PersonalNotesProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.18 }}
-            className="rpg-modal rpg-themed-workspace absolute right-0 top-[calc(100%+0.5rem)] z-[120] flex max-h-[min(72vh,580px)] w-[min(92vw,540px)] flex-col overflow-hidden border border-primary/30 text-foreground shadow-2xl"
-            style={mobileTop === null ? undefined : { position: "fixed", left: 12, right: 12, top: mobileTop, width: "auto" }}
+            className={`rpg-modal rpg-themed-workspace absolute right-0 top-[calc(100%+0.5rem)] z-[120] flex max-h-[min(82vh,760px)] flex-col overflow-hidden border border-primary/30 text-foreground shadow-2xl transition-[width] ${activeMode === "flowcharts" ? "h-[min(82vh,760px)] w-[min(94vw,1040px)]" : "w-[min(92vw,540px)]"}`}
+            style={mobileTop === null ? undefined : activeMode === "flowcharts"
+              ? { position: "fixed", left: 12, right: 12, top: 12, bottom: 12, width: "auto", height: "auto", maxHeight: "none" }
+              : { position: "fixed", left: 12, right: 12, top: mobileTop, width: "auto" }}
             role="dialog"
             aria-label="Notas pessoais"
           >
             <header className="rpg-modal-header flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
               <div className="flex min-w-0 items-center gap-2.5">
                 <NotebookPen className="size-4 shrink-0 text-primary" />
-                <h2 className="rpg-title truncate text-base font-bold text-foreground">Notas</h2>
+                <h2 className="rpg-title truncate text-base font-bold text-foreground">Bloco de notas</h2>
               </div>
               <button type="button" onClick={() => void closeNotes()} className="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground" aria-label="Fechar notas">
                 <X className="size-4" />
               </button>
             </header>
 
-            {error && (
+            <nav className="flex shrink-0 border-b border-border/50 bg-black/20 p-1.5" aria-label="Ferramentas do bloco de notas">
+              <button type="button" onClick={() => setActiveMode("notes")} className={`flex flex-1 items-center justify-center gap-2 rounded-sm px-3 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${activeMode === "notes" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}><FileText className="size-4" /> Anotações</button>
+              <button type="button" onClick={() => setActiveMode("flowcharts")} className={`flex flex-1 items-center justify-center gap-2 rounded-sm px-3 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${activeMode === "flowcharts" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}><GitBranch className="size-4" /> Fluxogramas</button>
+            </nav>
+
+            {activeMode === "notes" && error && (
               <div className="flex shrink-0 items-center justify-between gap-2 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-xs text-destructive">
                 <span>{error}</span>
                 <button type="button" onClick={() => setError("")} className="rounded-sm p-1 hover:bg-destructive/10" aria-label="Fechar aviso"><X className="size-3.5" /></button>
               </div>
             )}
 
-            {loading ? (
+            {activeMode === "flowcharts" ? (
+              <PersonalFlowcharts campaignId={campaignId} />
+            ) : loading ? (
               <div className="flex min-h-72 items-center justify-center text-muted-foreground">
                 <Loader2 className="size-5 animate-spin" />
               </div>

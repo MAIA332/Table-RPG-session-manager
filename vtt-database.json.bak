@@ -667,6 +667,54 @@
         "userId": "user_gd68ua63msnua1nb",
         "createdAt": 1789511332585
       }
+    ],
+    [
+      "sess_00fucappmu4581kg",
+      {
+        "token": "sess_00fucappmu4581kg",
+        "userId": "user_gd68ua63msnua1nb",
+        "createdAt": 1789565718256
+      }
+    ],
+    [
+      "sess_8y1flobkmu4e8qoi",
+      {
+        "token": "sess_8y1flobkmu4e8qoi",
+        "userId": "user_reulc3j3ms3snnxu",
+        "createdAt": 1789580867346
+      }
+    ],
+    [
+      "sess_bfkf96h9mu4fcghn",
+      {
+        "token": "sess_bfkf96h9mu4fcghn",
+        "userId": "user_gd68ua63msnua1nb",
+        "createdAt": 1789582720379
+      }
+    ],
+    [
+      "sess_r5pld0z0mu4fim82",
+      {
+        "token": "sess_r5pld0z0mu4fim82",
+        "userId": "user_reulc3j3ms3snnxu",
+        "createdAt": 1789583007746
+      }
+    ],
+    [
+      "sess_sabtxi9mmu4g3uyk",
+      {
+        "token": "sess_sabtxi9mmu4g3uyk",
+        "userId": "user_gd68ua63msnua1nb",
+        "createdAt": 1789583998844
+      }
+    ],
+    [
+      "sess_fzvjngkwmu4g9mhz",
+      {
+        "token": "sess_fzvjngkwmu4g9mhz",
+        "userId": "user_reulc3j3ms3snnxu",
+        "createdAt": 1789584267815
+      }
     ]
   ],
   "campaigns": [
@@ -5787,18 +5835,18 @@
         "campaignId": "camp_o5slw0ptmsjhu84l",
         "tokens": {
           "char_jlhky6s9mstuuli0": {
-            "x": 29,
-            "y": 9,
+            "x": 7,
+            "y": 16,
             "type": "character"
           },
           "char_4uf4pocfmstw6x65": {
-            "x": 30,
-            "y": 9,
+            "x": 8,
+            "y": 16,
             "type": "character"
           },
           "char_u267bpepmsusoyuv": {
-            "x": 30,
-            "y": 8,
+            "x": 9,
+            "y": 16,
             "type": "character"
           }
         },
@@ -111342,8 +111390,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 43,
-        "updatedAt": 1789518045510,
+        "revision": 56,
+        "updatedAt": 1789589235905,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -111366,6 +111414,9 @@
               "name": "Amélia Candinari",
               "avatar": "https://i.pinimg.com/736x/b2/91/a0/b291a08d6a221acb0d4b7ff9605714f4.jpg"
             }
+          ],
+          "approverIds": [
+            "user_reulc3j3ms3snnxu"
           ]
         },
         "actorCharacterId": null,
@@ -111378,6 +111429,16 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "e8d822b8-89c2-4ab2-ba06-d78b3e58a436",
+            "at": 1789589153648,
+            "text": "Lobo Zumbi entrou em cena."
+          },
+          {
+            "id": "6f637104-b0d5-44c7-8c0d-622625dd2ae3",
+            "at": 1789586927312,
+            "text": "Lobo Zumbi entrou em cena."
+          },
           {
             "id": "48173fcc-5ac3-404c-a9c6-21c187d7c8b6",
             "at": 1789517574125,
@@ -111559,7 +111620,17 @@
           "user_0bhp2ga3msl1uk6h:ce8054cc-6b92-4dc3-ab04-156d70b0bafd",
           "user_reulc3j3ms3snnxu:dccbd3b1-6c4a-443e-837a-9b131a8a683f",
           "user_gd68ua63msnua1nb:48196053-2c2f-47df-8854-58d809ddd430",
-          "user_reulc3j3ms3snnxu:fba69e80-9eda-4cc8-841c-f5b3f5e3b954"
+          "user_reulc3j3ms3snnxu:fba69e80-9eda-4cc8-841c-f5b3f5e3b954",
+          "user_reulc3j3ms3snnxu:a04443b7-72ce-4803-931c-1978fc1b0c6f",
+          "user_gd68ua63msnua1nb:35a6fb72-f30e-400a-b565-a5dc82743078",
+          "user_gd68ua63msnua1nb:f1a1f4ae-421c-4861-b19c-fd8f6c8d6432",
+          "user_reulc3j3ms3snnxu:4de27433-e9f8-4c57-8074-718b04f9eea1",
+          "user_reulc3j3ms3snnxu:e9db11cd-59a7-4a34-b71d-6558213a91fd",
+          "user_reulc3j3ms3snnxu:73ec64b0-646c-4409-aa49-006e6879d33e",
+          "user_reulc3j3ms3snnxu:c068e744-0ac2-4fbf-93ed-548596b98a4b",
+          "user_reulc3j3ms3snnxu:e3e3ccbb-2b42-4d58-a1c8-6b2e8e7a7738",
+          "user_reulc3j3ms3snnxu:4ee54e82-880b-4f98-a33e-32839ebe2252",
+          "user_reulc3j3ms3snnxu:c144eb3b-ace4-4361-949e-2b92ab2c1557"
         ]
       }
     ]
@@ -111574,1211 +111645,1376 @@
             "name": "Colar de Ravenkhar",
             "url": "https://zipline.sinapselabs.com.br/u/aTDDKv.png",
             "isPublic": true,
-            "folderId": "857dc9cc-c63f-4ffd-886f-1436ac0885f4"
+            "folderId": "22693b2d-32e9-46a5-a928-7c88593d1333",
+            "createdAt": 1789574657028
           },
           {
             "id": "7qv30e",
             "name": "Quarto da estalagem",
             "url": "https://zipline.sinapselabs.com.br/u/KfPsCm.webp",
             "isPublic": true,
-            "folderId": "857dc9cc-c63f-4ffd-886f-1436ac0885f4"
+            "folderId": "22693b2d-32e9-46a5-a928-7c88593d1333",
+            "createdAt": 1789574657028
           },
           {
             "id": "7sdb3k",
             "name": "Porto de Vanaheim",
             "url": "https://zipline.sinapselabs.com.br/u/U4VNiG.png",
             "isPublic": true,
-            "folderId": "857dc9cc-c63f-4ffd-886f-1436ac0885f4"
+            "folderId": "22693b2d-32e9-46a5-a928-7c88593d1333",
+            "createdAt": 1789574657028
           },
           {
             "id": "zxq7ta",
             "name": "Fachada da estalagem",
             "url": "https://zipline.sinapselabs.com.br/u/vZ8kcs.webp",
             "isPublic": true,
-            "folderId": "857dc9cc-c63f-4ffd-886f-1436ac0885f4"
+            "folderId": "22693b2d-32e9-46a5-a928-7c88593d1333",
+            "createdAt": 1789574657028
           },
           {
             "id": "ig0dx",
             "name": "Lojinha da Moira",
             "url": "https://zipline.sinapselabs.com.br/u/xOmAmt.png",
             "isPublic": true,
-            "folderId": "857dc9cc-c63f-4ffd-886f-1436ac0885f4"
+            "folderId": "22693b2d-32e9-46a5-a928-7c88593d1333",
+            "createdAt": 1789574657028
           },
           {
             "id": "2mdpbn",
             "name": "Moira",
             "url": "https://zipline.sinapselabs.com.br/u/6n7Tex.png",
             "isPublic": true,
-            "folderId": "857dc9cc-c63f-4ffd-886f-1436ac0885f4"
+            "folderId": "22693b2d-32e9-46a5-a928-7c88593d1333",
+            "createdAt": 1789574657028
           },
           {
             "id": "y220er",
             "name": "Morte da moira",
             "url": "https://lh3.googleusercontent.com/d/1ZPNs9yw09N-3LQlQPO8cCwfz8lcLfxL-=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "84xvpn",
             "name": "Darin",
             "url": "https://lh3.googleusercontent.com/d/1jW7QcoUEBECfyHsQYvvZ0vC8pGo52VAI=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "vwjshp",
             "name": "Sonho amelia horror",
             "url": "https://lh3.googleusercontent.com/d/1FZCkULEp3qTLdVNH8hrFO8CWnFMFpIJZ=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "y3ex7",
             "name": "Sonho amelia",
             "url": "https://lh3.googleusercontent.com/d/1DJm3b9Gggy0OZuMMMUrctIc391UFayG1=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "lxibs",
             "name": "Tio do thorfin",
             "url": "https://lh3.googleusercontent.com/d/1-x-m3UsSIdZ8-qvNN28Q5nS7yZ5Ck9CA=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "93519o",
             "name": "Cabana sonho thorfin",
             "url": "https://lh3.googleusercontent.com/d/1eTIWniEGZes12sIQLu5V-TlJBldXTmzx=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "u959l",
             "name": "Passagem para Darin",
             "url": "https://zipline.sinapselabs.com.br/u/UU5OVn.jpg",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "dp43np",
             "name": "Floresta",
             "url": "https://natureconservancy-h.assetsadobe.com/is/image/content/dam/tnc/nature/en/photos/brazil/florestas-thiagocampi.jpg?crop=0%2C1000%2C4000%2C4000&wid=800&hei=800&scl=5.0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "evob8b",
             "name": "Passagem do rio",
             "url": "https://i.pinimg.com/736x/90/90/43/909043f27d11bca888d0433da7a01943.jpg",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "bwek7u",
             "name": "Georgie",
             "url": "https://lh3.googleusercontent.com/d/1HNn5dkVRx2rz5uhCE00y5xv0Dl7AIgNl=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "24bad",
             "name": "kael vendo os companheiros",
             "url": "https://lh3.googleusercontent.com/d/1JHRfYWU0OgD3Q4iYHLKgEpK2YgvdXpZC=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "bpvc5t",
             "name": "Miguel e Nexidium",
             "url": "https://lh3.googleusercontent.com/d/15NeVEqDREELf0YwVksfWyhTk5s5-kv1c=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "lusdmq",
             "name": "Interior de Darin",
             "url": "https://lh3.googleusercontent.com/d/1uI1RTvUFxXzQehO6BK3K8sRmOlepjHbY=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "4tp6ku",
             "name": "Gorila praga",
             "url": "https://lh3.googleusercontent.com/d/1vGrqKJVJjMGW-EcH2zRSSKDq7i6XFeSc=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "epy7ff",
             "name": "Entrando na masmorra",
             "url": "https://lh3.googleusercontent.com/d/1MCF5aXJEaw_qXJD1mTvK8IMknTe695uf=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "cotz7f",
             "name": "Corredor da prisão",
             "url": "https://lh3.googleusercontent.com/d/1eBZC2Z50XW3o3vQ8c3X-PlPVBR-kiTJV=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "hdk4z",
             "name": "Sala do altar",
             "url": "https://lh3.googleusercontent.com/d/1N7adw7FIc_V_uqQw51HhVAkTbLm0kTUt=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "rnuty",
             "name": "Prisioneiro",
             "url": "https://lh3.googleusercontent.com/d/1TN8goH_4Shzolakno5RwPAIosGNcaWc0=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "tf7re",
             "name": "Marca Vampirica",
             "url": "https://lh3.googleusercontent.com/d/1dLlvMN9jH6NacHTibLVvnGcsa4PasZ0j=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "sko6kw",
             "name": "Vampiro gigante",
             "url": "https://lh3.googleusercontent.com/d/1s23iH6SOvk5JGnRo6XqjTR4ULscTYmBf=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "xwweee",
             "name": "2 corvos",
             "url": "https://lh3.googleusercontent.com/d/1ByvSF6aXs74p1c-cmQF-HllfT_rNKQ6d=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "createdAt": 1789574657028
           },
           {
             "id": "kn7ppz",
             "name": "Nexidium",
             "url": "https://lh3.googleusercontent.com/d/14u73mmq-HfbrxKHMkP3gG87OloK6AZI8=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "97kyn5",
             "name": "Exorcismo de Miguel",
             "url": "https://lh3.googleusercontent.com/d/1aQxGwjMMmtwJxGTRNX68qWfAqeLqjRZk=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "gtowx48",
             "name": "Kael na floresta",
             "url": "https://lh3.googleusercontent.com/d/1bKonUuWpNWuTV5VHAqp_Qm5SYKNj-uEg=w1000?authuser=0",
             "isPublic": true,
-            "folderId": "66072289-6583-4cf9-bf92-676cf5e7fdd8"
+            "folderId": "player:user_gd68ua63msnua1nb",
+            "createdAt": 1789574657028
           },
           {
             "id": "qhkn2",
             "name": "Montando nos corvos",
             "url": "https://zipline.sinapselabs.com.br/u/FAjMr9.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "oswggq",
             "name": "Em frente a tenda",
             "url": "https://zipline.sinapselabs.com.br/u/2WB7d5.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "rzwrrn",
             "name": "Profecia",
             "url": "https://zipline.sinapselabs.com.br/u/iwodoJ.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "w2f5p",
             "name": "Caverna com velas vermelhas",
             "url": "https://zipline.sinapselabs.com.br/u/2T6RfH.png",
             "isPublic": true,
-            "folderId": "857dc9cc-c63f-4ffd-886f-1436ac0885f4"
+            "folderId": "22693b2d-32e9-46a5-a928-7c88593d1333",
+            "createdAt": 1789574657028
           },
           {
             "id": "8tyn5o",
             "name": "Mapa mundi detalhado",
             "url": "https://zipline.sinapselabs.com.br/u/CjMbAc.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "22693b2d-32e9-46a5-a928-7c88593d1333",
+            "createdAt": 1789574657028
           },
           {
             "id": "3mydmf",
             "name": "Vislumbre de nova genesis",
             "url": "https://zipline.sinapselabs.com.br/u/UkSpLV.webp",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "dzpxv",
             "name": "Pantano",
             "url": "https://zipline.sinapselabs.com.br/u/tDJZ8d.webp",
             "isPublic": false,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
+            "createdAt": 1789574657028
           },
           {
             "id": "nccqi3",
             "name": "Chegada no castelo pantano",
             "url": "https://zipline.sinapselabs.com.br/u/pDAwDX.webp",
             "isPublic": false,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
+            "createdAt": 1789574657028
           },
           {
             "id": "mlmtch",
             "name": "Interior do castelo",
             "url": "https://zipline.sinapselabs.com.br/u/l3aAob.webp",
             "isPublic": false,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
+            "createdAt": 1789574657028
           },
           {
             "id": "taqp9",
             "name": "Rei inanimado",
             "url": "https://zipline.sinapselabs.com.br/u/FdktMK.webp",
             "isPublic": false,
-            "folderId": "ddfd62f3-f01f-4b99-bf46-793b53427d59"
+            "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
+            "createdAt": 1789574657028
           },
           {
             "id": "mrquut",
             "name": "Sanguessuga marinho",
             "url": "https://zipline.sinapselabs.com.br/u/o4kwYO.jpg",
             "isPublic": false,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "2n9gzd",
             "name": "Ataque das sanguessugas",
             "url": "https://zipline.sinapselabs.com.br/u/YGwnSB.png",
             "isPublic": false,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "yvzuri",
             "name": "Abrindo o vortice",
             "url": "https://zipline.sinapselabs.com.br/u/rpILUP.webp",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "ml79mg",
             "name": "Aberracao maritima",
             "url": "https://zipline.sinapselabs.com.br/u/kgBvmY.jpg",
             "isPublic": false,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "2whls",
             "name": "Chegada no galeao",
             "url": "https://zipline.sinapselabs.com.br/u/VEMxsi.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "ba1kgi",
             "name": "Criando a bolha",
             "url": "https://zipline.sinapselabs.com.br/u/cpX1hE.webp",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "zqr3jy",
             "name": "Descendo no abismo",
             "url": "https://zipline.sinapselabs.com.br/u/2zsbYK.jpg",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "awe0fc",
             "name": "Transpassando o pantano",
             "url": "https://zipline.sinapselabs.com.br/u/OayTwa.webp",
             "isPublic": false,
-            "folderId": "ddfd62f3-f01f-4b99-bf46-793b53427d59"
-          },
-          {
-            "id": "qrng9e",
-            "name": "Item de apego",
-            "url": "https://zipline.sinapselabs.com.br/u/YF7yxt.png",
-            "isPublic": false,
-            "folderId": "root"
+            "folderId": "root",
+            "createdAt": 1789574657028
           },
           {
             "id": "0zwdd6",
             "name": "Julgamento em vanaheim",
             "url": "https://zipline.sinapselabs.com.br/u/3rCpnT.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "p0scnb",
             "name": "Gorian",
             "url": "https://zipline.sinapselabs.com.br/u/M1iB14.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "fk6gv",
             "name": "Bariston esperando",
             "url": "https://zipline.sinapselabs.com.br/u/k957IK.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "plzr6g",
             "name": "Jogadores cercados",
             "url": "https://zipline.sinapselabs.com.br/u/ll0g0i.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "sopcai",
             "name": "Invocação de miguel",
             "url": "https://zipline.sinapselabs.com.br/u/oWg9T3.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "9dhq6m",
             "name": "Miguel salva eles denovo",
             "url": "https://zipline.sinapselabs.com.br/u/K2mSSB.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "8811lh",
             "name": "Kael e o pai",
             "url": "https://zipline.sinapselabs.com.br/u/5e1dMh.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "player:user_gd68ua63msnua1nb",
+            "createdAt": 1789574657028
           },
           {
             "id": "z7hg3",
             "name": "Gorian pega Kael",
             "url": "https://zipline.sinapselabs.com.br/u/ctxb5b.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "7ncpeq",
             "name": "Ataque do barco",
             "url": "https://zipline.sinapselabs.com.br/u/31NmQP.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "fz03yq",
             "name": "Encarada pirata",
             "url": "https://zipline.sinapselabs.com.br/u/ow0gtt.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "cmuxga",
             "name": "Bolhas separadas",
             "url": "https://zipline.sinapselabs.com.br/u/9RvpJV.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "729x4q",
             "name": "Bolhas individuais",
             "url": "https://zipline.sinapselabs.com.br/u/WbYK1M.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "7mguje",
             "name": "Peixeluz",
             "url": "https://zipline.sinapselabs.com.br/u/ajRXXr.jpg",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "vg6kox",
             "name": "Veus de névoa",
             "url": "https://zipline.sinapselabs.com.br/u/Q4FrI0.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "dum4l",
             "name": "Arraias fantasma",
             "url": "https://zipline.sinapselabs.com.br/u/p8F27f.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "v6ie9",
             "name": "Carangueijos cristal",
             "url": "https://zipline.sinapselabs.com.br/u/3ekaz9.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "72goj",
             "name": "Devoraluz",
             "url": "https://zipline.sinapselabs.com.br/u/jH1Bbo.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "i7p79",
             "name": "galeao afundado",
             "url": "https://zipline.sinapselabs.com.br/u/cF05Sd.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "pnca1a",
             "name": "Miguel na aberracao",
             "url": "https://zipline.sinapselabs.com.br/u/7G7X0r.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "9dtjc6",
             "name": "devoraluz Contra aberração",
             "url": "https://zipline.sinapselabs.com.br/u/DaUvrj.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "z5hug4",
             "name": "Anel De Prismarina",
             "url": "https://zipline.sinapselabs.com.br/u/m6vdlW.png",
             "isPublic": true,
-            "folderId": "e7c398d9-ceb2-4a54-9c1e-db1c01d60a87"
+            "folderId": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "createdAt": 1789574657028
           },
           {
             "id": "6608f81f-9d8f-4d63-a4b5-7bbb86ce9c34",
             "name": "Areia negra",
             "url": "https://zipline.sinapselabs.com.br/u/vhL0mU.webp",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "f5ac5c0e-8860-46f7-be46-58c58ea9e500",
             "name": "Enigma",
             "url": "https://zipline.sinapselabs.com.br/u/GDLCwA.webp",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "6836bc18-f18b-4808-a1bc-bb51773bbbd6",
             "name": "A ponte que emerge",
             "url": "https://zipline.sinapselabs.com.br/u/8gbAbI.png",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "4c66be32-614a-43be-a253-268af3070b6e",
             "name": "Dança Kael e LIz",
             "url": "https://zipline.sinapselabs.com.br/u/Sj6Ruu.png",
             "isPublic": false,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "4bc90102-b264-42ae-b566-2fc6c49cae46",
             "name": "Chegada em Elyndor",
             "url": "https://zipline.sinapselabs.com.br/u/scibSu.png",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "8159cacf-8449-4aa8-8b9f-66c418552c4c",
             "name": "Dentro de Elyndor",
             "url": "https://zipline.sinapselabs.com.br/u/9ZfEN3.png",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "e8f29300-12b8-428d-9ef8-cfa4336e6e7d",
             "name": "Comerciante",
             "url": "https://zipline.sinapselabs.com.br/u/kBhZUW.png",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "86239073-3e73-41fa-8f08-068439d1d333",
             "name": "Gile",
             "url": "https://zipline.sinapselabs.com.br/u/HCF7qd.webp",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "07c1cc9f-f20b-458a-972a-834f03e3cd49",
             "name": "Tarin",
             "url": "https://zipline.sinapselabs.com.br/u/4UlnHm.png",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "8f791d98-f12f-41d7-85bd-bc73069a7757",
             "name": "Chegada na porta do conselho",
             "url": "https://zipline.sinapselabs.com.br/u/EUOkNW.png",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "4e5f60ec-cb9a-4e62-9aec-3297c8f88c5f",
             "name": "Encontro com Caleen",
             "url": "https://zipline.sinapselabs.com.br/u/pWQj68.png",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "bbf1ad21-d488-4ac0-ba8e-98c63401fdaf",
             "name": "Cena vis",
             "url": "https://zipline.sinapselabs.com.br/u/EUz5h6.webp",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "7f703697-f066-4fd8-b610-f5b96b854c24",
             "name": "Inicio do festival",
             "url": "https://zipline.sinapselabs.com.br/u/9jC2O5.webp",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "8897254c-6f5d-45cd-b927-450c4c66d1ee",
             "name": "Festival amplo",
             "url": "https://zipline.sinapselabs.com.br/u/e4Dck5.webp",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "1d9befff-c984-4bf7-9c33-f80e56b5a815",
             "name": "Liz",
             "url": "https://zipline.sinapselabs.com.br/u/gHJqwf.webp",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "cad385a3-d9b1-4287-bb57-d13931574090",
             "name": "Interesse no Kael",
             "url": "https://zipline.sinapselabs.com.br/u/U4C9Qm.webp",
             "isPublic": false,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "root",
+            "createdAt": 1789574657028
           },
           {
             "id": "0101f318-5e55-4ba5-ba7c-1e48b4dd78d5",
             "name": "flash de memoria do thorfinn",
             "url": "https://zipline.sinapselabs.com.br/u/EQsxRu.webp",
-            "isPublic": false,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "isPublic": true,
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "750d2b37-dfd9-455b-9e12-d59dd8569763",
             "name": "Item de emocao",
             "url": "https://zipline.sinapselabs.com.br/u/R4wB16.webp",
             "isPublic": false,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
+            "createdAt": 1789574657028
           },
           {
             "id": "649e5a77-793d-43cd-b09a-4897af05a1ab",
             "name": "Planta carnivora",
             "url": "https://zipline.sinapselabs.com.br/u/nLODVc.png",
             "isPublic": false,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
+            "createdAt": 1789574657028
           },
           {
             "id": "67d49757-ca95-49d0-8042-19f0ad8ae42e",
             "name": "Passando no pantano",
             "url": "https://zipline.sinapselabs.com.br/u/y9wWs1.webp",
             "isPublic": false,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
+            "createdAt": 1789574657028
           },
           {
             "id": "651de78c-c4cc-4f92-90f3-b09fc8a52a93",
             "name": "Rei morto",
             "url": "https://zipline.sinapselabs.com.br/u/4OUF3Z.webp",
             "isPublic": false,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
+            "createdAt": 1789574657028
           },
           {
             "id": "e3b9daa2-0829-42f4-b82a-fdee02ed7953",
             "name": "Recusa de danca",
             "url": "https://zipline.sinapselabs.com.br/u/WIeKiQ.png",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "b3f7e2a4-2371-496e-bc64-70ec9e160b34",
             "name": "Encontro com Jonas",
             "url": "https://zipline.sinapselabs.com.br/u/54OR4F.png",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "f107fa3a-bd8e-4828-bb3e-f3bed88a1797",
             "name": "quarto vazio",
             "url": "https://zipline.sinapselabs.com.br/u/99lYHJ.png",
             "isPublic": true,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "50d37e7b-1cce-4132-bc99-0d5cec3662e1",
             "name": "Rei do pantano",
             "url": "https://zipline.sinapselabs.com.br/u/d82p1x.jpg",
             "isPublic": false,
-            "folderId": "6b1df097-9f46-4b4d-944c-03366833baad"
+            "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
+            "createdAt": 1789574657028
           },
           {
             "id": "bf24e77b-6e48-458a-85f5-a2e6e5886557",
             "name": "Amelia conectada",
             "url": "https://zipline.sinapselabs.com.br/u/nfo8BQ.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "f77ed00e-7ba3-4ffb-893b-72e9cfa2dcdf",
             "name": "Saindo de elyndor",
             "url": "https://zipline.sinapselabs.com.br/u/IoAVUO.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "bd272402-a974-476d-bfbf-73c955094080",
             "name": "Chegada no pantano",
             "url": "https://zipline.sinapselabs.com.br/u/XHY08R.png",
             "isPublic": false,
-            "folderId": "root"
+            "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
+            "createdAt": 1789574657028
           },
           {
             "id": "c36b3967-6469-4060-a40e-92e27a0ae526",
             "name": "O Lago",
             "url": "https://zipline.sinapselabs.com.br/u/60B4YG.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "9b3b9fd1-3b76-4b50-a6e9-0d8f41e4fd0c",
             "name": "A batalha",
             "url": "https://zipline.sinapselabs.com.br/u/TOG88I.png",
             "isPublic": false,
-            "folderId": "root"
+            "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
+            "createdAt": 1789574657028
           },
           {
             "id": "2516f306-a93e-4506-a183-909c9b2874ab",
             "name": "A Biblioteca",
             "url": "https://zipline.sinapselabs.com.br/u/y7QJuY.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "a7e8f9e2-cb6c-4ec8-84d7-879cf78d6920",
             "name": "Biblioteca de elyndor",
             "url": "https://zipline.sinapselabs.com.br/u/CSV3kq.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "b145cbd7-624f-488d-b015-6c38f43cc557",
             "name": "Jonas",
             "url": "https://zipline.sinapselabs.com.br/u/VL67K5.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "5a65ee98-3194-4b4e-9792-e843615c829d",
             "name": "Jonas apresentando o quarto",
             "url": "https://zipline.sinapselabs.com.br/u/VQRPxq.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "62a41c41-bc4b-4951-9e93-aacbda612d21",
             "name": "Mae com as crianças",
             "url": "https://zipline.sinapselabs.com.br/u/UhfKKV.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "49251dcd-dc0d-4965-be36-f30eaffd6aa7",
             "name": "Velho anciao",
             "url": "https://zipline.sinapselabs.com.br/u/EvaUMk.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "b4b13528-4b96-44ae-986b-c7f422c3b5b4",
             "name": "Soldados de Elyndor",
             "url": "https://zipline.sinapselabs.com.br/u/dG950B.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "6e42f129-26d9-4897-8a46-105f08cac92a",
             "name": "Libros abertos",
             "url": "https://zipline.sinapselabs.com.br/u/mlEkag.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "97145b81-eacd-4b87-a906-a990d522bcee",
             "name": "Bamboo fechando",
             "url": "https://zipline.sinapselabs.com.br/u/UJIbOv.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "b15626e7-f15e-41a6-a085-7145b61ef444",
             "name": "Amelia e a avo",
             "url": "https://zipline.sinapselabs.com.br/u/b7R1Gz.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "player:user_gybabf5mmskx7a24",
+            "createdAt": 1789574657028
           },
           {
             "id": "cfc5d583-92c8-4bef-bc83-2124a38dffdb",
             "name": "banner",
             "url": "https://zipline.sinapselabs.com.br/u/Z1qFuK.webp",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "b91add13-b1f5-4abb-840c-b70cfa5b2399",
             "name": "Entrando na sauna",
             "url": "https://zipline.sinapselabs.com.br/u/9iNo5S.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "93050b92-3b8a-4751-9f7d-1f3c45e183a3",
             "name": "Dentro da sauna",
             "url": "https://zipline.sinapselabs.com.br/u/RIZZP0.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "b8278d4c-10fd-4dce-86cc-51628258830d",
             "name": "Amelia na sauna",
             "url": "https://zipline.sinapselabs.com.br/u/Gv7auj.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "497a5819-bdd2-4ac4-8fd4-e1ab5a3e2a48",
             "name": "Kael e Lysa",
             "url": "https://zipline.sinapselabs.com.br/u/vXnWV2.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "e46813c3-9c39-490d-a230-74ee9013589d",
             "name": "Livro1",
             "url": "https://zipline.sinapselabs.com.br/u/u9ECJ5.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "bde3ad2d-f361-4a6a-9fae-97660ed16908",
             "name": "Livro2",
             "url": "https://zipline.sinapselabs.com.br/u/qMNhoT.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "c3fa2cbe-f7ab-49ad-a0a6-d0b538c938ba",
             "name": "Livro3",
             "url": "https://zipline.sinapselabs.com.br/u/zS62sm.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "284ca84c-5b46-465c-a52d-edea5d462163",
             "name": "Livro4",
             "url": "https://zipline.sinapselabs.com.br/u/4BDCwd.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "ae8bc17b-bea2-4d3f-928d-49fcdcbe0d3a",
             "name": "Livro 5",
             "url": "https://zipline.sinapselabs.com.br/u/n6hpJW.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "e2d1354d-0a22-4f8f-ac87-c7381550015b",
             "name": "Naerys",
             "url": "https://zipline.sinapselabs.com.br/u/VJyg9e.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "65dcb2ba-b624-4c56-aa65-8f775cfd7646",
             "name": "Livro 6",
             "url": "https://zipline.sinapselabs.com.br/u/DXMMJG.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657028
           },
           {
             "id": "3aa8c149-7809-438b-846c-0cd1de245ca5",
             "name": "Lirio",
             "url": "https://zipline.sinapselabs.com.br/u/nsxWgD.jpg",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "62fb8f8e-2f26-4763-ad89-57ac6d720c75",
             "name": "Flores azul",
             "url": "https://zipline.sinapselabs.com.br/u/QG31PX.jpg",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "faea3f7f-0d71-4d02-b318-0c641d677f5d",
             "name": "Buque diversos",
             "url": "https://zipline.sinapselabs.com.br/u/aiM0jh.jpg",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "74e2723f-fb17-4ee7-bd18-10dd1551f243",
             "name": "ropas",
             "url": "https://zipline.sinapselabs.com.br/u/23YAUI.png",
             "isPublic": false,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "c4ac4583-5e0e-491c-bee6-7c0c30b4f76f",
             "name": "roupas dobradas",
             "url": "https://zipline.sinapselabs.com.br/u/vXOSwU.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "76051812-a16a-4669-a3e9-53f69cdbeff6",
             "name": "Jonas com o buque",
             "url": "https://zipline.sinapselabs.com.br/u/qSaQVb.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "cd383ec8-5471-4a15-844a-b20f01d95c7e",
             "name": "Kael e pai",
             "url": "https://zipline.sinapselabs.com.br/u/jtFN51.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "player:user_gd68ua63msnua1nb",
+            "createdAt": 1789574657029
           },
           {
             "id": "ae9c2ca7-50cf-4d0f-81f3-e45043979130",
             "name": "Grupo com a nova roupa",
             "url": "https://zipline.sinapselabs.com.br/u/EZBVFK.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "42e6ff01-f4a6-4c59-bc6d-9c507b6190a4",
             "name": "Kael na cidade noturna",
             "url": "https://zipline.sinapselabs.com.br/u/VKlPB4.webp",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "ac139e02-0a4d-4bf3-a202-4783c39ec252",
             "name": "Amelia e Thorfin no salao",
             "url": "https://zipline.sinapselabs.com.br/u/hzz5sc.webp",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "3dee9074-cbda-4cce-b5c9-0669b4f257d5",
             "name": "Masmorra vazia",
             "url": "https://zipline.sinapselabs.com.br/u/Vvranb.webp",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "f97f5bab-2409-4d5c-a7b3-780f2c62b95f",
             "name": "Masmorra com kael",
             "url": "https://zipline.sinapselabs.com.br/u/4EvJw6.webp",
             "isPublic": false,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "700d268f-63a1-4ab0-be4c-c3199053a1ad",
             "name": "caleen no cabare",
             "url": "https://zipline.sinapselabs.com.br/u/CteNHq.webp",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "f7fed1df-0e1a-4b86-9042-f155de3799fb",
             "name": "jogo de cartas com caleen",
             "url": "https://zipline.sinapselabs.com.br/u/7Mgeu4.webp",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "e97aaad2-78b3-4566-a187-c48514a287a6",
             "name": "naerys e kael",
             "url": "https://zipline.sinapselabs.com.br/u/b5yeOC.webp",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "a6035145-8969-497e-b44b-7ff008c25d86",
             "name": "Naerys e thorfinn",
             "url": "https://zipline.sinapselabs.com.br/u/sxMi8u.webp",
             "isPublic": false,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "3f24b2e6-8f4b-4c2e-bb15-224f21804d89",
             "name": "kael e liz",
             "url": "https://zipline.sinapselabs.com.br/u/Q4oC0S.webp",
             "isPublic": false,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "a14119f8-8f33-4e02-b7a9-3a54dfed7a62",
             "name": "liz e thorfin",
             "url": "https://zipline.sinapselabs.com.br/u/9LrFKa.webp",
             "isPublic": false,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "95b8d971-9815-44bb-9047-da22b22e427c",
             "name": "serenata do jonas",
             "url": "https://zipline.sinapselabs.com.br/u/vMAbHv.webp",
-            "isPublic": false,
-            "folderId": "root"
+            "isPublic": true,
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "2aef4602-2452-4498-a0eb-a1aca23d8915",
             "name": "Sonho amelia e akasha",
             "url": "https://zipline.sinapselabs.com.br/u/A4z1fO.webp",
-            "isPublic": false,
-            "folderId": "root"
+            "isPublic": true,
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "fd3ba6c1-6e8c-4424-b966-63581a75b723",
             "name": "inicio sonho thorfin",
             "url": "https://zipline.sinapselabs.com.br/u/pjcoMG.webp",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "0afc0d96-7ab1-4cab-a79b-d0c0caa75cbc",
             "name": "Suspiro da Ninfa",
             "url": "https://zipline.sinapselabs.com.br/u/fXjuCE.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "9a476e19-93ad-4224-bb17-52ac79fa7371",
             "name": "despertar de amelia",
             "url": "https://zipline.sinapselabs.com.br/u/hlUyZz.png",
             "isPublic": false,
-            "folderId": "root"
+            "folderId": "root",
+            "createdAt": 1789574657029
           },
           {
             "id": "da79234e-1faa-4675-95b5-f81bf1c0562f",
             "name": "Sala do rei caido pantano",
             "url": "https://zipline.sinapselabs.com.br/u/LhDcuO.png",
             "isPublic": false,
-            "folderId": "root"
+            "folderId": "root",
+            "createdAt": 1789574657029
           },
           {
             "id": "f80aabfa-4ffb-4021-94bf-194d28cb6926",
             "name": "Amelia indo ate akasha",
             "url": "https://zipline.sinapselabs.com.br/u/DEdsk8.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "611c7c95-71ba-4779-8d11-ed2dd331615f",
             "name": "Atividades do festival",
             "url": "https://zipline.sinapselabs.com.br/u/LGiMrP.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "9b96ce16-5e1a-4ee8-82b3-dda5ce4dd9a5",
             "name": "minigame bebida",
             "url": "https://zipline.sinapselabs.com.br/u/YaetBj.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "6b18dd34-88ac-4a70-ad7a-8b8805fc95fe",
             "name": "Minigame pintura",
             "url": "https://zipline.sinapselabs.com.br/u/KBgBMG.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "b3aae332-24ee-454a-a382-f7e0b8e6b8ad",
             "name": "Minigame queda de braço",
             "url": "https://zipline.sinapselabs.com.br/u/YY0lf2.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "bda9c419-d861-45c3-a53e-c7f1d5fb3185",
             "name": "Minigame banquete",
             "url": "https://zipline.sinapselabs.com.br/u/rEkiMx.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "67ee3828-193b-4d4c-8eb2-a99f5385cfc9",
             "name": "Minigame degustação",
             "url": "https://zipline.sinapselabs.com.br/u/dRlwDd.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "f07f3fcc-057c-45b7-9f12-338ca496fce6",
             "name": "Bifurcação 3 caminhos",
             "url": "https://zipline.sinapselabs.com.br/u/38MRF9.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "fb375d1b-bb1e-487a-8510-0bb2f3be8da7",
             "name": "Visao kael 1",
             "url": "https://zipline.sinapselabs.com.br/u/Poy32J.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "player:user_gd68ua63msnua1nb",
+            "createdAt": 1789574657029
           },
           {
             "id": "134a56a5-f722-4b44-b406-b074fd4f9758",
             "name": "Kael visao 2",
             "url": "https://zipline.sinapselabs.com.br/u/lc4coF.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "player:user_gd68ua63msnua1nb",
+            "createdAt": 1789574657029
           },
           {
             "id": "5813b053-f71e-47bd-a15c-82fa717994d1",
             "name": "Visao kael 3",
             "url": "https://zipline.sinapselabs.com.br/u/Gfy2v2.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "player:user_gd68ua63msnua1nb",
+            "createdAt": 1789574657029
           },
           {
             "id": "01415f9b-ec71-41c5-9e65-f1e0abfb2faf",
             "name": "Bibliotecaa noite",
             "url": "https://zipline.sinapselabs.com.br/u/AYYMRG.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "e309b469-0e97-45a6-b6f2-2207338cda23",
             "name": "Make",
             "url": "https://zipline.sinapselabs.com.br/u/llMyNX.webp",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "bae8807d-2b48-4742-a8ab-871ed268c195",
             "name": "Kael e Naerys",
             "url": "https://zipline.sinapselabs.com.br/u/ijLV7I.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "53ceaea0-2445-4d08-a668-4759ed508eb8",
             "name": "Thorfinn e naerys canção",
             "url": "https://zipline.sinapselabs.com.br/u/PZVth2.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "1e1e8abc-bc41-4873-bbed-7623cf9d8978",
             "name": "Serenata do Jonas",
             "url": "https://zipline.sinapselabs.com.br/u/6vlmcj.webp",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "ad19901d-4210-46c2-a336-aa3e5cbcfcea",
             "name": "Thorfinn Beijo",
             "url": "https://zipline.sinapselabs.com.br/u/GDDH92.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "bbd0ae02-9d95-45dd-a0a5-282acd000927",
             "name": "Vampiro mao",
             "url": "https://zipline.sinapselabs.com.br/u/mUxawE.webp",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "d2ee821a-8712-4bf3-b396-c5ae0df1f07a",
             "name": "jonas e amelia pos",
             "url": "https://zipline.sinapselabs.com.br/u/4uoHnv.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "8fdc1ab7-2601-4c79-8c6e-886d55799de1",
             "name": "thorfin  e jonas",
             "url": "https://zipline.sinapselabs.com.br/u/x5m54e.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "8aac1309-b716-4690-b0a5-c552d497f159",
             "name": "Refugio das Raizes",
             "url": "https://zipline.sinapselabs.com.br/u/CVzAyj.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "0a771104-7873-4912-8018-3a952a41e704",
             "name": "Orfeu",
             "url": "https://zipline.sinapselabs.com.br/u/vzz87D.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "b179fff7-55ef-413d-ab1e-e4809be57831",
             "name": "Orfeu",
             "url": "https://zipline.sinapselabs.com.br/u/9NcKaF.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "7aaf9ab5-ec76-444f-b6b2-ddff2042e96a",
             "name": "Vista de cima da estalagem",
             "url": "https://zipline.sinapselabs.com.br/u/gujS3t.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "681ba7f7-6dff-42d9-95d9-0a3c388f6448",
             "name": "Mapa inicial",
             "url": "https://zipline.sinapselabs.com.br/u/Qpw4MB.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "dfe37e9f-1b86-426a-a04e-b1a35698d0f0",
             "name": "Dentro da floresta",
             "url": "https://zipline.sinapselabs.com.br/u/9zc0tb.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           },
           {
             "id": "09d60ebd-1529-4ed9-a463-99b50a701bba",
             "name": "Palco",
             "url": "https://zipline.sinapselabs.com.br/u/mlmSHa.png",
             "isPublic": true,
-            "folderId": "root"
+            "folderId": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "createdAt": 1789574657029
           }
         ],
         "lore": [
@@ -113904,9 +114140,105 @@
             "isCustom": true
           }
         ],
-        "weather": "fog",
-        "updatedAt": 1789517906844,
+        "weather": "sunny",
+        "updatedAt": 1789590027891,
         "customCreatures": [
+          {
+            "id": "custom-ce04acd0-452b-4756-abc0-16c895114500",
+            "name": "Monstro do pantano",
+            "imageUrl": "https://i.pinimg.com/736x/25/2f/e5/252fe551e456e3fd198d3238a4562478.jpg",
+            "level": 8,
+            "species": "Besta",
+            "maxHp": 50,
+            "maxMp": 20,
+            "def": 9,
+            "mdef": 11,
+            "attributes": {
+              "dex": "d6",
+              "ins": "d6",
+              "mig": "d12",
+              "wlp": "d6"
+            },
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Soco pantanoso",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 7,
+                "type": "físico",
+                "description": "Dano: 7; alvo: Defesa Física"
+              }
+            ],
+            "combatVersion": 2,
+            "basicAttacksV2": [
+              {
+                "name": "Soco pantanoso",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "targetDefense": "physical",
+                "damage": "7",
+                "type": "físico"
+              }
+            ],
+            "abilities": [
+              {
+                "id": "8cc531a7-0f61-4ae1-83a3-0c75f416a02a",
+                "kind": "attack",
+                "name": "Algas vivas",
+                "cost": {
+                  "amount": 5,
+                  "resource": "mp"
+                },
+                "attack": {
+                  "name": "Ataque de algas",
+                  "attributes": [
+                    "ins",
+                    "mig"
+                  ],
+                  "targetDefense": "magical",
+                  "damage": "8",
+                  "type": "terra",
+                  "description": "Controla as algas da região para atacar os jogadores, em caso de acerto o jogador algo tem CD 6 em um teste de resistência para não ficar preso por um turno"
+                }
+              },
+              {
+                "id": "59e389e0-bbf3-4892-b3a7-e328c194b887",
+                "kind": "qte",
+                "name": "Coordenação de algas",
+                "cost": {
+                  "amount": 1,
+                  "resource": "token"
+                },
+                "seconds": 5,
+                "checkId": "c23",
+                "difficulty": 9,
+                "failureDamage": "3",
+                "failureEffect": "Os jogadores que falharem ficam presos por uma rodada",
+                "successDamage": "0",
+                "successEffect": ""
+              }
+            ],
+            "spells": [
+              "Algas vivas (5 mp): 8 terra. Controla as algas da região para atacar os jogadores, em caso de acerto o jogador algo tem CD 6 em um teste de resistência para não ficar preso por um turno",
+              "Coordenação de algas: QTE 5s, dificuldade 9. Falha: 3 Os jogadores que falharem ficam presos por uma rodada. Sucesso: 0 "
+            ],
+            "equipment": []
+          },
           {
             "id": "custom-6aaf4qja",
             "name": "Rei Morto",
@@ -114257,11 +114589,11 @@
             "def": 11,
             "mdef": 8,
             "affinities": {
-              "physical": "none",
-              "air": "none",
-              "bolt": "none",
-              "dark": "none",
-              "earth": "none",
+              "physical": "IM",
+              "air": "VU",
+              "bolt": "VU",
+              "dark": "IM",
+              "earth": "RS",
               "fire": "none",
               "ice": "RS",
               "light": "none",
@@ -114275,7 +114607,8 @@
                   "mig"
                 ],
                 "damage": 8,
-                "type": "físico"
+                "type": "físico",
+                "description": "Dano: 8; alvo: Defesa Física"
               }
             ],
             "spells": [
@@ -114316,7 +114649,19 @@
                 "successEffect": ""
               }
             ],
-            "combatVersion": 2
+            "combatVersion": 2,
+            "basicAttacksV2": [
+              {
+                "name": "Mordida Feroz",
+                "attributes": [
+                  "dex",
+                  "mig"
+                ],
+                "damage": "8",
+                "type": "físico",
+                "targetDefense": "physical"
+              }
+            ]
           }
         ],
         "customEquipment": [
@@ -114884,6 +115229,52 @@
           {
             "id": "root",
             "name": "Todas as imagens"
+          },
+          {
+            "id": "66ee569c-fea6-4cb7-ba98-58f12ff9a51e",
+            "name": "Capitulo 4 - Jornada para Elyndor"
+          },
+          {
+            "id": "3ae2a32f-0e25-4f56-be8c-311eb11f8894",
+            "name": "Capitulo 3 - As fossas Absissais"
+          },
+          {
+            "id": "3a74b3e3-65d1-4ef6-ac8f-97d91ed371ba",
+            "name": "Capitulo 2 - Darin"
+          },
+          {
+            "id": "22693b2d-32e9-46a5-a928-7c88593d1333",
+            "name": "Capitulo 1 - Encontro improvável"
+          },
+          {
+            "id": "859c7cba-e404-4123-908f-799ff04919ff",
+            "name": "Capitulo 5 - O Pântano das vozes afogadas"
+          }
+        ],
+        "galleryBroadcastRequests": [],
+        "soundFolders": [
+          {
+            "id": "sound-folder-469ad254-3a60-4545-b198-46e2afa2af6c",
+            "name": "Temas Kael",
+            "trackIds": []
+          },
+          {
+            "id": "sound-folder-6cc57cd5-a42f-42d7-b819-38df929fe017",
+            "name": "Temas Thorfinn",
+            "trackIds": [
+              "snd_custom_3g28tak"
+            ]
+          },
+          {
+            "id": "sound-folder-76fbb634-671f-433d-adb0-6c35782a2141",
+            "name": "Sons floresta",
+            "trackIds": [
+              "snd_custom_48ctbtj",
+              "snd_custom_gqgk19q",
+              "snd_custom_0diz11v",
+              "snd_custom_k5cyjmg",
+              "snd_custom_cabvt7s"
+            ]
           }
         ]
       }
@@ -115275,6 +115666,13 @@
       {
         "notes": [
           {
+            "id": "note_sbkgquramu4e40c9",
+            "title": "Anotações",
+            "content": "",
+            "createdAt": 1789580646585,
+            "updatedAt": 1789580646585
+          },
+          {
             "id": "note_5nz7wlqfmt4tgts6",
             "title": "Anotações",
             "content": "Meu dente esta na minha bolsa\n",
@@ -115282,7 +115680,17 @@
             "updatedAt": 1787514807274
           }
         ],
-        "updatedAt": 1787514807274
+        "flowcharts": [
+          {
+            "id": "flowchart_j43nmppomu4e5yz8",
+            "title": "Novo fluxograma",
+            "nodes": [],
+            "edges": [],
+            "createdAt": 1789580738132,
+            "updatedAt": 1789584032213
+          }
+        ],
+        "updatedAt": 1789584032213
       }
     ],
     [
@@ -115389,7 +115797,17 @@
             "updatedAt": 1789335903953
           }
         ],
-        "updatedAt": 1789335903953
+        "flowcharts": [
+          {
+            "id": "flowchart_jf4ec0rnmu4ax6tk",
+            "title": "Novo fluxograma",
+            "nodes": [],
+            "edges": [],
+            "createdAt": 1789575289544,
+            "updatedAt": 1789586110835
+          }
+        ],
+        "updatedAt": 1789586110835
       }
     ]
   ]

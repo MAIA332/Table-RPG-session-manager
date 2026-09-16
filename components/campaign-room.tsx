@@ -63,6 +63,7 @@ import type {
   ClassLevel,
   StoreFolder,
   GalleryFolder,
+  GalleryBroadcastRequest,
   ItemTransfer,
 } from "@/lib/types"
 
@@ -774,6 +775,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       name: "Todas as imagens",
     },
   ])
+  const [galleryRequests, setGalleryRequests] = useState<GalleryBroadcastRequest[]>([])
+  const [galleryNotice, setGalleryNotice] = useState<string | null>(null)
 
   // === LOREBOOK ===
   const [showLorebook, setShowLorebook] = useState(false)
@@ -824,6 +827,43 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     },
     [data.campaign.id, isGm],
   )
+  const applyGalleryResponse = useCallback((response: {
+    images?: SharedImage[]
+    folders?: GalleryFolder[]
+    requests?: GalleryBroadcastRequest[]
+  }) => {
+    const normalizedImages = (response.images || []).map((image) => ({
+      ...image,
+      folderId: image.folderId || "root",
+    }))
+    setGalleryImages(normalizedImages)
+    setGalleryFolders(response.folders || [{ id: "root", name: "Todas as imagens" }])
+    setGalleryRequests(response.requests || [])
+    storeJsonWhenIdle(`images_${data.campaign.id}`, normalizedImages)
+    storeJsonWhenIdle(`gallery_folders_${data.campaign.id}`, response.folders || [])
+  }, [data.campaign.id])
+
+  const refreshGallery = useCallback(async () => {
+    const response = await apiFetch<{
+      images: SharedImage[]
+      folders: GalleryFolder[]
+      requests: GalleryBroadcastRequest[]
+    }>(`/api/campaigns/${data.campaign.id}/gallery`)
+    applyGalleryResponse(response)
+  }, [applyGalleryResponse, data.campaign.id])
+
+  const galleryAction = useCallback(async (action: string, payload: Record<string, unknown> = {}) => {
+    const response = await apiFetch<{
+      images: SharedImage[]
+      folders: GalleryFolder[]
+      requests: GalleryBroadcastRequest[]
+    }>(`/api/campaigns/${data.campaign.id}/gallery`, {
+      method: "POST",
+      body: JSON.stringify({ action, ...payload }),
+    })
+    applyGalleryResponse(response)
+  }, [applyGalleryResponse, data.campaign.id])
+
   const saveGallery = useCallback(
     (images: SharedImage[], folders: GalleryFolder[]) => {
       const normalizedImages = images.map((image) => ({
@@ -844,26 +884,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         JSON.stringify(folders),
       )
 
-      void persistCampaignState({
-        gallery: normalizedImages,
-        galleryFolders: folders,
-      })
-
-      apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-        method: "POST",
-        body: JSON.stringify({
-          characterId: "sys_gallery",
-          characterName: "Sistema",
-          playerName: "Mestre",
-          attribute: "SYNC_GALLERY:UPDATE",
-          result: JSON.stringify({
-            images: normalizedImages,
-            folders,
-          }),
-        }),
-      }).catch(console.error)
+      void galleryAction("replace", { images: normalizedImages, folders }).catch(console.error)
     },
-    [data.campaign.id, persistCampaignState],
+    [data.campaign.id, galleryAction],
   )
 
   // Montagem & Carregar Storage
@@ -1256,6 +1279,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           "gallery",
           `images_${data.campaign.id}`,
         ) as SharedImage[]
+        const savedGalleryFolders = pickArray(
+          "galleryFolders",
+          `gallery_folders_${data.campaign.id}`,
+        ) as GalleryFolder[]
         const lore = pickArray(
           "lore",
           `lore_${data.campaign.id}`,
@@ -1295,6 +1322,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         if (!persisted.has("weather") && cachedWeather !== null)
           migration.weather = savedWeather
         setGalleryImages(gallery)
+        setGalleryFolders(
+          savedGalleryFolders.length
+            ? savedGalleryFolders
+            : [{ id: "root", name: "Todas as imagens" }],
+        )
         setLoreEntries(lore)
         setCutscenes(savedCutscenes)
         setCustomNPCs(savedNPCs)
@@ -1307,6 +1339,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         setStoreFolders(savedStoreFolders)
         setWeather(savedWeather as WeatherType)
         storeJsonWhenIdle(`images_${data.campaign.id}`, gallery)
+        storeJsonWhenIdle(
+          `gallery_folders_${data.campaign.id}`,
+          savedGalleryFolders,
+        )
         storeJsonWhenIdle(
           `custom_classes_${data.campaign.id}`,
           savedCustomClasses,
@@ -1360,33 +1396,24 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     [data.campaign.id],
   )
 
-  function handleImageClick(url: string) {
+  function handleImageClick(image: SharedImage) {
     if (isGm) {
       // Se for o mestre, força a imagem tela cheia na cara de todo mundo
-      apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-        method: "POST",
-        body: JSON.stringify({
-          characterId: "sys_image",
-          characterName: "Sistema",
-          playerName: "Mestre",
-          attribute: `SYNC_IMAGE:SHOW`,
-          result: url,
-        }),
-      }).catch(console.error)
+      galleryAction("broadcast", { imageId: image.id }).catch(console.error)
       setShowImagepad(false)
     } else {
       // Se for jogador, apenas abre a imagem localmente para ele ver melhor
-      setActiveFullscreenImage(url)
+      setActiveFullscreenImage(image.url)
     }
   }
 
-  const saveCustomCreaturesToStorage = (creatures: Creature[]) => {
+  const saveCustomCreaturesToStorage = async (creatures: Creature[]) => {
+    if (!isGm) throw new Error("Apenas o mestre pode editar o bestiário.")
+    await persistCampaignState({ customCreatures: creatures })
     setCustomCreatures(creatures)
-    localStorage.setItem(
-      `custom_creatures_${data.campaign.id}`,
-      JSON.stringify(creatures),
-    )
-    void persistCampaignState({ customCreatures: creatures })
+    try {
+      localStorage.setItem(`custom_creatures_${data.campaign.id}`, JSON.stringify(creatures))
+    } catch (error) { console.warn("Não foi possível atualizar o cache do bestiário.", error) }
   }
 
   const saveCustomClassesToStorage = (clsArray: any[]) => {
@@ -1676,6 +1703,37 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const seenCombatRolls = useRef(new Set<string>())
   const handleEvent = useCallback(
     (event: any) => {
+      if (
+        event.type === "gallery:changed" ||
+        event.type === "gallery:broadcast-requested"
+      ) {
+        void refreshGallery().catch(console.error)
+        if (
+          event.type === "gallery:broadcast-requested" &&
+          isGmRef.current
+        ) {
+          setGalleryNotice("Um jogador solicitou o envio de uma imagem.")
+          window.setTimeout(() => setGalleryNotice(null), 7000)
+        }
+        return
+      }
+      if (event.type === "gallery:broadcast-resolved") {
+        void refreshGallery().catch(console.error)
+        if (event.requesterId === data.me.id) {
+          setGalleryNotice(
+            event.resolution === "approved"
+              ? "O mestre aprovou o envio da sua imagem."
+              : "O mestre recusou o envio da sua imagem.",
+          )
+          window.setTimeout(() => setGalleryNotice(null), 7000)
+        }
+        return
+      }
+      if (event.type === "gallery:image-show") {
+        setActiveFullscreenImage(String(event.url))
+        return
+      }
+
       // Clima Persistente
       if (
         event.type === "weather:change" ||
@@ -2280,7 +2338,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         }
       })
     },
-    [data.campaign.id, data.me.id],
+    [data.campaign.id, data.me.id, refreshGallery],
   )
 
   useEffect(() => {
@@ -2301,6 +2359,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   useEffect(() => {
     if (realtimeStatus !== "live") return
+    void refreshGallery().catch(console.error)
     apiFetch<{ sounds: ActiveSound[] }>(
       `/api/campaigns/${data.campaign.id}/sound`,
     )
@@ -2308,7 +2367,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       .catch(() => {
         console.warn("Sons não encontrados ou campanha deletada")
       })
-  }, [data.campaign.id, realtimeStatus])
+  }, [data.campaign.id, realtimeStatus, refreshGallery])
 
   const applyOptimistic = useCallback(
     (c: Character) =>
@@ -3886,6 +3945,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               onCreate={(c) =>
                 saveCustomCreaturesToStorage([c, ...customCreatures])
               }
+              onUpdate={(creature) => {
+                if (!customCreatures.some(entry => entry.id === creature.id)) {
+                  return Promise.reject(new Error("Esta criatura não está mais no bestiário. Reabra a lista."))
+                }
+                return saveCustomCreaturesToStorage(customCreatures.map(entry => entry.id === creature.id ? creature : entry))
+              }}
               onDelete={(id) =>
                 saveCustomCreaturesToStorage(
                   customCreatures.filter((c) => c.id !== id),
@@ -3945,7 +4010,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   initial="hidden"
                   animate="visible"
                   exit="exit"
-                  className="fixed inset-0 z-[15000] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-y-auto"
+                  className="combat-character-sheet-overlay fixed inset-0 z-[90] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-y-auto"
                   onClick={() => setSelectedCombatCharId(null)}
                 >
                   <div
@@ -4080,9 +4145,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     <div className="rpg-media-modal-frame flex-1 w-full h-full overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/10">
                       <Imagepad
                         isGm={isGm}
+                        myUserId={data.me.id}
                         images={galleryImages}
                         folders={galleryFolders}
+                        requests={galleryRequests}
                         onUpdateGallery={saveGallery}
+                        onAction={galleryAction}
                         onShowImage={handleImageClick}
                         onClose={() => setShowImagepad(false)}
                       />
@@ -4138,6 +4206,29 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               </div>
             )}
           </>,
+          document.body,
+        )}
+
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {galleryNotice && (
+              <motion.button
+                type="button"
+                initial={{ opacity: 0, y: 30, x: "-50%" }}
+                animate={{ opacity: 1, y: 0, x: "-50%" }}
+                exit={{ opacity: 0, y: 20, x: "-50%" }}
+                className="fixed bottom-8 left-1/2 z-[450] flex max-w-[90vw] items-center gap-3 rounded-lg border border-amber-300/60 bg-zinc-950/95 px-5 py-3 text-left text-amber-100 shadow-2xl"
+                onClick={() => {
+                  if (isGm && galleryRequests.length) setShowImagepad(true)
+                  setGalleryNotice(null)
+                }}
+              >
+                <ImageIcon className="size-5 shrink-0 text-amber-300" />
+                <span className="text-sm font-semibold">{galleryNotice}</span>
+              </motion.button>
+            )}
+          </AnimatePresence>,
           document.body,
         )}
 
@@ -4643,7 +4734,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                               ) && (
                                 <Button
                                   size="sm"
-                                  className="bg-sky-500 text-white hover:bg-sky-400 font-bold animate-pulse"
+                                  className="font-bold animate-pulse"
                                   disabled={combatController.combat.spotlight.request.approved.includes(
                                     data.me.id,
                                   )}
@@ -4814,7 +4905,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                                 pendingCombatAction.isGm
                               ) {
                                 handleTargetSelect(char.id)
-                              } else {
+                              } else if (isGm || isMe) {
                                 setSelectedCombatCharId(char.id)
                               }
                             }}
@@ -4846,14 +4937,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                                     </span>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-[10px] font-mono font-medium text-[color:var(--hp)] bg-black/40 px-1.5 rounded">
-                                    {char.resources.hp} HP
-                                  </span>
-                                  <span className="text-[10px] font-mono font-medium text-[color:var(--mp)] bg-black/40 px-1.5 rounded">
-                                    {char.resources.mp} MP
-                                  </span>
-                                </div>
+                                {(isGm || isMe) && (
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-[10px] font-mono font-medium text-[color:var(--hp)] bg-black/40 px-1.5 rounded">
+                                      {char.resources.hp} HP
+                                    </span>
+                                    <span className="text-[10px] font-mono font-medium text-[color:var(--mp)] bg-black/40 px-1.5 rounded">
+                                      {char.resources.mp} MP
+                                    </span>
+                                  </div>
+                                )}
                                 {isMyTurn && (
                                   <p className="text-[9px] text-amber-300 font-bold uppercase tracking-widest mt-2 animate-pulse">
                                     ⚡ Holofote!
@@ -4866,13 +4959,13 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                             {(isGm || isMe) && (
                               <button
                                 type="button"
-                                className="relative z-10 mt-3 rounded-lg border border-amber-300/30 px-3 py-2 text-sm text-amber-100 hover:bg-amber-300/10"
+                                className="relative z-10 mt-3 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold text-primary hover:border-primary/70 hover:bg-primary/20"
                                 onClick={(event) => {
                                   event.stopPropagation()
                                   setSelectedCombatCharId(char.id)
                                 }}
                               >
-                                Abrir ficha · Testes e Perícias
+                                Abrir ficha
                               </button>
                             )}
                             {isMyTurn && isMe && !qtePending && (
@@ -5102,10 +5195,15 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     </Button>
                     <Button
                       variant="outline"
-                      className="rpg-tool-button w-full justify-start gap-2"
+                      className="rpg-tool-button relative w-full justify-start gap-2"
                       onClick={() => setShowImagepad(true)}
                     >
                       <ImageIcon className="size-4" /> Galeria arcana
+                      {galleryRequests.length > 0 && (
+                        <span className="ml-auto flex size-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-black">
+                          {galleryRequests.length}
+                        </span>
+                      )}
                     </Button>
                     <Button
                       variant="outline"

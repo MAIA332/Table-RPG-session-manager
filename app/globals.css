@@ -391,6 +391,88 @@
     background: linear-gradient(90deg, rgb(107 66 33 / 13%), transparent 16%), linear-gradient(145deg, rgb(43 32 23 / 98%), rgb(21 16 12 / 98%)) !important;
   }
 
+  .character-story-modal {
+    color: #3e2723;
+    background: #d8bd82;
+  }
+
+  .character-story-modal .character-story-field {
+    color: #3e2723;
+    border-color: rgb(139 101 61 / 42%);
+    background: rgb(243 228 186 / 72%);
+    box-shadow: inset 0 1px 8px rgb(76 44 20 / 10%);
+    color-scheme: light;
+  }
+
+  .character-story-modal .character-story-field:focus {
+    color: #3e2723;
+    border-color: #795548;
+    background: rgb(248 235 199 / 88%);
+    box-shadow: 0 0 0 3px rgb(121 85 72 / 12%), inset 0 1px 8px rgb(76 44 20 / 10%);
+  }
+
+  .character-story-modal .character-story-field::placeholder {
+    color: rgb(121 85 72 / 58%);
+  }
+
+  .flowchart-viewport {
+    overscroll-behavior: contain;
+  }
+
+  .flowchart-canvas {
+    color: color-mix(in oklab, var(--accent) 82%, white);
+    background-image:
+      linear-gradient(rgb(255 255 255 / 4%) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 4%) 1px, transparent 1px),
+      radial-gradient(circle at 35% 20%, color-mix(in oklab, var(--primary) 8%, transparent), transparent 38%);
+    background-size: 32px 32px, 32px 32px, auto;
+  }
+
+  .flowchart-edge {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.25;
+    opacity: 0.82;
+    filter: drop-shadow(0 1px 3px rgb(0 0 0 / 70%));
+  }
+
+  .flowchart-node {
+    border-color: color-mix(in oklab, var(--bronze) 55%, transparent);
+    background: linear-gradient(145deg, rgb(47 34 24 / 98%), rgb(20 15 12 / 99%));
+    box-shadow: 0 12px 25px rgb(0 0 0 / 44%), inset 0 1px 0 rgb(255 240 205 / 7%);
+  }
+
+  .flowchart-node.is-selected {
+    border-color: color-mix(in oklab, var(--accent) 78%, white);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 22%, transparent), 0 15px 34px rgb(0 0 0 / 56%);
+  }
+
+  .flowchart-node.is-connecting {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 24%, transparent), 0 0 24px color-mix(in oklab, var(--primary) 24%, transparent);
+  }
+
+  .flowchart-node-handle {
+    color: #f3dfb5;
+    background: linear-gradient(90deg, rgb(113 75 42 / 78%), rgb(71 46 29 / 88%));
+    touch-action: none;
+  }
+
+  .flowchart-node[data-color='blue'] { border-color: rgb(77 155 190 / 72%); background: linear-gradient(145deg, rgb(24 57 71 / 98%), rgb(12 27 34 / 99%)); }
+  .flowchart-node[data-color='blue'] .flowchart-node-handle { background: linear-gradient(90deg, rgb(39 112 142 / 88%), rgb(25 69 91 / 90%)); }
+  .flowchart-node[data-color='green'] { border-color: rgb(83 159 111 / 72%); background: linear-gradient(145deg, rgb(29 61 40 / 98%), rgb(14 31 20 / 99%)); }
+  .flowchart-node[data-color='green'] .flowchart-node-handle { background: linear-gradient(90deg, rgb(48 119 73 / 88%), rgb(29 73 45 / 90%)); }
+  .flowchart-node[data-color='red'] { border-color: rgb(184 79 72 / 72%); background: linear-gradient(145deg, rgb(72 31 29 / 98%), rgb(36 16 15 / 99%)); }
+  .flowchart-node[data-color='red'] .flowchart-node-handle { background: linear-gradient(90deg, rgb(139 54 48 / 88%), rgb(88 32 29 / 90%)); }
+  .flowchart-node[data-color='purple'] { border-color: rgb(145 103 181 / 72%); background: linear-gradient(145deg, rgb(54 36 72 / 98%), rgb(27 18 37 / 99%)); }
+  .flowchart-node[data-color='purple'] .flowchart-node-handle { background: linear-gradient(90deg, rgb(103 67 139 / 88%), rgb(65 41 90 / 90%)); }
+
+  .flowchart-color[data-flow-color='bronze'] { background: #9b693f; }
+  .flowchart-color[data-flow-color='blue'] { background: #397f9d; }
+  .flowchart-color[data-flow-color='green'] { background: #3d8a58; }
+  .flowchart-color[data-flow-color='red'] { background: #a44740; }
+  .flowchart-color[data-flow-color='purple'] { background: #8055a4; }
+
   .rpg-character-sheet.is-player-owned {
     border-left: 3px solid color-mix(in oklab, var(--accent) 82%, #5c321d) !important;
     box-shadow: 0 20px 48px rgb(0 0 0 / 42%), inset 3px 0 14px rgb(201 154 86 / 7%), inset 0 1px 0 rgb(255 235 190 / 6%) !important;
@@ -1449,6 +1531,35 @@
   .session-hand-copy .session-effect-kicker { color: #76522f; }
   .session-hand-copy strong { overflow: hidden; color: #2f2118; text-overflow: ellipsis; white-space: nowrap; }
   .session-hand-copy > span:last-child:not(.session-effect-kicker) { color: #6a5945; font-size: 0.74rem; }
+
+  .rpg-combat-launcher {
+    isolation: isolate;
+    box-shadow: 0 18px 45px rgb(0 0 0 / 45%), 0 0 22px color-mix(in oklab, var(--primary) 15%, transparent);
+  }
+
+  .rpg-combat-launcher::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    content: "";
+    background:
+      radial-gradient(circle at 12% 20%, color-mix(in oklab, var(--primary) 16%, transparent), transparent 42%),
+      linear-gradient(115deg, color-mix(in oklab, var(--card) 88%, black), color-mix(in oklab, var(--background) 94%, black));
+  }
+
+  .rpg-combat-launcher:hover {
+    box-shadow: 0 20px 50px rgb(0 0 0 / 52%), 0 0 30px color-mix(in oklab, var(--primary) 24%, transparent);
+  }
+
+  .rpg-combat-modal {
+    background-image:
+      radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 34%),
+      linear-gradient(145deg, color-mix(in oklab, var(--card) 42%, transparent), transparent 48%);
+  }
+
+  .rpg-combat-modal section {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
+  }
 }
 
 :root[data-theme='aether'] {
@@ -1924,6 +2035,25 @@ html[data-theme='aether'] .rpg-tab-button.is-active:hover {
   .custom-scrollbar-sepia {
     scrollbar-color: #715333 rgb(13 10 8 / 60%);
     scrollbar-width: thin;
+  }
+
+  .custom-scrollbar-sepia::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .custom-scrollbar-sepia::-webkit-scrollbar-track {
+    background: rgb(13 10 8 / 60%);
+  }
+
+  .custom-scrollbar-sepia::-webkit-scrollbar-thumb {
+    border: 2px solid rgb(13 10 8 / 60%);
+    border-radius: 2px;
+    background: linear-gradient(180deg, #80613a, #4b3825);
+  }
+
+  .custom-scrollbar-sepia::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #9d7846, #62482d);
   }
 
   .font-editorial {

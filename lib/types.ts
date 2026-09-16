@@ -11,6 +11,27 @@ export interface StoreFolder {
 export interface GalleryFolder {
   id: string
   name: string
+  ownerId?: string
+  isPlayerFolder?: boolean
+}
+export interface GalleryImage {
+  id: string
+  name: string
+  url: string
+  isPublic?: boolean
+  folderId?: string
+  ownerId?: string
+  ownerName?: string
+  createdAt?: number
+}
+export interface GalleryBroadcastRequest {
+  id: string
+  imageId: string
+  imageName: string
+  imageUrl: string
+  requesterId: string
+  requesterName: string
+  createdAt: number
 }
 export interface CustomItem {
   weight?: number
@@ -73,6 +94,26 @@ export interface PersonalNote {
   id: string
   title: string
   content: string
+  createdAt: number
+  updatedAt: number
+}
+export interface FlowchartNode {
+  id: string
+  text: string
+  x: number
+  y: number
+  color?: "bronze" | "blue" | "green" | "red" | "purple"
+}
+export interface FlowchartEdge {
+  id: string
+  from: string
+  to: string
+}
+export interface PersonalFlowchart {
+  id: string
+  title: string
+  nodes: FlowchartNode[]
+  edges: FlowchartEdge[]
   createdAt: number
   updatedAt: number
 }
@@ -205,3 +246,12 @@ export type RealtimeEvent =
   | { type: "poll:start"; poll: ActivePoll }
   | { type: "poll:vote"; pollId: string; userId: string; optionIndex: number }
   | { type: "combat:invalidate"; revision: number }
+  | { type: "gallery:changed" }
+  | { type: "gallery:broadcast-requested"; requestId: string }
+  | {
+      type: "gallery:broadcast-resolved"
+      requestId: string
+      requesterId: string
+      resolution: "approved" | "rejected"
+    }
+  | { type: "gallery:image-show"; url: string; name: string }
