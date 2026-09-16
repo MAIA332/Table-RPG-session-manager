@@ -18,38 +18,51 @@ export function SpotlightAvatar({
   avatar?: string
   children?: ReactNode
 }) {
+  const [failedAvatar, setFailedAvatar] = useState<string | null>(null)
+  const showImage = !!avatar && failedAvatar !== avatar
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div
+      className="flex min-w-0 flex-col items-center gap-3 text-center"
+      style={{ width: 112, maxWidth: "100%", flexShrink: 0 }}
+    >
       <div
         aria-label={`${name}${active ? ", com o Holofote" : ""}`}
-        className={`relative grid size-16 place-items-center rounded-full border-2 ${active ? "border-amber-300 shadow-[0_0_24px_rgba(252,211,77,0.6)]" : "border-zinc-700"}`}
+        className={`relative rounded-full border-2 ${active ? "border-amber-300 shadow-[0_0_24px_rgba(252,211,77,0.6)]" : "border-zinc-700"}`}
+        style={{ width: 64, height: 64, minWidth: 64, minHeight: 64, flexShrink: 0, boxSizing: "border-box" }}
       >
         {active && (
           <span
             aria-hidden
-            className="absolute -inset-2 rounded-full border border-amber-300 motion-safe:animate-pulse"
+            className="pointer-events-none absolute -inset-2 rounded-full border border-amber-300 motion-safe:animate-pulse"
           />
         )}
-        {children ||
-          (avatar ? (
+        <div
+          className="bg-zinc-900"
+          style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: "50%" }}
+        >
+          {children ?? (showImage ? (
             <img
               src={avatar}
               alt=""
-              className="size-full rounded-full object-cover"
+              width={64}
+              height={64}
+              draggable={false}
+              onError={() => setFailedAvatar(avatar || null)}
+              style={{ position: "absolute", inset: 0, display: "block", width: "100%", height: "100%", maxWidth: "100%", maxHeight: "100%", objectFit: "cover", objectPosition: "center 20%", borderRadius: "50%" }}
             />
           ) : (
-            <span className="text-xl font-bold">
-              {name.slice(0, 2).toUpperCase()}
-            </span>
+            <span aria-hidden className="text-xl font-bold">{name.trim().slice(0, 2).toUpperCase() || "?"}</span>
           ))}
+        </div>
       </div>
-      <span className="text-sm">{name}</span>
-      {active && (
-        <span className="text-xs text-amber-200">Sua vez de agir</span>
-      )}
+      <span className="w-full text-sm leading-snug" style={{ overflowWrap: "anywhere" }}>
+        {name}
+      </span>
+      {active && <span className="text-xs leading-snug text-amber-200">Sua vez de agir</span>}
     </div>
   )
 }
+
 export function SpotlightPanel({
   state,
   viewerId,
@@ -87,7 +100,7 @@ export function SpotlightPanel({
           </span>
         )}
       </header>
-      <div className="flex flex-wrap gap-6">
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-6 py-2">
         {state.players.map((p) => (
           <SpotlightAvatar
             key={p.id}

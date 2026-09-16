@@ -10,6 +10,10 @@ import type {
   PersonalNote,
 } from "./types"
 import type { GameMap } from "@/lib/map-types"
+import {
+  campaignItemCatalog,
+  enforceInventoryDatabase,
+} from "./inventory-server"
 import { applyInventoryRules } from "./character"
 
 type Subscriber = (event: RealtimeEvent) => void
@@ -267,6 +271,18 @@ function writeStoreFile(
   storeData: StoreShape,
   preservePrimaryAsBackup: boolean,
 ): void {
+  const previous = fs.existsSync(DB_FILE_PATH)
+    ? readStoreFile(DB_FILE_PATH)
+    : undefined
+  try {
+    enforceInventoryDatabase(storeData, previous)
+  } catch (error) {
+    if (previous) {
+      storeData.characters = previous.characters
+      storeData.campaignState = previous.campaignState
+    }
+    throw error
+  }
   const serialized = JSON.stringify(serializeStore(storeData), null, 2)
   const tempPath = `${DB_FILE_PATH}.tmp-${process.pid}-${Date.now()}`
   const tempHandle = fs.openSync(tempPath, "wx")
@@ -550,7 +566,9 @@ export function subscribeToPresence(fn: PresenceSubscriber): () => void {
 export function getCampaignCharacters(campaignId: string): Character[] {
   return [...store.characters.values()]
     .filter((c) => c.campaignId === campaignId)
-    .map(applyInventoryRules)
+    .map((character) =>
+      applyInventoryRules(character, campaignItemCatalog(store, campaignId)),
+    )
     .sort((a, b) => a.createdAt - b.createdAt)
 }
 

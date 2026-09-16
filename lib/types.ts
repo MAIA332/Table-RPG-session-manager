@@ -13,6 +13,8 @@ export interface GalleryFolder {
   name: string
 }
 export interface CustomItem {
+  weight?: number
+  weightUnit?: "g" | "kg"
   id: string
   name: string
   type: "text" | "image" | "video" | "app-blueprints"
@@ -48,6 +50,8 @@ export interface ClassLevel {
   level: number
 }
 export interface EquipmentItem {
+  weight?: number
+  weightUnit?: "g" | "kg"
   id: string
   name: string
   category: "weapon" | "armor" | "shield" | "accessory"
@@ -73,6 +77,7 @@ export interface PersonalNote {
   updatedAt: number
 }
 export interface Character {
+  customItems?: CustomItem[]
   id: string
   campaignId: string
   ownerId: string
@@ -93,6 +98,8 @@ export interface Character {
   updatedAt: number
 }
 export interface ItemTransfer {
+  donorRetainsItem?: boolean
+  sourceItemIndex?: number
   id: string
   campaignId: string
   donorCharacterId: string

@@ -1,4 +1,9 @@
 "use client"
+import {
+  assertInventoryChange,
+  assertInventoryFits,
+  type ItemWeight,
+} from "@/lib/inventory-weight"
 import { CombatMonsterCard } from "./combat-monster-card"
 import { CreatureAbilitiesManager } from "./creature-abilities-manager"
 
@@ -45,7 +50,7 @@ import {
 
 import { NpcNursery } from "./npc-nursery"
 
-import { EQUIPMENT, BESTIARY, getEquipment } from "@/lib/game-data"
+import { BASE_MAX_IP, EQUIPMENT, BESTIARY, getEquipment } from "@/lib/game-data"
 
 import type {
   Character,
@@ -2657,6 +2662,14 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   async function spawnNPC(draft: NPCDraft) {
     try {
+      assertInventoryFits(
+        {
+          equipment: draft.equipment,
+          resources: { maxIp: BASE_MAX_IP },
+          attributes: draft.attributes,
+        },
+        customEquipment,
+      )
       await apiFetch(`/api/characters`, {
         method: "POST",
         body: JSON.stringify({
@@ -2675,7 +2688,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       setShowNursery(false)
     } catch (err) {
       console.error(err)
-      alert("Erro ao invocar NPC.")
+      alert(err instanceof Error ? err.message : "Erro ao invocar NPC.")
     }
   }
 
@@ -2757,7 +2770,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       setSelectedDroppedLoot(null)
       setSelectedTargetCharId(null)
     } catch (err) {
-      alert("Erro ao enviar Loot.")
+      alert(err instanceof Error ? err.message : "Erro ao enviar Loot.")
     }
   }
 
@@ -2796,6 +2809,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     name: string,
     type: string,
     content: string,
+    weight: ItemWeight = { weight: 100, weightUnit: "g" },
   ) => {
     const targetCharacter = characters.find((c) => c.id === targetId)
     if (targetCharacter) {
@@ -2804,10 +2818,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         name: name,
         type: type as any,
         content: content,
+        ...weight,
       }
       const currentCustom = (targetCharacter as any).customItems || []
       const updatedCustomItems = [...currentCustom, newItem]
 
+      assertInventoryChange(
+        targetCharacter,
+        { ...targetCharacter, customItems: updatedCustomItems },
+        customEquipment,
+      )
       const { character: updated } = await apiFetch<{ character: Character }>(
         `/api/characters/${targetCharacter.id}`,
         {
@@ -2847,6 +2867,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         ? targetCharacter.equipment
         : []
       const newEquipment = [...currentEquip, itemId]
+      assertInventoryChange(
+        targetCharacter,
+        { ...targetCharacter, equipment: newEquipment },
+        customEquipment,
+      )
 
       const { character: updated } = await apiFetch<{ character: Character }>(
         `/api/characters/${targetCharacter.id}`,
@@ -3234,6 +3259,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       )
       setItemTransfers((current) =>
         current.filter((item) => item.id !== transferId),
+      )
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível concluir a transferência.",
       )
     } finally {
       setResolvingTransferId(null)

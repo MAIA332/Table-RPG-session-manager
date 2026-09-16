@@ -37,7 +37,7 @@ export function characterRoll(
   checkId?: string,
   bondId?: string,
 ) {
-  const normalized = applyInventoryRules(character)
+  const normalized = applyInventoryRules(character, equipment)
   const catalog = [
     ...equipment,
     ...EQUIPMENT.filter(
