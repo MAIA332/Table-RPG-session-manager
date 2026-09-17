@@ -18,6 +18,8 @@ const ensureHttps = (url = "") => {
 export function Imagepad({
   isGm,
   myUserId,
+  players = [],
+  targetingEnabled = false,
   images,
   folders,
   requests,
@@ -28,14 +30,18 @@ export function Imagepad({
 }: {
   isGm: boolean
   myUserId: string
+  players?: { userId: string; name: string }[]
+  targetingEnabled?: boolean
   images: SharedImage[]
   folders: GalleryFolder[]
   requests: GalleryBroadcastRequest[]
   onUpdateGallery: (images: SharedImage[], folders: GalleryFolder[]) => void
   onAction: (action: string, payload?: Record<string, unknown>) => Promise<void>
-  onShowImage: (image: SharedImage) => void
+  onShowImage: (image: SharedImage, targetUserId?: string | null) => void | Promise<void>
   onClose?: () => void
 }) {
+  const [targetUserId, setTargetUserId] = useState<string | null>(null)
+  const validTarget = targetUserId === null || (targetingEnabled && players.some(player => player.userId === targetUserId))
   const [newName, setNewName] = useState("")
   const [newUrl, setNewUrl] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
@@ -72,7 +78,31 @@ export function Imagepad({
   const canManageImage = (image: SharedImage) => isGm || image.ownerId === myUserId
   const isPending = (imageId: string) => requests.some((request) => request.imageId === imageId && request.requesterId === myUserId)
 
+  async function showImage(image: SharedImage) {
+    if (busyKey) return
+    if (isGm && !validTarget) {
+      setError("Selecione um jogador válido; o servidor precisa permitir o envio individual.")
+      return
+    }
+    setBusyKey(`show:${image.id}`)
+    setError("")
+    try {
+      await onShowImage(image, isGm ? targetUserId : null)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível exibir a imagem.")
+    } finally {
+      setBusyKey(null)
+    }
+  }
+
   async function runAction(key: string, action: string, payload?: Record<string, unknown>) {
+    if (action === "resolve-broadcast" && payload?.resolution === "approved") {
+      if (!isGm || !validTarget) {
+        setError("Selecione um jogador válido para a transmissão.")
+        return
+      }
+      payload = { ...payload, targetUserId }
+    }
     setBusyKey(key)
     setError("")
     try {
@@ -166,9 +196,25 @@ export function Imagepad({
       </header>
 
       {error && <div className="mb-3 flex shrink-0 items-center justify-between rounded-sm border border-red-500/40 bg-red-950/40 px-3 py-2 text-sm text-red-200"><span>{error}</span><button onClick={() => setError("")}><X className="size-4" /></button></div>}
+      {isGm && <section className="mb-4 shrink-0 rounded-sm border border-primary/25 bg-black/25 p-3">
+        <label className="block text-sm font-bold">
+          Quem verá a imagem?
+          <select aria-label="Destinatário da imagem" value={targetUserId ?? ""} disabled={!!busyKey}
+            onChange={event => setTargetUserId(event.target.value || null)}
+            className="mt-2 w-full rounded-sm border border-white/15 bg-zinc-900 p-2 text-sm">
+            <option value="">Todos na mesa</option>
+            {players.map(player => <option key={player.userId} value={player.userId} disabled={!targetingEnabled}>{player.name}</option>)}
+          </select>
+        </label>
+        <p className="mt-2 text-xs text-muted-foreground">{targetUserId ? "A imagem abrirá somente para o jogador escolhido, sem abrir para o mestre." : "A imagem abrirá para todos na mesa, incluindo o mestre."} A seleção também vale ao aprovar solicitações.</p>
+        <p className="mt-1 text-xs text-muted-foreground">O envio não altera a visibilidade da imagem na galeria. Para mantê-la fora da galeria dos demais, deixe-a privada.</p>
+        {!targetingEnabled && <p role="status" className="mt-1 text-xs text-amber-300">Envio individual aguardando suporte do servidor.</p>}
+        {!validTarget && <p role="alert" className="mt-1 text-xs text-red-300">O destinatário não está disponível. Selecione novamente.</p>}
+      </section>}
+
       {isGm && requests.length > 0 && <section className="mb-4 shrink-0 rounded-sm border border-amber-400/40 bg-amber-950/25 p-3">
         <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-300"><Send className="size-4" /> Solicitações de envio ({requests.length})</div>
-        <div className="flex gap-2 overflow-x-auto pb-1">{requests.map((request) => <div key={request.id} className="flex min-w-64 items-center gap-3 rounded-sm border border-white/10 bg-black/30 p-2"><img src={request.imageUrl} alt="" className="size-12 rounded object-cover" /><div className="min-w-0 flex-1"><strong className="block truncate text-sm">{request.imageName}</strong><span className="text-xs text-muted-foreground">{request.requesterName}</span></div><button disabled={!!busyKey} onClick={() => runAction(request.id, "resolve-broadcast", { requestId: request.id, resolution: "approved" })} className="rounded bg-green-500/15 p-2 text-green-400" title="Aprovar"><Check className="size-4" /></button><button disabled={!!busyKey} onClick={() => runAction(request.id, "resolve-broadcast", { requestId: request.id, resolution: "rejected" })} className="rounded bg-red-500/15 p-2 text-red-400" title="Recusar"><X className="size-4" /></button></div>)}</div>
+        <div className="flex gap-2 overflow-x-auto pb-1">{requests.map((request) => <div key={request.id} className="flex min-w-64 items-center gap-3 rounded-sm border border-white/10 bg-black/30 p-2"><img src={request.imageUrl} alt="" className="size-12 rounded object-cover" /><div className="min-w-0 flex-1"><strong className="block truncate text-sm">{request.imageName}</strong><span className="text-xs text-muted-foreground">{request.requesterName}</span></div><button disabled={!!busyKey} onClick={() => runAction(request.id, "resolve-broadcast", { requestId: request.id, resolution: "approved" })} className="rounded bg-green-500/15 p-2 text-green-400" title={targetUserId ? "Aprovar e enviar ao jogador selecionado" : "Aprovar e enviar para todos"}><Check className="size-4" /></button><button disabled={!!busyKey} onClick={() => runAction(request.id, "resolve-broadcast", { requestId: request.id, resolution: "rejected" })} className="rounded bg-red-500/15 p-2 text-red-400" title="Recusar"><X className="size-4" /></button></div>)}</div>
       </section>}
 
       <div className="flex min-h-0 flex-1 gap-4">
@@ -192,7 +238,7 @@ export function Imagepad({
 
           <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 content-start gap-5 overflow-y-auto pb-10 pr-2 custom-scrollbar-sepia sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {visibleImages.map((image) => <article key={image.id} className="rpg-gallery-card rpg-themed-card group overflow-hidden border border-white/10 bg-zinc-900 shadow-md">
-              <button type="button" onClick={() => onShowImage(image)} className="relative block aspect-video w-full overflow-hidden bg-black/80"><img src={image.url} alt={image.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /><span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/60 group-hover:opacity-100">{isGm ? <Send className="size-7" /> : <Eye className="size-7" />}</span><span className={`absolute right-2 top-2 flex items-center gap-1 rounded bg-black/80 px-2 py-1 text-[9px] font-bold uppercase ${image.isPublic ? "text-green-400" : "text-zinc-400"}`}>{image.isPublic ? <Eye className="size-3" /> : <EyeOff className="size-3" />}{image.isPublic ? "Pública" : "Privada"}</span></button>
+              <button type="button" disabled={!!busyKey || (isGm && !validTarget)} onClick={() => void showImage(image)} className="relative block aspect-video w-full overflow-hidden bg-black/80"><img src={image.url} alt={image.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /><span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/60 group-hover:opacity-100">{isGm ? <Send className="size-7" /> : <Eye className="size-7" />}</span><span className={`absolute right-2 top-2 flex items-center gap-1 rounded bg-black/80 px-2 py-1 text-[9px] font-bold uppercase ${image.isPublic ? "text-green-400" : "text-zinc-400"}`}>{image.isPublic ? <Eye className="size-3" /> : <EyeOff className="size-3" />}{image.isPublic ? "Pública" : "Privada"}</span></button>
               <div className="flex items-center gap-2 border-t border-primary/15 bg-[#1b140f] p-3"><div className="min-w-0 flex-1"><strong className="block truncate text-sm text-zinc-200">{image.name}</strong><span className="block truncate text-[9px] text-muted-foreground">{image.ownerName || (isGm ? "Mestre" : "")}</span></div>{canManageImage(image) && <div className="flex shrink-0 items-center gap-1">
                 <Button size="sm" variant="ghost" className={`size-8 p-0 ${image.isPublic ? "text-green-400" : "text-muted-foreground"}`} onClick={() => isGm ? updateForGm(normalizedImages.map((entry) => entry.id === image.id ? { ...entry, isPublic: !entry.isPublic } : entry)) : runAction(`visibility:${image.id}`, "toggle-public", { imageId: image.id })} title={image.isPublic ? "Tornar privada" : "Tornar pública"}>{busyKey === `visibility:${image.id}` ? <Loader2 className="size-4 animate-spin" /> : image.isPublic ? <Eye className="size-4" /> : <EyeOff className="size-4" />}</Button>
                 {isGm && <select value={image.folderId || "root"} onChange={(event) => updateForGm(normalizedImages.map((entry) => entry.id === image.id ? { ...entry, folderId: event.target.value } : entry))} className="h-8 max-w-24 rounded-sm border border-white/10 bg-black/50 px-1 text-[10px]">{normalizedFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select>}

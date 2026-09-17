@@ -27,11 +27,17 @@ export interface ActiveSound {
   trackId: string; 
   url: string;
   loop: boolean;
+  targetUserId?: string | null;
 }
 
 interface SoundpadProps {
   isGm: boolean;
   campaignId: string;
+  currentUserId: string;
+  players?: { userId: string; name: string }[];
+  targetUserId?: string | null;
+  onTargetUserIdChange?: (userId: string | null) => void;
+  onSoundEnded?: (sound: ActiveSound) => void;
   activeSounds: ActiveSound[];
   customTracks?: Track[];
   musicVolume?: number;
@@ -39,12 +45,31 @@ interface SoundpadProps {
   onCustomTracksChange?: (tracks: Track[]) => void;
   onMusicVolumeChange?: (volume: number) => void;
   onEffectsVolumeChange?: (volume: number) => void;
-  onPlaySound?: (track: { id: string, url: string }, loop: boolean) => void;
+  onPlaySound?: (track: { id: string, url: string }, loop: boolean, targetUserId?: string | null) => void;
   onStopSound?: (id: string) => void;
   onStopAll?: () => void;
 }
 
-export function Soundpad({ campaignId, isGm, activeSounds, customTracks = [], musicVolume = 0.5, effectsVolume = 0.5, onCustomTracksChange, onMusicVolumeChange, onEffectsVolumeChange, onPlaySound, onStopSound, onStopAll }: SoundpadProps) {
+export function Soundpad({ campaignId, currentUserId, players = [], targetUserId = null, onTargetUserIdChange, onSoundEnded, isGm, activeSounds, customTracks = [], musicVolume = 0.5, effectsVolume = 0.5, onCustomTracksChange, onMusicVolumeChange, onEffectsVolumeChange, onPlaySound, onStopSound, onStopAll }: SoundpadProps) {
+  const [targetingReady, setTargetingReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setTargetingReady(false);
+    if (isGm) {
+      void fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/sound`, { cache: "no-store" })
+        .then(async response => {
+          if (!response.ok) return;
+          const result = await response.json();
+          if (!cancelled) setTargetingReady(result.capabilities?.targetedSound === true);
+        }).catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [campaignId, isGm]);
+
+  const canPlay = isGm && (!targetUserId || (targetingReady && players.some(player => player.userId === targetUserId)));
+  const playTrack = (track: { id: string; url: string }, loop: boolean) => {
+    if (canPlay) onPlaySound?.(track, loop, targetUserId);
+  };
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const [folders, setFolders] = useState<SoundFolder[]>([])
   const [activeFolder, setActiveFolder] = useState("all")
@@ -159,9 +184,12 @@ export function Soundpad({ campaignId, isGm, activeSounds, customTracks = [], mu
   };
 
   useEffect(() => {
-    const currentActiveIds = new Set(activeSounds.map(s => s.id));
+    const audibleSounds = activeSounds.filter(sound =>
+      sound.targetUserId == null || sound.targetUserId === currentUserId
+    );
+    const currentActiveIds = new Set(audibleSounds.map(s => s.id));
 
-    activeSounds.forEach(sound => {
+    audibleSounds.forEach(sound => {
       const volume = sound.loop ? musicVolume : effectsVolume;
       if (!audioRefs.current[sound.id]) {
         const audio = new Audio(sound.url);
@@ -169,7 +197,7 @@ export function Soundpad({ campaignId, isGm, activeSounds, customTracks = [], mu
         audio.volume = volume;
         
         audio.onended = () => {
-          if (onStopSound) onStopSound(sound.id);
+          onSoundEnded?.(sound);
         };
 
         audio.play().catch((err) => console.warn("Áudio não pôde ser tocado automaticamente:", err));
@@ -188,7 +216,7 @@ export function Soundpad({ campaignId, isGm, activeSounds, customTracks = [], mu
         delete audioRefs.current[id];
       }
     });
-  }, [activeSounds, musicVolume, effectsVolume, onStopSound]);
+  }, [activeSounds, currentUserId, musicVolume, effectsVolume, onSoundEnded]);
 
   useEffect(() => {
     return () => {
@@ -222,6 +250,21 @@ export function Soundpad({ campaignId, isGm, activeSounds, customTracks = [], mu
           </div>
 
           <div className="px-6 pb-4 space-y-3 border-b border-white/5">
+            <label className="block text-sm text-amber-100">
+              Quem vai ouvir os próximos sons?
+              <select aria-label="Destinatário do áudio" value={targetUserId ?? ""}
+                onChange={event => onTargetUserIdChange?.(event.target.value || null)}
+                className="mt-2 w-full rounded border border-white/15 bg-zinc-900 p-2 text-sm">
+                <option value="">Todos na mesa</option>
+                {players.map(player => <option key={player.userId} value={player.userId} disabled={!targetingReady}>{player.name}</option>)}
+              </select>
+            </label>
+            <p className="text-xs text-zinc-400">
+              {targetUserId ? "Somente o jogador selecionado ouvirá. O mestre não ouvirá esse som." : "O som tocará para todos, incluindo o mestre."}
+              {" "}A seleção vale apenas para os próximos disparos.
+            </p>
+            {!targetingReady && <p role="status" className="text-xs text-amber-200">Envio individual indisponível: aguardando suporte do servidor.</p>}
+            {targetUserId && !players.some(player => player.userId === targetUserId) && <p role="alert" className="text-xs text-red-300">Selecione um jogador que ainda participa da mesa.</p>}
             <input aria-label="Pesquisar sons" placeholder="Pesquisar sons nesta pasta..." value={search} onChange={e => setSearch(e.target.value)} className="w-full rounded border border-white/15 bg-black/40 p-2 text-sm" />
             <div className="flex gap-2">
               <input aria-label="Nome da nova pasta" maxLength={100} placeholder="Nome da nova pasta" value={folderName} disabled={!loaded || saving} onChange={e => setFolderName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void createFolder() } }} className="min-w-0 flex-1 rounded border border-white/15 bg-black/40 p-2 text-sm" />
@@ -244,8 +287,8 @@ export function Soundpad({ campaignId, isGm, activeSounds, customTracks = [], mu
           <div className="flex-1 overflow-y-auto p-8 space-y-3 custom-scrollbar-sepia">
             {loaded && visibleTracks.length === 0 && <p className="text-sm text-zinc-400">Nenhum som nesta pasta corresponde à pesquisa.</p>}
             {visibleTracks.map(track => {
-               const isPlaying = activeSounds.some(s => s.trackId === track.id);
-               const activeInstances = activeSounds.filter(s => s.trackId === track.id);
+               const activeInstances = activeSounds.filter(s => s.trackId === track.id && (s.targetUserId ?? null) === targetUserId);
+               const isPlaying = activeInstances.length > 0;
                const isCustom = track.isCustom;
                
                return (
@@ -273,7 +316,8 @@ export function Soundpad({ campaignId, isGm, activeSounds, customTracks = [], mu
                     <div className="flex items-center gap-3 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
                        <button 
                           className="flex items-center justify-center size-10 rounded-full bg-black text-zinc-300 hover:text-white hover:bg-white/10 border border-white/10 transition-all hover:scale-105" 
-                          onClick={() => onPlaySound && onPlaySound(track, false)} 
+                          disabled={!canPlay}
+                          onClick={() => playTrack(track, false)} 
                           title="Tocar 1x"
                        >
                           <Play className="size-4 ml-0.5" />
@@ -287,10 +331,11 @@ export function Soundpad({ campaignId, isGm, activeSounds, customTracks = [], mu
                                    const idToStop = activeInstances.find(a => a.loop)?.id;
                                    if(idToStop && onStopSound) onStopSound(idToStop);
                                 } else {
-                                   if(onPlaySound) onPlaySound(track, true);
+                                   playTrack(track, true);
                                 }
                              }}
-                             title="Tocar em Loop Finito"
+                             disabled={!canPlay && !activeInstances.some(a => a.loop)}
+                             title="Ativar ou parar repetição"
                           >
                              <Repeat className="size-4" />
                           </button>
@@ -350,6 +395,9 @@ export function Soundpad({ campaignId, isGm, activeSounds, customTracks = [], mu
                        <div className="flex flex-col min-w-0 pr-3">
                            <span className="flex items-center gap-2 truncate text-sm font-bold text-accent">
                              {getTrackName(active.trackId)}
+                           </span>
+                           <span className="text-xs text-zinc-400">
+                             {active.targetUserId == null ? "Todos na mesa" : `Somente: ${players.find(player => player.userId === active.targetUserId)?.name || "Jogador"}`}
                            </span>
                            <span className="mt-0.5 flex items-center gap-1 text-[9px] uppercase tracking-widest text-accent/70" title={active.loop ? "Loop Ativo" : "Efeito Único"}>
                               {active.loop ? <><Repeat className="size-3" /> Loop</> : "1x Shot"}

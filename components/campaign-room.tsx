@@ -687,6 +687,40 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   // SOUNDPAD STATES
   const [showSoundpad, setShowSoundpad] = useState(false)
   const [activeSounds, setActiveSounds] = useState<ActiveSound[]>([])
+  const [soundTargetUserId, setSoundTargetUserId] = useState<string | null>(null)
+  const completedSoundIds = useRef(new Set<string>())
+  const soundRefreshVersion = useRef(0)
+  useEffect(() => {
+    completedSoundIds.current.clear()
+    soundRefreshVersion.current++
+    setActiveSounds([])
+    setSoundTargetUserId(null)
+    return () => { soundRefreshVersion.current++ }
+  }, [data.campaign.id, data.me.id])
+
+  const refreshSounds = useCallback(async () => {
+    const version = ++soundRefreshVersion.current
+    const response = await apiFetch<{ sounds: ActiveSound[] }>(
+      `/api/campaigns/${data.campaign.id}/sound`,
+      { cache: "no-store" },
+    )
+    if (version !== soundRefreshVersion.current) return
+    const sounds = response.sounds || []
+    setActiveSounds(sounds.filter(sound =>
+      !completedSoundIds.current.has(sound.id) &&
+      (data.role === "gm" || sound.targetUserId == null || sound.targetUserId === data.me.id)
+    ))
+  }, [data.campaign.id, data.me.id, data.role])
+
+  const handleSoundEnded = useCallback((sound: ActiveSound) => {
+    completedSoundIds.current.add(sound.id)
+    setActiveSounds(prev => prev.filter(item => item.id !== sound.id))
+    if (sound.loop || (data.role !== "gm" && sound.targetUserId !== data.me.id)) return
+    void apiFetch(`/api/campaigns/${data.campaign.id}/sound`, {
+      method: "POST",
+      body: JSON.stringify({ action: "ended", id: sound.id }),
+    }).then(() => refreshSounds()).catch(console.error)
+  }, [data.campaign.id, data.me.id, data.role, refreshSounds])
   const [customSounds, setCustomSounds] = useState<Track[]>([])
   const [showVolumeMixer, setShowVolumeMixer] = useState(false)
   const [effectsVolume, setEffectsVolume] = useState(0.5)
@@ -763,6 +797,15 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   // === GALERIA ARCANA ===
   const [showImagepad, setShowImagepad] = useState(false)
+  const [galleryTargetingEnabled, setGalleryTargetingEnabled] = useState(false)
+  const imageDeliveryQueue = useRef<Promise<void>>(Promise.resolve())
+  const imageDeliveryGeneration = useRef(0)
+  useEffect(() => {
+    imageDeliveryGeneration.current++
+    imageDeliveryQueue.current = Promise.resolve()
+    setGalleryTargetingEnabled(false)
+    return () => { imageDeliveryGeneration.current++ }
+  }, [data.campaign.id, data.me.id])
   const [activeFullscreenImage, setActiveFullscreenImage] = useState<
     string | null
   >(null)
@@ -831,7 +874,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     images?: SharedImage[]
     folders?: GalleryFolder[]
     requests?: GalleryBroadcastRequest[]
+    capabilities?: { targetedImages?: boolean }
   }) => {
+    setGalleryTargetingEnabled(response.capabilities?.targetedImages === true)
     const normalizedImages = (response.images || []).map((image) => ({
       ...image,
       folderId: image.folderId || "root",
@@ -848,21 +893,29 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       images: SharedImage[]
       folders: GalleryFolder[]
       requests: GalleryBroadcastRequest[]
+      capabilities?: { targetedImages?: boolean }
     }>(`/api/campaigns/${data.campaign.id}/gallery`)
     applyGalleryResponse(response)
   }, [applyGalleryResponse, data.campaign.id])
 
   const galleryAction = useCallback(async (action: string, payload: Record<string, unknown> = {}) => {
+    if (action === "broadcast" || action === "resolve-broadcast") {
+      if (data.role !== "gm") throw new Error("Apenas o mestre pode transmitir imagens.")
+      if (payload.targetUserId != null && (!galleryTargetingEnabled || !data.members.some(member => member.role === "player" && member.userId === payload.targetUserId))) {
+        throw new Error("O envio individual não está disponível para esse jogador.")
+      }
+    }
     const response = await apiFetch<{
       images: SharedImage[]
       folders: GalleryFolder[]
       requests: GalleryBroadcastRequest[]
+      capabilities?: { targetedImages?: boolean }
     }>(`/api/campaigns/${data.campaign.id}/gallery`, {
       method: "POST",
       body: JSON.stringify({ action, ...payload }),
     })
     applyGalleryResponse(response)
-  }, [applyGalleryResponse, data.campaign.id])
+  }, [applyGalleryResponse, data.campaign.id, data.role, data.members, galleryTargetingEnabled])
 
   const saveGallery = useCallback(
     (images: SharedImage[], folders: GalleryFolder[]) => {
@@ -1396,13 +1449,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     [data.campaign.id],
   )
 
-  function handleImageClick(image: SharedImage) {
+  async function handleImageClick(image: SharedImage, targetUserId: string | null = null) {
     if (isGm) {
-      // Se for o mestre, força a imagem tela cheia na cara de todo mundo
-      galleryAction("broadcast", { imageId: image.id }).catch(console.error)
+      await galleryAction("broadcast", { imageId: image.id, targetUserId })
       setShowImagepad(false)
     } else {
-      // Se for jogador, apenas abre a imagem localmente para ele ver melhor
       setActiveFullscreenImage(image.url)
     }
   }
@@ -1649,9 +1700,25 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   }, [now, activePoll])
 
   const handlePlaySound = useCallback(
-    (track: { id: string; url: string }, loop: boolean) => {
-      const uid = `${track.id}_${Math.random().toString(36).substring(2, 8)}`
-      const sound = { id: uid, trackId: track.id, url: track.url, loop }
+    async (track: { id: string; url: string }, loop: boolean, targetUserId: string | null = null) => {
+      if (data.role !== "gm") return
+      if (targetUserId !== null) {
+        if (!data.members.some(member => member.userId === targetUserId && member.role === "player")) return
+        try {
+          const response = await apiFetch<{ capabilities?: { targetedSound?: boolean } }>(
+            `/api/campaigns/${data.campaign.id}/sound`,
+          )
+          if (response.capabilities?.targetedSound !== true) {
+            window.alert("O servidor ainda não permite áudio individual. Nenhum som foi enviado.")
+            return
+          }
+        } catch {
+          window.alert("Não foi possível confirmar o envio individual. Nenhum som foi enviado.")
+          return
+        }
+      }
+      const uid = `${track.id}_${crypto.randomUUID()}`
+      const sound = { id: uid, trackId: track.id, url: track.url, loop, targetUserId }
       setActiveSounds((prev) => [
         ...prev.filter((item) => item.id !== uid),
         sound,
@@ -1666,39 +1733,42 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             trackId: track.id,
             url: track.url,
             loop,
+            targetUserId,
           }),
         },
       )
-        .then((res) => setActiveSounds(res.sounds || []))
+        .then(() => refreshSounds())
         .catch(() => {
           setActiveSounds((prev) => prev.filter((item) => item.id !== uid))
         })
     },
-    [data.campaign.id],
+    [data.campaign.id, data.role, data.members, refreshSounds],
   )
 
   const handleStopSound = useCallback(
     (id: string) => {
+      if (data.role !== "gm") return
       setActiveSounds((prev) => prev.filter((sound) => sound.id !== id))
       apiFetch<{ sounds: ActiveSound[] }>(
         `/api/campaigns/${data.campaign.id}/sound`,
         { method: "POST", body: JSON.stringify({ action: "stop", id }) },
       )
-        .then((res) => setActiveSounds(res.sounds || []))
+        .then(() => refreshSounds())
         .catch(console.error)
     },
-    [data.campaign.id],
+    [data.campaign.id, data.role, refreshSounds],
   )
 
   const handleStopAllSounds = useCallback(() => {
+    if (data.role !== "gm") return
     setActiveSounds([])
     apiFetch<{ sounds: ActiveSound[] }>(
       `/api/campaigns/${data.campaign.id}/sound`,
       { method: "POST", body: JSON.stringify({ action: "stop_all" }) },
     )
-      .then((res) => setActiveSounds(res.sounds || []))
+      .then(() => refreshSounds())
       .catch(console.error)
-  }, [data.campaign.id])
+  }, [data.campaign.id, data.role, refreshSounds])
 
   const seenCombatRolls = useRef(new Set<string>())
   const handleEvent = useCallback(
@@ -1729,8 +1799,25 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         }
         return
       }
+      if (event.type === "gallery:image-available" && typeof event.deliveryId === "string") {
+        const generation = imageDeliveryGeneration.current
+        imageDeliveryQueue.current = imageDeliveryQueue.current.catch(() => undefined).then(async () => {
+          if (generation !== imageDeliveryGeneration.current) return
+          const response = await apiFetch<{ broadcast: { id: string; url: string; name: string } | null }>(
+            `/api/campaigns/${data.campaign.id}/gallery?deliveryId=${encodeURIComponent(event.deliveryId)}`,
+            { cache: "no-store" },
+          )
+          if (generation === imageDeliveryGeneration.current && response.broadcast?.url) {
+            setActiveFullscreenImage(response.broadcast.url)
+          }
+        }).catch(console.error)
+        return
+      }
       if (event.type === "gallery:image-show") {
-        setActiveFullscreenImage(String(event.url))
+        const generation = imageDeliveryGeneration.current
+        imageDeliveryQueue.current = imageDeliveryQueue.current.catch(() => undefined).then(() => {
+          if (generation === imageDeliveryGeneration.current && typeof event.url === "string") setActiveFullscreenImage(event.url)
+        })
         return
       }
 
@@ -1859,8 +1946,15 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         return
       }
 
+      // O evento coletivo só avisa da mudança; a API filtra os dados por usuário.
+      if (event.type === "sound:changed") {
+        void refreshSounds().catch(console.error)
+        return
+      }
+
       // Soundpad Events
       if (event.type === "sound:play") {
+        if (event.sound.targetUserId != null && event.sound.targetUserId !== data.me.id && !isGmRef.current) return
         setActiveSounds((prev) => [
           ...prev.filter((sound) => sound.id !== event.sound.id),
           event.sound,
@@ -2338,7 +2432,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         }
       })
     },
-    [data.campaign.id, data.me.id, refreshGallery],
+    [data.campaign.id, data.me.id, refreshGallery, refreshSounds],
   )
 
   useEffect(() => {
@@ -2360,14 +2454,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   useEffect(() => {
     if (realtimeStatus !== "live") return
     void refreshGallery().catch(console.error)
-    apiFetch<{ sounds: ActiveSound[] }>(
-      `/api/campaigns/${data.campaign.id}/sound`,
-    )
-      .then((res) => setActiveSounds(res.sounds || []))
-      .catch(() => {
-        console.warn("Sons não encontrados ou campanha deletada")
-      })
-  }, [data.campaign.id, realtimeStatus, refreshGallery])
+    void refreshSounds().catch(console.error)
+  }, [data.campaign.id, realtimeStatus, refreshGallery, refreshSounds])
 
   const applyOptimistic = useCallback(
     (c: Character) =>
@@ -4108,6 +4196,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     <div className="rpg-media-modal-frame flex-1 w-full h-full overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)]">
                       <Soundpad
                         isGm={isGm}
+                        currentUserId={data.me.id}
+                        players={data.members.filter(member => member.role === "player")}
+                        targetUserId={soundTargetUserId}
+                        onTargetUserIdChange={setSoundTargetUserId}
+                        onSoundEnded={handleSoundEnded}
                         campaignId={data.campaign.id}
                         activeSounds={activeSounds}
                         customTracks={customSounds}
@@ -4146,6 +4239,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       <Imagepad
                         isGm={isGm}
                         myUserId={data.me.id}
+                        players={data.members.filter(member => member.role === "player")}
+                        targetingEnabled={galleryTargetingEnabled}
                         images={galleryImages}
                         folders={galleryFolders}
                         requests={galleryRequests}
@@ -4197,6 +4292,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               <div className="hidden">
                 <Soundpad
                   isGm={false}
+                  currentUserId={data.me.id}
+                  onSoundEnded={handleSoundEnded}
                   campaignId={data.campaign.id}
                   activeSounds={activeSounds}
                   customTracks={customSounds}

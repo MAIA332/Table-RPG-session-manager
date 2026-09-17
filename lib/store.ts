@@ -29,6 +29,14 @@ type PersonalNotesRecord = {
   updatedAt: number
 }
 
+export interface CampaignSound {
+  id: string
+  trackId: string
+  url: string
+  loop: boolean
+  targetUserId?: string | null
+}
+
 interface StoreShape {
   users: Map<string, User>
   sessions: Map<string, SessionToken>
@@ -40,7 +48,7 @@ interface StoreShape {
   combatSessions: Map<string, CombatSession>
   campaignState: Map<string, Record<string, unknown>>
   personalNotes: Map<string, PersonalNotesRecord>
-  activeSounds: Map<string, any[]>
+  activeSounds: Map<string, CampaignSound[]>
   subscribers: Map<string, Set<Subscriber>>
   presence: Map<string, Map<string, number>>
   presenceConnections: Map<string, PresenceConnection>
@@ -452,6 +460,23 @@ export function publish(campaignId: string, event: RealtimeEvent): void {
       fn(event)
     } catch {}
   }
+}
+
+// O mestre recebe a lista para gerenciamento; o player recebe somente o que pode ouvir.
+export function getVisibleSounds(campaignId: string, userId: string): CampaignSound[] {
+  const campaign = store.campaigns.get(campaignId)
+  if (!campaign) return []
+  const role = getMemberRole(campaign, userId)
+  if (!role) return []
+  return (store.activeSounds.get(campaignId) || []).filter(sound =>
+    role === "gm" || sound.targetUserId == null || sound.targetUserId === userId
+  )
+}
+
+export function notifySoundsChanged(campaignId: string): void {
+  // Não transmite URL, destinatário nem identificador do som ao canal coletivo.
+  // Cada cliente atualiza sua lista pela rota autenticada de sons.
+  publish(campaignId, { type: "sound:changed" } as unknown as RealtimeEvent)
 }
 
 export function getCampaignPresenceCount(campaignId: string): number {
