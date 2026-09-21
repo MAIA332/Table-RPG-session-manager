@@ -72,6 +72,7 @@ function newSession(): CombatSession {
     creatures: [],
     playerAttacks: {},
     qte: null,
+    pendingAttack: null,
     log: [],
     receipts: [],
   }
@@ -458,7 +459,7 @@ export function commandCombat(
     // Persist expired QTEs before resolving a later command. A late reply cannot change an outcome.
     expire(db, campaignId, s)
     roster(db, campaignId, s)
-    const scoped = ["approve", "cancel", "react"].includes(command.type)
+    const scoped = ["approve", "cancel", "react", "answer-attack"].includes(command.type)
     if (!scoped)
       requireTrue(
         integer(command.expectedRevision, "Revisão") === s.revision,
@@ -502,6 +503,9 @@ export function commandCombat(
       ["request", "gm-pass", "gm-steal"].includes(command.type)
     ) {
       throw new CombatError("Aguarde o QTE terminar antes de trocar o Holofote")
+    }
+    if (s.pendingAttack && !["answer-attack", "end"].includes(command.type)) {
+      throw new CombatError("Aguarde o jogador resolver o ataque pendente", 409)
     }
     switch (command.type) {
       case "spawn": {
@@ -577,6 +581,10 @@ export function commandCombat(
           !s.qte || qteComplete(s.qte),
           "O QTE em andamento precisa terminar",
         )
+        if (s.pendingAttack) {
+          addLog(s, `Combate encerrado pelo Mestre. ${s.pendingAttack.attackName} de ${s.pendingAttack.creatureName} foi cancelado sem aplicar dano.`, s.pendingAttack.characterId)
+          s.pendingAttack = null
+        }
         s.enabled = false
         s.spotlight = initialSpotlight(s.spotlight.players)
         s.actorCharacterId = null
@@ -836,18 +844,70 @@ export function commandCombat(
           0,
           random,
         )
-        const damage = affinityDamage(
-          result.damage,
-          attack.type,
-          (target as any).affinities || {},
-        )
-        applyDamage(db, target, damage)
-        addLog(
-          s,
-          `${c.name} usou ${attack.name} em ${target.name}: ${result.outcome === "failure" ? "falha" : result.outcome === "cost" ? "sucesso com custo" : "acerto"}. ${damage} de dano. ${result.effect}`,
-          target.id,
-          damage,
-        )
+        const attackId = randomUUID()
+        const at = Date.now()
+        s.log = [{
+          id: `${attackId}:hit`, at,
+          text: `${c.name} usou ${attack.name} em ${target.name}: acerto ${result.total}, ${result.outcome === "failure" ? "errou" : "aguardando reação"}.`,
+          characterId: target.id,
+          roll: {
+            type: "dice:roll", characterId: target.id, characterName: c.name,
+            playerName: "Mestre",
+            attribute: `Ataque inimigo · ${attack.name} [${attack.attributes.map(a => c.attributes[a]).join(" + ")}]`,
+            result: result.total, breakdown: result.rolls.join(" + "), modifier: 0,
+          },
+        }, ...s.log].slice(0, 60)
+        if (result.outcome !== "failure") {
+          s.pendingAttack = {
+            id: attackId, at, characterId: target.id, creatureName: c.name,
+            attackName: attack.name, total: result.total, rolls: result.rolls,
+            dice: attack.attributes.map(a => c.attributes[a]),
+            damage: affinityDamage(result.damage, attack.type, (target as any).affinities || {}),
+            effect: result.effect,
+          }
+        } else {
+          addLog(s, `${c.name} errou ${target.name}. Nenhum dano aplicado.`, target.id)
+          s.spotlight = spotlightReducer(s.spotlight, { type: "gm-pass" })
+          s.actorCharacterId = null
+        }
+        break
+      }
+      case "answer-attack": {
+        const attack = s.pendingAttack
+        requireTrue(attack && attack.id === command.attackId, "Ataque já resolvido ou inexistente", 409)
+        const target = character(db, campaignId, attack.characterId)
+        requireTrue(target.ownerId === userId, "Somente o jogador atingido pode responder", 403)
+        requireTrue(command.choice === "react" || command.choice === "pass", "Escolha inválida")
+        requireTrue(Date.now() >= attack.at + 4400, "Aguarde a rolagem de acerto terminar", 409)
+        let avoided = false
+        if (command.choice === "react") {
+          addLog(s, `${target.name} decidiu reagir a ${attack.attackName}.`, target.id)
+          const check = checkDefinition("c23")
+          const raw = db.campaignState.get(campaignId) || {}
+          const rolled = characterRoll(target, check.attrs, check.name,
+            Array.isArray(raw.customEquipment) ? raw.customEquipment : [],
+            db.users.get(target.ownerId)?.name || "", check.id)
+          avoided = rolled.total >= attack.total
+          s.log = [{
+            id: `${attack.id}:reflex`, at: Date.now(), characterId: target.id,
+            text: `${target.name}: Reflexos ${rolled.total} contra ${attack.total} — ${avoided ? "sucesso" : "falha"}.`,
+            roll: {
+              type: "dice:roll", characterId: target.id, characterName: target.name,
+              playerName: db.users.get(target.ownerId)?.name || "Jogador",
+              attribute: `Reflexos contra ${attack.total} [${check.attrs.map(a => target.attributes[a as keyof Character["attributes"]]).join(" + ")}]`,
+              result: rolled.total, breakdown: rolled.rolls.join(" + "), modifier: rolled.modifier,
+            },
+          }, ...s.log].slice(0, 60)
+        } else {
+          addLog(s, `${target.name} decidiu deixar passar ${attack.attackName}.`, target.id)
+        }
+        if (avoided) {
+          addLog(s, `${target.name} evitou ${attack.attackName} de ${attack.creatureName}. Nenhum dano aplicado.`, target.id)
+        } else {
+          applyDamage(db, target, attack.damage)
+          addLog(s, `${attack.creatureName} atingiu ${target.name} com ${attack.attackName}: ${attack.damage < 0 ? `absorveu ${-attack.damage} HP` : `${attack.damage} de dano`}. ${attack.effect}`, target.id, attack.damage)
+        }
+        s.pendingAttack = null
         s.spotlight = spotlightReducer(s.spotlight, { type: "gm-pass" })
         s.actorCharacterId = null
         break

@@ -463,13 +463,22 @@ export function publish(campaignId: string, event: RealtimeEvent): void {
 }
 
 // O mestre recebe a lista para gerenciamento; o player recebe somente o que pode ouvir.
-export function getVisibleSounds(campaignId: string, userId: string): CampaignSound[] {
+export function getVisibleSounds(
+  campaignId: string,
+  userId: string
+): CampaignSound[] {
   const campaign = store.campaigns.get(campaignId)
   if (!campaign) return []
+
   const role = getMemberRole(campaign, userId)
   if (!role) return []
-  return (store.activeSounds.get(campaignId) || []).filter(sound =>
-    role === "gm" || sound.targetUserId == null || sound.targetUserId === userId
+
+  const sounds = store.activeSounds.get(campaignId) || []
+
+  return sounds.filter(sound =>
+    role === "gm" ||
+    sound.targetUserId == null ||
+    sound.targetUserId === userId
   )
 }
 

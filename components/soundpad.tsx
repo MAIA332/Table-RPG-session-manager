@@ -185,7 +185,7 @@ export function Soundpad({ campaignId, currentUserId, players = [], targetUserId
 
   useEffect(() => {
     const audibleSounds = activeSounds.filter(sound =>
-      sound.targetUserId == null || sound.targetUserId === currentUserId
+      isGm || sound.targetUserId == null || sound.targetUserId === currentUserId
     );
     const currentActiveIds = new Set(audibleSounds.map(s => s.id));
 
@@ -216,7 +216,7 @@ export function Soundpad({ campaignId, currentUserId, players = [], targetUserId
         delete audioRefs.current[id];
       }
     });
-  }, [activeSounds, currentUserId, musicVolume, effectsVolume, onSoundEnded]);
+  }, [activeSounds, currentUserId, isGm, musicVolume, effectsVolume, onSoundEnded]);
 
   useEffect(() => {
     return () => {
@@ -260,7 +260,7 @@ export function Soundpad({ campaignId, currentUserId, players = [], targetUserId
               </select>
             </label>
             <p className="text-xs text-zinc-400">
-              {targetUserId ? "Somente o jogador selecionado ouvirá. O mestre não ouvirá esse som." : "O som tocará para todos, incluindo o mestre."}
+              {targetUserId ? "O jogador selecionado e o mestre ouvirão esse som." : "O som tocará para todos, incluindo o mestre."}
               {" "}A seleção vale apenas para os próximos disparos.
             </p>
             {!targetingReady && <p role="status" className="text-xs text-amber-200">Envio individual indisponível: aguardando suporte do servidor.</p>}
@@ -397,7 +397,7 @@ export function Soundpad({ campaignId, currentUserId, players = [], targetUserId
                              {getTrackName(active.trackId)}
                            </span>
                            <span className="text-xs text-zinc-400">
-                             {active.targetUserId == null ? "Todos na mesa" : `Somente: ${players.find(player => player.userId === active.targetUserId)?.name || "Jogador"}`}
+                             {active.targetUserId == null ? "Todos na mesa" : `${players.find(player => player.userId === active.targetUserId)?.name || "Jogador"} + mestre`}
                            </span>
                            <span className="mt-0.5 flex items-center gap-1 text-[9px] uppercase tracking-widest text-accent/70" title={active.loop ? "Loop Ativo" : "Efeito Único"}>
                               {active.loop ? <><Repeat className="size-3" /> Loop</> : "1x Shot"}

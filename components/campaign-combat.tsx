@@ -4,6 +4,7 @@ import { Swords, Wifi, WifiOff, X } from "lucide-react"
 import { CreatureAbilitiesManager } from "./creature-abilities-manager"
 import { SpotlightPanel } from "./spotlight-panel"
 import { CreatureResourceControls, CreatureSheetDetails, CreatureAttackDetails, CreatureAbilityDetails } from "./combat-monster-card"
+import { MonsterAttackOverlay } from "./monster-attack-overlay"
 import { QteOverlay } from "./qte-overlay"
 import { AttackEditor } from "./creature-combat-editor"
 import {
@@ -197,6 +198,7 @@ export function CampaignCombat({
     : []
   const canMonsterAct =
     !!combat?.enabled &&
+    !combat.pendingAttack &&
     combat.spotlight.side === "gm" &&
     (!combat.qte ||
       combat.qte.targets.every((id) => !!combat.qte!.outcomes[id]))
@@ -901,6 +903,16 @@ export function CampaignCombat({
             )}
           </div>
         </div>
+      )}
+      {combat?.pendingAttack && owned.some(c => c.id === combat.pendingAttack!.characterId) && (
+        <MonsterAttackOverlay
+          key={combat.pendingAttack.id}
+          attack={combat.pendingAttack}
+          characterName={owned.find(c => c.id === combat.pendingAttack!.characterId)!.name}
+          onAnswer={async (choice: any) => {
+            await send({ type: "answer-attack", attackId: combat.pendingAttack!.id, choice })
+          }}
+        />
       )}
       {reactingCharacter && (
         <QteOverlay

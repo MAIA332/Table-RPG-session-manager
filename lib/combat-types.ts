@@ -1,70 +1,43 @@
 import type { Attack, Ability, SpotlightState } from "./combat-model"
 import type { QteState } from "./qte-model"
 export type CombatCreature = {
-  id: string
-  instanceId: string
-  name: string
-  imageUrl: string
-  level: number
-  species: string
-  maxHp: number
-  maxMp: number
-  currentHp: number
-  currentMp: number
-  def: number
-  mdef: number
+  id: string; instanceId: string; name: string; imageUrl: string
+  level: number; species: string; maxHp: number; maxMp: number
+  currentHp: number; currentMp: number; def: number; mdef: number
   attributes: Record<"dex" | "ins" | "mig" | "wlp", string>
   basicAttacksV2?: Attack[]
-  basicAttacks?: Array<{
-    name: string
-    attributes: string[]
-    damage: number
-    type: string
-    description?: string
-  }>
-  abilities?: Ability[]
-  spells?: string[]
-  equipment?: string[]
-  affinities?: Record<string, string>
-  [key: string]: unknown
+  basicAttacks?: Array<{ name: string; attributes: string[]; damage: number; type: string; description?: string }>
+  abilities?: Ability[]; spells?: string[]; equipment?: string[]
+  affinities?: Record<string, string>; [key: string]: unknown
 }
-export type CombatLog = {
-  id: string
-  at: number
-  text: string
-  roll?: Extract<import("./types").RealtimeEvent, { type: "dice:roll" }>
-  damage?: number
-  characterId?: string
+export type PendingMonsterAttack = {
+  id: string; at: number; characterId: string; creatureName: string
+  attackName: string; total: number; rolls: number[]; dice: string[]
+  damage: number; effect: string
+}
+export type CombatLog = { //{ id: string; at: number; characterId: string; text: string; roll: { type: string; characterId: string; characterName: string; playerName: string; attribute: string; result: number; breakdown: string; modifier: number; }; })[]
+  id: string; at: number; text: string
+  roll?: any//Extract<import("./types").RealtimeEvent, { type: "dice:roll" }>
+  damage?: number; characterId?: string;
+  log?:any;
 }
 export type CombatSession = {
-  revision: number
-  updatedAt: number
-  enabled: boolean
-  spotlight: SpotlightState
-  actorCharacterId: string | null
-  participantCharacterIds: string[]
-  creatures: CombatCreature[]
-  playerAttacks: Record<string, Attack[]>
-  qte: QteState | null
-  log: CombatLog[]
-  receipts: string[]
+  revision: number; updatedAt: number; enabled: boolean
+  spotlight: SpotlightState; actorCharacterId: string | null
+  participantCharacterIds: string[]; creatures: CombatCreature[]
+  playerAttacks: Record<string, Attack[]>; qte: QteState | null
+  pendingAttack?: PendingMonsterAttack | null
+  log: CombatLog[]; receipts: string[]
 }
 export type CombatSnapshot = Omit<CombatSession, "receipts"> & {
-  serverNow: number
-  viewerRole: string
+  serverNow: number; viewerRole: string
   characters: Array<{
-    id: string
-    name: string
-    ownerId: string
-    avatarUrl?: string
+    id: string; name: string; ownerId: string; avatarUrl?: string
     resources: { hp: number; maxHp: number; mp: number; maxMp: number }
     updatedAt?: number
   }>
 }
 export type CombatCommand = {
-  commandId: string
-  expectedRevision: number
-  type: string
-  [key: string]: unknown
+  commandId: string; expectedRevision: number; type: string; [key: string]: unknown
 }
 export type CombatEvent = { type: "combat:invalidate"; revision: number }

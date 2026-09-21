@@ -601,6 +601,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     )
   const canGmAct =
     !!combatController.combat?.enabled &&
+    !combatController.combat.pendingAttack &&
     combatController.combat.spotlight.side === "gm" &&
     !qtePending
   const runCombat = async (command: {
@@ -2438,14 +2439,19 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   useEffect(() => {
     const snapshot = combatController.combat
     if (!snapshot) return
-    for (const entry of snapshot.log) {
-      if (entry.roll)
-        handleEvent({
-          ...entry.roll,
-          eventId: entry.id,
-          occurredAt: entry.at,
-          replay: snapshot.serverNow - entry.at > 10000,
-        })
+    // Process oldest first; both histories share server IDs and timestamps.
+    for (const entry of [...snapshot.log].sort((a, b) => a.at - b.at)) {
+      if (entry.roll) {
+        handleEvent({ ...entry.roll, eventId: entry.id, occurredAt: entry.at,
+          replay: snapshot.serverNow - entry.at > 10000 })
+      } else if (!seenCombatRolls.current.has(entry.id)) {
+        seenCombatRolls.current.add(entry.id)
+        setHistory(prev => [{
+          id: entry.id, type: "roll" as const, title: "Combate", subtitle: "Evento de combate",
+          detail: entry.text, result: "Registrado",
+          time: new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        }, ...prev].slice(0, 50))
+      }
     }
   }, [combatController.combat, handleEvent])
   const realtimeStatus = useRealtime(data.campaign.id, handleEvent)

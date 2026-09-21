@@ -1109,7 +1109,8 @@ export const CLASSES: GameClass[] = [
         name: "Flash de Intuição",
         maxLevel: 3,
         description:
-          "Obtendo 14+ em investigações, faça [Nível x 1] perguntas gratuitas e objetivasSimbiose ao Mestre sobre a cena especifica que se encontra e no tempo presente.",
+          "Obtendo 15+ em investigações, faça [Nível x 1] perguntas gratuitas e objetivas ao Mestre sobre a cena especifica que se encontra e no tempo presente.",
+          action: { cost: 5, resource: "mp" },
       },
       {
         id: "lo-focus",
@@ -1179,7 +1180,7 @@ export const CLASSES: GameClass[] = [
         name: "Genoclépsis",
         maxLevel: 2,
         description:
-          "Rouba a genética dos monstros inimigos momentaneamente concedendo Formas temporárias extras.",
+          "Rouba a genética dos monstros inimigos momentaneamente concedendo Formas temporárias extras, essas formas se tornam Aspectos, declarar a utilização de um aspecto concede +2 em testes relacionados a ele e +5 de dano em ataques relacionados.",
       },
       {
         id: "mu-therio",
@@ -1619,7 +1620,7 @@ export const CLASSES: GameClass[] = [
         name: "Revolta da Natureza",
         maxLevel: 3,
         description:
-          "Transforma o bioma ao seu favor. Ganhe +[Nível] na Defesa em florestas, +[Nível] na Defesa Mágica em cavernas, ou +[Nível] de Velocidade em planícies.",
+          "Transforma o bioma ao seu favor. Ganhe +[Nível] na Defesa em florestas ou pântanos, +[Nível] na Defesa Mágica em cavernas, ou +[Nível] de Atletismo ou Precisão em planícies.",
       },
     ],
   },
