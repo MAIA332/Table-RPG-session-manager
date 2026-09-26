@@ -1095,7 +1095,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1789872466932,
+        "updatedAt": 1790463560861,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -1195,6 +1195,12 @@
             "name": "Nauseado",
             "target": "ins",
             "value": -1
+          },
+          {
+            "id": "mrppeu",
+            "name": "Reflexos",
+            "target": "Reflexos",
+            "value": 1
           }
         ],
         "customItems": [],
@@ -1256,8 +1262,6 @@
           "custom-eq-ci0g0jmf",
           "custom-eq-ci0g0jmf",
           "custom-eq-jmhi67kt",
-          "custom-eq-ur3wblwn",
-          "custom-eq-z7tuan2j",
           "custom-eq-z7tuan2j",
           "custom-eq-jmhi67kt",
           "custom-eq-syoh6gen",
@@ -1280,7 +1284,7 @@
           "maxHp": 89,
           "mp": 11,
           "maxMp": 56,
-          "ip": 2.313,
+          "ip": 2.513,
           "maxIp": 6,
           "fp": 2,
           "xp": 70,
@@ -1298,7 +1302,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790015331888,
+        "updatedAt": 1790463533092,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1388,7 +1392,7 @@
             "id": "ujkqfh",
             "name": "BUFF Força Bruta",
             "target": "Força Bruta",
-            "value": 1
+            "value": 2
           },
           {
             "id": "ltdjil",
@@ -1512,7 +1516,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1789870796980,
+        "updatedAt": 1790463507497,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -1577,7 +1581,7 @@
           {
             "id": "fnf60u",
             "name": "DEBUFF Reflexos",
-            "value": 0,
+            "value": 1,
             "target": "Reflexos"
           },
           {
@@ -1636,12 +1640,6 @@
             "name": "Concessão gratuita: Revolta da Natureza",
             "target": "skill_grant_hidden",
             "value": 0
-          },
-          {
-            "id": "i2sgsp",
-            "name": "Enjoo",
-            "target": "dex",
-            "value": -4
           }
         ],
         "customItems": [
