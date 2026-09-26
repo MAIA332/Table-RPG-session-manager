@@ -1082,7 +1082,7 @@
           "ip": 3.7,
           "maxIp": 6,
           "fp": 4,
-          "xp": 47,
+          "xp": 52,
           "lp": 0
         },
         "skills": {
@@ -1095,7 +1095,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1789872466932,
+        "updatedAt": 1790464317378,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -1195,6 +1195,12 @@
             "name": "Nauseado",
             "target": "ins",
             "value": -1
+          },
+          {
+            "id": "mrppeu",
+            "name": "Reflexos",
+            "target": "Reflexos",
+            "value": 1
           }
         ],
         "customItems": [],
@@ -1281,7 +1287,7 @@
           "ip": 2.513,
           "maxIp": 6,
           "fp": 2,
-          "xp": 70,
+          "xp": 75,
           "lp": 0
         },
         "skills": {
@@ -1296,7 +1302,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790463533092,
+        "updatedAt": 1790464321916,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1497,7 +1503,7 @@
           "ip": 2.2,
           "maxIp": 6,
           "fp": 2,
-          "xp": 47,
+          "xp": 52,
           "lp": 0
         },
         "skills": {
@@ -1510,7 +1516,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790463507497,
+        "updatedAt": 1790464327207,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -114350,7 +114356,7 @@
             "id": "4518b835-e1e6-45dc-a2da-cab995499d6e",
             "name": "Bosque visto de cima",
             "url": "https://zipline.sinapselabs.com.br/u/jGjbqu.png",
-            "isPublic": false,
+            "isPublic": true,
             "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
             "ownerId": "user_reulc3j3ms3snnxu",
             "ownerName": "GILGAMESH",
@@ -116047,7 +116053,7 @@
           }
         ],
         "weather": "fog",
-        "updatedAt": 1790463346100,
+        "updatedAt": 1790464355645,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
