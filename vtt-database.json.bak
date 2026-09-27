@@ -111837,8 +111837,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 709,
-        "updatedAt": 1790477868840,
+        "revision": 710,
+        "updatedAt": 1790477873158,
         "enabled": true,
         "spotlight": {
           "side": "group",
@@ -112005,51 +112005,7 @@
           }
         ],
         "playerAttacks": {},
-        "qte": {
-          "id": "94dd4bac-6990-4c1c-b53a-847c54863fe9",
-          "ability": {
-            "id": "1e76b69c-95a2-4e84-8a65-408a50f8a9db",
-            "kind": "qte",
-            "name": "Pressão de espinhos",
-            "cost": {
-              "amount": 1,
-              "resource": "token"
-            },
-            "seconds": 5,
-            "checkId": "c23",
-            "difficulty": 14,
-            "failureDamage": "25",
-            "failureEffect": "No chão cresce uma camada de espinhos",
-            "successDamage": "0",
-            "successEffect": ""
-          },
-          "deadline": 1790477870636,
-          "targets": [
-            "char_4uf4pocfmstw6x65",
-            "char_u267bpepmsusoyuv",
-            "char_jlhky6s9mstuuli0"
-          ],
-          "outcomes": {
-            "char_u267bpepmsusoyuv": {
-              "total": 7,
-              "success": false,
-              "damage": 25,
-              "effect": "No chão cresce uma camada de espinhos"
-            },
-            "char_jlhky6s9mstuuli0": {
-              "total": 15,
-              "success": true,
-              "damage": 0,
-              "effect": ""
-            },
-            "char_4uf4pocfmstw6x65": {
-              "total": 7,
-              "success": false,
-              "damage": 25,
-              "effect": "No chão cresce uma camada de espinhos"
-            }
-          }
-        },
+        "qte": null,
         "log": [
           {
             "id": "dfd09949-40b4-4fe2-83b7-08f8a20452bb",
@@ -113336,7 +113292,8 @@
           "user_reulc3j3ms3snnxu:2d63cd1f-4098-4641-af62-633a15af2cec",
           "user_gybabf5mmskx7a24:c19dcb75-fc1b-4a19-92a1-bb5618fc9bbf",
           "user_gd68ua63msnua1nb:536eb074-02a4-471e-b683-916f600801d6",
-          "user_0bhp2ga3msl1uk6h:9f6d4927-c137-4299-ad80-05d8b491db34"
+          "user_0bhp2ga3msl1uk6h:9f6d4927-c137-4299-ad80-05d8b491db34",
+          "user_reulc3j3ms3snnxu:37f0720a-c325-4831-8027-e9096e0a5be0"
         ],
         "pendingAttack": null
       }
