@@ -1100,7 +1100,8 @@
           "custom-eq-kzuvpfq0",
           "custom-eq-jjueige1",
           "custom-eq-mq7flfc4",
-          "custom-eq-ahg7o1rj"
+          "custom-eq-ahg7o1rj",
+          "custom-eq-p5pwv2kk"
         ],
         "zenit": 734,
         "resources": {
@@ -1108,7 +1109,7 @@
           "maxHp": 86,
           "mp": 40,
           "maxMp": 60,
-          "ip": 3.6,
+          "ip": 3.5,
           "maxIp": 6,
           "fp": 4,
           "xp": 62,
@@ -1124,7 +1125,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790475040313,
+        "updatedAt": 1790475203906,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -118718,11 +118719,12 @@
             "itemName": "Dente do Kael",
             "itemKind": "equipment",
             "donorItemBonusesActive": false,
-            "status": "pending",
-            "createdAt": 1790475197156
+            "status": "accepted",
+            "createdAt": 1790475197156,
+            "resolvedAt": 1790475203906
           }
         ],
-        "updatedAt": 1790475197156
+        "updatedAt": 1790475203906
       }
     ],
     [

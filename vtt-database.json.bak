@@ -1536,7 +1536,6 @@
           "custom-eq-1vxsbh3o",
           "custom-eq-22lyzyze",
           "custom-eq-phorangi",
-          "custom-eq-p5pwv2kk",
           "custom-eq-ahg7o1rj"
         ],
         "zenit": 487,
@@ -1545,7 +1544,7 @@
           "maxHp": 77,
           "mp": 70,
           "maxMp": 70,
-          "ip": 2.5,
+          "ip": 2.6,
           "maxIp": 6,
           "fp": 2,
           "xp": 62,
@@ -1561,7 +1560,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790475044922,
+        "updatedAt": 1790475197156,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -118705,9 +118704,25 @@
             "status": "accepted",
             "createdAt": 1790473469775,
             "resolvedAt": 1790473472343
+          },
+          {
+            "id": "transfer_3plco96vmuj6pbz8",
+            "campaignId": "camp_o5slw0ptmsjhu84l",
+            "donorCharacterId": "char_u267bpepmsusoyuv",
+            "donorCharacterName": "Amélia Candinari",
+            "donorOwnerId": "user_gybabf5mmskx7a24",
+            "recipientCharacterId": "char_jlhky6s9mstuuli0",
+            "recipientCharacterName": "Kael Veyr",
+            "recipientOwnerId": "user_gd68ua63msnua1nb",
+            "itemId": "custom-eq-p5pwv2kk",
+            "itemName": "Dente do Kael",
+            "itemKind": "equipment",
+            "donorItemBonusesActive": false,
+            "status": "pending",
+            "createdAt": 1790475197156
           }
         ],
-        "updatedAt": 1790473472343
+        "updatedAt": 1790475197156
       }
     ],
     [
