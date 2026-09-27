@@ -1510,7 +1510,6 @@
           "eq-sword",
           "custom-eq-3ijbdddm",
           "custom-eq-zur1atkv",
-          "custom-eq-zur1atkv",
           "custom-eq-1vxsbh3o",
           "custom-eq-1vxsbh3o",
           "custom-eq-1vxsbh3o",
@@ -1527,7 +1526,7 @@
           "maxHp": 77,
           "mp": 70,
           "maxMp": 70,
-          "ip": 2.2,
+          "ip": 2.3,
           "maxIp": 6,
           "fp": 2,
           "xp": 52,
@@ -1543,7 +1542,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790471414742,
+        "updatedAt": 1790472375027,
         "customModifiers": [
           {
             "id": "s1uckf",
