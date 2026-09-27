@@ -1144,7 +1144,6 @@
           "custom-eq-q4qaujz6",
           "eq-sword",
           "custom-eq-kzuvpfq0",
-          "custom-eq-jjueige1",
           "custom-eq-mq7flfc4",
           "custom-eq-ahg7o1rj",
           "custom-eq-p5pwv2kk"
@@ -1155,7 +1154,7 @@
           "maxHp": 86,
           "mp": 0,
           "maxMp": 60,
-          "ip": 3.7,
+          "ip": 4.2,
           "maxIp": 6,
           "fp": 4,
           "xp": 62,
@@ -1171,7 +1170,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790542233950,
+        "updatedAt": 1790542280898,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -127987,9 +127986,25 @@
             "status": "accepted",
             "createdAt": 1790542233950,
             "resolvedAt": 1790542241449
+          },
+          {
+            "id": "transfer_i71p2xf3mukan64i",
+            "campaignId": "camp_o5slw0ptmsjhu84l",
+            "donorCharacterId": "char_jlhky6s9mstuuli0",
+            "donorCharacterName": "Kael Veyr",
+            "donorOwnerId": "user_gd68ua63msnua1nb",
+            "recipientCharacterId": "char_4uf4pocfmstw6x65",
+            "recipientCharacterName": "Thorfinn Lyngstad",
+            "recipientOwnerId": "user_0bhp2ga3msl1uk6h",
+            "itemId": "custom-eq-jjueige1",
+            "itemName": "Coração de monstro do pantano",
+            "itemKind": "equipment",
+            "donorItemBonusesActive": false,
+            "status": "pending",
+            "createdAt": 1790542280898
           }
         ],
-        "updatedAt": 1790542241449
+        "updatedAt": 1790542280898
       }
     ],
     [
