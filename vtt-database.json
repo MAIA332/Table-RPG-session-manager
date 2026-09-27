@@ -1099,7 +1099,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790471191604,
+        "updatedAt": 1790471924949,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -1205,6 +1205,12 @@
             "name": "Reflexos",
             "target": "Reflexos",
             "value": 1
+          },
+          {
+            "id": "i0j0bj",
+            "name": "Resfriado",
+            "target": "dex",
+            "value": -1
           }
         ],
         "customItems": [],
