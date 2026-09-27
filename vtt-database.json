@@ -1522,7 +1522,8 @@
           "custom-eq-ahg7o1rj",
           "custom-eq-22lyzyze",
           "custom-eq-phorangi",
-          "custom-eq-p5pwv2kk"
+          "custom-eq-p5pwv2kk",
+          "custom-eq-ahg7o1rj"
         ],
         "zenit": 487,
         "resources": {
@@ -1530,7 +1531,7 @@
           "maxHp": 77,
           "mp": 70,
           "maxMp": 70,
-          "ip": 2.5,
+          "ip": 2.4,
           "maxIp": 6,
           "fp": 2,
           "xp": 52,
@@ -1546,7 +1547,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790473460261,
+        "updatedAt": 1790473463066,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -118443,11 +118444,12 @@
             "itemName": "Raiz de Casca-Férrea",
             "itemKind": "equipment",
             "donorItemBonusesActive": false,
-            "status": "pending",
-            "createdAt": 1790473460261
+            "status": "rejected",
+            "createdAt": 1790473460261,
+            "resolvedAt": 1790473463066
           }
         ],
-        "updatedAt": 1790473460261
+        "updatedAt": 1790473463066
       }
     ],
     [
