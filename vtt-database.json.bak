@@ -111075,7 +111075,8 @@
             "movementCost": 1,
             "walkable": true
           }
-        }
+        },
+        "isPublic": true
       }
     ],
     [
