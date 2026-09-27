@@ -1146,7 +1146,8 @@
           "custom-eq-kzuvpfq0",
           "custom-eq-mq7flfc4",
           "custom-eq-ahg7o1rj",
-          "custom-eq-p5pwv2kk"
+          "custom-eq-p5pwv2kk",
+          "custom-eq-1vxsbh3o"
         ],
         "zenit": 734,
         "resources": {
@@ -1154,7 +1155,7 @@
           "maxHp": 86,
           "mp": 0,
           "maxMp": 60,
-          "ip": 4.2,
+          "ip": 4.1,
           "maxIp": 6,
           "fp": 4,
           "xp": 62,
@@ -1170,7 +1171,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790548127224,
+        "updatedAt": 1790548771575,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -128091,11 +128092,12 @@
             "itemName": "Temperos da Terra-Viva",
             "itemKind": "equipment",
             "donorItemBonusesActive": false,
-            "status": "pending",
-            "createdAt": 1790548767909
+            "status": "accepted",
+            "createdAt": 1790548767909,
+            "resolvedAt": 1790548771575
           }
         ],
-        "updatedAt": 1790548767909
+        "updatedAt": 1790548771575
       }
     ],
     [
