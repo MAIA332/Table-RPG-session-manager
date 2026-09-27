@@ -1329,7 +1329,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790473446782,
+        "updatedAt": 1790473468265,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 571,
-        "updatedAt": 1790473468015,
+        "revision": 572,
+        "updatedAt": 1790473468265,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111987,15 +111987,21 @@
               "success": true,
               "damage": 0,
               "effect": ""
+            },
+            "char_4uf4pocfmstw6x65": {
+              "total": 14,
+              "success": true,
+              "damage": 0,
+              "effect": ""
             }
           }
         },
         "log": [
           {
-            "id": "70464aab-2f38-4935-963d-24cf2399a1b5",
-            "at": 1790473468015,
-            "text": "Kael Veyr: sucesso em Ataque lança em area. 0 de dano. ",
-            "characterId": "char_jlhky6s9mstuuli0",
+            "id": "477dcb72-fec5-46f8-b994-f4672075ff8f",
+            "at": 1790473468265,
+            "text": "Thorfinn Lyngstad: sucesso em Ataque lança em area. 0 de dano. ",
+            "characterId": "char_4uf4pocfmstw6x65",
             "damage": 0
           },
           {
@@ -112984,7 +112990,8 @@
           "user_reulc3j3ms3snnxu:5fe31f60-e187-4592-b706-09fc9df5e821",
           "user_reulc3j3ms3snnxu:284ed720-d01f-43b8-b17a-a5f18964c0cc",
           "user_reulc3j3ms3snnxu:507d0e48-58f9-4a06-a6d5-2c5c35843244",
-          "user_gd68ua63msnua1nb:a9303994-6023-4650-8df9-f4b4ad84d203"
+          "user_gd68ua63msnua1nb:a9303994-6023-4650-8df9-f4b4ad84d203",
+          "user_0bhp2ga3msl1uk6h:8955e6c7-5e7e-436a-8c1c-d973e4efe55c"
         ],
         "pendingAttack": null
       }
