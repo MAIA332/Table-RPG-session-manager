@@ -111822,11 +111822,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 561,
-        "updatedAt": 1790473372551,
+        "revision": 562,
+        "updatedAt": 1790473381025,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 1,
@@ -111959,6 +111959,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "b277d237-c090-4138-93d5-b02ddcb9e3e8",
+            "at": 1790473381025,
+            "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
+            "characterId": "char_4uf4pocfmstw6x65"
+          },
+          {
+            "id": "4353f4d3-91bb-4d7f-8988-dcde731d22d4:hit",
+            "at": 1790473381025,
+            "text": "Cavaleiro Estatua usou Golpe em Thorfinn Lyngstad: acerto 4, errou.",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_4uf4pocfmstw6x65",
+              "characterName": "Cavaleiro Estatua",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Golpe [d8 + d8]",
+              "result": 4,
+              "breakdown": "1 + 3",
+              "modifier": 0
+            }
+          },
           {
             "id": "c21732d2-4d2a-4d33-917b-3a532a1d627a",
             "at": 1790473266624,
@@ -112371,18 +112393,6 @@
             "id": "9ba4eb7d-be2a-456c-a775-ae73867c50f5",
             "at": 1789857822057,
             "text": "Monstro do pantano: Coordenação de algas!"
-          },
-          {
-            "id": "ef910aba-ffa2-4e49-b889-8707b4365a0a",
-            "at": 1789857792053,
-            "text": "Monstro do pantano entrou em cena."
-          },
-          {
-            "id": "d1f8a133-7eba-4bbd-8313-518b930b8390",
-            "at": 1789854813704,
-            "text": "Criatura dentre a nevoa usou Golpe em Thorfinn Lyngstad: acerto. 11 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 11
           }
         ],
         "receipts": [
@@ -112930,7 +112940,8 @@
           "user_reulc3j3ms3snnxu:d84899d5-3ffc-4ffb-b26d-2985d566d982",
           "user_gd68ua63msnua1nb:cc23c180-002e-4d44-b5a4-3506ad81e94c",
           "user_reulc3j3ms3snnxu:3aa65c07-3a00-4b61-a02e-e2eab6cb40f0",
-          "user_reulc3j3ms3snnxu:0a82c1d3-d954-4cd4-8dfa-e91c39697201"
+          "user_reulc3j3ms3snnxu:0a82c1d3-d954-4cd4-8dfa-e91c39697201",
+          "user_reulc3j3ms3snnxu:0dcf4b5e-d2e3-4fdb-8d0d-778c380c213a"
         ],
         "pendingAttack": null
       }
