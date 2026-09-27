@@ -111837,11 +111837,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 747,
-        "updatedAt": 1790478417996,
+        "revision": 748,
+        "updatedAt": 1790478430405,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 1,
@@ -112007,6 +112007,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "e7039ef2-58c3-408c-8303-9b28bc2fd957",
+            "at": 1790478430405,
+            "text": "Rei Morto errou Thorfinn Lyngstad. Nenhum dano aplicado.",
+            "characterId": "char_4uf4pocfmstw6x65"
+          },
+          {
+            "id": "8960cc82-6785-4f48-84b0-1e07e0739e58:hit",
+            "at": 1790478430405,
+            "text": "Rei Morto usou Raiz podre em Thorfinn Lyngstad: acerto 14, errou.",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_4uf4pocfmstw6x65",
+              "characterName": "Rei Morto",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Raiz podre [d12 + d12]",
+              "result": 14,
+              "breakdown": "10 + 4",
+              "modifier": 0
+            }
+          },
           {
             "id": "e0ad9cb3-260d-4e39-a7df-cf1bdcf429e3",
             "at": 1790478293337,
@@ -112603,28 +112625,6 @@
               "result": 8,
               "breakdown": "7 + 3",
               "modifier": -2
-            }
-          },
-          {
-            "id": "ebfe8929-85a3-43a8-9ef1-e292072f2e75",
-            "at": 1790472960038,
-            "text": "Thorfinn Lyngstad decidiu reagir a Golpe.",
-            "characterId": "char_4uf4pocfmstw6x65"
-          },
-          {
-            "id": "71d26cb2-bca4-4dcc-8332-fffe178b3ab1:hit",
-            "at": 1790472951490,
-            "text": "Cavaleiro Estatua usou Golpe em Thorfinn Lyngstad: acerto 15, aguardando reação.",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_4uf4pocfmstw6x65",
-              "characterName": "Cavaleiro Estatua",
-              "playerName": "Mestre",
-              "attribute": "Ataque inimigo · Golpe [d8 + d8]",
-              "result": 15,
-              "breakdown": "7 + 8",
-              "modifier": 0
             }
           }
         ],
@@ -113357,7 +113357,8 @@
           "user_reulc3j3ms3snnxu:44246440-daf0-4df8-92ea-b4daafd9d34c",
           "user_reulc3j3ms3snnxu:9bc01893-57c8-415b-839e-1c7419b9cb64",
           "user_reulc3j3ms3snnxu:43876771-d899-40e7-8b94-f3ecf8dd631d",
-          "user_reulc3j3ms3snnxu:e515813a-4578-4d5f-a94e-f9cfa31d7e1f"
+          "user_reulc3j3ms3snnxu:e515813a-4578-4d5f-a94e-f9cfa31d7e1f",
+          "user_reulc3j3ms3snnxu:f8d9d5ee-116d-4cd1-b6f4-c9d224170f5b"
         ],
         "pendingAttack": null
       }
