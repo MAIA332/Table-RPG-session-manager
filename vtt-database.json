@@ -1309,7 +1309,7 @@
         "resources": {
           "hp": 68,
           "maxHp": 89,
-          "mp": 56,
+          "mp": 54,
           "maxMp": 56,
           "ip": 1.163,
           "maxIp": 6,
@@ -1329,7 +1329,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790472960039,
+        "updatedAt": 1790473102457,
         "customModifiers": [
           {
             "id": "6ute35",
