@@ -1391,7 +1391,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790545392340,
+        "updatedAt": 1790545827061,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1548,6 +1548,12 @@
             "name": "Defesa mágica manual",
             "target": "sheet_defense_hidden",
             "value": 20
+          },
+          {
+            "id": "dpsjuf",
+            "name": "Cansado",
+            "target": "dex",
+            "value": -2
           }
         ],
         "customItems": [],

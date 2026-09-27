@@ -1391,7 +1391,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790545385417,
+        "updatedAt": 1790545392340,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1524,12 +1524,6 @@
             "name": "Concessão gratuita: Akromorfose",
             "target": "skill_grant_hidden",
             "value": 0
-          },
-          {
-            "id": "ttnfnq",
-            "name": "Enfraquecido",
-            "target": "dex",
-            "value": -2
           },
           {
             "id": "item_equipped:custom-eq-u26mxku6",
