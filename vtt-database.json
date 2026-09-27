@@ -1361,7 +1361,8 @@
           "custom-eq-tqob7exa",
           "custom-eq-z9vv7wfb",
           "eq-dagger",
-          "custom-eq-u26mxku6"
+          "custom-eq-u26mxku6",
+          "custom-eq-1ebbfips"
         ],
         "zenit": 787,
         "resources": {
@@ -1369,7 +1370,7 @@
           "maxHp": 95,
           "mp": 59,
           "maxMp": 59,
-          "ip": 1.913,
+          "ip": 1.813,
           "maxIp": 6,
           "fp": 0,
           "xp": 85,
@@ -1388,7 +1389,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790542237910,
+        "updatedAt": 1790542241449,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -127983,11 +127984,12 @@
             "itemName": "Anel de Rubi incandescente",
             "itemKind": "equipment",
             "donorItemBonusesActive": true,
-            "status": "pending",
-            "createdAt": 1790542233950
+            "status": "accepted",
+            "createdAt": 1790542233950,
+            "resolvedAt": 1790542241449
           }
         ],
-        "updatedAt": 1790542233950
+        "updatedAt": 1790542241449
       }
     ],
     [
