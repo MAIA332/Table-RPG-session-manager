@@ -111822,14 +111822,14 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 544,
-        "updatedAt": 1790473185266,
+        "revision": 545,
+        "updatedAt": 1790473187381,
         "enabled": true,
         "spotlight": {
           "side": "gm",
           "activePlayerId": null,
           "request": null,
-          "tokens": 1,
+          "tokens": 3,
           "players": [
             {
               "id": "user_0bhp2ga3msl1uk6h",
@@ -112905,7 +112905,8 @@
           "user_reulc3j3ms3snnxu:f6290853-c365-4212-b205-f7925b152e45",
           "user_reulc3j3ms3snnxu:72d788bc-4c6e-4e68-b28f-44a4964c8e58",
           "user_0bhp2ga3msl1uk6h:bfa80fd7-a0c6-46a3-b193-a556940dd44e",
-          "user_reulc3j3ms3snnxu:420154ab-d412-4b48-a4db-39a071f0e162"
+          "user_reulc3j3ms3snnxu:420154ab-d412-4b48-a4db-39a071f0e162",
+          "user_reulc3j3ms3snnxu:23f8ef8d-3904-4732-a47d-cde77e4897b5"
         ],
         "pendingAttack": null
       }
