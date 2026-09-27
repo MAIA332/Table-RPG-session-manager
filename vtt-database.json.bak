@@ -1308,7 +1308,7 @@
         ],
         "zenit": 787,
         "resources": {
-          "hp": 70,
+          "hp": 62,
           "maxHp": 89,
           "mp": 54,
           "maxMp": 56,
@@ -1330,7 +1330,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790473468265,
+        "updatedAt": 1790473630614,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 584,
-        "updatedAt": 1790473630191,
+        "revision": 585,
+        "updatedAt": 1790473630614,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111987,16 +111987,22 @@
               "success": true,
               "damage": 0,
               "effect": ""
+            },
+            "char_4uf4pocfmstw6x65": {
+              "total": 7,
+              "success": false,
+              "damage": 8,
+              "effect": ""
             }
           }
         },
         "log": [
           {
-            "id": "ce5b38b5-38fa-4ae1-8030-67adc0aca42d",
-            "at": 1790473630191,
-            "text": "Kael Veyr: sucesso em Ataque lança em area. 0 de dano. ",
-            "characterId": "char_jlhky6s9mstuuli0",
-            "damage": 0
+            "id": "bfc7c955-4ab7-4ef8-a16b-d3cba5cc2504",
+            "at": 1790473630614,
+            "text": "Thorfinn Lyngstad: falha em Ataque lança em area. 8 de dano. ",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "damage": 8
           },
           {
             "id": "0338cf45-b921-4de7-8494-309ed10ec90a",
@@ -113005,7 +113011,8 @@
           "user_reulc3j3ms3snnxu:03ae053f-6e13-4cbb-9528-7ddedc851009",
           "user_reulc3j3ms3snnxu:61b2c573-c3fb-47d7-abb8-cf28bb4de929",
           "user_reulc3j3ms3snnxu:acabda03-2a0d-4b1c-a8cc-a1e8548ced09",
-          "user_gd68ua63msnua1nb:841f2849-ead3-4700-b8ec-f3b2e1927711"
+          "user_gd68ua63msnua1nb:841f2849-ead3-4700-b8ec-f3b2e1927711",
+          "user_0bhp2ga3msl1uk6h:f8afe62c-4856-430c-88fc-7adf87729fb0"
         ],
         "pendingAttack": null
       }
