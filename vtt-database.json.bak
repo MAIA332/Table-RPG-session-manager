@@ -1307,7 +1307,7 @@
         ],
         "zenit": 787,
         "resources": {
-          "hp": 68,
+          "hp": 60,
           "maxHp": 89,
           "mp": 54,
           "maxMp": 56,
@@ -1329,7 +1329,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790473102457,
+        "updatedAt": 1790473265546,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 551,
-        "updatedAt": 1790473264049,
+        "revision": 552,
+        "updatedAt": 1790473265546,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111981,13 +111981,22 @@
             "char_u267bpepmsusoyuv",
             "char_jlhky6s9mstuuli0"
           ],
-          "outcomes": {}
+          "outcomes": {
+            "char_4uf4pocfmstw6x65": {
+              "total": 7,
+              "success": false,
+              "damage": 8,
+              "effect": ""
+            }
+          }
         },
         "log": [
           {
-            "id": "8c3221e8-d127-4df8-a7b1-6631a1011dc2",
-            "at": 1790473264049,
-            "text": "Cavaleiro Estatua: Ataque lança em area!"
+            "id": "1add9a28-a1e0-4195-95e0-5590e21bf41c",
+            "at": 1790473265546,
+            "text": "Thorfinn Lyngstad: falha em Ataque lança em area. 8 de dano. ",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "damage": 8
           },
           {
             "id": "dbdf5352-ea45-4aa5-944e-e089df93a04f",
@@ -112943,7 +112952,8 @@
           "user_gybabf5mmskx7a24:685c2081-bfaf-4813-ba92-564dc54f3fa3",
           "user_reulc3j3ms3snnxu:f24c7b1a-89b3-4c76-9d74-6cc987c4a449",
           "user_reulc3j3ms3snnxu:33333084-fe36-4e5c-84be-1d21bb11e530",
-          "user_reulc3j3ms3snnxu:f5bd7d29-0c7f-4e91-8144-3959edf556b8"
+          "user_reulc3j3ms3snnxu:f5bd7d29-0c7f-4e91-8144-3959edf556b8",
+          "user_0bhp2ga3msl1uk6h:23b3cb37-a360-48b7-9bae-0bca86714e22"
         ],
         "pendingAttack": null
       }

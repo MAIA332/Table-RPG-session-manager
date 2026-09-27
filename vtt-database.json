@@ -1527,7 +1527,7 @@
         ],
         "zenit": 487,
         "resources": {
-          "hp": 69,
+          "hp": 61,
           "maxHp": 77,
           "mp": 70,
           "maxMp": 70,
@@ -1547,7 +1547,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790472898173,
+        "updatedAt": 1790473266048,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 552,
-        "updatedAt": 1790473265546,
+        "revision": 553,
+        "updatedAt": 1790473266048,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111987,15 +111987,21 @@
               "success": false,
               "damage": 8,
               "effect": ""
+            },
+            "char_u267bpepmsusoyuv": {
+              "total": 4,
+              "success": false,
+              "damage": 8,
+              "effect": ""
             }
           }
         },
         "log": [
           {
-            "id": "1add9a28-a1e0-4195-95e0-5590e21bf41c",
-            "at": 1790473265546,
-            "text": "Thorfinn Lyngstad: falha em Ataque lança em area. 8 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
+            "id": "b38b430f-4c01-434a-b193-f945b5f13baa",
+            "at": 1790473266048,
+            "text": "Amélia Candinari: falha em Ataque lança em area. 8 de dano. ",
+            "characterId": "char_u267bpepmsusoyuv",
             "damage": 8
           },
           {
@@ -112953,7 +112959,8 @@
           "user_reulc3j3ms3snnxu:f24c7b1a-89b3-4c76-9d74-6cc987c4a449",
           "user_reulc3j3ms3snnxu:33333084-fe36-4e5c-84be-1d21bb11e530",
           "user_reulc3j3ms3snnxu:f5bd7d29-0c7f-4e91-8144-3959edf556b8",
-          "user_0bhp2ga3msl1uk6h:23b3cb37-a360-48b7-9bae-0bca86714e22"
+          "user_0bhp2ga3msl1uk6h:23b3cb37-a360-48b7-9bae-0bca86714e22",
+          "user_gybabf5mmskx7a24:36a19950-b871-4622-bfc3-fd3baf82f9b4"
         ],
         "pendingAttack": null
       }
