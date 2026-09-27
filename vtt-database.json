@@ -1361,7 +1361,8 @@
           "custom-eq-z9vv7wfb",
           "eq-dagger",
           "custom-eq-u26mxku6",
-          "custom-eq-1ebbfips"
+          "custom-eq-1ebbfips",
+          "custom-eq-jjueige1"
         ],
         "zenit": 787,
         "resources": {
@@ -1369,7 +1370,7 @@
           "maxHp": 95,
           "mp": 59,
           "maxMp": 59,
-          "ip": 1.813,
+          "ip": 1.313,
           "maxIp": 6,
           "fp": 0,
           "xp": 85,
@@ -1388,7 +1389,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790542241449,
+        "updatedAt": 1790542303911,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -128000,11 +128001,12 @@
             "itemName": "Coração de monstro do pantano",
             "itemKind": "equipment",
             "donorItemBonusesActive": false,
-            "status": "pending",
-            "createdAt": 1790542280898
+            "status": "accepted",
+            "createdAt": 1790542280898,
+            "resolvedAt": 1790542303911
           }
         ],
-        "updatedAt": 1790542280898
+        "updatedAt": 1790542303911
       }
     ],
     [
