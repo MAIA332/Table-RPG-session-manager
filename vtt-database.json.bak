@@ -111838,8 +111838,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 609,
-        "updatedAt": 1790473929031,
+        "revision": 610,
+        "updatedAt": 1790473930844,
         "enabled": true,
         "spotlight": {
           "side": "group",
@@ -111982,51 +111982,7 @@
           }
         ],
         "playerAttacks": {},
-        "qte": {
-          "id": "82b2c7b4-e6f0-4569-844d-a19992d9fc30",
-          "ability": {
-            "id": "fa4f3f63-ae79-4a38-bef7-4e609a995238",
-            "kind": "qte",
-            "name": "Ataque lança em area",
-            "cost": {
-              "amount": 15,
-              "resource": "mp"
-            },
-            "seconds": 5,
-            "checkId": "c23",
-            "difficulty": 8,
-            "failureDamage": "8",
-            "failureEffect": "",
-            "successDamage": "0",
-            "successEffect": ""
-          },
-          "deadline": 1790473927334,
-          "targets": [
-            "char_4uf4pocfmstw6x65",
-            "char_u267bpepmsusoyuv",
-            "char_jlhky6s9mstuuli0"
-          ],
-          "outcomes": {
-            "char_jlhky6s9mstuuli0": {
-              "total": 13,
-              "success": true,
-              "damage": 0,
-              "effect": ""
-            },
-            "char_u267bpepmsusoyuv": {
-              "total": 12,
-              "success": true,
-              "damage": 0,
-              "effect": ""
-            },
-            "char_4uf4pocfmstw6x65": {
-              "total": 13,
-              "success": true,
-              "damage": 0,
-              "effect": ""
-            }
-          }
-        },
+        "qte": null,
         "log": [
           {
             "id": "0f426c4a-67f0-42cd-8212-8ca0b218573d",
@@ -113085,7 +113041,8 @@
           "user_gd68ua63msnua1nb:7ad0a987-7f3e-4e0e-a5e3-1da6fec25454",
           "user_gybabf5mmskx7a24:ec3ac5c4-58ac-4d1f-b6f2-9eed79bbd85b",
           "user_0bhp2ga3msl1uk6h:13ccb22b-0b68-446b-8c08-9f9381d040d2",
-          "user_0bhp2ga3msl1uk6h:9becf9b0-462d-4cfc-9890-87f10ac42408"
+          "user_0bhp2ga3msl1uk6h:9becf9b0-462d-4cfc-9890-87f10ac42408",
+          "user_reulc3j3ms3snnxu:8b1154bf-8a59-43d1-8072-6c5a6882fd27"
         ],
         "pendingAttack": null
       }
