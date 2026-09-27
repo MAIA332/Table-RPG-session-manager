@@ -111838,8 +111838,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 700,
-        "updatedAt": 1790474729269,
+        "revision": 701,
+        "updatedAt": 1790474761910,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -111873,121 +111873,7 @@
           "char_u267bpepmsusoyuv",
           "char_jlhky6s9mstuuli0"
         ],
-        "creatures": [
-          {
-            "name": "Cavaleiro Estatua",
-            "imageUrl": "https://zipline.sinapselabs.com.br/u/BZxdbc.png",
-            "level": 11,
-            "species": "Construto",
-            "maxHp": 89,
-            "maxMp": 20,
-            "def": 10,
-            "mdef": 12,
-            "attributes": {
-              "dex": "d12",
-              "ins": "d6",
-              "mig": "d8",
-              "wlp": "d6"
-            },
-            "id": "custom-1fe744f1-d4ab-4aa0-b3a5-d149b463bca5",
-            "affinities": {
-              "physical": "none",
-              "air": "none",
-              "bolt": "none",
-              "dark": "none",
-              "earth": "none",
-              "fire": "none",
-              "ice": "none",
-              "light": "none",
-              "poison": "none"
-            },
-            "basicAttacks": [
-              {
-                "name": "Golpe de lança",
-                "attributes": [
-                  "dex",
-                  "mig"
-                ],
-                "damage": 10,
-                "type": "físico",
-                "description": "Dano: 10; alvo: Defesa Física"
-              },
-              {
-                "name": "Golpe",
-                "attributes": [
-                  "mig",
-                  "mig"
-                ],
-                "damage": 8,
-                "type": "físico",
-                "description": "Dano: 8; alvo: Defesa Física"
-              }
-            ],
-            "combatVersion": 2,
-            "basicAttacksV2": [
-              {
-                "name": "Golpe de lança",
-                "attributes": [
-                  "dex",
-                  "mig"
-                ],
-                "targetDefense": "physical",
-                "damage": "10",
-                "type": "físico"
-              },
-              {
-                "name": "Golpe",
-                "attributes": [
-                  "mig",
-                  "mig"
-                ],
-                "targetDefense": "physical",
-                "damage": "8",
-                "type": "físico"
-              }
-            ],
-            "abilities": [
-              {
-                "id": "fa4f3f63-ae79-4a38-bef7-4e609a995238",
-                "kind": "qte",
-                "name": "Ataque lança em area",
-                "cost": {
-                  "amount": 15,
-                  "resource": "mp"
-                },
-                "seconds": 5,
-                "checkId": "c23",
-                "difficulty": 8,
-                "failureDamage": "8",
-                "failureEffect": "",
-                "successDamage": "0",
-                "successEffect": ""
-              },
-              {
-                "id": "5708ca51-52c1-4395-94ad-721e19f4bd12",
-                "kind": "qte",
-                "name": "Multiplas pedras",
-                "cost": {
-                  "amount": 5,
-                  "resource": "mp"
-                },
-                "seconds": 5,
-                "checkId": "c23",
-                "difficulty": 16,
-                "failureDamage": "20",
-                "failureEffect": "",
-                "successDamage": "0",
-                "successEffect": ""
-              }
-            ],
-            "spells": [],
-            "equipment": [],
-            "instanceId": "bf4e2db0-d62b-4a91-a12c-ccf4002b3a98",
-            "currentHp": 34,
-            "currentMp": 20,
-            "currentIp": 6
-          }
-        ],
+        "creatures": [],
         "playerAttacks": {},
         "qte": null,
         "log": [
@@ -113269,7 +113155,8 @@
           "user_reulc3j3ms3snnxu:825e9738-3a6a-4636-b512-967ff95b1ad4",
           "user_0bhp2ga3msl1uk6h:8e5c0a85-8f66-48b2-95fb-426e97f74daa",
           "user_0bhp2ga3msl1uk6h:0005e018-851d-4039-beac-8f4e3957f9f9",
-          "user_reulc3j3ms3snnxu:0335663f-6083-425c-bc98-a21944ec7fd1"
+          "user_reulc3j3ms3snnxu:0335663f-6083-425c-bc98-a21944ec7fd1",
+          "user_reulc3j3ms3snnxu:8b5b1f9c-dd59-40ae-b81c-5cc1ae9058f1"
         ],
         "pendingAttack": null
       }

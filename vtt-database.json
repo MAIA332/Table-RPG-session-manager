@@ -1319,7 +1319,6 @@
           "custom-eq-vbthhrho",
           "custom-eq-vbthhrho",
           "custom-eq-vbthhrho",
-          "custom-eq-vbthhrho",
           "custom-eq-vbthhrho"
         ],
         "zenit": 787,
@@ -1328,7 +1327,7 @@
           "maxHp": 89,
           "mp": 54,
           "maxMp": 56,
-          "ip": 1.163,
+          "ip": 1.313,
           "maxIp": 6,
           "fp": 2,
           "xp": 75,
@@ -1346,7 +1345,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790474397440,
+        "updatedAt": 1790474806413,
         "customModifiers": [
           {
             "id": "6ute35",
