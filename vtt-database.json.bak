@@ -1368,7 +1368,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790480514898,
+        "updatedAt": 1790480526159,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1491,18 +1491,6 @@
             "value": 1
           },
           {
-            "id": "sheet_defense:physical",
-            "name": "Defesa manual",
-            "target": "sheet_defense_hidden",
-            "value": 17
-          },
-          {
-            "id": "sheet_defense:magical",
-            "name": "Defesa mágica manual",
-            "target": "sheet_defense_hidden",
-            "value": 9
-          },
-          {
             "id": "item_equipped:custom-eq-z9vv7wfb",
             "name": "Bônus ativos: Lança com ponta de âmbar",
             "target": "item_state_hidden",
@@ -1513,6 +1501,18 @@
             "name": "Concessão gratuita: Akromorfose",
             "target": "skill_grant_hidden",
             "value": 0
+          },
+          {
+            "id": "sheet_defense:physical",
+            "name": "Defesa manual",
+            "target": "sheet_defense_hidden",
+            "value": 19
+          },
+          {
+            "id": "sheet_defense:magical",
+            "name": "Defesa mágica manual",
+            "target": "sheet_defense_hidden",
+            "value": 9
           }
         ],
         "customItems": [],
