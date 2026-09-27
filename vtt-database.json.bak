@@ -1592,7 +1592,7 @@
         "resources": {
           "hp": 8,
           "maxHp": 77,
-          "mp": 40,
+          "mp": 30,
           "maxMp": 70,
           "ip": 2.6,
           "maxIp": 6,
@@ -1611,7 +1611,7 @@
           "cskill-1szrrx": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790480565667,
+        "updatedAt": 1790481072359,
         "customModifiers": [
           {
             "id": "s1uckf",
