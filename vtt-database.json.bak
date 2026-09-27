@@ -1391,7 +1391,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790542433875,
+        "updatedAt": 1790542444939,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1546,6 +1546,12 @@
           {
             "id": "item_equipped:custom-eq-u26mxku6",
             "name": "Bônus ativos: Anel de prismarina",
+            "target": "item_state_hidden",
+            "value": 1
+          },
+          {
+            "id": "item_equipped:custom-eq-1ebbfips",
+            "name": "Bônus ativos: Anel de Rubi incandescente",
             "target": "item_state_hidden",
             "value": 1
           }
