@@ -1065,7 +1065,7 @@
         "resources": {
           "hp": 86,
           "maxHp": 86,
-          "mp": 32,
+          "mp": 33,
           "maxMp": 60,
           "ip": 3.7,
           "maxIp": 6,
@@ -1083,7 +1083,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790471154214,
+        "updatedAt": 1790471155660,
         "customModifiers": [
           {
             "id": "lamvsl",
