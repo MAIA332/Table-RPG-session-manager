@@ -111838,8 +111838,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 662,
-        "updatedAt": 1790474446337,
+        "revision": 663,
+        "updatedAt": 1790474462457,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111991,6 +111991,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "7b17932a-d33d-46b0-abf9-1c380c06e6eb:hit",
+            "at": 1790474462457,
+            "text": "Cavaleiro Estatua usou Golpe de lança em Kael Veyr: acerto 13, aguardando reação.",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Cavaleiro Estatua",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
+              "result": 13,
+              "breakdown": "5 + 8",
+              "modifier": 0
+            }
+          },
           {
             "id": "8a0b8570-256b-42ec-8242-f4eaa0b9ed2c",
             "at": 1790474400129,
@@ -112475,13 +112491,6 @@
             "text": "Planta carnivora usou Mordida em Amélia Candinari: falha. 0 de dano. ",
             "characterId": "char_u267bpepmsusoyuv",
             "damage": 0
-          },
-          {
-            "id": "34c0fddd-76d2-4fd3-b496-daedb53ec2c0",
-            "at": 1789860363308,
-            "text": "Amélia Candinari: falha em Puxada de vinhas. 6 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 6
           }
         ],
         "receipts": [
@@ -113129,9 +113138,27 @@
           "user_reulc3j3ms3snnxu:50b20af0-267e-4218-81aa-02379e8ee990",
           "user_gd68ua63msnua1nb:1f265388-97ff-4297-9195-8b89aee4bfec",
           "user_gybabf5mmskx7a24:8b3ef85b-0506-4958-b963-26e13f011d06",
-          "user_reulc3j3ms3snnxu:7ee28254-42de-4923-9801-ae8ea80e3b7d"
+          "user_reulc3j3ms3snnxu:7ee28254-42de-4923-9801-ae8ea80e3b7d",
+          "user_reulc3j3ms3snnxu:a8b87be1-7520-4e41-ad1e-65054e0891a9"
         ],
-        "pendingAttack": null
+        "pendingAttack": {
+          "id": "7b17932a-d33d-46b0-abf9-1c380c06e6eb",
+          "at": 1790474462457,
+          "characterId": "char_jlhky6s9mstuuli0",
+          "creatureName": "Cavaleiro Estatua",
+          "attackName": "Golpe de lança",
+          "total": 13,
+          "rolls": [
+            5,
+            8
+          ],
+          "dice": [
+            "d12",
+            "d8"
+          ],
+          "damage": 10,
+          "effect": ""
+        }
       }
     ]
   ],
