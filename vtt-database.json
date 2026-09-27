@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 582,
-        "updatedAt": 1790473626517,
+        "revision": 583,
+        "updatedAt": 1790473628722,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111952,13 +111952,43 @@
             "equipment": [],
             "instanceId": "bf4e2db0-d62b-4a91-a12c-ccf4002b3a98",
             "currentHp": 70,
-            "currentMp": 20,
+            "currentMp": 5,
             "currentIp": 6
           }
         ],
         "playerAttacks": {},
-        "qte": null,
+        "qte": {
+          "id": "be235ba5-22a0-496a-a09d-3c3a91e4ad97",
+          "ability": {
+            "id": "fa4f3f63-ae79-4a38-bef7-4e609a995238",
+            "kind": "qte",
+            "name": "Ataque lança em area",
+            "cost": {
+              "amount": 15,
+              "resource": "mp"
+            },
+            "seconds": 5,
+            "checkId": "c23",
+            "difficulty": 8,
+            "failureDamage": "8",
+            "failureEffect": "",
+            "successDamage": "0",
+            "successEffect": ""
+          },
+          "deadline": 1790473633722,
+          "targets": [
+            "char_4uf4pocfmstw6x65",
+            "char_u267bpepmsusoyuv",
+            "char_jlhky6s9mstuuli0"
+          ],
+          "outcomes": {}
+        },
         "log": [
+          {
+            "id": "de43420f-a559-4f3b-9cb7-4488ed8cae71",
+            "at": 1790473628722,
+            "text": "Cavaleiro Estatua: Ataque lança em area!"
+          },
           {
             "id": "0338cf45-b921-4de7-8494-309ed10ec90a",
             "at": 1790473608475,
@@ -112396,13 +112426,6 @@
             "text": "Monstro do pantano usou Soco pantanoso em Thorfinn Lyngstad: acerto. 7 de dano. ",
             "characterId": "char_4uf4pocfmstw6x65",
             "damage": 7
-          },
-          {
-            "id": "b6a5f77f-22dc-4ae2-932d-7ecedce56f5b",
-            "at": 1789857825881,
-            "text": "Amélia Candinari: sucesso em Coordenação de algas. 0 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 0
           }
         ],
         "receipts": [
@@ -112971,7 +112994,8 @@
           "user_reulc3j3ms3snnxu:0668741e-07a0-400c-b1cc-959fd31d0aac",
           "user_reulc3j3ms3snnxu:11eb1984-bf5c-4aca-8824-7cb59f2fffa6",
           "user_reulc3j3ms3snnxu:03ae053f-6e13-4cbb-9528-7ddedc851009",
-          "user_reulc3j3ms3snnxu:61b2c573-c3fb-47d7-abb8-cf28bb4de929"
+          "user_reulc3j3ms3snnxu:61b2c573-c3fb-47d7-abb8-cf28bb4de929",
+          "user_reulc3j3ms3snnxu:acabda03-2a0d-4b1c-a8cc-a1e8548ced09"
         ],
         "pendingAttack": null
       }
