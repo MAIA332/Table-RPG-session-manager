@@ -1381,7 +1381,7 @@
         "resources": {
           "hp": 47,
           "maxHp": 95,
-          "mp": 33,
+          "mp": 34,
           "maxMp": 59,
           "ip": 1.913,
           "maxIp": 6,
@@ -1402,7 +1402,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790542129259,
+        "updatedAt": 1790542130482,
         "customModifiers": [
           {
             "id": "6ute35",
