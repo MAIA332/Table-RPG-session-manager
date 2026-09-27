@@ -111838,11 +111838,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 677,
-        "updatedAt": 1790474607761,
+        "revision": 678,
+        "updatedAt": 1790474610462,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 0,
@@ -111991,6 +111991,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "b598569f-addd-4f91-88db-68676a9fc85e",
+            "at": 1790474610462,
+            "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
+            "characterId": "char_4uf4pocfmstw6x65"
+          },
+          {
+            "id": "21051dbf-8ade-4fef-8d3b-af0ee1b54284:hit",
+            "at": 1790474610462,
+            "text": "Cavaleiro Estatua usou Golpe de lança em Thorfinn Lyngstad: acerto 13, errou.",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_4uf4pocfmstw6x65",
+              "characterName": "Cavaleiro Estatua",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
+              "result": 13,
+              "breakdown": "12 + 1",
+              "modifier": 0
+            }
+          },
           {
             "id": "ffc64d03-affe-4030-89b6-1431d801c7e9",
             "at": 1790474599317,
@@ -112523,18 +112545,6 @@
             "text": "Amélia Candinari: sucesso em Espinhos negros. 0 de dano. ",
             "characterId": "char_u267bpepmsusoyuv",
             "damage": 0
-          },
-          {
-            "id": "b8864d74-665e-4ca4-9cc0-6463ec2f4d24",
-            "at": 1789868251976,
-            "text": "Habilidades de Agrat bat atualizadas pelo Mestre."
-          },
-          {
-            "id": "12bcc94b-973c-44ff-b73f-7e24ed22aa8e",
-            "at": 1789868014374,
-            "text": "Agrat bat usou Festim da Megera em Thorfinn Lyngstad: acerto. 15 de dano. Um ataque mágico de sucção de vida. Metade do dano causado a esse alvo cura o HP de Agrat Bat.",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 15
           }
         ],
         "receipts": [
@@ -113197,7 +113207,8 @@
           "user_gd68ua63msnua1nb:4769452b-4f47-4235-abe6-217ffabc9c99",
           "user_reulc3j3ms3snnxu:cafd2dc3-6780-4e87-acf4-51e32f07898d",
           "user_reulc3j3ms3snnxu:a53cd013-be0e-47dd-b7c0-67962136a299",
-          "user_reulc3j3ms3snnxu:72c18db7-2bb0-418a-bd4e-bf0c0130241f"
+          "user_reulc3j3ms3snnxu:72c18db7-2bb0-418a-bd4e-bf0c0130241f",
+          "user_reulc3j3ms3snnxu:ab7d42e0-0eda-4936-9732-23cc55f0970f"
         ],
         "pendingAttack": null
       }
