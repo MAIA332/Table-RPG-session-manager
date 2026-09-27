@@ -1,6 +1,7 @@
 import "server-only"
 import { BESTIARY } from "./game-data"
-import { randomUUID } from "node:crypto"
+import { deathDieSize, deathOutcome } from "./death-model"
+import { randomInt, randomUUID } from "node:crypto"
 import { store, transactStore, getMemberRole, publish } from "./store"
 import {
   initialSpotlight,
@@ -73,6 +74,7 @@ function newSession(): CombatSession {
     playerAttacks: {},
     qte: null,
     pendingAttack: null,
+    deathChecks: {},
     log: [],
     receipts: [],
   }
@@ -104,13 +106,58 @@ function addLog(
     ...s.log,
   ].slice(0, 60)
 }
-function applyDamage(db: Database, c: Character, damage: number) {
+function applyDamage(db: Database, c: Character, damage: number, s: CombatSession) {
   const hp = Math.max(0, Math.min(c.resources.maxHp, c.resources.hp - damage))
   db.characters.set(c.id, {
     ...c,
     resources: { ...c.resources, hp },
     updatedAt: Math.max(Date.now(), Number(c.updatedAt || 0) + 1),
   })
+  reconcileDeath(db, db.characters.get(c.id)!, s)
+}
+function reconcileDeath(db: Database, c: Character, s: any): boolean {
+  const checks = s.deathChecks ??= {}
+  const previous = checks[c.id]
+  if (c.resources.hp > 0) {
+    if (previous?.active) { previous.active = false; return true }
+    return false
+  }
+  if (previous?.active) return false
+  const die = String(c.attributes.mig)
+  const size = deathDieSize(die)
+  const rolls = Array.from({ length: 3 }, () => randomInt(1, size + 1))
+  const total = rolls.reduce((sum, n) => sum + n, 0)
+  const result = deathOutcome(total)
+  const check = {
+    id: randomUUID(), at: Date.now(), characterId: c.id, characterName: c.name,
+    die, rolls, total, status: result.status, label: result.label, effect: result.effect,
+    active: result.status !== "recovered",
+  }
+  checks[c.id] = check
+  if (result.status === "recovered") {
+    db.characters.set(c.id, { ...c, resources: { ...c.resources, hp: 1 },
+      updatedAt: Math.max(Date.now(), Number(c.updatedAt || 0) + 1) })
+  }
+  s.log = [{
+    id: check.id, at: check.at, characterId: c.id,
+    text: `${c.name} chegou a 0 HP. Vigor: ${rolls.join(" + ")} = ${total}. ${result.label}. ${result.effect}`,
+    roll: {
+      type: "dice:roll", characterId: c.id, characterName: c.name,
+      playerName: db.users.get(c.ownerId)?.name || "Jogador",
+      attribute: `Morte · Vigor [${die} + ${die} + ${die}] · ${result.label} · ${result.effect}`,
+      result: total, breakdown: rolls.join(" + "), modifier: 0,
+    },
+  }, ...s.log].slice(0, 60)
+  return true
+}
+function reconcileCampaignDeaths(db: Database, campaignId: string, s: CombatSession, userId: string) {
+  const { role } = authorize(db, campaignId, userId)
+  let changed = false
+  for (const c of db.characters.values()) {
+    if (c.campaignId === campaignId && (role === "gm" || c.ownerId === userId))
+      changed = reconcileDeath(db, c, s) || changed
+  }
+  return changed
 }
 function finishQte(
   db: Database,
@@ -123,7 +170,7 @@ function finishQte(
     if (previous?.outcomes[id]) continue
     const c = db.characters.get(id)
     if (!c || c.campaignId !== campaignId) continue
-    applyDamage(db, c, result.damage)
+    applyDamage(db, c, result.damage, s)
     addLog(
       s,
       `${c.name}: ${result.total === null ? "tempo esgotado" : result.success ? "sucesso" : "falha"} em ${next.ability.name}. ${result.damage} de dano. ${result.effect}`,
@@ -314,7 +361,8 @@ export function getCombat(campaignId: string, userId: string): CombatSnapshot {
     authorize(db, campaignId, userId)
     const s = db.combatSessions.get(campaignId) || newSession()
     const expired = expire(db, campaignId, s)
-    const changed = roster(db, campaignId, s) || expired
+    const deathChanged = reconcileCampaignDeaths(db, campaignId, s, userId)
+    const changed = roster(db, campaignId, s) || expired || deathChanged
     if (changed) saveRevision(db, campaignId, s)
     return {
       value: { view: snapshot(db, campaignId, s, userId), session: s, changed },
@@ -445,7 +493,7 @@ export function commandCombat(
   const result = transactStore((db) => {
     const { campaign, role } = authorize(db, campaignId, userId)
     const gm = role === "gm",
-      s = db.combatSessions.get(campaignId) || newSession()
+      s:any = db.combatSessions.get(campaignId) || newSession()
     const receipt = `${userId}:${commandId}`
     if (s.receipts.includes(receipt))
       return {
@@ -459,6 +507,10 @@ export function commandCombat(
     // Persist expired QTEs before resolving a later command. A late reply cannot change an outcome.
     expire(db, campaignId, s)
     roster(db, campaignId, s)
+    for (const c of db.characters.values()) {
+      if (c.campaignId === campaignId && c.resources.hp > 0 && s.deathChecks?.[c.id]?.active)
+        s.deathChecks[c.id].active = false
+    }
     const scoped = ["approve", "cancel", "react", "answer-attack"].includes(command.type)
     if (!scoped)
       requireTrue(
@@ -487,7 +539,7 @@ export function commandCombat(
       requireTrue(gm, "Ação exclusiva do Mestre", 403)
     const getCreature = () => {
       const c = s.creatures.find(
-        (c) => c.instanceId === text(command.instanceId, "Criatura"),
+        (c:any) => c.instanceId === text(command.instanceId, "Criatura"),
       )
       requireTrue(c, "Criatura não encontrada", 404)
       return c
@@ -511,7 +563,7 @@ export function commandCombat(
       case "spawn": {
         const c = validateCreature(command.creature)
         requireTrue(
-          !s.creatures.some((x) => x.instanceId === c.instanceId),
+          !s.creatures.some((x:any) => x.instanceId === c.instanceId),
           "Instância já existe",
           409,
         )
@@ -542,7 +594,7 @@ export function commandCombat(
       }
       case "remove-creature": {
         const c = getCreature()
-        s.creatures = s.creatures.filter((x) => x.instanceId !== c.instanceId)
+        s.creatures = s.creatures.filter((x:any) => x.instanceId !== c.instanceId)
         break
       }
       case "start":
@@ -657,7 +709,7 @@ export function commandCombat(
       case "request": {
         requireTrue(s.enabled, "Combate não iniciado")
         const ownedParticipants = s.participantCharacterIds.filter(
-          (id) => db.characters.get(id)?.ownerId === userId,
+          (id:any) => db.characters.get(id)?.ownerId === userId,
         )
         const requestedId =
           command.characterId ??
@@ -818,7 +870,7 @@ export function commandCombat(
         let attack: Attack,
           cost = { amount: 0, resource: "token" as "token" | "mp" }
         if (typeof command.abilityId === "string") {
-          const ability = c.abilities?.find((a) => a.id === command.abilityId)
+          const ability = c.abilities?.find((a:any) => a.id === command.abilityId)
           requireTrue(
             ability?.kind === "attack",
             "Habilidade de ataque não encontrada",
@@ -904,7 +956,7 @@ export function commandCombat(
         if (avoided) {
           addLog(s, `${target.name} evitou ${attack.attackName} de ${attack.creatureName}. Nenhum dano aplicado.`, target.id)
         } else {
-          applyDamage(db, target, attack.damage)
+          applyDamage(db, target, attack.damage, s)
           addLog(s, `${attack.creatureName} atingiu ${target.name} com ${attack.attackName}: ${attack.damage < 0 ? `absorveu ${-attack.damage} HP` : `${attack.damage} de dano`}. ${attack.effect}`, target.id, attack.damage)
         }
         s.pendingAttack = null
@@ -923,10 +975,10 @@ export function commandCombat(
         )
         const c = getCreature()
         requireTrue(c.currentHp > 0, "Criatura derrotada")
-        const a = c.abilities?.find((a) => a.id === command.abilityId)
+        const a = c.abilities?.find((a:any) => a.id === command.abilityId)
         requireTrue(a?.kind === "qte", "QTE não encontrado")
         const targets = s.participantCharacterIds.filter(
-          (id) => (db.characters.get(id)?.resources.hp || 0) > 0,
+          (id:any) => (db.characters.get(id)?.resources.hp || 0) > 0,
         )
         requireTrue(targets.length, "Nenhum alvo vivo")
         spend(s, c, a.cost)

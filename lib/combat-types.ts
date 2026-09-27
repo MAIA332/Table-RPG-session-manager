@@ -1,3 +1,4 @@
+import type { DeathCheck } from "./death-model"
 import type { Attack, Ability, SpotlightState } from "./combat-model"
 import type { QteState } from "./qte-model"
 export type CombatCreature = {
@@ -15,17 +16,18 @@ export type PendingMonsterAttack = {
   attackName: string; total: number; rolls: number[]; dice: string[]
   damage: number; effect: string
 }
-export type CombatLog = { //{ id: string; at: number; characterId: string; text: string; roll: { type: string; characterId: string; characterName: string; playerName: string; attribute: string; result: number; breakdown: string; modifier: number; }; })[]
+export type CombatLog = {
   id: string; at: number; text: string
-  roll?: any//Extract<import("./types").RealtimeEvent, { type: "dice:roll" }>
-  damage?: number; characterId?: string;
-  log?:any;
+  roll?: Extract<import("./types").RealtimeEvent, { type: "dice:roll" }>
+  damage?: number; characterId?: string
+  log?:any
 }
 export type CombatSession = {
   revision: number; updatedAt: number; enabled: boolean
   spotlight: SpotlightState; actorCharacterId: string | null
   participantCharacterIds: string[]; creatures: CombatCreature[]
   playerAttacks: Record<string, Attack[]>; qte: QteState | null
+  deathChecks?: Record<string, DeathCheck>
   pendingAttack?: PendingMonsterAttack | null
   log: CombatLog[]; receipts: string[]
 }

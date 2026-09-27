@@ -1,24 +1,20 @@
 "use client"
-
 import { useEffect, useRef, useState } from "react"
 import { GameMap, TerrainType, TileData } from "@/lib/map-types"
 import { Button } from "./ui/button"
-import { Brush, Crosshair, Move, UserPlus, X } from "lucide-react"
+import { Brush, Crosshair, Move, UserPlus, X, Grid3X3 } from "lucide-react"
 import type { Character, ActiveCreature } from "@/lib/types"
 import { AnimatePresence } from "framer-motion"
 import { CharacterPortrait } from "./character-portrait"
 import { getPortraitFrameStroke } from "@/lib/portrait-frames"
-
 const TERRAIN_COLORS: Record<TerrainType, string> = {
   grass: "rgba(34, 197, 94, 0.2)", stone: "rgba(100, 116, 139, 0.4)",
   water: "rgba(59, 130, 246, 0.4)", lava: "rgba(239, 68, 68, 0.5)",
   mud: "rgba(161, 98, 7, 0.4)", wood: "rgba(180, 83, 9, 0.3)", snow: "rgba(255, 255, 255, 0.4)",
 }
-
 const TERRAIN_COSTS: Record<TerrainType, number> = {
   grass: 1, wood: 1, snow: 1, stone: 1, mud: 2, water: 3, lava: 999 
 }
-
 interface BattlemapProps {
   mapData: GameMap;
   characters: Character[];
@@ -28,29 +24,32 @@ interface BattlemapProps {
   onMoveToken: (mapId: string, tokenId: string, x: number, y: number, type: "character"| "creature") => void;
   onPaintTerrain: (mapId: string, tile: TileData) => void;
 }
-
 export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose, onMoveToken, onPaintTerrain }: BattlemapProps) {
+  const [gridVisible, setGridVisible] = useState(true)
+  useEffect(() => {
+    try { setGridVisible(localStorage.getItem(`battle-grid-lines:${mapData.id}`) !== "hidden") } catch {}
+  }, [mapData.id])
+  const toggleGrid = () => {
+    const visible = !gridVisible
+    setGridVisible(visible)
+    try { localStorage.setItem(`battle-grid-lines:${mapData.id}`, visible ? "visible" : "hidden") } catch {}
+  }
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const imageCache = useRef<Record<string, HTMLImageElement>>({})
   const zoomRef = useRef(1)
   const fitZoomRef = useRef(1)
-  
   const [mode, setMode] = useState<"view" | "paint" | "move" | "place">("view")
   const [activeTerrain, setActiveTerrain] = useState<TerrainType>("stone")
-  
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 })
-
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null)
   const [tokenToPlace, setTokenToPlace] = useState<{id: string, type: "character"|"creature"} | null>(null)
   const [hoveredTile, setHoveredTile] = useState<{x: number, y: number} | null>(null)
   const [renderTick, setRenderTick] = useState(0)
-
   const characterMovement = 6; 
-
   const fitMapToViewport = (imageWidth?: number, imageHeight?: number) => {
     const viewport = viewportRef.current
     if (!viewport) return
@@ -68,7 +67,6 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
       y: (viewport.clientHeight - mapHeight * nextZoom) / 2,
     })
   }
-
   useEffect(() => {
     const viewport = viewportRef.current
     if (!viewport) return
@@ -80,7 +78,6 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
       observer.disconnect()
     }
   }, [mapData.id])
-
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -103,18 +100,15 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
     canvas.addEventListener("wheel", handleWheel, { passive: false })
     return () => canvas.removeEventListener("wheel", handleWheel)
   }, [mapData.id])
-
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext("2d"); if (!ctx) return;
-
     canvas.width = canvas.parentElement!.clientWidth
     canvas.height = canvas.parentElement!.clientHeight
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.save()
     ctx.translate(offset.x, offset.y)
     ctx.scale(zoom, zoom)
-
     // Renderiza Fundo
     if (!imageCache.current["bg"]) {
       const bg = new Image(); 
@@ -130,25 +124,20 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
     if (imageCache.current["bg"].complete && imageCache.current["bg"].naturalWidth > 0) {
       ctx.drawImage(imageCache.current["bg"], 0, 0)
     }
-
     // Pathfinding
     const reachable = new Set<string>()
     const activeTokenPos = selectedTokenId ? mapData.tokens?.[selectedTokenId] : null
-
     if (mode === "move" && activeTokenPos) {
       const queue = [{ x: activeTokenPos.x, y: activeTokenPos.y, cost: 0 }]
       const visited = new Map<string, number>()
       visited.set(`${activeTokenPos.x},${activeTokenPos.y}`, 0)
-
       while (queue.length > 0) {
         const current = queue.shift()!
         reachable.add(`${current.x},${current.y}`)
-
         const neighbors = [
           {x: current.x + 1, y: current.y}, {x: current.x - 1, y: current.y},
           {x: current.x, y: current.y + 1}, {x: current.x, y: current.y - 1}
         ]
-
         for (const n of neighbors) {
           const t = mapData.tiles[`${n.x},${n.y}`]
           if (t && t.walkable) {
@@ -163,7 +152,6 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
         }
       }
     }
-
     // Grid e Terreno
     const { tileSize, cols, rows } = mapData.grid
     for (let y = 0; y < rows; y++) {
@@ -172,46 +160,39 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
         const tile = mapData.tiles[key]
         const px = x * tileSize
         const py = y * tileSize
-
         if (offset.x + (px + tileSize) * zoom < 0 || offset.x + px * zoom > canvas.width || offset.y + (py + tileSize) * zoom < 0 || offset.y + py * zoom > canvas.height) continue
-
         if (tile && tile.terrain !== "grass") {
           ctx.fillStyle = TERRAIN_COLORS[tile.terrain]
           ctx.fillRect(px, py, tileSize, tileSize)
         }
-
         if (mode === "move" && reachable.has(key)) {
           ctx.fillStyle = "rgba(59, 130, 246, 0.3)"
           ctx.fillRect(px, py, tileSize, tileSize)
         }
-
-        ctx.strokeStyle = "rgba(255,255,255,0.15)"
-        ctx.lineWidth = 1 / zoom
-        ctx.strokeRect(px, py, tileSize, tileSize)
+        if (gridVisible) {
+          ctx.strokeStyle = "rgba(255,255,255,0.15)"
+          ctx.lineWidth = 1 / zoom
+          ctx.strokeRect(px, py, tileSize, tileSize)
+        }
       }
     }
-
     if (hoveredTile && mode === "move" && reachable.has(`${hoveredTile.x},${hoveredTile.y}`)) {
         ctx.fillStyle = "rgba(250, 204, 21, 0.5)"
         ctx.fillRect(hoveredTile.x * tileSize, hoveredTile.y * tileSize, tileSize, tileSize)
     }
-
     // Tokens
     Object.entries(mapData.tokens || {}).forEach(([id, pos]) => {
         const entity = pos.type === "character" ? characters.find(c => c.id === id) : creatures.find(c => c.instanceId === id);
         if (!entity) return;
-
         const url = pos.type === "character" ? (entity as Character).avatarUrl : (entity as ActiveCreature).imageUrl;
         const px = (pos.x * tileSize) + tileSize/2;
         const py = (pos.y * tileSize) + tileSize/2;
         const radius = tileSize/2 - 4;
-
         ctx.save()
         ctx.beginPath()
         ctx.arc(px, py, radius, 0, Math.PI * 2)
         ctx.closePath()
         ctx.clip()
-
         if (url) {
            if (!imageCache.current[url]) {
                const img = new Image(); 
@@ -230,44 +211,34 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
             ctx.fillStyle = pos.type === "character" ? "#3b82f6" : "#ef4444"; ctx.fill()
         }
         ctx.restore()
-
         ctx.beginPath()
         ctx.arc(px, py, radius, 0, Math.PI * 2)
         ctx.strokeStyle = pos.type === "character" ? (selectedTokenId === id ? "#3b82f6" : getPortraitFrameStroke((entity as Character).portraitFrame)) : (selectedTokenId === id ? "#ef4444" : "red")
         ctx.lineWidth = (selectedTokenId === id ? 4 : 2) / zoom
         ctx.stroke()
     })
-
     ctx.restore()
-
-  }, [mapData, offset, zoom, mode, selectedTokenId, hoveredTile, characters, creatures, renderTick])
-
+  }, [mapData, offset, zoom, mode, selectedTokenId, hoveredTile, characters, creatures, renderTick, gridVisible])
   const getMousePos = (e: React.MouseEvent) => {
     const rect = canvasRef.current!.getBoundingClientRect()
     return { x: e.clientX - rect.left, y: e.clientY - rect.top }
   }
-
   const getTileFromMouse = (x: number, y: number) => {
     const tx = Math.floor((x - offset.x) / (mapData.grid.tileSize * zoom))
     const ty = Math.floor((y - offset.y) / (mapData.grid.tileSize * zoom))
     if (tx >= 0 && tx < mapData.grid.cols && ty >= 0 && ty < mapData.grid.rows) return {x: tx, y: ty}
     return null
   }
-
   const handleMouseDown = (e: React.MouseEvent) => {
     const { x, y } = getMousePos(e)
-    
     if (e.button === 1 || e.button === 2) {
       setIsDragging(true); setLastMousePos({ x, y }); return
     }
-
     if (mode === "view" && e.button === 0) {
       setIsDragging(true); setLastMousePos({ x, y }); return
     }
-
     const t = getTileFromMouse(x, y)
     if (!t) return
-
     if (mode === "paint" && isGm) {
       handlePaintTile(t.x, t.y); setIsDragging(true)
     } 
@@ -278,7 +249,6 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
     }
     else if (mode === "move") {
       const clickedTokenId = Object.entries(mapData.tokens || {}).find(([_, pos]) => pos.x === t.x && pos.y === t.y)?.[0]
-      
       if (clickedTokenId) {
         setSelectedTokenId(clickedTokenId)
       } else if (selectedTokenId) {
@@ -288,19 +258,16 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
       }
     }
   }
-
   const handlePaintTile = (x: number, y: number) => {
     const key = `${x},${y}`
     const currentTile = mapData.tiles[key] || { x, y, terrain: "grass", walkable: true, movementCost: 1 };
     const updatedTile = { ...currentTile, terrain: activeTerrain, movementCost: TERRAIN_COSTS[activeTerrain], walkable: TERRAIN_COSTS[activeTerrain] < 999 }
     onPaintTerrain(mapData.id, updatedTile)
   }
-
   const handleMouseMove = (e: React.MouseEvent) => {
     const { x, y } = getMousePos(e)
     const t = getTileFromMouse(x, y)
     setHoveredTile(t)
-
     if (isDragging) {
       if (mode === "paint" && isGm && (e.buttons & 1) === 1 && t) handlePaintTile(t.x, t.y)
       else {
@@ -309,17 +276,18 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
       }
     }
   }
-
   return (
     <div className="fixed inset-0 z-[200] flex flex-col overflow-hidden bg-black">
       <div className="relative z-10 flex min-h-14 shrink-0 flex-col gap-2 border-b border-primary/20 bg-zinc-950/95 px-3 py-2 lg:flex-row lg:items-center lg:justify-between lg:px-6">
         <div className="flex gap-2 overflow-x-auto custom-scrollbar-sepia">
           <Button size="sm" variant={mode === "view" ? "default" : "ghost"} onClick={() => {setMode("view"); setSelectedTokenId(null)}}><Crosshair className="size-4 mr-2"/> Câmera</Button>
+          <Button size="sm" variant="ghost" onClick={toggleGrid} aria-pressed={gridVisible} title="Ocultar ou revelar as linhas do grid nesta tela">
+            <Grid3X3 className="size-4 mr-2" /> {gridVisible ? "Ocultar grid" : "Revelar grid"}
+          </Button>
           {isGm && <Button size="sm" variant={mode === "paint" ? "default" : "ghost"} onClick={() => {setMode("paint"); setSelectedTokenId(null)}} className={mode === "paint" ? "bg-primary" : ""}><Brush className="size-4 mr-2"/> Terreno</Button>}
           <Button size="sm" variant={mode === "move" ? "magical" : "ghost"} onClick={() => setMode("move")}><Move className="size-4 mr-2"/> Interagir/Mover</Button>
           {isGm && <Button size="sm" variant={mode === "place" ? "default" : "ghost"} onClick={() => setMode("place")} className={mode === "place" ? "bg-green-600" : ""}><UserPlus className="size-4 mr-2"/> Posicionar Heróis</Button>}
         </div>
-
         {mode === "paint" && isGm && (
           <div className="flex gap-2 overflow-x-auto rounded-sm border border-white/10 bg-black/50 p-1 custom-scrollbar-sepia">
             <Button size="sm" variant="ghost" onClick={() => setActiveTerrain("grass")} className={`h-8 px-3 ${activeTerrain === "grass" ? "bg-green-500/20 text-green-400" : ""}`}>Grama (1)</Button>
@@ -328,27 +296,22 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
             <Button size="sm" variant="ghost" onClick={() => setActiveTerrain("lava")} className={`h-8 px-3 ${activeTerrain === "lava" ? "bg-red-500/20 text-red-400" : ""}`}>Lava (Bloq)</Button>
           </div>
         )}
-
         <Button size="sm" variant="outline" className="border-primary/40 bg-black/30 text-[#e7dbc5] hover:border-primary/65 hover:bg-primary/10 hover:text-[#fff6e6]" onClick={onClose}><X className="size-4 mr-2 text-primary"/> Sair do mapa</Button>
       </div>
-
       <div className="relative flex min-h-0 flex-1">
         <div ref={viewportRef} className={`relative flex-1 ${mode === "view" ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-crosshair"}`}>
             <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={() => setIsDragging(false)} onMouseLeave={() => { setIsDragging(false); setHoveredTile(null) }} onContextMenu={(e) => e.preventDefault()} className="absolute inset-0 w-full h-full"/>
-            
             {mode === "move" && !selectedTokenId && (
                 <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-black/70 border border-white/10 text-white px-4 py-2 rounded-full pointer-events-none animate-pulse text-sm">
                     Clique em um personagem no mapa para selecioná-lo.
                 </div>
             )}
-            
             {mode === "place" && (
                  <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-green-500/20 border border-green-500/50 text-green-400 px-4 py-2 rounded-full pointer-events-none text-sm">
                     Selecione alguém na barra lateral direita e clique no grid.
                 </div>
             )}
         </div>
-
         {/* Sidebar Direita para Posicionar */}
         {mode === "place" && (
             <div className="w-64 bg-zinc-950/90 border-l border-white/10 flex flex-col relative z-10 backdrop-blur-md">

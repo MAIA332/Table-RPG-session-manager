@@ -123,6 +123,7 @@ import { BattlemapEngine } from "./battlemap-engine"
 
 import { Soundpad, ActiveSound, type Track } from "./soundpad"
 import { CutsceneManager } from "./cutscene-manager"
+import { DeathCheckOverlay } from "./death-check-overlay"
 import { CutscenePlayer } from "./cutscene-player"
 import type { Cutscene } from "./cutscene-types"
 
@@ -740,6 +741,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   // === CUTSCENES STATES ===
   const [showCutsceneManager, setShowCutsceneManager] = useState(false)
   const [cutscenes, setCutscenes] = useState<Cutscene[]>([])
+  const [cutscenePlayId, setCutscenePlayId] = useState("")
+  const seenCutscenePlays = useRef(new Set<string>())
   const [activeCutscene, setActiveCutscene] = useState<Cutscene | null>(null)
   const [activeSceneIndex, setActiveSceneIndex] = useState(0)
   // 1. ESTADO DA MIRA (CROSSHAIR)
@@ -835,6 +838,48 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [activeHazards, setActiveHazards] = useState<HazardData[]>([])
 
   const isGm = data.role === "gm"
+  const mapRequestVersion = useRef(0)
+  const pendingOpenMapId = useRef<string | null>(null)
+  const [mapActionPending, setMapActionPending] = useState(false)
+  const mapActionBusy = useRef(false)
+  const refreshMaps = useCallback(async (openMapId?: string) => {
+    if (openMapId) pendingOpenMapId.current = openMapId
+    const version = ++mapRequestVersion.current
+    const response = await fetch(`/api/campaigns/${encodeURIComponent(data.campaign.id)}/maps`, { cache: "no-store" })
+    const body = await response.json()
+    if (!response.ok) throw new Error(body.error || "Não foi possível atualizar os mapas.")
+    if (!Array.isArray(body.maps)) throw new Error("Lista de mapas inválida.")
+    if (version !== mapRequestVersion.current) return
+    const maps = (body.maps as GameMap[]).filter(map => data.role === "gm" || map.isPublic === true)
+    const firstLoad = !mapsLoadedFromApiRef.current
+    mapsLoadedFromApiRef.current = true
+    setSavedMaps(maps)
+    // Remove the old shared cache; private maps are no longer persisted in the browser.
+    try { localStorage.removeItem(`maps_${data.campaign.id}`) } catch {}
+    const requestedId = pendingOpenMapId.current
+    pendingOpenMapId.current = null
+    setActiveMap(previous => {
+      const id = requestedId || previous?.id || (firstLoad ? lastActiveMapIdRef.current : null)
+      return maps.find(map => map.id === id) || null
+    })
+  }, [data.campaign.id, data.role])
+
+  useEffect(() => {
+    mapsLoadedFromApiRef.current = false
+    pendingOpenMapId.current = null
+    setSavedMaps([])
+    setActiveMap(null)
+    const refresh = () => { void refreshMaps().catch(console.error) }
+    refresh()
+    const timer = window.setInterval(() => { if (document.visibilityState === "visible") refresh() }, 3000)
+    window.addEventListener("focus", refresh)
+    return () => {
+      ++mapRequestVersion.current
+      clearInterval(timer)
+      window.removeEventListener("focus", refresh)
+    }
+  }, [refreshMaps])
+
   const effectsVolumeRef = useRef(effectsVolume)
   const isGmRef = useRef(isGm)
 
@@ -916,7 +961,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       body: JSON.stringify({ action, ...payload }),
     })
     applyGalleryResponse(response)
-  }, [applyGalleryResponse, data.campaign.id, data.role, data.members, galleryTargetingEnabled])
+    // Show locally after successful delivery; do not broaden the server recipients.
+    if (data.role === "gm" && payload.targetUserId != null &&
+      (action === "broadcast" || (action === "resolve-broadcast" && payload.resolution === "approved"))) {
+      const request = galleryRequests.find(entry => entry.id === payload.requestId)
+      const image = response.images.find(entry => entry.id === payload.imageId)
+        || galleryImages.find(entry => entry.id === payload.imageId)
+      const url = image?.url || request?.imageUrl
+      if (url) setActiveFullscreenImage(url)
+    }
+  }, [applyGalleryResponse, data.campaign.id, data.role, data.members, galleryTargetingEnabled, galleryImages, galleryRequests])
 
   const saveGallery = useCallback(
     (images: SharedImage[], folders: GalleryFolder[]) => {
@@ -1069,21 +1123,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           } catch (e) {}
         }
 
-        const localSavedMaps = localStorage.getItem(`maps_${data.campaign.id}`)
+        // Map access is always restored from the authenticated API.
+        try { localStorage.removeItem(`maps_${data.campaign.id}`) } catch {}
 
-        if (localSavedMaps && !mapsLoadedFromApiRef.current) {
-          try {
-            const parsedMaps = JSON.parse(localSavedMaps)
-            setSavedMaps(parsedMaps)
-
-            if (lastActiveMapIdRef.current) {
-              const mapToRestore = parsedMaps.find(
-                (m: GameMap) => m.id === lastActiveMapIdRef.current,
-              )
-              if (mapToRestore) setActiveMap(mapToRestore)
-            }
-          } catch (e) {}
-        }
       }
 
       if (typeof window.requestIdleCallback === "function") {
@@ -1203,41 +1245,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   // Baixa os mapas via API e sincroniza com o localstorage
   useEffect(() => {
-    apiFetch<{ maps: GameMap[] }>(`/api/campaigns/${data.campaign.id}/maps`)
-      .then((res) => {
-        if (res && res.maps) {
-          mapsLoadedFromApiRef.current = true
-          if (res.maps.length > 0) {
-            // Se veio mapas do servidor, usamos eles para sincronizar
-            const uniqueMaps = Array.from(
-              new Map(res.maps.map((m) => [m.id, m])).values(),
-            )
-            setSavedMaps(uniqueMaps)
-            storeJsonWhenIdle(`maps_${data.campaign.id}`, uniqueMaps)
-
-            // Atualiza os detalhes do mapa ativo se a API trouxe uma versão mais recente
-            setActiveMap((prev) => {
-              if (prev) {
-                const updated = uniqueMaps.find((m) => m.id === prev.id)
-                return updated ? updated : prev
-              }
-              return lastActiveMapIdRef.current
-                ? (uniqueMaps.find(
-                    (m) => m.id === lastActiveMapIdRef.current,
-                  ) ?? null)
-                : null
-            })
-          } else if (isGm) {
-            // Se for o mestre e veio vazio, então a campanha não tem nenhum mapa criado ainda.
-            setSavedMaps([])
-            localStorage.setItem(`maps_${data.campaign.id}`, "[]")
-          }
-          // ATENÇÃO: Se for jogador e a API retornar [], não fazemos nada!
-          // Isso preserva os mapas cacheados recebidos por WebSocket.
-        }
-      })
-      .catch(() => {})
-
     apiFetch<{ state: Record<string, any>; persistedFields: string[] }>(
       `/api/campaigns/${data.campaign.id}/state`,
     )
@@ -1442,10 +1449,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         new Map(maps.map((m) => [m.id, m])).values(),
       )
       setSavedMaps(uniqueMaps)
-      localStorage.setItem(
-        `maps_${data.campaign.id}`,
-        JSON.stringify(uniqueMaps),
-      )
+      try { localStorage.removeItem(`maps_${data.campaign.id}`) } catch {}
     },
     [data.campaign.id],
   )
@@ -1906,44 +1910,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         )
         return
       }
-      // Mapa
-      if (event.type === "map:created") {
-        setSavedMaps((prev) => {
-          if (prev.some((m) => m.id === event.map.id)) return prev
-          const next = [...prev, event.map]
-          localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(next))
-          return next
-        })
-        return
-      }
-
-      // Mapa Renomeado
-      if (event.type === "map:renamed") {
-        setSavedMaps((prev) => {
-          const next = prev.map((m) =>
-            m.id === event.mapId ? { ...m, name: event.name } : m,
-          )
-          localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(next))
-          return next
-        })
-
-        setActiveMap((prev) => {
-          if (prev && prev.id === event.mapId) {
-            return { ...prev, name: event.name }
-          }
-          return prev
-        })
-        return
-      }
-
-      // Mapa Apagado
-      if (event.type === "map:deleted") {
-        setSavedMaps((prev) => {
-          const next = prev.filter((m) => m.id !== event.mapId)
-          localStorage.setItem(`maps_${data.campaign.id}`, JSON.stringify(next))
-          return next
-        })
-        setActiveMap((prev) => (prev?.id === event.mapId ? null : prev))
+      if (String(event.type).startsWith("map:")) {
+        void refreshMaps(event.type === "map:changed" ? event.openMapId : undefined).catch(console.error)
         return
       }
 
@@ -1968,60 +1936,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       }
       if (event.type === "sound:stop_all") {
         setActiveSounds([])
-        return
-      }
-
-      if (event.type === "map:token_moved") {
-        setActiveMap((prev) => {
-          if (!prev || prev.id !== event.mapId) return prev
-          const updatedMap = {
-            ...prev,
-            tokens: {
-              ...(prev.tokens || {}),
-              [event.tokenId]: {
-                x: event.x,
-                y: event.y,
-                type: event.tokenType,
-              },
-            },
-          }
-          setSavedMaps((allMaps) => {
-            const nextAllMaps = allMaps.map((m) =>
-              m.id === updatedMap.id ? updatedMap : m,
-            )
-            localStorage.setItem(
-              `maps_${data.campaign.id}`,
-              JSON.stringify(nextAllMaps),
-            )
-            return nextAllMaps
-          })
-          return updatedMap
-        })
-        return
-      }
-
-      if (event.type === "map:terrain_updated") {
-        setActiveMap((prev) => {
-          if (!prev || prev.id !== event.mapId) return prev
-          const updatedMap = {
-            ...prev,
-            tiles: {
-              ...prev.tiles,
-              [`${event.tileData.x},${event.tileData.y}`]: event.tileData,
-            },
-          }
-          setSavedMaps((allMaps) => {
-            const nextAllMaps = allMaps.map((m) =>
-              m.id === updatedMap.id ? updatedMap : m,
-            )
-            localStorage.setItem(
-              `maps_${data.campaign.id}`,
-              JSON.stringify(nextAllMaps),
-            )
-            return nextAllMaps
-          })
-          return updatedMap
-        })
         return
       }
 
@@ -2116,6 +2030,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           if (action === "PLAY") {
             try {
               const c = JSON.parse(String(event.result))
+              const playId = String(c.playbackId || event.eventId || `${c.id}:${event.occurredAt || event.result}`)
+              if (seenCutscenePlays.current.has(playId)) return
+              seenCutscenePlays.current.add(playId)
+              if (seenCutscenePlays.current.size > 100) seenCutscenePlays.current.delete(seenCutscenePlays.current.values().next().value!)
+              setCutscenePlayId(playId)
               setActiveCutscene(c)
               setActiveSceneIndex(0)
             } catch (e) {
@@ -2130,19 +2049,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         }
 
         if (attr.startsWith("SYNC_MAP:")) {
-          const action = attr.split(":")[1]
-          if (action === "SHOW") {
-            const mapId = String(event.result)
-            // CORREÇÃO: Lendo diretamente do LocalStorage para evitar conflito de State no React
-            const localMaps = localStorage.getItem(`maps_${data.campaign.id}`)
-            if (localMaps) {
-              try {
-                const parsed = JSON.parse(localMaps)
-                const mapToShow = parsed.find((m: any) => m.id === mapId)
-                if (mapToShow) setActiveMap(mapToShow)
-              } catch (e) {}
-            }
-          }
+          // Compatibility with older master clients, always rechecking visibility.
+          if (attr === "SYNC_MAP:SHOW") void refreshMaps(String(event.result)).catch(console.error)
           return
         }
 
@@ -2396,6 +2304,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         )
       }
 
+      // HP changes outside /combat must reconcile death results immediately.
+      if (event.type === "character:updated" || event.type === "character:created") {
+        void combatController.refresh().catch(console.error)
+      }
+
       setCharacters((prev) => {
         switch (event.type) {
           case "character:created":
@@ -2433,7 +2346,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         }
       })
     },
-    [data.campaign.id, data.me.id, refreshGallery, refreshSounds],
+    [data.campaign.id, data.me.id, refreshGallery, refreshSounds, refreshMaps, combatController.refresh],
   )
 
   useEffect(() => {
@@ -2484,17 +2397,34 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   )
 
   async function handleCreateMap(newMap: GameMap) {
-    newMap.campaignId = data.campaign.id
-    newMap.tokens = {}
-    setActiveMap(newMap)
-    setShowMapImporter(false)
+    try {
+      await apiFetch(`/api/campaigns/${data.campaign.id}/maps`, {
+        method: "POST",
+        body: JSON.stringify({ action: "create", map: { ...newMap, campaignId: data.campaign.id, tokens: {}, isPublic: false } }),
+      })
+      setShowMapImporter(false)
+      await refreshMaps(newMap.id)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Não foi possível criar o mapa.")
+    }
+  }
 
-    syncMapsToStorage([...savedMaps, newMap])
-
-    await apiFetch(`/api/campaigns/${data.campaign.id}/maps`, {
-      method: "POST",
-      body: JSON.stringify({ action: "create", map: newMap }),
-    })
+  async function changeMapVisibility(mapId: string, isPublic: boolean, open = false) {
+    if (!isGm || mapActionBusy.current) return
+    mapActionBusy.current = true
+    setMapActionPending(true)
+    try {
+      await apiFetch(`/api/campaigns/${data.campaign.id}/maps`, {
+        method: "POST",
+        body: JSON.stringify({ action: open ? "show" : "visibility", mapId, isPublic }),
+      })
+      await refreshMaps(open ? mapId : undefined)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Não foi possível alterar a visibilidade do mapa.")
+    } finally {
+      mapActionBusy.current = false
+      setMapActionPending(false)
+    }
   }
 
   async function handleRenameMap(mapId: string, currentName: string) {
@@ -2765,6 +2695,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   }
 
   function syncCutscene(action: "PLAY" | "STOP" | "SCENE", payload?: any) {
+    if (action === "PLAY") payload = { ...payload, playbackId: crypto.randomUUID() }
     const attr = `SYNC_CUTSCENE:${action}`
     const result = payload
       ? typeof payload === "string"
@@ -2785,19 +2716,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   }
 
   function handleForceSyncMap(mapId: string) {
-    const mapToShow = savedMaps.find((m) => m.id === mapId)
-    if (mapToShow) setActiveMap(mapToShow)
-
-    apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
-      method: "POST",
-      body: JSON.stringify({
-        characterId: "sys_map",
-        characterName: "Sistema",
-        playerName: "Mestre",
-        attribute: `SYNC_MAP:SHOW`,
-        result: mapId,
-      }),
-    }).catch(console.error)
+    void changeMapVisibility(mapId, true, true)
   }
 
   const saveCustomNPCsToStorage = (npcs: NPCDraft[]) => {
@@ -3448,6 +3367,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   }}
                 />
               )}
+            <DeathCheckOverlay controller={combatController} viewerId={data.me.id} isGm={isGm} campaignId={data.campaign.id} characters={characters} />
             <CampaignCombat
               controller={combatController}
               viewerId={data.me.id}
@@ -3547,7 +3467,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               )}
             </AnimatePresence>
 
-            {activeMap && (
+            {activeMap && (isGm || activeMap.isPublic === true) && (
               <BattlemapEngine
                 key={activeMap.id}
                 mapData={activeMap}
@@ -3640,11 +3560,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             <AnimatePresence>
               {activeCutscene && (
                 <CutscenePlayer
+                  key={cutscenePlayId}
                   cutscene={activeCutscene}
                   sceneIndex={activeSceneIndex}
                   isGm={isGm}
                   onSyncScene={(idx) => syncCutscene("SCENE", idx.toString())}
-                  onClose={() => syncCutscene("STOP")}
+                  onClose={() => setActiveCutscene(null)}
                 />
               )}
             </AnimatePresence>
@@ -5388,15 +5309,22 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                               title="Abrir para você (Preparação)"
                             >
                               <Grid3X3 className="size-3 mr-2 shrink-0" />{" "}
-                              <span className="truncate">{m.name}</span>
+                              <span className="truncate">{m.name} · {m.isPublic === true ? "Visível" : "Oculto"}</span>
+                            </Button>
+
+                            <Button size="sm" variant="outline" disabled={mapActionPending}
+                              onClick={() => void changeMapVisibility(m.id, m.isPublic !== true)}
+                              title={m.isPublic === true ? "Ocultar dos jogadores e fechar o mapa nas telas deles" : "Permitir que os jogadores vejam e abram este mapa"}>
+                              {m.isPublic === true ? "Ocultar" : "Revelar"}
                             </Button>
 
                             <Button
                               size="sm"
                               variant="outline"
                               className="rpg-map-action rpg-map-action-share w-9 shrink-0 px-0"
+                              disabled={mapActionPending}
                               onClick={() => handleForceSyncMap(m.id)}
-                              title="Transmitir este mapa para todos os jogadores"
+                              title="Revelar e abrir este mapa para todos os jogadores"
                             >
                               <Eye className="size-3" />
                             </Button>

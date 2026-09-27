@@ -268,20 +268,14 @@ function releaseDatabaseLock(handle: number): void {
 }
 
 function replaceFile(sourcePath: string, targetPath: string): void {
-  if (!fs.existsSync(targetPath)) {
-    fs.renameSync(sourcePath, targetPath)
-    return
-  }
+  fs.renameSync(sourcePath, targetPath)
 
-  const displacedPath = `${targetPath}.replace-${process.pid}-${Date.now()}`
-  fs.renameSync(targetPath, displacedPath)
+  const dirHandle = fs.openSync(path.dirname(targetPath), "r")
+
   try {
-    fs.renameSync(sourcePath, targetPath)
-    fs.unlinkSync(displacedPath)
-  } catch (error) {
-    if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath)
-    fs.renameSync(displacedPath, targetPath)
-    throw error
+    fs.fsyncSync(dirHandle)
+  } finally {
+    fs.closeSync(dirHandle)
   }
 }
 
