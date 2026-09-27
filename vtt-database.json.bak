@@ -120687,14 +120687,14 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 939,
-        "updatedAt": 1790544701128,
+        "revision": 940,
+        "updatedAt": 1790544704494,
         "enabled": true,
         "spotlight": {
           "side": "gm",
           "activePlayerId": null,
           "request": null,
-          "tokens": 3,
+          "tokens": 2,
           "players": [
             {
               "id": "user_0bhp2ga3msl1uk6h",
@@ -120810,8 +120810,36 @@
           }
         ],
         "playerAttacks": {},
-        "qte": null,
+        "qte": {
+          "id": "dcb0fffa-5fdf-487a-90ff-1f7719f80efe",
+          "ability": {
+            "id": "e1d27025-16d5-4ddf-b099-e2926f054507",
+            "kind": "qte",
+            "name": "Canto da sereia",
+            "cost": {
+              "amount": 1,
+              "resource": "token"
+            },
+            "seconds": 5,
+            "checkId": "c29",
+            "difficulty": 20,
+            "failureDamage": "15",
+            "failureEffect": "Alvos falhados ficam adormecidos",
+            "successDamage": "0",
+            "successEffect": ""
+          },
+          "deadline": 1790544709494,
+          "targets": [
+            "char_4uf4pocfmstw6x65"
+          ],
+          "outcomes": {}
+        },
         "log": [
+          {
+            "id": "03bdc98a-d3a6-4076-a157-75d60c8cf0b5",
+            "at": 1790544704494,
+            "text": "Sereia do pantano: Canto da sereia!"
+          },
           {
             "id": "3d13837e-b965-4a8b-ad97-7d6918ffeeb9",
             "at": 1790544701128,
@@ -121419,22 +121447,6 @@
             "at": 1790474625308,
             "text": "Amélia Candinari decidiu reagir a Golpe de lança.",
             "characterId": "char_u267bpepmsusoyuv"
-          },
-          {
-            "id": "1928bfb7-19c9-43e7-9a87-95cb6c08e9ac:hit",
-            "at": 1790474619592,
-            "text": "Cavaleiro Estatua usou Golpe de lança em Amélia Candinari: acerto 12, aguardando reação.",
-            "characterId": "char_u267bpepmsusoyuv",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_u267bpepmsusoyuv",
-              "characterName": "Cavaleiro Estatua",
-              "playerName": "Mestre",
-              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
-              "result": 12,
-              "breakdown": "6 + 6",
-              "modifier": 0
-            }
           }
         ],
         "receipts": [
@@ -122345,7 +122357,8 @@
           "user_reulc3j3ms3snnxu:9130b926-4f4b-4ae6-8ce3-3388f51e15e6",
           "user_reulc3j3ms3snnxu:1d80f13d-c2ae-4123-955e-3b24b88b697e",
           "user_reulc3j3ms3snnxu:f653e0fc-eb78-4c7e-ae03-4887057a4514",
-          "user_reulc3j3ms3snnxu:7b70643d-e0cd-467d-a8d1-28480c5a1646"
+          "user_reulc3j3ms3snnxu:7b70643d-e0cd-467d-a8d1-28480c5a1646",
+          "user_reulc3j3ms3snnxu:1db28dbf-a2d9-4c2a-a9f8-2074400a469c"
         ],
         "pendingAttack": null,
         "deathChecks": {
