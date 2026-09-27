@@ -120687,8 +120687,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 915,
-        "updatedAt": 1790544407890,
+        "revision": 916,
+        "updatedAt": 1790544426950,
         "enabled": true,
         "spotlight": {
           "side": "group",
@@ -120810,37 +120810,7 @@
           }
         ],
         "playerAttacks": {},
-        "qte": {
-          "id": "87adff7f-fef1-4f12-9816-c6d6673b5b15",
-          "ability": {
-            "id": "e1d27025-16d5-4ddf-b099-e2926f054507",
-            "kind": "qte",
-            "name": "Canto da sereia",
-            "cost": {
-              "amount": 1,
-              "resource": "token"
-            },
-            "seconds": 5,
-            "checkId": "c29",
-            "difficulty": 15,
-            "failureDamage": "8",
-            "failureEffect": "Alvos falhados ficam adormecidos",
-            "successDamage": "0",
-            "successEffect": ""
-          },
-          "deadline": 1790544411294,
-          "targets": [
-            "char_4uf4pocfmstw6x65"
-          ],
-          "outcomes": {
-            "char_4uf4pocfmstw6x65": {
-              "total": 13,
-              "success": false,
-              "damage": 8,
-              "effect": "Alvos falhados ficam adormecidos"
-            }
-          }
-        },
+        "qte": null,
         "log": [
           {
             "id": "afa86a25-25c5-42c4-b043-c5ea8c0ecffe",
@@ -122360,7 +122330,8 @@
           "user_reulc3j3ms3snnxu:cca9f28e-40b6-4ffd-b5ae-dc1dcbcaf6c9",
           "user_reulc3j3ms3snnxu:f0c57a0c-3899-44a7-84f0-dc9fe67a7741",
           "user_reulc3j3ms3snnxu:2de66a5b-217d-4723-b5e8-f84dfa74b9d3",
-          "user_0bhp2ga3msl1uk6h:46c4663f-64c9-4578-aafb-8e01ef43197a"
+          "user_0bhp2ga3msl1uk6h:46c4663f-64c9-4578-aafb-8e01ef43197a",
+          "user_reulc3j3ms3snnxu:4b41ac9b-2d43-4c48-a919-51aa68a3c868"
         ],
         "pendingAttack": null,
         "deathChecks": {
