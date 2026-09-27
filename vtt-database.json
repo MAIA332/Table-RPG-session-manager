@@ -1637,7 +1637,7 @@
           "cskill-1szrrx": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790545236943,
+        "updatedAt": 1790545894272,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -1772,7 +1772,7 @@
             "id": "wwfrgr",
             "name": "Fome",
             "target": "all",
-            "value": -2
+            "value": -4
           }
         ],
         "customItems": [

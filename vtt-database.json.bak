@@ -1170,7 +1170,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790542280898,
+        "updatedAt": 1790545882402,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -1282,6 +1282,12 @@
             "name": "Resfriado",
             "target": "dex",
             "value": -1
+          },
+          {
+            "id": "axok5tp",
+            "name": "Fome",
+            "target": "dex",
+            "value": -2
           }
         ],
         "customItems": [],
