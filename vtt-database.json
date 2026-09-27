@@ -120605,11 +120605,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 761,
-        "updatedAt": 1790478861404,
+        "revision": 762,
+        "updatedAt": 1790478866016,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 1,
@@ -120775,6 +120775,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "fbe04e55-ce8a-4df7-81f4-50580a7e59ac",
+            "at": 1790478866016,
+            "text": "Rei Morto errou Kael Veyr. Nenhum dano aplicado.",
+            "characterId": "char_jlhky6s9mstuuli0"
+          },
+          {
+            "id": "e01fb845-5047-4e33-8379-ed9b8bced6a0:hit",
+            "at": 1790478866016,
+            "text": "Rei Morto usou Raiz podre em Kael Veyr: acerto 9, errou.",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Rei Morto",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Raiz podre [d12 + d12]",
+              "result": 9,
+              "breakdown": "1 + 8",
+              "modifier": 0
+            }
+          },
           {
             "id": "eb007069-9c22-48ab-a171-442e5d6851a0",
             "at": 1790478621763,
@@ -121371,29 +121393,6 @@
             "at": 1790473381025,
             "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
             "characterId": "char_4uf4pocfmstw6x65"
-          },
-          {
-            "id": "4353f4d3-91bb-4d7f-8988-dcde731d22d4:hit",
-            "at": 1790473381025,
-            "text": "Cavaleiro Estatua usou Golpe em Thorfinn Lyngstad: acerto 4, errou.",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_4uf4pocfmstw6x65",
-              "characterName": "Cavaleiro Estatua",
-              "playerName": "Mestre",
-              "attribute": "Ataque inimigo · Golpe [d8 + d8]",
-              "result": 4,
-              "breakdown": "1 + 3",
-              "modifier": 0
-            }
-          },
-          {
-            "id": "c21732d2-4d2a-4d33-917b-3a532a1d627a",
-            "at": 1790473266624,
-            "text": "Kael Veyr: sucesso em Ataque lança em area. 0 de dano. ",
-            "characterId": "char_jlhky6s9mstuuli0",
-            "damage": 0
           }
         ],
         "receipts": [
@@ -122139,7 +122138,8 @@
           "user_0bhp2ga3msl1uk6h:99d9bd62-dc7d-4251-908f-d61d3cb3d8fc",
           "user_gybabf5mmskx7a24:946b7ca7-86ae-4e52-84b4-d119f75f4976",
           "user_reulc3j3ms3snnxu:639a6633-f2b6-4f90-9563-a821dfb790f5",
-          "user_reulc3j3ms3snnxu:eb6b4e14-32b5-4789-b0ea-c928d094d941"
+          "user_reulc3j3ms3snnxu:eb6b4e14-32b5-4789-b0ea-c928d094d941",
+          "user_reulc3j3ms3snnxu:e4139a63-df45-448c-a323-9b08fba16665"
         ],
         "pendingAttack": null
       }
