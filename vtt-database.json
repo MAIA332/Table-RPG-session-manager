@@ -124059,7 +124059,7 @@
             "id": "188f4c41-210a-4b42-878f-46e040414a6d",
             "name": "Estatua 1",
             "url": "https://zipline.sinapselabs.com.br/u/BZxdbc.png",
-            "isPublic": false,
+            "isPublic": true,
             "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
             "ownerId": "user_reulc3j3ms3snnxu",
             "ownerName": "GILGAMESH",
@@ -125406,7 +125406,7 @@
           }
         ],
         "weather": "rain",
-        "updatedAt": 1790484026372,
+        "updatedAt": 1790541812678,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",

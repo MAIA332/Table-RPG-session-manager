@@ -120689,8 +120689,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 898,
-        "updatedAt": 1790539809085,
+        "revision": 899,
+        "updatedAt": 1790539821046,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -122271,7 +122271,7 @@
             "status": "stable",
             "label": "Estabilizado",
             "effect": "Inconsciente com 0 HP, sem deterioração automática.",
-            "active": true
+            "active": false
           },
           "char_u267bpepmsusoyuv": {
             "id": "78326b00-121c-466c-ac6f-0dd1ea049a84",
