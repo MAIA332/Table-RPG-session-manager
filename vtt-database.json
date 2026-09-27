@@ -120689,8 +120689,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 895,
-        "updatedAt": 1790539328567,
+        "revision": 896,
+        "updatedAt": 1790539733356,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -120728,6 +120728,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "a2002259-1726-4ed6-bd7c-3da7c9ae3f34",
+            "at": 1790539733355,
+            "characterId": "char_jlhky6s9mstuuli0",
+            "text": "Kael Veyr chegou a 0 HP. Vigor: 5 + 1 + 7 = 13. Estabilizado. Inconsciente com 0 HP, sem deterioração automática.",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Kael Veyr",
+              "playerName": "Mateus Lopes de Deus",
+              "attribute": "Morte · Vigor [d8 + d8 + d8] · Estabilizado · Inconsciente com 0 HP, sem deterioração automática.",
+              "result": 13,
+              "breakdown": "5 + 1 + 7",
+              "modifier": 0
+            }
+          },
           {
             "id": "837a340c-b5c8-4bdf-8b40-3545dc9b14a5",
             "at": 1790539309553,
@@ -121356,22 +121372,6 @@
             "at": 1790474496319,
             "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
             "characterId": "char_4uf4pocfmstw6x65"
-          },
-          {
-            "id": "eebeeb4d-8cc7-426d-9467-865b768d2588:hit",
-            "at": 1790474496319,
-            "text": "Cavaleiro Estatua usou Golpe de lança em Thorfinn Lyngstad: acerto 8, errou.",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_4uf4pocfmstw6x65",
-              "characterName": "Cavaleiro Estatua",
-              "playerName": "Mestre",
-              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
-              "result": 8,
-              "breakdown": "5 + 3",
-              "modifier": 0
-            }
           }
         ],
         "receipts": [
@@ -122247,21 +122247,21 @@
         "pendingAttack": null,
         "deathChecks": {
           "char_jlhky6s9mstuuli0": {
-            "id": "837a340c-b5c8-4bdf-8b40-3545dc9b14a5",
-            "at": 1790539309553,
+            "id": "a2002259-1726-4ed6-bd7c-3da7c9ae3f34",
+            "at": 1790539733355,
             "characterId": "char_jlhky6s9mstuuli0",
             "characterName": "Kael Veyr",
             "die": "d8",
             "rolls": [
-              6,
-              2,
-              4
+              5,
+              1,
+              7
             ],
-            "total": 12,
-            "status": "dying",
-            "label": "Agonizando",
-            "effect": "Permanece com 0 HP e precisa de socorro.",
-            "active": false
+            "total": 13,
+            "status": "stable",
+            "label": "Estabilizado",
+            "effect": "Inconsciente com 0 HP, sem deterioração automática.",
+            "active": true
           },
           "char_u267bpepmsusoyuv": {
             "id": "78326b00-121c-466c-ac6f-0dd1ea049a84",
