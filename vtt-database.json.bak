@@ -1354,7 +1354,6 @@
           "eq-dagger",
           "custom-eq-u26mxku6",
           "custom-eq-1ebbfips",
-          "custom-eq-jjueige1",
           "custom-eq-22lyzyze"
         ],
         "zenit": 787,
@@ -1363,7 +1362,7 @@
           "maxHp": 95,
           "mp": 59,
           "maxMp": 59,
-          "ip": 1.413,
+          "ip": 1.913,
           "maxIp": 6,
           "fp": 0,
           "xp": 85,
@@ -1382,7 +1381,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790547371446,
+        "updatedAt": 1790547464927,
         "customModifiers": [
           {
             "id": "6ute35",
