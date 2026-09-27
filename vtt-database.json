@@ -1609,7 +1609,6 @@
           "eq-lantern",
           "custom-eq-3ijbdddm",
           "custom-eq-1vxsbh3o",
-          "custom-eq-1vxsbh3o",
           "custom-eq-phorangi",
           "custom-eq-156iasrj"
         ],
@@ -1619,7 +1618,7 @@
           "maxHp": 77,
           "mp": 5,
           "maxMp": 70,
-          "ip": 4.4,
+          "ip": 4.5,
           "maxIp": 6,
           "fp": 1,
           "xp": 62,
@@ -1636,7 +1635,7 @@
           "cskill-1szrrx": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790545898122,
+        "updatedAt": 1790545984090,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -128089,9 +128088,25 @@
             "status": "accepted",
             "createdAt": 1790545084789,
             "resolvedAt": 1790545091033
+          },
+          {
+            "id": "transfer_wswavw4kmukcujiz",
+            "campaignId": "camp_o5slw0ptmsjhu84l",
+            "donorCharacterId": "char_u267bpepmsusoyuv",
+            "donorCharacterName": "Amélia Candinari",
+            "donorOwnerId": "user_gybabf5mmskx7a24",
+            "recipientCharacterId": "char_4uf4pocfmstw6x65",
+            "recipientCharacterName": "Thorfinn Lyngstad",
+            "recipientOwnerId": "user_0bhp2ga3msl1uk6h",
+            "itemId": "custom-eq-1vxsbh3o",
+            "itemName": "Temperos da Terra-Viva",
+            "itemKind": "equipment",
+            "donorItemBonusesActive": false,
+            "status": "pending",
+            "createdAt": 1790545984091
           }
         ],
-        "updatedAt": 1790545091033
+        "updatedAt": 1790545984091
       }
     ],
     [
