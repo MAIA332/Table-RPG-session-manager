@@ -1136,7 +1136,7 @@
         ],
         "zenit": 734,
         "resources": {
-          "hp": 43,
+          "hp": 18,
           "maxHp": 86,
           "mp": 0,
           "maxMp": 60,
@@ -1156,7 +1156,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790480706888,
+        "updatedAt": 1790481285159,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -120660,11 +120660,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 848,
-        "updatedAt": 1790481276643,
+        "revision": 849,
+        "updatedAt": 1790481285159,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 1,
@@ -120881,6 +120881,35 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "c7ea5670-df81-4032-acae-ce1e47455074",
+            "at": 1790481285159,
+            "text": "Rei Morto atingiu Kael Veyr com Raizes Fétidas: 25 de dano. ",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "damage": 25
+          },
+          {
+            "id": "5983c86e-7603-4424-bd1c-2cba29f75f9f:reflex",
+            "at": 1790481285159,
+            "characterId": "char_jlhky6s9mstuuli0",
+            "text": "Kael Veyr: Reflexos 14 contra 20 — falha.",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Kael Veyr",
+              "playerName": "Mateus Lopes de Deus",
+              "attribute": "Reflexos contra 20 [d8 + d10]",
+              "result": 14,
+              "breakdown": "5 + 10",
+              "modifier": -1
+            }
+          },
+          {
+            "id": "f15dcac4-702f-4631-84ed-94a7160ba334",
+            "at": 1790481285158,
+            "text": "Kael Veyr decidiu reagir a Raizes Fétidas.",
+            "characterId": "char_jlhky6s9mstuuli0"
+          },
           {
             "id": "5983c86e-7603-4424-bd1c-2cba29f75f9f:hit",
             "at": 1790481276643,
@@ -121457,35 +121486,6 @@
             "at": 1790474029492,
             "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
             "characterId": "char_4uf4pocfmstw6x65"
-          },
-          {
-            "id": "a87f9124-e451-4507-9e0c-d8381eb5a4ce:hit",
-            "at": 1790474029492,
-            "text": "Cavaleiro Estatua usou Golpe de lança em Thorfinn Lyngstad: acerto 14, errou.",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_4uf4pocfmstw6x65",
-              "characterName": "Cavaleiro Estatua",
-              "playerName": "Mestre",
-              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
-              "result": 14,
-              "breakdown": "11 + 3",
-              "modifier": 0
-            }
-          },
-          {
-            "id": "0f426c4a-67f0-42cd-8212-8ca0b218573d",
-            "at": 1790473926258,
-            "text": "Thorfinn Lyngstad: sucesso em Ataque lança em area. 0 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 0
-          },
-          {
-            "id": "1d613f29-9a0d-4ec3-a8d8-739890394912",
-            "at": 1790473886306,
-            "text": "Kael Veyr evitou Golpe de lança de Cavaleiro Estatua. Nenhum dano aplicado.",
-            "characterId": "char_jlhky6s9mstuuli0"
           }
         ],
         "receipts": [
@@ -122317,26 +122317,10 @@
           "user_reulc3j3ms3snnxu:88168ca2-719c-438c-8295-658b34fae048",
           "user_reulc3j3ms3snnxu:735015b6-d042-4e5d-b2e9-081f8daa7dcf",
           "user_reulc3j3ms3snnxu:a33f3b55-dab0-45a1-a705-d7b720afded2",
-          "user_reulc3j3ms3snnxu:9907ca12-487c-42d5-99ff-3048817549d7"
+          "user_reulc3j3ms3snnxu:9907ca12-487c-42d5-99ff-3048817549d7",
+          "user_gd68ua63msnua1nb:336447eb-7e4a-4f1d-9989-f25c3acfe269"
         ],
-        "pendingAttack": {
-          "id": "5983c86e-7603-4424-bd1c-2cba29f75f9f",
-          "at": 1790481276643,
-          "characterId": "char_jlhky6s9mstuuli0",
-          "creatureName": "Rei Morto",
-          "attackName": "Raizes Fétidas",
-          "total": 20,
-          "rolls": [
-            9,
-            11
-          ],
-          "dice": [
-            "d12",
-            "d12"
-          ],
-          "damage": 25,
-          "effect": ""
-        }
+        "pendingAttack": null
       }
     ]
   ],
