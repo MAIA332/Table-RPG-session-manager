@@ -125335,7 +125335,7 @@
           }
         ],
         "weather": "rain",
-        "updatedAt": 1790481950460,
+        "updatedAt": 1790483006789,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
@@ -126630,7 +126630,40 @@
             "mdef": "8",
             "type": "Planta, Mágico",
             "bonus": "+10 Bontânica e Venenos +3 Sobrevivência Selvagem +4 Força Bruta",
-            "effect": "Dano de Sangramento (Usuário)"
+            "effect": "Dano de Sangramento (Usuário)",
+            "actions": [
+              {
+                "id": "action-a37609ec-b971-40aa-81c2-c9ed15d1ad37",
+                "name": "Mãe Natureza",
+                "kind": "attack",
+                "attackDice": "3d12",
+                "damageDice": "4d12+2",
+                "cost": 25,
+                "costResource": "mp",
+                "restoreAmount": 0,
+                "restoreResource": "hp",
+                "consume": false,
+                "requirement": "Raizes finas entram no meu dedo",
+                "effect": "Consegue controlar a vontade tudo de verde e plantas ao seu redor, exige um teste de vontade de CD 10, caso falhe recebe 10 de dano"
+              },
+              {
+                "id": "action-9a7c9739-c954-4af5-b46c-625ba3b9aba1",
+                "name": "Berço de cura",
+                "kind": "heal",
+                "attackDice": "2d10",
+                "damageDice": "",
+                "cost": 15,
+                "costResource": "mp",
+                "restoreAmount": 15,
+                "restoreResource": "hp",
+                "consume": false,
+                "requirement": "Raizes finas entram no meu dedo",
+                "effect": "Cria uma aura de flores que cura você, exige um teste de vontade de CD 10, caso falhe recebe 10 de dano"
+              }
+            ],
+            "weight": 100,
+            "weightUnit": "g",
+            "folderId": "custom"
           },
           {
             "id": "custom-eq-8mth39oh",
