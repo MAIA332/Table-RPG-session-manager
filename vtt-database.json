@@ -1548,7 +1548,7 @@
           "ip": 2.5,
           "maxIp": 6,
           "fp": 2,
-          "xp": 52,
+          "xp": 62,
           "lp": 0
         },
         "skills": {
@@ -1561,7 +1561,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790474514978,
+        "updatedAt": 1790475044922,
         "customModifiers": [
           {
             "id": "s1uckf",
