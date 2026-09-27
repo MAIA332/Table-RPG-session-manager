@@ -120689,8 +120689,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 893,
-        "updatedAt": 1790538715080,
+        "revision": 894,
+        "updatedAt": 1790539309554,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -120728,6 +120728,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "837a340c-b5c8-4bdf-8b40-3545dc9b14a5",
+            "at": 1790539309553,
+            "characterId": "char_jlhky6s9mstuuli0",
+            "text": "Kael Veyr chegou a 0 HP. Vigor: 6 + 2 + 4 = 12. Agonizando. Permanece com 0 HP e precisa de socorro.",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Kael Veyr",
+              "playerName": "Mateus Lopes de Deus",
+              "attribute": "Morte · Vigor [d8 + d8 + d8] · Agonizando · Permanece com 0 HP e precisa de socorro.",
+              "result": 12,
+              "breakdown": "6 + 2 + 4",
+              "modifier": 0
+            }
+          },
           {
             "id": "d7aafebd-4762-46b0-9590-de513892773d",
             "at": 1790538715078,
@@ -121356,12 +121372,6 @@
               "breakdown": "5 + 3",
               "modifier": 0
             }
-          },
-          {
-            "id": "dbdd9f40-ef54-4a6c-a18d-ca5f02210056",
-            "at": 1790474470230,
-            "text": "Kael Veyr evitou Golpe de lança de Cavaleiro Estatua. Nenhum dano aplicado.",
-            "characterId": "char_jlhky6s9mstuuli0"
           }
         ],
         "receipts": [
@@ -122237,21 +122247,21 @@
         "pendingAttack": null,
         "deathChecks": {
           "char_jlhky6s9mstuuli0": {
-            "id": "d7aafebd-4762-46b0-9590-de513892773d",
-            "at": 1790538715078,
+            "id": "837a340c-b5c8-4bdf-8b40-3545dc9b14a5",
+            "at": 1790539309553,
             "characterId": "char_jlhky6s9mstuuli0",
             "characterName": "Kael Veyr",
             "die": "d8",
             "rolls": [
-              7,
-              5,
-              8
+              6,
+              2,
+              4
             ],
-            "total": 20,
-            "status": "recovered",
-            "label": "Resistiu à morte",
-            "effect": "Recupera 1 HP e pode voltar a agir.",
-            "active": false
+            "total": 12,
+            "status": "dying",
+            "label": "Agonizando",
+            "effect": "Permanece com 0 HP e precisa de socorro.",
+            "active": true
           },
           "char_u267bpepmsusoyuv": {
             "id": "78326b00-121c-466c-ac6f-0dd1ea049a84",
