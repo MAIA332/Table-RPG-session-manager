@@ -120687,11 +120687,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 907,
-        "updatedAt": 1790544317754,
+        "revision": 908,
+        "updatedAt": 1790544326044,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 0,
@@ -120812,6 +120812,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "3170bb47-f76c-460a-882f-6ce8385e8119",
+            "at": 1790544326044,
+            "text": "Sereia do pantano errou Thorfinn Lyngstad. Nenhum dano aplicado.",
+            "characterId": "char_4uf4pocfmstw6x65"
+          },
+          {
+            "id": "6c9823a7-d0fd-4c25-b494-864bf2233ae9:hit",
+            "at": 1790544326044,
+            "text": "Sereia do pantano usou Cuspe de água fervente em Thorfinn Lyngstad: acerto 8, errou.",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_4uf4pocfmstw6x65",
+              "characterName": "Sereia do pantano",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Cuspe de água fervente [d6 + d10]",
+              "result": 8,
+              "breakdown": "2 + 6",
+              "modifier": 0
+            }
+          },
           {
             "id": "961bfd33-cb08-497b-bd9d-7514b65d89b4",
             "at": 1790544273690,
@@ -121433,28 +121455,6 @@
             "text": "Cavaleiro Estatua atingiu Amélia Candinari com Golpe de lança: 10 de dano. ",
             "characterId": "char_u267bpepmsusoyuv",
             "damage": 10
-          },
-          {
-            "id": "37a34f9f-f713-427a-a4e3-fc06a5c5da63:reflex",
-            "at": 1790474514978,
-            "characterId": "char_u267bpepmsusoyuv",
-            "text": "Amélia Candinari: Reflexos 7 contra 12 — falha.",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_u267bpepmsusoyuv",
-              "characterName": "Amélia Candinari",
-              "playerName": "Miih",
-              "attribute": "Reflexos contra 12 [d8 + d10]",
-              "result": 7,
-              "breakdown": "5 + 1",
-              "modifier": 1
-            }
-          },
-          {
-            "id": "60ed43d9-20de-43b8-9eb3-8013ed9bef13",
-            "at": 1790474514977,
-            "text": "Amélia Candinari decidiu reagir a Golpe de lança.",
-            "characterId": "char_u267bpepmsusoyuv"
           }
         ],
         "receipts": [
@@ -122333,7 +122333,8 @@
           "user_reulc3j3ms3snnxu:bd948e14-9125-4820-b623-887626078984",
           "user_0bhp2ga3msl1uk6h:1a7e00e6-d491-4131-b37e-1de7e6591f46",
           "user_reulc3j3ms3snnxu:7fa08dfe-478f-4e3d-9a06-f8db1e10a303",
-          "user_reulc3j3ms3snnxu:1e94b04f-ed6c-454a-a300-11e6a9e950d0"
+          "user_reulc3j3ms3snnxu:1e94b04f-ed6c-454a-a300-11e6a9e950d0",
+          "user_reulc3j3ms3snnxu:5bba8a5c-3fb5-4eed-87b3-4aae5e426799"
         ],
         "pendingAttack": null,
         "deathChecks": {
