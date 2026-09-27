@@ -111837,8 +111837,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 753,
-        "updatedAt": 1790478606068,
+        "revision": 754,
+        "updatedAt": 1790478614109,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -112007,6 +112007,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "390cf005-9212-438e-9a79-bcf7498933ed:hit",
+            "at": 1790478614109,
+            "text": "Rei Morto usou Raizes Fétidas em Thorfinn Lyngstad: acerto 17, aguardando reação.",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_4uf4pocfmstw6x65",
+              "characterName": "Rei Morto",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Raizes Fétidas [d12 + d12]",
+              "result": 17,
+              "breakdown": "11 + 6",
+              "modifier": 0
+            }
+          },
           {
             "id": "e7039ef2-58c3-408c-8303-9b28bc2fd957",
             "at": 1790478430405,
@@ -112610,22 +112626,6 @@
             "text": "Cavaleiro Estatua atingiu Thorfinn Lyngstad com Golpe: 8 de dano. ",
             "characterId": "char_4uf4pocfmstw6x65",
             "damage": 8
-          },
-          {
-            "id": "71d26cb2-bca4-4dcc-8332-fffe178b3ab1:reflex",
-            "at": 1790472960039,
-            "characterId": "char_4uf4pocfmstw6x65",
-            "text": "Thorfinn Lyngstad: Reflexos 8 contra 15 — falha.",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_4uf4pocfmstw6x65",
-              "characterName": "Thorfinn Lyngstad",
-              "playerName": "Tito",
-              "attribute": "Reflexos contra 15 [d10 + d8]",
-              "result": 8,
-              "breakdown": "7 + 3",
-              "modifier": -2
-            }
           }
         ],
         "receipts": [
@@ -113363,9 +113363,27 @@
           "user_reulc3j3ms3snnxu:c2071303-80b8-4d01-b625-d6aa02aa68b4",
           "user_gd68ua63msnua1nb:9fbcc9d6-11b5-4067-bd00-1c3e353cd188",
           "user_gybabf5mmskx7a24:45ab6905-499f-45e8-8987-554095ca5294",
-          "user_reulc3j3ms3snnxu:8776242d-4adb-44fe-a65c-c9eba2547ebd"
+          "user_reulc3j3ms3snnxu:8776242d-4adb-44fe-a65c-c9eba2547ebd",
+          "user_reulc3j3ms3snnxu:62eacd98-6371-4572-a37c-40e169b6e4c3"
         ],
-        "pendingAttack": null
+        "pendingAttack": {
+          "id": "390cf005-9212-438e-9a79-bcf7498933ed",
+          "at": 1790478614109,
+          "characterId": "char_4uf4pocfmstw6x65",
+          "creatureName": "Rei Morto",
+          "attackName": "Raizes Fétidas",
+          "total": 17,
+          "rolls": [
+            11,
+            6
+          ],
+          "dice": [
+            "d12",
+            "d12"
+          ],
+          "damage": 25,
+          "effect": ""
+        }
       }
     ]
   ],
