@@ -120660,8 +120660,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 847,
-        "updatedAt": 1790481267365,
+        "revision": 848,
+        "updatedAt": 1790481276643,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -120881,6 +120881,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "5983c86e-7603-4424-bd1c-2cba29f75f9f:hit",
+            "at": 1790481276643,
+            "text": "Rei Morto usou Raizes Fétidas em Kael Veyr: acerto 20, aguardando reação.",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Rei Morto",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Raizes Fétidas [d12 + d12]",
+              "result": 20,
+              "breakdown": "9 + 11",
+              "modifier": 0
+            }
+          },
           {
             "id": "2b6a918b-5a76-4ab9-a45c-383cf3886d71",
             "at": 1790480190455,
@@ -121470,22 +121486,6 @@
             "at": 1790473886306,
             "text": "Kael Veyr evitou Golpe de lança de Cavaleiro Estatua. Nenhum dano aplicado.",
             "characterId": "char_jlhky6s9mstuuli0"
-          },
-          {
-            "id": "10a88c41-8e1f-48c6-ad3a-a9e78e02db6e:reflex",
-            "at": 1790473886306,
-            "characterId": "char_jlhky6s9mstuuli0",
-            "text": "Kael Veyr: Reflexos 13 contra 11 — sucesso.",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_jlhky6s9mstuuli0",
-              "characterName": "Kael Veyr",
-              "playerName": "Mateus Lopes de Deus",
-              "attribute": "Reflexos contra 11 [d8 + d10]",
-              "result": 13,
-              "breakdown": "7 + 7",
-              "modifier": -1
-            }
           }
         ],
         "receipts": [
@@ -122316,9 +122316,27 @@
           "user_reulc3j3ms3snnxu:1deb6bb4-78ff-4d5e-94f5-06464d93a336",
           "user_reulc3j3ms3snnxu:88168ca2-719c-438c-8295-658b34fae048",
           "user_reulc3j3ms3snnxu:735015b6-d042-4e5d-b2e9-081f8daa7dcf",
-          "user_reulc3j3ms3snnxu:a33f3b55-dab0-45a1-a705-d7b720afded2"
+          "user_reulc3j3ms3snnxu:a33f3b55-dab0-45a1-a705-d7b720afded2",
+          "user_reulc3j3ms3snnxu:9907ca12-487c-42d5-99ff-3048817549d7"
         ],
-        "pendingAttack": null
+        "pendingAttack": {
+          "id": "5983c86e-7603-4424-bd1c-2cba29f75f9f",
+          "at": 1790481276643,
+          "characterId": "char_jlhky6s9mstuuli0",
+          "creatureName": "Rei Morto",
+          "attackName": "Raizes Fétidas",
+          "total": 20,
+          "rolls": [
+            9,
+            11
+          ],
+          "dice": [
+            "d12",
+            "d12"
+          ],
+          "damage": 25,
+          "effect": ""
+        }
       }
     ]
   ],
