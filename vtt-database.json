@@ -120666,11 +120666,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 855,
-        "updatedAt": 1790481442720,
+        "revision": 856,
+        "updatedAt": 1790481449454,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 1,
@@ -120887,6 +120887,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "c61f108a-d850-4012-b449-6ce8f865ac81",
+            "at": 1790481449454,
+            "text": "Rei Morto errou Kael Veyr. Nenhum dano aplicado.",
+            "characterId": "char_jlhky6s9mstuuli0"
+          },
+          {
+            "id": "852d4a19-f076-42f1-b966-4ded48c6468b:hit",
+            "at": 1790481449454,
+            "text": "Rei Morto usou Raizes Fétidas em Kael Veyr: acerto 9, errou.",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Rei Morto",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Raizes Fétidas [d12 + d12]",
+              "result": 9,
+              "breakdown": "3 + 6",
+              "modifier": 0
+            }
+          },
           {
             "id": "c7ea5670-df81-4032-acae-ce1e47455074",
             "at": 1790481285159,
@@ -121470,28 +121492,6 @@
             "at": 1790474090366,
             "text": "Amélia Candinari decidiu reagir a Golpe de lança.",
             "characterId": "char_u267bpepmsusoyuv"
-          },
-          {
-            "id": "b4c58e26-4a25-4386-aa6e-7720490de8b1:hit",
-            "at": 1790474082835,
-            "text": "Cavaleiro Estatua usou Golpe de lança em Amélia Candinari: acerto 14, aguardando reação.",
-            "characterId": "char_u267bpepmsusoyuv",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_u267bpepmsusoyuv",
-              "characterName": "Cavaleiro Estatua",
-              "playerName": "Mestre",
-              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
-              "result": 14,
-              "breakdown": "6 + 8",
-              "modifier": 0
-            }
-          },
-          {
-            "id": "ccef8c87-0006-45a5-890d-eeeb65cad315",
-            "at": 1790474029492,
-            "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
-            "characterId": "char_4uf4pocfmstw6x65"
           }
         ],
         "receipts": [
@@ -122330,7 +122330,8 @@
           "user_0bhp2ga3msl1uk6h:c31910e7-3ede-4d63-8970-b84b3c8e14c6",
           "user_gybabf5mmskx7a24:c11953f7-7837-4136-a0b1-719ead02e6de",
           "user_reulc3j3ms3snnxu:c27f8ab0-2897-48ce-aea7-b2850b07d299",
-          "user_reulc3j3ms3snnxu:581f5cc9-a3e9-4f3a-ad9a-d97cdb97de7b"
+          "user_reulc3j3ms3snnxu:581f5cc9-a3e9-4f3a-ad9a-d97cdb97de7b",
+          "user_reulc3j3ms3snnxu:99de1f95-f0c3-485d-ad1e-df8dd3d12d76"
         ],
         "pendingAttack": null
       }
