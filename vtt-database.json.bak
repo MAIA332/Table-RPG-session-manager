@@ -1298,7 +1298,6 @@
           "custom-eq-2h9c6v8u",
           "custom-eq-ci0g0jmf",
           "custom-eq-ci0g0jmf",
-          "custom-eq-jmhi67kt",
           "custom-eq-z7tuan2j",
           "custom-eq-jmhi67kt",
           "custom-eq-syoh6gen",
@@ -1322,7 +1321,7 @@
           "maxHp": 95,
           "mp": 34,
           "maxMp": 59,
-          "ip": 2.113,
+          "ip": 2.213,
           "maxIp": 6,
           "fp": 2,
           "xp": 85,
@@ -1341,7 +1340,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790477697339,
+        "updatedAt": 1790477701054,
         "customModifiers": [
           {
             "id": "6ute35",
