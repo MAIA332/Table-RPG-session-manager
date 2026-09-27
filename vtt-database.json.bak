@@ -111838,8 +111838,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 604,
-        "updatedAt": 1790473920489,
+        "revision": 605,
+        "updatedAt": 1790473922334,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111968,13 +111968,43 @@
             "equipment": [],
             "instanceId": "bf4e2db0-d62b-4a91-a12c-ccf4002b3a98",
             "currentHp": 52,
-            "currentMp": 20,
+            "currentMp": 5,
             "currentIp": 6
           }
         ],
         "playerAttacks": {},
-        "qte": null,
+        "qte": {
+          "id": "82b2c7b4-e6f0-4569-844d-a19992d9fc30",
+          "ability": {
+            "id": "fa4f3f63-ae79-4a38-bef7-4e609a995238",
+            "kind": "qte",
+            "name": "Ataque lança em area",
+            "cost": {
+              "amount": 15,
+              "resource": "mp"
+            },
+            "seconds": 5,
+            "checkId": "c23",
+            "difficulty": 8,
+            "failureDamage": "8",
+            "failureEffect": "",
+            "successDamage": "0",
+            "successEffect": ""
+          },
+          "deadline": 1790473927334,
+          "targets": [
+            "char_4uf4pocfmstw6x65",
+            "char_u267bpepmsusoyuv",
+            "char_jlhky6s9mstuuli0"
+          ],
+          "outcomes": {}
+        },
         "log": [
+          {
+            "id": "2b6434d3-25b3-4573-813f-9e43cae94d93",
+            "at": 1790473922334,
+            "text": "Cavaleiro Estatua: Ataque lança em area!"
+          },
           {
             "id": "1d613f29-9a0d-4ec3-a8d8-739890394912",
             "at": 1790473886306,
@@ -112430,13 +112460,6 @@
             "id": "e9b7adde-a0f9-40c5-bfd2-e16fb40be0b6",
             "at": 1789858876216,
             "text": "Monstro do pantano: Coordenação de algas!"
-          },
-          {
-            "id": "1297006f-32c1-4412-8ee2-1de842449327",
-            "at": 1789858525829,
-            "text": "Amélia Candinari: sucesso em Coordenação de algas. 0 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 0
           }
         ],
         "receipts": [
@@ -113027,7 +113050,8 @@
           "user_reulc3j3ms3snnxu:244250cb-e7ca-4518-acf8-017d6fb25302",
           "user_gd68ua63msnua1nb:0d0868e9-5008-4756-a7dc-242b7082bfb4",
           "user_reulc3j3ms3snnxu:25847b2e-08ae-4888-87f9-e1c58c871dd0",
-          "user_reulc3j3ms3snnxu:7eb72de1-cf4a-47ca-9c75-d3b3626a0a9c"
+          "user_reulc3j3ms3snnxu:7eb72de1-cf4a-47ca-9c75-d3b3626a0a9c",
+          "user_reulc3j3ms3snnxu:e0a385d1-dbcb-4e29-97f8-d012061e12ea"
         ],
         "pendingAttack": null
       }
