@@ -124037,7 +124037,7 @@
             "id": "d9c080fc-2b11-48f9-bc04-fbc2e7c7ea0f",
             "name": "Amelia hig 1",
             "url": "https://zipline.sinapselabs.com.br/u/375MuB.png",
-            "isPublic": false,
+            "isPublic": true,
             "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
             "ownerId": "user_reulc3j3ms3snnxu",
             "ownerName": "GILGAMESH",
@@ -125334,7 +125334,7 @@
           }
         ],
         "weather": "rain",
-        "updatedAt": 1790484025332,
+        "updatedAt": 1790484026372,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
