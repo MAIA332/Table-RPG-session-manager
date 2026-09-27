@@ -124159,7 +124159,7 @@
             "id": "89e979f2-f3d1-41d6-a837-b4cac46a7f30",
             "name": "Thorfinn cena inicial",
             "url": "https://zipline.sinapselabs.com.br/u/64kRkd.png",
-            "isPublic": false,
+            "isPublic": true,
             "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
             "ownerId": "user_reulc3j3ms3snnxu",
             "ownerName": "GILGAMESH",
@@ -125416,7 +125416,7 @@
           }
         ],
         "weather": "rain",
-        "updatedAt": 1790541957394,
+        "updatedAt": 1790541959825,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
