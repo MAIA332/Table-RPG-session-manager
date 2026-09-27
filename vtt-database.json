@@ -115842,8 +115842,101 @@
           }
         ],
         "weather": "sunny",
-        "updatedAt": 1790471078978,
+        "updatedAt": 1790471742629,
         "customCreatures": [
+          {
+            "name": "Cavaleiro Estatua",
+            "imageUrl": "https://zipline.sinapselabs.com.br/u/BZxdbc.png",
+            "level": 11,
+            "species": "Construto",
+            "maxHp": 89,
+            "maxMp": 20,
+            "def": 10,
+            "mdef": 12,
+            "attributes": {
+              "dex": "d12",
+              "ins": "d6",
+              "mig": "d8",
+              "wlp": "d6"
+            },
+            "id": "custom-1fe744f1-d4ab-4aa0-b3a5-d149b463bca5",
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Golpe de lança",
+                "attributes": [
+                  "dex",
+                  "mig"
+                ],
+                "damage": 10,
+                "type": "físico",
+                "description": "Dano: 10; alvo: Defesa Física"
+              },
+              {
+                "name": "Golpe",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 8,
+                "type": "físico",
+                "description": "Dano: 8; alvo: Defesa Física"
+              }
+            ],
+            "combatVersion": 2,
+            "basicAttacksV2": [
+              {
+                "name": "Golpe de lança",
+                "attributes": [
+                  "dex",
+                  "mig"
+                ],
+                "targetDefense": "physical",
+                "damage": "10",
+                "type": "físico"
+              },
+              {
+                "name": "Golpe",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "targetDefense": "physical",
+                "damage": "8",
+                "type": "físico"
+              }
+            ],
+            "abilities": [
+              {
+                "id": "fa4f3f63-ae79-4a38-bef7-4e609a995238",
+                "kind": "qte",
+                "name": "Ataque lança em area",
+                "cost": {
+                  "amount": 15,
+                  "resource": "mp"
+                },
+                "seconds": 5,
+                "checkId": "c23",
+                "difficulty": 8,
+                "failureDamage": "8",
+                "failureEffect": "",
+                "successDamage": "0",
+                "successEffect": ""
+              }
+            ],
+            "spells": [],
+            "equipment": []
+          },
           {
             "name": "Criatura dentre a nevoa",
             "imageUrl": "http://zipline.sinapselabs.com.br/u/2uMG2M.png",
