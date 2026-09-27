@@ -120669,8 +120669,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 948,
-        "updatedAt": 1790546072500,
+        "revision": 949,
+        "updatedAt": 1790548258225,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -120696,6 +120696,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "62c2a868-519b-49b8-8723-a210305e504c",
+            "at": 1790548258225,
+            "characterId": "char_u267bpepmsusoyuv",
+            "text": "Amélia Candinari chegou a 0 HP. Vigor: 5 + 5 + 1 = 11. Agonizando. Permanece com 0 HP e precisa de socorro.",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_u267bpepmsusoyuv",
+              "characterName": "Amélia Candinari",
+              "playerName": "Miih",
+              "attribute": "Morte · Vigor [d8 + d8 + d8] · Agonizando · Permanece com 0 HP e precisa de socorro.",
+              "result": 11,
+              "breakdown": "5 + 5 + 1",
+              "modifier": 0
+            }
+          },
           {
             "id": "7ce75b6c-3522-4dd1-905b-3a60f2314e2a",
             "at": 1790545898442,
@@ -121304,22 +121320,6 @@
             "at": 1790474625308,
             "text": "Amélia Candinari evitou Golpe de lança de Cavaleiro Estatua. Nenhum dano aplicado.",
             "characterId": "char_u267bpepmsusoyuv"
-          },
-          {
-            "id": "1928bfb7-19c9-43e7-9a87-95cb6c08e9ac:reflex",
-            "at": 1790474625308,
-            "characterId": "char_u267bpepmsusoyuv",
-            "text": "Amélia Candinari: Reflexos 16 contra 12 — sucesso.",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_u267bpepmsusoyuv",
-              "characterName": "Amélia Candinari",
-              "playerName": "Miih",
-              "attribute": "Reflexos contra 12 [d8 + d10]",
-              "result": 16,
-              "breakdown": "5 + 10",
-              "modifier": 1
-            }
           }
         ],
         "receipts": [
@@ -122258,21 +122258,21 @@
             "active": false
           },
           "char_u267bpepmsusoyuv": {
-            "id": "7ce75b6c-3522-4dd1-905b-3a60f2314e2a",
-            "at": 1790545898442,
+            "id": "62c2a868-519b-49b8-8723-a210305e504c",
+            "at": 1790548258225,
             "characterId": "char_u267bpepmsusoyuv",
             "characterName": "Amélia Candinari",
             "die": "d8",
             "rolls": [
-              8,
-              3,
+              5,
+              5,
               1
             ],
-            "total": 12,
+            "total": 11,
             "status": "dying",
             "label": "Agonizando",
             "effect": "Permanece com 0 HP e precisa de socorro.",
-            "active": false
+            "active": true
           }
         }
       }
