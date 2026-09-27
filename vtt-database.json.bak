@@ -111838,8 +111838,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 635,
-        "updatedAt": 1790474146782,
+        "revision": 636,
+        "updatedAt": 1790474147734,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111968,13 +111968,43 @@
             "equipment": [],
             "instanceId": "bf4e2db0-d62b-4a91-a12c-ccf4002b3a98",
             "currentHp": 34,
-            "currentMp": 20,
+            "currentMp": 5,
             "currentIp": 6
           }
         ],
         "playerAttacks": {},
-        "qte": null,
+        "qte": {
+          "id": "7351848f-48c0-4993-b772-da3cebe5e669",
+          "ability": {
+            "id": "fa4f3f63-ae79-4a38-bef7-4e609a995238",
+            "kind": "qte",
+            "name": "Ataque lança em area",
+            "cost": {
+              "amount": 15,
+              "resource": "mp"
+            },
+            "seconds": 5,
+            "checkId": "c23",
+            "difficulty": 8,
+            "failureDamage": "8",
+            "failureEffect": "",
+            "successDamage": "0",
+            "successEffect": ""
+          },
+          "deadline": 1790474152734,
+          "targets": [
+            "char_4uf4pocfmstw6x65",
+            "char_u267bpepmsusoyuv",
+            "char_jlhky6s9mstuuli0"
+          ],
+          "outcomes": {}
+        },
         "log": [
+          {
+            "id": "0e1ab8af-f6c5-475f-a332-4d450e17aa1c",
+            "at": 1790474147734,
+            "text": "Cavaleiro Estatua: Ataque lança em area!"
+          },
           {
             "id": "17307a6a-26b5-49a5-bfdc-08d0d318b8d9",
             "at": 1790474090366,
@@ -112459,11 +112489,6 @@
             "id": "46ab8ecf-06df-4ee8-b535-50ba4149ea84",
             "at": 1789860360277,
             "text": "Planta carnivora: Puxada de vinhas!"
-          },
-          {
-            "id": "0bd26d4f-1695-4095-a77e-2ea3f5c386f7",
-            "at": 1789860187922,
-            "text": "Planta carnivora entrou em cena."
           }
         ],
         "receipts": [
@@ -113085,7 +113110,8 @@
           "user_reulc3j3ms3snnxu:7c9ba1b8-a040-4f36-bba6-97d17bf591fa",
           "user_gd68ua63msnua1nb:14909bf6-ec7b-48b2-8f57-3443e73e703e",
           "user_reulc3j3ms3snnxu:e3741566-7576-419f-8d61-2326d803ab12",
-          "user_reulc3j3ms3snnxu:c0685b20-131b-4656-8913-9cf960e2357c"
+          "user_reulc3j3ms3snnxu:c0685b20-131b-4656-8913-9cf960e2357c",
+          "user_reulc3j3ms3snnxu:9489a03f-21ce-46d2-8aaf-aa524133bb49"
         ],
         "pendingAttack": null
       }
