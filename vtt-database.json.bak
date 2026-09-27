@@ -111838,26 +111838,14 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 694,
-        "updatedAt": 1790474691808,
+        "revision": 695,
+        "updatedAt": 1790474697672,
         "enabled": true,
         "spotlight": {
-          "side": "group",
+          "side": "gm",
           "activePlayerId": null,
-          "request": {
-            "id": "d4ba9cc2-9cbd-4cb6-ac4c-79ff2e21b3b2",
-            "playerId": "user_gybabf5mmskx7a24",
-            "required": [
-              "user_0bhp2ga3msl1uk6h",
-              "user_gd68ua63msnua1nb",
-              "user_reulc3j3ms3snnxu"
-            ],
-            "approved": [
-              "user_0bhp2ga3msl1uk6h",
-              "user_gd68ua63msnua1nb"
-            ]
-          },
-          "tokens": 2,
+          "request": null,
+          "tokens": 1,
           "players": [
             {
               "id": "user_0bhp2ga3msl1uk6h",
@@ -111879,7 +111867,7 @@
             "user_reulc3j3ms3snnxu"
           ]
         },
-        "actorCharacterId": "char_u267bpepmsusoyuv",
+        "actorCharacterId": null,
         "participantCharacterIds": [
           "char_4uf4pocfmstw6x65",
           "char_u267bpepmsusoyuv",
@@ -113268,7 +113256,8 @@
           "user_reulc3j3ms3snnxu:35e2f7bd-1db9-48de-8c28-bfc5bb117604",
           "user_gybabf5mmskx7a24:d4ba9cc2-9cbd-4cb6-ac4c-79ff2e21b3b2",
           "user_0bhp2ga3msl1uk6h:1af9fc67-f1e0-45b2-b285-f06131681e06",
-          "user_gd68ua63msnua1nb:209333cd-359e-41e7-8732-220d43803edf"
+          "user_gd68ua63msnua1nb:209333cd-359e-41e7-8732-220d43803edf",
+          "user_reulc3j3ms3snnxu:779bd04e-e5dd-4d4c-97ba-08b3ee9c4bdf"
         ],
         "pendingAttack": null
       }
