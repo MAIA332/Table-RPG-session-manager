@@ -120666,11 +120666,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 857,
-        "updatedAt": 1790481490542,
+        "revision": 858,
+        "updatedAt": 1790481496301,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 0,
@@ -120887,6 +120887,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "da4614d9-5ce2-43ba-be3a-e9ab63a2a001",
+            "at": 1790481496301,
+            "text": "Rei Morto errou Kael Veyr. Nenhum dano aplicado.",
+            "characterId": "char_jlhky6s9mstuuli0"
+          },
+          {
+            "id": "23dc48a4-6452-424e-b9c1-f64b54b30f01:hit",
+            "at": 1790481496301,
+            "text": "Rei Morto usou Raizes Fétidas em Kael Veyr: acerto 4, errou.",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Rei Morto",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Raizes Fétidas [d12 + d12]",
+              "result": 4,
+              "breakdown": "1 + 3",
+              "modifier": 0
+            }
+          },
           {
             "id": "c61f108a-d850-4012-b449-6ce8f865ac81",
             "at": 1790481449454,
@@ -121470,28 +121492,6 @@
             "text": "Cavaleiro Estatua atingiu Amélia Candinari com Golpe de lança: 10 de dano. ",
             "characterId": "char_u267bpepmsusoyuv",
             "damage": 10
-          },
-          {
-            "id": "b4c58e26-4a25-4386-aa6e-7720490de8b1:reflex",
-            "at": 1790474090366,
-            "characterId": "char_u267bpepmsusoyuv",
-            "text": "Amélia Candinari: Reflexos 11 contra 14 — falha.",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_u267bpepmsusoyuv",
-              "characterName": "Amélia Candinari",
-              "playerName": "Miih",
-              "attribute": "Reflexos contra 14 [d8 + d10]",
-              "result": 11,
-              "breakdown": "8 + 2",
-              "modifier": 1
-            }
-          },
-          {
-            "id": "fc6707a8-ccf4-4ec6-81a4-bfa28d64e7b3",
-            "at": 1790474090366,
-            "text": "Amélia Candinari decidiu reagir a Golpe de lança.",
-            "characterId": "char_u267bpepmsusoyuv"
           }
         ],
         "receipts": [
@@ -122332,7 +122332,8 @@
           "user_reulc3j3ms3snnxu:c27f8ab0-2897-48ce-aea7-b2850b07d299",
           "user_reulc3j3ms3snnxu:581f5cc9-a3e9-4f3a-ad9a-d97cdb97de7b",
           "user_reulc3j3ms3snnxu:99de1f95-f0c3-485d-ad1e-df8dd3d12d76",
-          "user_reulc3j3ms3snnxu:c719b78c-7992-4b87-8246-39503157bb16"
+          "user_reulc3j3ms3snnxu:c719b78c-7992-4b87-8246-39503157bb16",
+          "user_reulc3j3ms3snnxu:38b8f1d8-dc1e-4d58-b81b-fde275bd80ba"
         ],
         "pendingAttack": null
       }
