@@ -120628,11 +120628,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 800,
-        "updatedAt": 1790479926303,
+        "revision": 801,
+        "updatedAt": 1790479940304,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 1,
@@ -120798,6 +120798,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "f95a0e60-cfa3-4cbb-b525-0e576fd08021",
+            "at": 1790479940304,
+            "text": "Rei Morto errou Kael Veyr. Nenhum dano aplicado.",
+            "characterId": "char_jlhky6s9mstuuli0"
+          },
+          {
+            "id": "5607a371-2723-4f60-b526-d21547d84c92:hit",
+            "at": 1790479940304,
+            "text": "Rei Morto usou Raizes Fétidas em Kael Veyr: acerto 4, errou.",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Rei Morto",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Raizes Fétidas [d12 + d12]",
+              "result": 4,
+              "breakdown": "2 + 2",
+              "modifier": 0
+            }
+          },
           {
             "id": "fbe04e55-ce8a-4df7-81f4-50580a7e59ac",
             "at": 1790478866016,
@@ -121403,19 +121425,6 @@
               "breakdown": "5 + 6",
               "modifier": 0
             }
-          },
-          {
-            "id": "a172f5e0-4ac1-44d8-ab34-8bddbdbab299",
-            "at": 1790473468757,
-            "text": "Amélia Candinari: sucesso em Ataque lança em area. 0 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 0
-          },
-          {
-            "id": "b277d237-c090-4138-93d5-b02ddcb9e3e8",
-            "at": 1790473381025,
-            "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
-            "characterId": "char_4uf4pocfmstw6x65"
           }
         ],
         "receipts": [
@@ -122200,7 +122209,8 @@
           "user_reulc3j3ms3snnxu:771b7a15-c0f3-4a4c-a763-43d25a70fd9f",
           "user_reulc3j3ms3snnxu:98f9737f-2ff4-43e4-aeab-08f28326da14",
           "user_reulc3j3ms3snnxu:81f48f27-4dcc-45d5-ae60-5559a1cf4f95",
-          "user_reulc3j3ms3snnxu:c31a8244-502f-49b3-9392-0ffd0814a48c"
+          "user_reulc3j3ms3snnxu:c31a8244-502f-49b3-9392-0ffd0814a48c",
+          "user_reulc3j3ms3snnxu:73b879a5-f33f-42f2-8eb5-402e80cbd16d"
         ],
         "pendingAttack": null
       }
