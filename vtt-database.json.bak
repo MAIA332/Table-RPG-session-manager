@@ -1311,7 +1311,8 @@
           "custom-eq-480ajzbp",
           "custom-eq-8a9thfm5",
           "custom-eq-tqob7exa",
-          "custom-eq-ahg7o1rj"
+          "custom-eq-ahg7o1rj",
+          "custom-eq-z9vv7wfb"
         ],
         "zenit": 787,
         "resources": {
@@ -1319,7 +1320,7 @@
           "maxHp": 89,
           "mp": 54,
           "maxMp": 56,
-          "ip": 2.513,
+          "ip": 1.513,
           "maxIp": 6,
           "fp": 2,
           "xp": 75,
@@ -1337,7 +1338,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790474819699,
+        "updatedAt": 1790474871354,
         "customModifiers": [
           {
             "id": "6ute35",

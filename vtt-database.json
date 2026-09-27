@@ -1338,7 +1338,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790474871354,
+        "updatedAt": 1790474888857,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1477,6 +1477,12 @@
             "name": "Defesa mágica manual",
             "target": "sheet_defense_hidden",
             "value": 9
+          },
+          {
+            "id": "item_equipped:custom-eq-z9vv7wfb",
+            "name": "Bônus ativos: Lança com ponta de âmbar",
+            "target": "item_state_hidden",
+            "value": 1
           }
         ],
         "customItems": [],
