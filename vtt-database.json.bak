@@ -120628,13 +120628,22 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 801,
-        "updatedAt": 1790479940304,
+        "revision": 802,
+        "updatedAt": 1790479944191,
         "enabled": true,
         "spotlight": {
           "side": "group",
           "activePlayerId": null,
-          "request": null,
+          "request": {
+            "id": "8fdc5a50-037f-4caf-a1ed-e6cecfbdfce7",
+            "playerId": "user_gybabf5mmskx7a24",
+            "required": [
+              "user_0bhp2ga3msl1uk6h",
+              "user_gd68ua63msnua1nb",
+              "user_reulc3j3ms3snnxu"
+            ],
+            "approved": []
+          },
           "tokens": 1,
           "players": [
             {
@@ -120657,7 +120666,7 @@
             "user_reulc3j3ms3snnxu"
           ]
         },
-        "actorCharacterId": null,
+        "actorCharacterId": "char_u267bpepmsusoyuv",
         "participantCharacterIds": [
           "char_4uf4pocfmstw6x65",
           "char_u267bpepmsusoyuv",
@@ -122210,7 +122219,8 @@
           "user_reulc3j3ms3snnxu:98f9737f-2ff4-43e4-aeab-08f28326da14",
           "user_reulc3j3ms3snnxu:81f48f27-4dcc-45d5-ae60-5559a1cf4f95",
           "user_reulc3j3ms3snnxu:c31a8244-502f-49b3-9392-0ffd0814a48c",
-          "user_reulc3j3ms3snnxu:73b879a5-f33f-42f2-8eb5-402e80cbd16d"
+          "user_reulc3j3ms3snnxu:73b879a5-f33f-42f2-8eb5-402e80cbd16d",
+          "user_gybabf5mmskx7a24:8fdc5a50-037f-4caf-a1ed-e6cecfbdfce7"
         ],
         "pendingAttack": null
       }
