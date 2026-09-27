@@ -120682,14 +120682,14 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 877,
-        "updatedAt": 1790481752826,
+        "revision": 878,
+        "updatedAt": 1790481754416,
         "enabled": true,
         "spotlight": {
-          "side": "group",
-          "activePlayerId": "user_0bhp2ga3msl1uk6h",
+          "side": "gm",
+          "activePlayerId": null,
           "request": null,
-          "tokens": 1,
+          "tokens": 0,
           "players": [
             {
               "id": "user_0bhp2ga3msl1uk6h",
@@ -120711,7 +120711,7 @@
             "user_reulc3j3ms3snnxu"
           ]
         },
-        "actorCharacterId": "char_4uf4pocfmstw6x65",
+        "actorCharacterId": null,
         "participantCharacterIds": [
           "char_4uf4pocfmstw6x65",
           "char_u267bpepmsusoyuv",
@@ -122387,7 +122387,8 @@
           "user_reulc3j3ms3snnxu:d67347c2-ba50-4e48-8495-81e9e44e5c2e",
           "user_reulc3j3ms3snnxu:d78262b2-7782-4acc-a9a7-2d21cecf439c",
           "user_reulc3j3ms3snnxu:4c0720cd-eade-4a82-8409-386eb9e71f46",
-          "user_reulc3j3ms3snnxu:45fc6dd4-595a-4e73-b3c4-2c3be0bb92ba"
+          "user_reulc3j3ms3snnxu:45fc6dd4-595a-4e73-b3c4-2c3be0bb92ba",
+          "user_reulc3j3ms3snnxu:a7c71171-9862-4c1b-921b-40d85fba5a7d"
         ],
         "pendingAttack": null
       }
