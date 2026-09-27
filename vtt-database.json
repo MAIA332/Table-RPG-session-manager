@@ -120636,8 +120636,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 807,
-        "updatedAt": 1790480071581,
+        "revision": 808,
+        "updatedAt": 1790480120309,
         "enabled": true,
         "spotlight": {
           "side": "group",
@@ -120830,6 +120830,22 @@
                 "failureEffect": "",
                 "successDamage": "0",
                 "successEffect": ""
+              },
+              {
+                "id": "f1422b4e-1016-4993-87df-0a8818884166",
+                "kind": "qte",
+                "name": "Pressão",
+                "cost": {
+                  "amount": 15,
+                  "resource": "mp"
+                },
+                "seconds": 7,
+                "checkId": "c23",
+                "difficulty": 20,
+                "failureDamage": "8",
+                "failureEffect": "",
+                "successDamage": "0",
+                "successEffect": ""
               }
             ],
             "instanceId": "8630be02-dd7c-45a6-9b6e-93fb25b071c7",
@@ -120841,6 +120857,11 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "aa5a442e-d0ee-495e-8aad-ef8416c1c071",
+            "at": 1790480120309,
+            "text": "Habilidades de Rei Morto atualizadas pelo Mestre."
+          },
           {
             "id": "97b76bde-641d-405d-a5f4-ad06747258cc",
             "at": 1790480071581,
@@ -121449,13 +121470,6 @@
               "breakdown": "10 + 1",
               "modifier": 0
             }
-          },
-          {
-            "id": "c7701649-d24c-4fd2-a275-b5cb8d215c09",
-            "at": 1790473633285,
-            "text": "Amélia Candinari: sucesso em Ataque lança em area. 0 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 0
           }
         ],
         "receipts": [
@@ -122247,7 +122261,8 @@
           "user_reulc3j3ms3snnxu:d9a0b2b0-7bb1-4552-83a1-aa5d19ed7817",
           "user_0bhp2ga3msl1uk6h:9b78e192-1ba6-44cb-97eb-68c0523cb276",
           "user_reulc3j3ms3snnxu:eedf5045-7203-4216-89f0-2fc22bfcb266",
-          "user_reulc3j3ms3snnxu:db09bd8a-6391-402a-93a2-05f40acf6359"
+          "user_reulc3j3ms3snnxu:db09bd8a-6391-402a-93a2-05f40acf6359",
+          "user_reulc3j3ms3snnxu:662145bf-353f-4244-9250-4f35591d053d"
         ],
         "pendingAttack": null
       }
@@ -125365,7 +125380,7 @@
           }
         ],
         "weather": "fog",
-        "updatedAt": 1790480071581,
+        "updatedAt": 1790480120309,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
@@ -126565,6 +126580,22 @@
                 "checkId": "c23",
                 "difficulty": 20,
                 "failureDamage": "15",
+                "failureEffect": "",
+                "successDamage": "0",
+                "successEffect": ""
+              },
+              {
+                "id": "f1422b4e-1016-4993-87df-0a8818884166",
+                "kind": "qte",
+                "name": "Pressão",
+                "cost": {
+                  "amount": 15,
+                  "resource": "mp"
+                },
+                "seconds": 7,
+                "checkId": "c23",
+                "difficulty": 20,
+                "failureDamage": "8",
                 "failureEffect": "",
                 "successDamage": "0",
                 "successEffect": ""
