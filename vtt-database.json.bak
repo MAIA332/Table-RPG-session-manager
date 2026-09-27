@@ -120689,8 +120689,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 897,
-        "updatedAt": 1790539806055,
+        "revision": 898,
+        "updatedAt": 1790539809085,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -120728,6 +120728,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "70c79e7e-9c61-4e9d-a825-06f1d7bd3e56",
+            "at": 1790539809084,
+            "characterId": "char_jlhky6s9mstuuli0",
+            "text": "Kael Veyr chegou a 0 HP. Vigor: 7 + 7 + 3 = 17. Estabilizado. Inconsciente com 0 HP, sem deterioração automática.",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Kael Veyr",
+              "playerName": "Mateus Lopes de Deus",
+              "attribute": "Morte · Vigor [d8 + d8 + d8] · Estabilizado · Inconsciente com 0 HP, sem deterioração automática.",
+              "result": 17,
+              "breakdown": "7 + 7 + 3",
+              "modifier": 0
+            }
+          },
           {
             "id": "a2002259-1726-4ed6-bd7c-3da7c9ae3f34",
             "at": 1790539733355,
@@ -121366,12 +121382,6 @@
               "breakdown": "4 + 8",
               "modifier": 0
             }
-          },
-          {
-            "id": "0e8c2104-b0d9-4a1a-b919-e3b36bd86b11",
-            "at": 1790474496319,
-            "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
-            "characterId": "char_4uf4pocfmstw6x65"
           }
         ],
         "receipts": [
@@ -122247,21 +122257,21 @@
         "pendingAttack": null,
         "deathChecks": {
           "char_jlhky6s9mstuuli0": {
-            "id": "a2002259-1726-4ed6-bd7c-3da7c9ae3f34",
-            "at": 1790539733355,
+            "id": "70c79e7e-9c61-4e9d-a825-06f1d7bd3e56",
+            "at": 1790539809084,
             "characterId": "char_jlhky6s9mstuuli0",
             "characterName": "Kael Veyr",
             "die": "d8",
             "rolls": [
-              5,
-              1,
-              7
+              7,
+              7,
+              3
             ],
-            "total": 13,
+            "total": 17,
             "status": "stable",
             "label": "Estabilizado",
             "effect": "Inconsciente com 0 HP, sem deterioração automática.",
-            "active": false
+            "active": true
           },
           "char_u267bpepmsusoyuv": {
             "id": "78326b00-121c-466c-ac6f-0dd1ea049a84",
