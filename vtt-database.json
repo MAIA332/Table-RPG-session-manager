@@ -1355,8 +1355,7 @@
           "custom-eq-u26mxku6",
           "custom-eq-1ebbfips",
           "custom-eq-jjueige1",
-          "custom-eq-22lyzyze",
-          "custom-eq-ahg7o1rj"
+          "custom-eq-22lyzyze"
         ],
         "zenit": 787,
         "resources": {
@@ -1364,7 +1363,7 @@
           "maxHp": 95,
           "mp": 39,
           "maxMp": 59,
-          "ip": 1.313,
+          "ip": 1.413,
           "maxIp": 6,
           "fp": 0,
           "xp": 85,
@@ -1383,7 +1382,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790546403428,
+        "updatedAt": 1790546423928,
         "customModifiers": [
           {
             "id": "6ute35",
