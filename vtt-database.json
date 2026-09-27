@@ -111822,11 +111822,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 580,
-        "updatedAt": 1790473601050,
+        "revision": 581,
+        "updatedAt": 1790473608475,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 2,
@@ -111959,6 +111959,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "0338cf45-b921-4de7-8494-309ed10ec90a",
+            "at": 1790473608475,
+            "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
+            "characterId": "char_4uf4pocfmstw6x65"
+          },
+          {
+            "id": "767242d2-dde0-4065-a8ba-4aebeae306c1:hit",
+            "at": 1790473608475,
+            "text": "Cavaleiro Estatua usou Golpe de lança em Thorfinn Lyngstad: acerto 11, errou.",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_4uf4pocfmstw6x65",
+              "characterName": "Cavaleiro Estatua",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
+              "result": 11,
+              "breakdown": "5 + 6",
+              "modifier": 0
+            }
+          },
           {
             "id": "a172f5e0-4ac1-44d8-ab34-8bddbdbab299",
             "at": 1790473468757,
@@ -112380,20 +112402,6 @@
             "at": 1789857825881,
             "text": "Amélia Candinari: sucesso em Coordenação de algas. 0 de dano. ",
             "characterId": "char_u267bpepmsusoyuv",
-            "damage": 0
-          },
-          {
-            "id": "ada08a62-da1e-4108-803e-18e13142b9de",
-            "at": 1789857825177,
-            "text": "Thorfinn Lyngstad: sucesso em Coordenação de algas. 0 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 0
-          },
-          {
-            "id": "93e45e4a-1504-4cb4-8b97-d93d1fa172b6",
-            "at": 1789857824589,
-            "text": "Kael Veyr: sucesso em Coordenação de algas. 0 de dano. ",
-            "characterId": "char_jlhky6s9mstuuli0",
             "damage": 0
           }
         ],
@@ -112961,7 +112969,8 @@
           "user_gybabf5mmskx7a24:33db9041-0268-4e52-9a74-22f45231492b",
           "user_gd68ua63msnua1nb:78436c77-4cd3-4901-aa08-d5a9a1df8489",
           "user_reulc3j3ms3snnxu:0668741e-07a0-400c-b1cc-959fd31d0aac",
-          "user_reulc3j3ms3snnxu:11eb1984-bf5c-4aca-8824-7cb59f2fffa6"
+          "user_reulc3j3ms3snnxu:11eb1984-bf5c-4aca-8824-7cb59f2fffa6",
+          "user_reulc3j3ms3snnxu:03ae053f-6e13-4cbb-9528-7ddedc851009"
         ],
         "pendingAttack": null
       }
