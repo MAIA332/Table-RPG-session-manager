@@ -1368,7 +1368,7 @@
         ],
         "zenit": 787,
         "resources": {
-          "hp": 95,
+          "hp": 87,
           "maxHp": 95,
           "mp": 57,
           "maxMp": 59,
@@ -1391,7 +1391,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790544367752,
+        "updatedAt": 1790544407890,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -120687,11 +120687,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 914,
-        "updatedAt": 1790544406294,
+        "revision": 915,
+        "updatedAt": 1790544407890,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 0,
@@ -120832,13 +120832,22 @@
           "targets": [
             "char_4uf4pocfmstw6x65"
           ],
-          "outcomes": {}
+          "outcomes": {
+            "char_4uf4pocfmstw6x65": {
+              "total": 13,
+              "success": false,
+              "damage": 8,
+              "effect": "Alvos falhados ficam adormecidos"
+            }
+          }
         },
         "log": [
           {
-            "id": "89b6930c-dd1a-4114-ba90-7a7b90d9ab7f",
-            "at": 1790544406294,
-            "text": "Sereia do pantano: Canto da sereia!"
+            "id": "afa86a25-25c5-42c4-b043-c5ea8c0ecffe",
+            "at": 1790544407890,
+            "text": "Thorfinn Lyngstad: falha em Canto da sereia. 8 de dano. Alvos falhados ficam adormecidos",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "damage": 8
           },
           {
             "id": "613d88bf-d2e1-472c-be9e-cd2e30ede030",
@@ -122350,7 +122359,8 @@
           "user_reulc3j3ms3snnxu:e0058256-4518-495b-abbb-ff162ad3669c",
           "user_reulc3j3ms3snnxu:cca9f28e-40b6-4ffd-b5ae-dc1dcbcaf6c9",
           "user_reulc3j3ms3snnxu:f0c57a0c-3899-44a7-84f0-dc9fe67a7741",
-          "user_reulc3j3ms3snnxu:2de66a5b-217d-4723-b5e8-f84dfa74b9d3"
+          "user_reulc3j3ms3snnxu:2de66a5b-217d-4723-b5e8-f84dfa74b9d3",
+          "user_0bhp2ga3msl1uk6h:46c4663f-64c9-4578-aafb-8e01ef43197a"
         ],
         "pendingAttack": null,
         "deathChecks": {
