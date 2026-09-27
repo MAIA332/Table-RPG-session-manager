@@ -120687,8 +120687,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 945,
-        "updatedAt": 1790544777287,
+        "revision": 946,
+        "updatedAt": 1790544791748,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -120710,105 +120710,7 @@
         "participantCharacterIds": [
           "char_4uf4pocfmstw6x65"
         ],
-        "creatures": [
-          {
-            "name": "Sereia do pantano",
-            "imageUrl": "https://i.pinimg.com/736x/f5/96/5c/f5965ccb9d4428c79e80ebdb136a98b9.jpg",
-            "level": 8,
-            "species": "Monstro",
-            "maxHp": 27,
-            "maxMp": 20,
-            "def": 10,
-            "mdef": 10,
-            "attributes": {
-              "dex": "d10",
-              "ins": "d6",
-              "mig": "d6",
-              "wlp": "d10"
-            },
-            "id": "custom-f961f0c3-e18d-4524-8b84-6dcacd581408",
-            "affinities": {
-              "physical": "none",
-              "air": "none",
-              "bolt": "none",
-              "dark": "none",
-              "earth": "none",
-              "fire": "none",
-              "ice": "none",
-              "light": "none",
-              "poison": "none"
-            },
-            "basicAttacks": [
-              {
-                "name": "Golpe",
-                "attributes": [
-                  "mig",
-                  "mig"
-                ],
-                "damage": 7,
-                "type": "físico",
-                "description": "Dano: 7; alvo: Defesa Física"
-              },
-              {
-                "name": "Cuspe de água fervente",
-                "attributes": [
-                  "ins",
-                  "dex"
-                ],
-                "damage": 10,
-                "type": "físico",
-                "description": "Dano: 10; alvo: Defesa Mágica"
-              }
-            ],
-            "combatVersion": 2,
-            "basicAttacksV2": [
-              {
-                "name": "Golpe",
-                "attributes": [
-                  "mig",
-                  "mig"
-                ],
-                "targetDefense": "physical",
-                "damage": "7",
-                "type": "físico"
-              },
-              {
-                "name": "Cuspe de água fervente",
-                "attributes": [
-                  "ins",
-                  "dex"
-                ],
-                "targetDefense": "magical",
-                "damage": "10",
-                "type": "físico"
-              }
-            ],
-            "abilities": [
-              {
-                "id": "e1d27025-16d5-4ddf-b099-e2926f054507",
-                "kind": "qte",
-                "name": "Canto da sereia",
-                "cost": {
-                  "amount": 1,
-                  "resource": "token"
-                },
-                "seconds": 5,
-                "checkId": "c29",
-                "difficulty": 20,
-                "failureDamage": "15",
-                "failureEffect": "Alvos falhados ficam adormecidos",
-                "successDamage": "0",
-                "successEffect": ""
-              }
-            ],
-            "spells": [],
-            "equipment": [],
-            "instanceId": "226e7dfe-3b05-4bf0-9a60-17e72b864c24",
-            "currentHp": 0,
-            "currentMp": 20,
-            "currentIp": 6
-          }
-        ],
+        "creatures": [],
         "playerAttacks": {},
         "qte": null,
         "log": [
@@ -122341,7 +122243,8 @@
           "user_0bhp2ga3msl1uk6h:f3b05026-d252-4b2b-962a-04f05d593552",
           "user_reulc3j3ms3snnxu:64ef3c89-7d19-4fe3-b587-250316c18574",
           "user_reulc3j3ms3snnxu:9ef96232-ed1e-409d-b553-72a1d89160d5",
-          "user_reulc3j3ms3snnxu:d1a4a081-6c66-45a9-b626-1b8900d77b3c"
+          "user_reulc3j3ms3snnxu:d1a4a081-6c66-45a9-b626-1b8900d77b3c",
+          "user_reulc3j3ms3snnxu:fd5656e5-ba86-4b48-afd6-666f0b221ed8"
         ],
         "pendingAttack": null,
         "deathChecks": {
