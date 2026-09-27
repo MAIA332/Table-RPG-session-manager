@@ -1268,7 +1268,7 @@
         ],
         "zenit": 787,
         "resources": {
-          "hp": 39,
+          "hp": 40,
           "maxHp": 89,
           "mp": 1,
           "maxMp": 56,
@@ -1290,7 +1290,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790471105058,
+        "updatedAt": 1790471106418,
         "customModifiers": [
           {
             "id": "6ute35",
