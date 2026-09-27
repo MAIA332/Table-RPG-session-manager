@@ -114492,7 +114492,7 @@
             "id": "c80453bf-d0ca-46f5-8038-abfde8b2c51f",
             "name": "Enigma 1",
             "url": "https://zipline.sinapselabs.com.br/u/SQUe4z.png",
-            "isPublic": false,
+            "isPublic": true,
             "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
             "ownerId": "user_reulc3j3ms3snnxu",
             "ownerName": "GILGAMESH",
@@ -115869,7 +115869,7 @@
           }
         ],
         "weather": "sunny",
-        "updatedAt": 1790471833577,
+        "updatedAt": 1790472595006,
         "customCreatures": [
           {
             "name": "Cavaleiro Estatua",
