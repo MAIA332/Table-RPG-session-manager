@@ -111838,8 +111838,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 680,
-        "updatedAt": 1790474616001,
+        "revision": 681,
+        "updatedAt": 1790474619592,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111991,6 +111991,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "1928bfb7-19c9-43e7-9a87-95cb6c08e9ac:hit",
+            "at": 1790474619592,
+            "text": "Cavaleiro Estatua usou Golpe de lança em Amélia Candinari: acerto 12, aguardando reação.",
+            "characterId": "char_u267bpepmsusoyuv",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_u267bpepmsusoyuv",
+              "characterName": "Cavaleiro Estatua",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
+              "result": 12,
+              "breakdown": "6 + 6",
+              "modifier": 0
+            }
+          },
           {
             "id": "b598569f-addd-4f91-88db-68676a9fc85e",
             "at": 1790474610462,
@@ -112538,13 +112554,6 @@
             "text": "Agrat bat usou Festim da Megera em Thorfinn Lyngstad: acerto. 15 de dano. Um ataque mágico de sucção de vida. Metade do dano causado a esse alvo cura o HP de Agrat Bat.",
             "characterId": "char_4uf4pocfmstw6x65",
             "damage": 15
-          },
-          {
-            "id": "873e84ad-133d-4906-b2b4-2488ba74c5a4",
-            "at": 1789868440995,
-            "text": "Amélia Candinari: sucesso em Espinhos negros. 0 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 0
           }
         ],
         "receipts": [
@@ -113210,9 +113219,27 @@
           "user_reulc3j3ms3snnxu:72c18db7-2bb0-418a-bd4e-bf0c0130241f",
           "user_reulc3j3ms3snnxu:ab7d42e0-0eda-4936-9732-23cc55f0970f",
           "user_reulc3j3ms3snnxu:ca115806-a1e7-4666-8e3f-c9d78aeb90e6",
-          "user_reulc3j3ms3snnxu:620c7987-afe9-41c5-8854-bcdb9a53ad99"
+          "user_reulc3j3ms3snnxu:620c7987-afe9-41c5-8854-bcdb9a53ad99",
+          "user_reulc3j3ms3snnxu:c4eacf8c-4502-4444-93e9-3b9c87936a36"
         ],
-        "pendingAttack": null
+        "pendingAttack": {
+          "id": "1928bfb7-19c9-43e7-9a87-95cb6c08e9ac",
+          "at": 1790474619592,
+          "characterId": "char_u267bpepmsusoyuv",
+          "creatureName": "Cavaleiro Estatua",
+          "attackName": "Golpe de lança",
+          "total": 12,
+          "rolls": [
+            6,
+            6
+          ],
+          "dice": [
+            "d12",
+            "d8"
+          ],
+          "damage": 10,
+          "effect": ""
+        }
       }
     ]
   ],
