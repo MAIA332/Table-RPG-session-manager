@@ -111822,24 +111822,14 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 527,
-        "updatedAt": 1790472986153,
-        "enabled": true,
+        "revision": 528,
+        "updatedAt": 1790473005180,
+        "enabled": false,
         "spotlight": {
           "side": "group",
           "activePlayerId": null,
-          "request": {
-            "id": "d6bf5fc8-0289-4874-a3b4-9cef5f1ed6eb",
-            "playerId": "user_0bhp2ga3msl1uk6h",
-            "required": [
-              "user_gybabf5mmskx7a24",
-              "user_reulc3j3ms3snnxu"
-            ],
-            "approved": [
-              "user_gybabf5mmskx7a24"
-            ]
-          },
-          "tokens": 2,
+          "request": null,
+          "tokens": 0,
           "players": [
             {
               "id": "user_0bhp2ga3msl1uk6h",
@@ -111851,12 +111841,9 @@
               "name": "Amélia Candinari",
               "avatar": "https://i.pinimg.com/736x/b2/91/a0/b291a08d6a221acb0d4b7ff9605714f4.jpg"
             }
-          ],
-          "approverIds": [
-            "user_reulc3j3ms3snnxu"
           ]
         },
-        "actorCharacterId": "char_4uf4pocfmstw6x65",
+        "actorCharacterId": null,
         "participantCharacterIds": [
           "char_4uf4pocfmstw6x65",
           "char_u267bpepmsusoyuv"
@@ -111961,44 +111948,7 @@
           }
         ],
         "playerAttacks": {},
-        "qte": {
-          "id": "a06ccf3c-89ed-46a4-9846-ac9dbe165e25",
-          "ability": {
-            "id": "fa4f3f63-ae79-4a38-bef7-4e609a995238",
-            "kind": "qte",
-            "name": "Ataque lança em area",
-            "cost": {
-              "amount": 15,
-              "resource": "mp"
-            },
-            "seconds": 5,
-            "checkId": "c23",
-            "difficulty": 8,
-            "failureDamage": "8",
-            "failureEffect": "",
-            "successDamage": "0",
-            "successEffect": ""
-          },
-          "deadline": 1790472901110,
-          "targets": [
-            "char_4uf4pocfmstw6x65",
-            "char_u267bpepmsusoyuv"
-          ],
-          "outcomes": {
-            "char_4uf4pocfmstw6x65": {
-              "total": 11,
-              "success": true,
-              "damage": 0,
-              "effect": ""
-            },
-            "char_u267bpepmsusoyuv": {
-              "total": 7,
-              "success": false,
-              "damage": 8,
-              "effect": ""
-            }
-          }
-        },
+        "qte": null,
         "log": [
           {
             "id": "ffe6114c-988b-4c42-9c6e-eaf02e7de3da",
@@ -112930,7 +112880,8 @@
           "user_reulc3j3ms3snnxu:6595c975-c58b-4bd5-b1f8-1f7b68382a67",
           "user_0bhp2ga3msl1uk6h:b0bde2b5-7643-4dd4-b850-2dc5c9e57193",
           "user_0bhp2ga3msl1uk6h:d6bf5fc8-0289-4874-a3b4-9cef5f1ed6eb",
-          "user_gybabf5mmskx7a24:dc8a041a-2c8e-4b76-adaf-82ed62f47df5"
+          "user_gybabf5mmskx7a24:dc8a041a-2c8e-4b76-adaf-82ed62f47df5",
+          "user_reulc3j3ms3snnxu:570023af-cab6-4673-82e5-5d4c31aa8364"
         ],
         "pendingAttack": null
       }
