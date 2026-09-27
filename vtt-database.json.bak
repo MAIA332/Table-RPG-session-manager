@@ -120628,8 +120628,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 805,
-        "updatedAt": 1790479963723,
+        "revision": 806,
+        "updatedAt": 1790479999351,
         "enabled": true,
         "spotlight": {
           "side": "group",
@@ -120787,6 +120787,25 @@
                 "failureEffect": "Quando o Rei Morto é alvo de um ataque físico, ele reage fazendo raízes grossas engolirem seu corpo. Ele reduz o dano sofrido pela metade e o atacante sofre a condição Lento (preso nas farpas da madeira)",
                 "successDamage": "0",
                 "successEffect": ""
+              },
+              {
+                "id": "392cf80b-dcb7-4a3d-b9e6-4cf911792b91",
+                "kind": "attack",
+                "name": "Choque de natureza",
+                "cost": {
+                  "amount": 20,
+                  "resource": "mp"
+                },
+                "attack": {
+                  "name": "Choque de natureza",
+                  "attributes": [
+                    "mig",
+                    "mig"
+                  ],
+                  "targetDefense": "physical",
+                  "damage": "15",
+                  "type": "físico"
+                }
               }
             ],
             "instanceId": "8630be02-dd7c-45a6-9b6e-93fb25b071c7",
@@ -120798,6 +120817,11 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "9980b24d-5081-460c-83da-6869b15a2604",
+            "at": 1790479999351,
+            "text": "Habilidades de Rei Morto atualizadas pelo Mestre."
+          },
           {
             "id": "f95a0e60-cfa3-4cbb-b525-0e576fd08021",
             "at": 1790479940304,
@@ -121409,22 +121433,6 @@
             "at": 1790473608475,
             "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
             "characterId": "char_4uf4pocfmstw6x65"
-          },
-          {
-            "id": "767242d2-dde0-4065-a8ba-4aebeae306c1:hit",
-            "at": 1790473608475,
-            "text": "Cavaleiro Estatua usou Golpe de lança em Thorfinn Lyngstad: acerto 11, errou.",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_4uf4pocfmstw6x65",
-              "characterName": "Cavaleiro Estatua",
-              "playerName": "Mestre",
-              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
-              "result": 11,
-              "breakdown": "5 + 6",
-              "modifier": 0
-            }
           }
         ],
         "receipts": [
@@ -122214,7 +122222,8 @@
           "user_gybabf5mmskx7a24:8fdc5a50-037f-4caf-a1ed-e6cecfbdfce7",
           "user_gd68ua63msnua1nb:2bac4c3e-f333-4a82-aa9e-b8a8860d6688",
           "user_reulc3j3ms3snnxu:d9a0b2b0-7bb1-4552-83a1-aa5d19ed7817",
-          "user_0bhp2ga3msl1uk6h:9b78e192-1ba6-44cb-97eb-68c0523cb276"
+          "user_0bhp2ga3msl1uk6h:9b78e192-1ba6-44cb-97eb-68c0523cb276",
+          "user_reulc3j3ms3snnxu:eedf5045-7203-4216-89f0-2fc22bfcb266"
         ],
         "pendingAttack": null
       }
@@ -125332,7 +125341,7 @@
           }
         ],
         "weather": "fog",
-        "updatedAt": 1790479431578,
+        "updatedAt": 1790479999351,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
@@ -125619,132 +125628,6 @@
               "Coordenação de algas: QTE 5s, dificuldade 9. Falha: 3 Os jogadores que falharem ficam presos por uma rodada. Sucesso: 0 "
             ],
             "equipment": []
-          },
-          {
-            "id": "custom-6aaf4qja",
-            "name": "Rei Morto",
-            "imageUrl": "https://zipline.sinapselabs.com.br/u/idQ8Sz.jpg",
-            "level": 20,
-            "species": "Aberração",
-            "maxHp": 150,
-            "maxMp": 150,
-            "def": 25,
-            "mdef": 25,
-            "attributes": {
-              "dex": "d12",
-              "ins": "d12",
-              "mig": "d12",
-              "wlp": "d12"
-            },
-            "affinities": {
-              "physical": "IM",
-              "air": "none",
-              "bolt": "none",
-              "dark": "IM",
-              "earth": "none",
-              "fire": "VU",
-              "ice": "none",
-              "light": "VU",
-              "poison": "none"
-            },
-            "basicAttacks": [
-              {
-                "name": "Raizes Fétidas",
-                "attributes": [
-                  "ins",
-                  "ins"
-                ],
-                "damage": 25,
-                "type": "terra",
-                "description": "Dano: 25; alvo: Defesa Física"
-              },
-              {
-                "name": "Raiz podre",
-                "attributes": [
-                  "ins",
-                  "mig"
-                ],
-                "damage": 20,
-                "type": "terra",
-                "description": "Dano: 20; alvo: Defesa Física"
-              }
-            ],
-            "spells": [
-              "Acerto: 2d12 (INS)",
-              "Esta criatura ataca manipulando a vegetação morte e as raizes putridas do local"
-            ],
-            "equipment": [],
-            "combatVersion": 2,
-            "basicAttacksV2": [
-              {
-                "name": "Raizes Fétidas",
-                "attributes": [
-                  "ins",
-                  "ins"
-                ],
-                "damage": "25",
-                "type": "terra",
-                "targetDefense": "physical"
-              },
-              {
-                "name": "Raiz podre",
-                "attributes": [
-                  "ins",
-                  "mig"
-                ],
-                "targetDefense": "physical",
-                "damage": "20",
-                "type": "terra"
-              }
-            ],
-            "abilities": [
-              {
-                "id": "1e76b69c-95a2-4e84-8a65-408a50f8a9db",
-                "kind": "qte",
-                "name": "Pressão de espinhos",
-                "cost": {
-                  "amount": 1,
-                  "resource": "token"
-                },
-                "seconds": 5,
-                "checkId": "c23",
-                "difficulty": 14,
-                "failureDamage": "25",
-                "failureEffect": "No chão cresce uma camada de espinhos",
-                "successDamage": "0",
-                "successEffect": ""
-              },
-              {
-                "id": "a95531a7-3183-4072-8847-567093cde564",
-                "kind": "passive",
-                "name": "Aura de Podridão",
-                "trigger": "Ao entrar em combate",
-                "effect": "O ambiente ao redor do Rei Morto é tóxico. Qualquer personagem que iniciar o turno na presença dele sofre automaticamente 5 de dano de Terra/Trevas e perde 5 de MP (a própria essência mágica é drenada pelo solo)"
-              },
-              {
-                "id": "0780cd56-9a34-484c-8240-92e51c4d00e7",
-                "kind": "passive",
-                "name": "Imunidades do Monarca",
-                "trigger": "Ao receber condições negativas",
-                "effect": "Sendo uma aberração morta-viva, ele é imune a status negativos como Envenenado, Sangrando ou Amedrontado."
-              },
-              {
-                "id": "da7ab524-766f-48ee-9d38-d1aadba267f9",
-                "kind": "qte",
-                "name": "Casca de Madeira Morta",
-                "cost": {
-                  "amount": 1,
-                  "resource": "token"
-                },
-                "seconds": 5,
-                "checkId": "c23",
-                "difficulty": 14,
-                "failureDamage": "1",
-                "failureEffect": "Quando o Rei Morto é alvo de um ataque físico, ele reage fazendo raízes grossas engolirem seu corpo. Ele reduz o dano sofrido pela metade e o atacante sofre a condição Lento (preso nas farpas da madeira)",
-                "successDamage": "0",
-                "successEffect": ""
-              }
-            ]
           },
           {
             "id": "custom-xsopkvsd",
@@ -126502,6 +126385,151 @@
             ],
             "spells": [],
             "equipment": []
+          },
+          {
+            "id": "custom-6aaf4qja",
+            "name": "Rei Morto",
+            "imageUrl": "https://zipline.sinapselabs.com.br/u/idQ8Sz.jpg",
+            "level": 20,
+            "species": "Aberração",
+            "maxHp": 150,
+            "maxMp": 150,
+            "def": 25,
+            "mdef": 25,
+            "attributes": {
+              "dex": "d12",
+              "ins": "d12",
+              "mig": "d12",
+              "wlp": "d12"
+            },
+            "affinities": {
+              "physical": "IM",
+              "air": "none",
+              "bolt": "none",
+              "dark": "IM",
+              "earth": "none",
+              "fire": "VU",
+              "ice": "none",
+              "light": "VU",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Raizes Fétidas",
+                "attributes": [
+                  "ins",
+                  "ins"
+                ],
+                "damage": 25,
+                "type": "terra",
+                "description": "Dano: 25; alvo: Defesa Física"
+              },
+              {
+                "name": "Raiz podre",
+                "attributes": [
+                  "ins",
+                  "mig"
+                ],
+                "damage": 20,
+                "type": "terra",
+                "description": "Dano: 20; alvo: Defesa Física"
+              }
+            ],
+            "spells": [
+              "Acerto: 2d12 (INS)",
+              "Esta criatura ataca manipulando a vegetação morte e as raizes putridas do local"
+            ],
+            "equipment": [],
+            "combatVersion": 2,
+            "basicAttacksV2": [
+              {
+                "name": "Raizes Fétidas",
+                "attributes": [
+                  "ins",
+                  "ins"
+                ],
+                "damage": "25",
+                "type": "terra",
+                "targetDefense": "physical"
+              },
+              {
+                "name": "Raiz podre",
+                "attributes": [
+                  "ins",
+                  "mig"
+                ],
+                "targetDefense": "physical",
+                "damage": "20",
+                "type": "terra"
+              }
+            ],
+            "abilities": [
+              {
+                "id": "1e76b69c-95a2-4e84-8a65-408a50f8a9db",
+                "kind": "qte",
+                "name": "Pressão de espinhos",
+                "cost": {
+                  "amount": 1,
+                  "resource": "token"
+                },
+                "seconds": 5,
+                "checkId": "c23",
+                "difficulty": 14,
+                "failureDamage": "25",
+                "failureEffect": "No chão cresce uma camada de espinhos",
+                "successDamage": "0",
+                "successEffect": ""
+              },
+              {
+                "id": "a95531a7-3183-4072-8847-567093cde564",
+                "kind": "passive",
+                "name": "Aura de Podridão",
+                "trigger": "Ao entrar em combate",
+                "effect": "O ambiente ao redor do Rei Morto é tóxico. Qualquer personagem que iniciar o turno na presença dele sofre automaticamente 5 de dano de Terra/Trevas e perde 5 de MP (a própria essência mágica é drenada pelo solo)"
+              },
+              {
+                "id": "0780cd56-9a34-484c-8240-92e51c4d00e7",
+                "kind": "passive",
+                "name": "Imunidades do Monarca",
+                "trigger": "Ao receber condições negativas",
+                "effect": "Sendo uma aberração morta-viva, ele é imune a status negativos como Envenenado, Sangrando ou Amedrontado."
+              },
+              {
+                "id": "da7ab524-766f-48ee-9d38-d1aadba267f9",
+                "kind": "qte",
+                "name": "Casca de Madeira Morta",
+                "cost": {
+                  "amount": 1,
+                  "resource": "token"
+                },
+                "seconds": 5,
+                "checkId": "c23",
+                "difficulty": 14,
+                "failureDamage": "1",
+                "failureEffect": "Quando o Rei Morto é alvo de um ataque físico, ele reage fazendo raízes grossas engolirem seu corpo. Ele reduz o dano sofrido pela metade e o atacante sofre a condição Lento (preso nas farpas da madeira)",
+                "successDamage": "0",
+                "successEffect": ""
+              },
+              {
+                "id": "392cf80b-dcb7-4a3d-b9e6-4cf911792b91",
+                "kind": "attack",
+                "name": "Choque de natureza",
+                "cost": {
+                  "amount": 20,
+                  "resource": "mp"
+                },
+                "attack": {
+                  "name": "Choque de natureza",
+                  "attributes": [
+                    "mig",
+                    "mig"
+                  ],
+                  "targetDefense": "physical",
+                  "damage": "15",
+                  "type": "físico"
+                }
+              }
+            ]
           }
         ],
         "customEquipment": [
