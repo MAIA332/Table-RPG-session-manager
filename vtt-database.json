@@ -1362,7 +1362,8 @@
           "eq-dagger",
           "custom-eq-u26mxku6",
           "custom-eq-1ebbfips",
-          "custom-eq-jjueige1"
+          "custom-eq-jjueige1",
+          "custom-eq-22lyzyze"
         ],
         "zenit": 787,
         "resources": {
@@ -1370,7 +1371,7 @@
           "maxHp": 95,
           "mp": 59,
           "maxMp": 59,
-          "ip": 1.313,
+          "ip": 1.213,
           "maxIp": 6,
           "fp": 0,
           "xp": 85,
@@ -1389,7 +1390,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790542303911,
+        "updatedAt": 1790542379041,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -128017,11 +128018,12 @@
             "itemName": "Seiva de Raiz Luminosa",
             "itemKind": "equipment",
             "donorItemBonusesActive": false,
-            "status": "pending",
-            "createdAt": 1790542376742
+            "status": "accepted",
+            "createdAt": 1790542376742,
+            "resolvedAt": 1790542379041
           }
         ],
-        "updatedAt": 1790542376742
+        "updatedAt": 1790542379041
       }
     ],
     [

@@ -1592,7 +1592,6 @@
           "custom-eq-1vxsbh3o",
           "custom-eq-1vxsbh3o",
           "custom-eq-1vxsbh3o",
-          "custom-eq-22lyzyze",
           "custom-eq-phorangi",
           "custom-eq-ahg7o1rj",
           "custom-eq-156iasrj"
@@ -1603,7 +1602,7 @@
           "maxHp": 77,
           "mp": 5,
           "maxMp": 70,
-          "ip": 4.1,
+          "ip": 4.2,
           "maxIp": 6,
           "fp": 1,
           "xp": 62,
@@ -1620,7 +1619,7 @@
           "cskill-1szrrx": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790542015237,
+        "updatedAt": 1790542376742,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -128004,9 +128003,25 @@
             "status": "accepted",
             "createdAt": 1790542280898,
             "resolvedAt": 1790542303911
+          },
+          {
+            "id": "transfer_wudpdp4omukap82u",
+            "campaignId": "camp_o5slw0ptmsjhu84l",
+            "donorCharacterId": "char_u267bpepmsusoyuv",
+            "donorCharacterName": "Amélia Candinari",
+            "donorOwnerId": "user_gybabf5mmskx7a24",
+            "recipientCharacterId": "char_4uf4pocfmstw6x65",
+            "recipientCharacterName": "Thorfinn Lyngstad",
+            "recipientOwnerId": "user_0bhp2ga3msl1uk6h",
+            "itemId": "custom-eq-22lyzyze",
+            "itemName": "Seiva de Raiz Luminosa",
+            "itemKind": "equipment",
+            "donorItemBonusesActive": false,
+            "status": "pending",
+            "createdAt": 1790542376742
           }
         ],
-        "updatedAt": 1790542303911
+        "updatedAt": 1790542376742
       }
     ],
     [
