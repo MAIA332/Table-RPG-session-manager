@@ -1593,7 +1593,7 @@
         ],
         "zenit": 487,
         "resources": {
-          "hp": 16,
+          "hp": 15,
           "maxHp": 77,
           "mp": 55,
           "maxMp": 70,
@@ -1614,7 +1614,7 @@
           "cskill-1szrrx": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790548089949,
+        "updatedAt": 1790548091514,
         "customModifiers": [
           {
             "id": "s1uckf",
