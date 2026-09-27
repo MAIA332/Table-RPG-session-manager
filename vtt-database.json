@@ -111838,11 +111838,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 665,
-        "updatedAt": 1790474487242,
+        "revision": 666,
+        "updatedAt": 1790474496319,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 3,
@@ -111991,6 +111991,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "0e8c2104-b0d9-4a1a-b919-e3b36bd86b11",
+            "at": 1790474496319,
+            "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
+            "characterId": "char_4uf4pocfmstw6x65"
+          },
+          {
+            "id": "eebeeb4d-8cc7-426d-9467-865b768d2588:hit",
+            "at": 1790474496319,
+            "text": "Cavaleiro Estatua usou Golpe de lança em Thorfinn Lyngstad: acerto 8, errou.",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_4uf4pocfmstw6x65",
+              "characterName": "Cavaleiro Estatua",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
+              "result": 8,
+              "breakdown": "5 + 3",
+              "modifier": 0
+            }
+          },
           {
             "id": "dbdd9f40-ef54-4a6c-a18d-ca5f02210056",
             "at": 1790474470230,
@@ -112485,20 +112507,6 @@
             "at": 1789860888002,
             "text": "Planta carnivora usou Esporos em Amélia Candinari: falha. 0 de dano. ",
             "characterId": "char_u267bpepmsusoyuv",
-            "damage": 0
-          },
-          {
-            "id": "2a297019-1000-4a20-9207-7b3df0cb8d59",
-            "at": 1789860819954,
-            "text": "Amélia Candinari: sucesso em Puxada de vinhas. 0 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 0
-          },
-          {
-            "id": "ffdee70b-7d54-431c-bbab-be9be0ae5c68",
-            "at": 1789860775925,
-            "text": "Planta carnivora usou Esporos em Kael Veyr: falha. 0 de dano. ",
-            "characterId": "char_jlhky6s9mstuuli0",
             "damage": 0
           }
         ],
@@ -113150,7 +113158,8 @@
           "user_reulc3j3ms3snnxu:7ee28254-42de-4923-9801-ae8ea80e3b7d",
           "user_reulc3j3ms3snnxu:a8b87be1-7520-4e41-ad1e-65054e0891a9",
           "user_gd68ua63msnua1nb:86c67d50-20fb-48d4-8cc3-a6c73d0baba8",
-          "user_reulc3j3ms3snnxu:2550efce-4619-4bc6-a344-3ea873e98f09"
+          "user_reulc3j3ms3snnxu:2550efce-4619-4bc6-a344-3ea873e98f09",
+          "user_reulc3j3ms3snnxu:30ac80cd-8445-42af-b528-1af03dcaba4b"
         ],
         "pendingAttack": null
       }
