@@ -1108,7 +1108,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790473472343,
+        "updatedAt": 1790473630191,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 583,
-        "updatedAt": 1790473628722,
+        "revision": 584,
+        "updatedAt": 1790473630191,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111981,13 +111981,22 @@
             "char_u267bpepmsusoyuv",
             "char_jlhky6s9mstuuli0"
           ],
-          "outcomes": {}
+          "outcomes": {
+            "char_jlhky6s9mstuuli0": {
+              "total": 14,
+              "success": true,
+              "damage": 0,
+              "effect": ""
+            }
+          }
         },
         "log": [
           {
-            "id": "de43420f-a559-4f3b-9cb7-4488ed8cae71",
-            "at": 1790473628722,
-            "text": "Cavaleiro Estatua: Ataque lança em area!"
+            "id": "ce5b38b5-38fa-4ae1-8030-67adc0aca42d",
+            "at": 1790473630191,
+            "text": "Kael Veyr: sucesso em Ataque lança em area. 0 de dano. ",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "damage": 0
           },
           {
             "id": "0338cf45-b921-4de7-8494-309ed10ec90a",
@@ -112995,7 +113004,8 @@
           "user_reulc3j3ms3snnxu:11eb1984-bf5c-4aca-8824-7cb59f2fffa6",
           "user_reulc3j3ms3snnxu:03ae053f-6e13-4cbb-9528-7ddedc851009",
           "user_reulc3j3ms3snnxu:61b2c573-c3fb-47d7-abb8-cf28bb4de929",
-          "user_reulc3j3ms3snnxu:acabda03-2a0d-4b1c-a8cc-a1e8548ced09"
+          "user_reulc3j3ms3snnxu:acabda03-2a0d-4b1c-a8cc-a1e8548ced09",
+          "user_gd68ua63msnua1nb:841f2849-ead3-4700-b8ec-f3b2e1927711"
         ],
         "pendingAttack": null
       }
