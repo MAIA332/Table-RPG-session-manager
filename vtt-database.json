@@ -120683,8 +120683,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 889,
-        "updatedAt": 1790536448434,
+        "revision": 890,
+        "updatedAt": 1790536470189,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -122235,7 +122235,7 @@
             "status": "stable",
             "label": "Estabilizado",
             "effect": "Inconsciente com 0 HP, sem deterioração automática.",
-            "active": true
+            "active": false
           }
         }
       }
