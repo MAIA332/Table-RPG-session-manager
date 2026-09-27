@@ -115826,7 +115826,7 @@
           }
         ],
         "weather": "fog",
-        "updatedAt": 1790470613247,
+        "updatedAt": 1790470615343,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
@@ -117844,7 +117844,8 @@
               "snd_custom_io1ehrc",
               "snd_custom_95w1eua",
               "snd_custom_3g28tak",
-              "snd_custom_6yrfmy6"
+              "snd_custom_6yrfmy6",
+              "snd_custom_seo5rj9"
             ]
           },
           {
