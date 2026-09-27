@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 523,
-        "updatedAt": 1790472948378,
+        "revision": 524,
+        "updatedAt": 1790472951490,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111990,6 +111990,22 @@
           }
         },
         "log": [
+          {
+            "id": "71d26cb2-bca4-4dcc-8332-fffe178b3ab1:hit",
+            "at": 1790472951490,
+            "text": "Cavaleiro Estatua usou Golpe em Thorfinn Lyngstad: acerto 15, aguardando reação.",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_4uf4pocfmstw6x65",
+              "characterName": "Cavaleiro Estatua",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Golpe [d8 + d8]",
+              "result": 15,
+              "breakdown": "7 + 8",
+              "modifier": 0
+            }
+          },
           {
             "id": "d8cf3b0f-f989-4e70-8cdd-be8c67679bb9",
             "at": 1790472898173,
@@ -112376,13 +112392,6 @@
             "id": "6f637104-b0d5-44c7-8c0d-622625dd2ae3",
             "at": 1789586927312,
             "text": "Lobo Zumbi entrou em cena."
-          },
-          {
-            "id": "48173fcc-5ac3-404c-a9c6-21c187d7c8b6",
-            "at": 1789517574125,
-            "text": "Amélia Candinari: tempo esgotado em Novo ataque 2. 10 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 10
           }
         ],
         "receipts": [
@@ -112893,8 +112902,27 @@
           "user_gybabf5mmskx7a24:c33ca175-a41b-49d9-ada4-6c6c08b1d6e3",
           "user_reulc3j3ms3snnxu:7394d307-4b95-4cb8-b2bd-d3594ea6cd6d",
           "user_reulc3j3ms3snnxu:320b964d-20ee-4890-bdd1-be1596c6e52f",
-          "user_reulc3j3ms3snnxu:c3afab16-db7c-4048-affb-e37a57459746"
-        ]
+          "user_reulc3j3ms3snnxu:c3afab16-db7c-4048-affb-e37a57459746",
+          "user_reulc3j3ms3snnxu:6595c975-c58b-4bd5-b1f8-1f7b68382a67"
+        ],
+        "pendingAttack": {
+          "id": "71d26cb2-bca4-4dcc-8332-fffe178b3ab1",
+          "at": 1790472951490,
+          "characterId": "char_4uf4pocfmstw6x65",
+          "creatureName": "Cavaleiro Estatua",
+          "attackName": "Golpe",
+          "total": 15,
+          "rolls": [
+            7,
+            8
+          ],
+          "dice": [
+            "d8",
+            "d8"
+          ],
+          "damage": 8,
+          "effect": ""
+        }
       }
     ]
   ],
