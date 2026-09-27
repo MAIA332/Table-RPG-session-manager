@@ -1307,7 +1307,7 @@
         ],
         "zenit": 787,
         "resources": {
-          "hp": 76,
+          "hp": 68,
           "maxHp": 89,
           "mp": 56,
           "maxMp": 56,
@@ -1329,7 +1329,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790472897687,
+        "updatedAt": 1790472960039,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -111822,11 +111822,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 524,
-        "updatedAt": 1790472951490,
+        "revision": 525,
+        "updatedAt": 1790472960039,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 2,
@@ -111990,6 +111990,35 @@
           }
         },
         "log": [
+          {
+            "id": "ffe6114c-988b-4c42-9c6e-eaf02e7de3da",
+            "at": 1790472960039,
+            "text": "Cavaleiro Estatua atingiu Thorfinn Lyngstad com Golpe: 8 de dano. ",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "damage": 8
+          },
+          {
+            "id": "71d26cb2-bca4-4dcc-8332-fffe178b3ab1:reflex",
+            "at": 1790472960039,
+            "characterId": "char_4uf4pocfmstw6x65",
+            "text": "Thorfinn Lyngstad: Reflexos 8 contra 15 — falha.",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_4uf4pocfmstw6x65",
+              "characterName": "Thorfinn Lyngstad",
+              "playerName": "Tito",
+              "attribute": "Reflexos contra 15 [d10 + d8]",
+              "result": 8,
+              "breakdown": "7 + 3",
+              "modifier": -2
+            }
+          },
+          {
+            "id": "ebfe8929-85a3-43a8-9ef1-e292072f2e75",
+            "at": 1790472960038,
+            "text": "Thorfinn Lyngstad decidiu reagir a Golpe.",
+            "characterId": "char_4uf4pocfmstw6x65"
+          },
           {
             "id": "71d26cb2-bca4-4dcc-8332-fffe178b3ab1:hit",
             "at": 1790472951490,
@@ -112377,21 +112406,6 @@
             "text": "Criatura dentre a nevoa usou Golpe em Thorfinn Lyngstad: falha. 0 de dano. ",
             "characterId": "char_4uf4pocfmstw6x65",
             "damage": 0
-          },
-          {
-            "id": "4bc27b3e-ccbd-437c-8a87-83450ac96239",
-            "at": 1789854264403,
-            "text": "Criatura dentre a nevoa entrou em cena."
-          },
-          {
-            "id": "e8d822b8-89c2-4ab2-ba06-d78b3e58a436",
-            "at": 1789589153648,
-            "text": "Lobo Zumbi entrou em cena."
-          },
-          {
-            "id": "6f637104-b0d5-44c7-8c0d-622625dd2ae3",
-            "at": 1789586927312,
-            "text": "Lobo Zumbi entrou em cena."
           }
         ],
         "receipts": [
@@ -112903,26 +112917,10 @@
           "user_reulc3j3ms3snnxu:7394d307-4b95-4cb8-b2bd-d3594ea6cd6d",
           "user_reulc3j3ms3snnxu:320b964d-20ee-4890-bdd1-be1596c6e52f",
           "user_reulc3j3ms3snnxu:c3afab16-db7c-4048-affb-e37a57459746",
-          "user_reulc3j3ms3snnxu:6595c975-c58b-4bd5-b1f8-1f7b68382a67"
+          "user_reulc3j3ms3snnxu:6595c975-c58b-4bd5-b1f8-1f7b68382a67",
+          "user_0bhp2ga3msl1uk6h:b0bde2b5-7643-4dd4-b850-2dc5c9e57193"
         ],
-        "pendingAttack": {
-          "id": "71d26cb2-bca4-4dcc-8332-fffe178b3ab1",
-          "at": 1790472951490,
-          "characterId": "char_4uf4pocfmstw6x65",
-          "creatureName": "Cavaleiro Estatua",
-          "attackName": "Golpe",
-          "total": 15,
-          "rolls": [
-            7,
-            8
-          ],
-          "dice": [
-            "d8",
-            "d8"
-          ],
-          "damage": 8,
-          "effect": ""
-        }
+        "pendingAttack": null
       }
     ]
   ],
