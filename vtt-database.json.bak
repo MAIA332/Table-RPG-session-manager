@@ -1543,7 +1543,7 @@
         ],
         "zenit": 487,
         "resources": {
-          "hp": 71,
+          "hp": 61,
           "maxHp": 77,
           "mp": 70,
           "maxMp": 70,
@@ -1563,7 +1563,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790473924192,
+        "updatedAt": 1790474090366,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -111838,11 +111838,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 628,
-        "updatedAt": 1790474082835,
+        "revision": 629,
+        "updatedAt": 1790474090366,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 1,
@@ -111975,6 +111975,35 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "17307a6a-26b5-49a5-bfdc-08d0d318b8d9",
+            "at": 1790474090366,
+            "text": "Cavaleiro Estatua atingiu Amélia Candinari com Golpe de lança: 10 de dano. ",
+            "characterId": "char_u267bpepmsusoyuv",
+            "damage": 10
+          },
+          {
+            "id": "b4c58e26-4a25-4386-aa6e-7720490de8b1:reflex",
+            "at": 1790474090366,
+            "characterId": "char_u267bpepmsusoyuv",
+            "text": "Amélia Candinari: Reflexos 11 contra 14 — falha.",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_u267bpepmsusoyuv",
+              "characterName": "Amélia Candinari",
+              "playerName": "Miih",
+              "attribute": "Reflexos contra 14 [d8 + d10]",
+              "result": 11,
+              "breakdown": "8 + 2",
+              "modifier": 1
+            }
+          },
+          {
+            "id": "fc6707a8-ccf4-4ec6-81a4-bfa28d64e7b3",
+            "at": 1790474090366,
+            "text": "Amélia Candinari decidiu reagir a Golpe de lança.",
+            "characterId": "char_u267bpepmsusoyuv"
+          },
           {
             "id": "b4c58e26-4a25-4386-aa6e-7720490de8b1:hit",
             "at": 1790474082835,
@@ -112435,27 +112464,6 @@
             "id": "0bd26d4f-1695-4095-a77e-2ea3f5c386f7",
             "at": 1789860187922,
             "text": "Planta carnivora entrou em cena."
-          },
-          {
-            "id": "23db3c5e-e6af-48b7-9460-33040b078ab3",
-            "at": 1789859091029,
-            "text": "Monstro do pantano usou Soco pantanoso em Thorfinn Lyngstad: acerto. 7 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 7
-          },
-          {
-            "id": "f4d1cc7a-04f7-43bb-afd2-8775a09928a5",
-            "at": 1789858948770,
-            "text": "Monstro do pantano usou Soco pantanoso em Thorfinn Lyngstad: falha. 0 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 0
-          },
-          {
-            "id": "83c62d1b-5ec0-4059-8209-89a767f78436",
-            "at": 1789858879643,
-            "text": "Amélia Candinari: falha em Coordenação de algas. 3 de dano. Os jogadores que falharem ficam presos por uma rodada",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 3
           }
         ],
         "receipts": [
@@ -113070,26 +113078,10 @@
           "user_reulc3j3ms3snnxu:8c0b1203-aefa-4b44-8173-a62b4a88b0b2",
           "user_gd68ua63msnua1nb:0f210727-0472-421c-91ab-00c0f73c0d57",
           "user_reulc3j3ms3snnxu:54810a47-7421-4809-9648-894a866e903a",
-          "user_reulc3j3ms3snnxu:b40e5364-fa4a-4a02-b6ca-d970975486b4"
+          "user_reulc3j3ms3snnxu:b40e5364-fa4a-4a02-b6ca-d970975486b4",
+          "user_gybabf5mmskx7a24:2a5d9620-0e5d-4f6b-8668-ba7dd8237434"
         ],
-        "pendingAttack": {
-          "id": "b4c58e26-4a25-4386-aa6e-7720490de8b1",
-          "at": 1790474082835,
-          "characterId": "char_u267bpepmsusoyuv",
-          "creatureName": "Cavaleiro Estatua",
-          "attackName": "Golpe de lança",
-          "total": 14,
-          "rolls": [
-            6,
-            8
-          ],
-          "dice": [
-            "d12",
-            "d8"
-          ],
-          "damage": 10,
-          "effect": ""
-        }
+        "pendingAttack": null
       }
     ]
   ],
