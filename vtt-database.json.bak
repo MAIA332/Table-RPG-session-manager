@@ -1329,7 +1329,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790473391542,
+        "updatedAt": 1790473410936,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1450,12 +1450,6 @@
             "name": "Confusão",
             "target": "ins",
             "value": -2
-          },
-          {
-            "id": "item_equipped:custom-eq-2h9c6v8u",
-            "name": "Bônus ativos: Roupa de Capitão",
-            "target": "item_state_hidden",
-            "value": 1
           },
           {
             "id": "sheet_defense:physical",
