@@ -120682,8 +120682,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 881,
-        "updatedAt": 1790481799973,
+        "revision": 882,
+        "updatedAt": 1790481811319,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -120896,13 +120896,42 @@
             ],
             "instanceId": "8630be02-dd7c-45a6-9b6e-93fb25b071c7",
             "currentHp": 1,
-            "currentMp": 135,
+            "currentMp": 110,
             "currentIp": 6
           }
         ],
         "playerAttacks": {},
-        "qte": null,
+        "qte": {
+          "id": "68bf3d09-5041-414a-a760-8125ad89a30a",
+          "ability": {
+            "id": "96e91a57-516f-4b93-bf20-03629fe09348",
+            "kind": "qte",
+            "name": "Choque de energia",
+            "cost": {
+              "amount": 25,
+              "resource": "mp"
+            },
+            "seconds": 5,
+            "checkId": "c23",
+            "difficulty": 20,
+            "failureDamage": "15",
+            "failureEffect": "",
+            "successDamage": "0",
+            "successEffect": ""
+          },
+          "deadline": 1790481816319,
+          "targets": [
+            "char_4uf4pocfmstw6x65",
+            "char_u267bpepmsusoyuv"
+          ],
+          "outcomes": {}
+        },
         "log": [
+          {
+            "id": "514e6168-dc89-4831-a7f2-0d7ec4eb07d8",
+            "at": 1790481811319,
+            "text": "Rei Morto: Choque de energia!"
+          },
           {
             "id": "d4b09f2c-42d9-43d0-be0c-5203e24de3f8",
             "at": 1790481604962,
@@ -121520,13 +121549,6 @@
               "breakdown": "5 + 8",
               "modifier": 0
             }
-          },
-          {
-            "id": "8a0b8570-256b-42ec-8242-f4eaa0b9ed2c",
-            "at": 1790474400129,
-            "text": "Kael Veyr: tempo esgotado em Multiplas pedras. 20 de dano. ",
-            "characterId": "char_jlhky6s9mstuuli0",
-            "damage": 20
           }
         ],
         "receipts": [
@@ -122391,7 +122413,8 @@
           "user_reulc3j3ms3snnxu:a7c71171-9862-4c1b-921b-40d85fba5a7d",
           "user_reulc3j3ms3snnxu:8529f1a8-2723-4ac4-ad44-2bd6964f740f",
           "user_reulc3j3ms3snnxu:0cf61a66-76c9-4760-9a51-e699c704393b",
-          "user_reulc3j3ms3snnxu:f3e8f20d-8000-4154-ac34-11258c99c844"
+          "user_reulc3j3ms3snnxu:f3e8f20d-8000-4154-ac34-11258c99c844",
+          "user_reulc3j3ms3snnxu:2f74e103-6ea0-4a71-b07e-554ab7c6083a"
         ],
         "pendingAttack": null
       }
