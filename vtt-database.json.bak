@@ -1329,7 +1329,7 @@
           "ip": 1.513,
           "maxIp": 6,
           "fp": 2,
-          "xp": 75,
+          "xp": 85,
           "lp": 0
         },
         "skills": {
@@ -1344,7 +1344,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790475018608,
+        "updatedAt": 1790475048369,
         "customModifiers": [
           {
             "id": "6ute35",
