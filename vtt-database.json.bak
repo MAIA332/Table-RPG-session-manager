@@ -125407,7 +125407,7 @@
           }
         ],
         "weather": "sunny",
-        "updatedAt": 1790544701128,
+        "updatedAt": 1790548339461,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
@@ -126716,7 +126716,7 @@
                 "restoreResource": "hp",
                 "consume": false,
                 "requirement": "Raizes finas entram no meu dedo",
-                "effect": "Consegue controlar a vontade tudo de verde e plantas ao seu redor, exige um teste de vontade de CD 10, caso falhe recebe 10 de dano"
+                "effect": "Consegue controlar a vontade tudo de verde e plantas ao seu redor, exige um teste de vontade de CD 8, caso falhe recebe 10 de dano"
               },
               {
                 "id": "action-9a7c9739-c954-4af5-b46c-625ba3b9aba1",
@@ -126726,11 +126726,11 @@
                 "damageDice": "",
                 "cost": 15,
                 "costResource": "mp",
-                "restoreAmount": 15,
+                "restoreAmount": 16,
                 "restoreResource": "hp",
                 "consume": false,
                 "requirement": "Raizes finas entram no meu dedo",
-                "effect": "Cria uma aura de flores que cura você, exige um teste de vontade de CD 10, caso falhe recebe 10 de dano"
+                "effect": "Cria uma aura de flores que cura você, exige um teste de vontade de CD 8, caso falhe recebe 10 de dano"
               }
             ],
             "weight": 100,
