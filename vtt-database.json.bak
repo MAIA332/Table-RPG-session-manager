@@ -1013,26 +1013,6 @@
         ],
         "createdAt": 1786140336549
       }
-    ],
-    [
-      "camp_2m0dl7e8mu1uqagj",
-      {
-        "id": "camp_2m0dl7e8mu1uqagj",
-        "name": "TESTE",
-        "code": "TJTFM8",
-        "ownerId": "user_reulc3j3ms3snnxu",
-        "members": [
-          {
-            "userId": "user_reulc3j3ms3snnxu",
-            "role": "gm"
-          },
-          {
-            "userId": "user_ex0bq249ms6myjd2",
-            "role": "player"
-          }
-        ],
-        "createdAt": 1789427161459
-      }
     ]
   ],
   "characters": [
@@ -1671,126 +1651,6 @@
           "zoom": 1
         }
       }
-    ],
-    [
-      "char_h71sn0spmu1ut8ax",
-      {
-        "id": "char_h71sn0spmu1ut8ax",
-        "campaignId": "camp_2m0dl7e8mu1uqagj",
-        "ownerId": "user_reulc3j3ms3snnxu",
-        "name": "Meu personagem",
-        "avatarUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQe8f1G9QAPCNRumqUu458xqktiqaEfsuxJr1aLstReXUEplnWVBOK1qhru&s=10",
-        "origin": "A Cidade-Relógio de Grivenholt",
-        "identity": "Erudito Exilado de Éliat",
-        "theme": "Dúvida",
-        "attributes": {
-          "dex": "d8",
-          "ins": "d8",
-          "mig": "d8",
-          "wlp": "d8"
-        },
-        "classes": [
-          {
-            "classId": "darkblade",
-            "level": 2
-          },
-          {
-            "classId": "rogue",
-            "level": 2
-          },
-          {
-            "classId": "spiritist",
-            "level": 1
-          }
-        ],
-        "equipment": [],
-        "zenit": 500,
-        "resources": {
-          "hp": 24,
-          "maxHp": 69,
-          "mp": 43,
-          "maxMp": 43,
-          "ip": 6,
-          "maxIp": 6,
-          "fp": 0,
-          "xp": 0
-        },
-        "skills": {
-          "db-agony": 2,
-          "sp-healpower": 1,
-          "ro-cheapshot": 2
-        },
-        "createdAt": 1789427298633,
-        "updatedAt": 1790019276689,
-        "customModifiers": []
-      }
-    ],
-    [
-      "char_x5rby0nmmu1xqicr",
-      {
-        "id": "char_x5rby0nmmu1xqicr",
-        "campaignId": "camp_2m0dl7e8mu1uqagj",
-        "ownerId": "user_ex0bq249ms6myjd2",
-        "name": "teste",
-        "avatarUrl": "https://br.pinterest.com/doublecombo/mulan",
-        "origin": "A Cidade-Relógio de Grivenholt",
-        "identity": "Erudito Exilado de Éliat",
-        "theme": "Devoção",
-        "attributes": {
-          "dex": "d8",
-          "ins": "d8",
-          "mig": "d8",
-          "wlp": "d8"
-        },
-        "classes": [
-          {
-            "classId": "darkblade",
-            "level": 3
-          },
-          {
-            "classId": "rogue",
-            "level": 2
-          }
-        ],
-        "equipment": [],
-        "zenit": 500,
-        "resources": {
-          "hp": 10,
-          "maxHp": 71,
-          "mp": 40,
-          "maxMp": 40,
-          "ip": 6,
-          "maxIp": 6,
-          "fp": 0,
-          "xp": 0
-        },
-        "skills": {
-          "ro-cheapshot": 2,
-          "db-agony": 3
-        },
-        "createdAt": 1789432210539,
-        "updatedAt": 1790019368105,
-        "customModifiers": [
-          {
-            "id": "sheet_defense:physical",
-            "name": "Defesa manual",
-            "target": "sheet_defense_hidden",
-            "value": 1
-          },
-          {
-            "id": "sheet_defense:magical",
-            "name": "Defesa mágica manual",
-            "target": "sheet_defense_hidden",
-            "value": 8
-          }
-        ],
-        "portraitFrame": "bronze",
-        "portraitCrop": {
-          "x": 50,
-          "y": 50,
-          "zoom": 1
-        }
-      }
     ]
   ],
   "characterTombstones": [
@@ -1821,6 +1681,14 @@
     [
       "char_1d2341ddmsui7dfv",
       1789427149950
+    ],
+    [
+      "char_h71sn0spmu1ut8ax",
+      1790469582821
+    ],
+    [
+      "char_x5rby0nmmu1xqicr",
+      1790469582821
     ]
   ],
   "maps": [
