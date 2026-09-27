@@ -120682,8 +120682,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 884,
-        "updatedAt": 1790481814598,
+        "revision": 885,
+        "updatedAt": 1790481819969,
         "enabled": true,
         "spotlight": {
           "side": "group",
@@ -120901,44 +120901,7 @@
           }
         ],
         "playerAttacks": {},
-        "qte": {
-          "id": "68bf3d09-5041-414a-a760-8125ad89a30a",
-          "ability": {
-            "id": "96e91a57-516f-4b93-bf20-03629fe09348",
-            "kind": "qte",
-            "name": "Choque de energia",
-            "cost": {
-              "amount": 25,
-              "resource": "mp"
-            },
-            "seconds": 5,
-            "checkId": "c23",
-            "difficulty": 20,
-            "failureDamage": "15",
-            "failureEffect": "",
-            "successDamage": "0",
-            "successEffect": ""
-          },
-          "deadline": 1790481816319,
-          "targets": [
-            "char_4uf4pocfmstw6x65",
-            "char_u267bpepmsusoyuv"
-          ],
-          "outcomes": {
-            "char_u267bpepmsusoyuv": {
-              "total": 11,
-              "success": false,
-              "damage": 15,
-              "effect": ""
-            },
-            "char_4uf4pocfmstw6x65": {
-              "total": 11,
-              "success": false,
-              "damage": 15,
-              "effect": ""
-            }
-          }
-        },
+        "qte": null,
         "log": [
           {
             "id": "af9a705c-9c57-416e-a5db-382eecda19ed",
@@ -122431,7 +122394,8 @@
           "user_reulc3j3ms3snnxu:f3e8f20d-8000-4154-ac34-11258c99c844",
           "user_reulc3j3ms3snnxu:2f74e103-6ea0-4a71-b07e-554ab7c6083a",
           "user_gybabf5mmskx7a24:82e96ec1-d620-491c-8232-c90c819ba955",
-          "user_0bhp2ga3msl1uk6h:d3678dd1-bbc1-4b00-b549-7bd7fc7f4090"
+          "user_0bhp2ga3msl1uk6h:d3678dd1-bbc1-4b00-b549-7bd7fc7f4090",
+          "user_reulc3j3ms3snnxu:a058224f-c75e-4f2a-b34a-3a3bf4a68fc1"
         ],
         "pendingAttack": null
       }
