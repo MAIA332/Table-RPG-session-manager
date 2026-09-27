@@ -1345,7 +1345,7 @@
         ],
         "zenit": 787,
         "resources": {
-          "hp": 9,
+          "hp": 1,
           "maxHp": 95,
           "mp": 32,
           "maxMp": 59,
@@ -1368,7 +1368,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790478621763,
+        "updatedAt": 1790480187054,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -120644,8 +120644,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 819,
-        "updatedAt": 1790480185445,
+        "revision": 820,
+        "updatedAt": 1790480187054,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -120893,15 +120893,21 @@
               "success": false,
               "damage": 8,
               "effect": ""
+            },
+            "char_4uf4pocfmstw6x65": {
+              "total": 14,
+              "success": false,
+              "damage": 8,
+              "effect": ""
             }
           }
         },
         "log": [
           {
-            "id": "aea57206-7051-4a9e-bb1f-241c23e7670a",
-            "at": 1790480185445,
-            "text": "Amélia Candinari: falha em Pressão. 8 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
+            "id": "cae9b4f8-b512-46b9-92de-b502793d2a8f",
+            "at": 1790480187054,
+            "text": "Thorfinn Lyngstad: falha em Pressão. 8 de dano. ",
+            "characterId": "char_4uf4pocfmstw6x65",
             "damage": 8
           },
           {
@@ -122304,7 +122310,8 @@
           "user_reulc3j3ms3snnxu:63eff3c1-62c4-420f-b19a-42807db38b73",
           "user_reulc3j3ms3snnxu:6b4c635f-b107-4d9a-b8d1-277fbf8b71d0",
           "user_reulc3j3ms3snnxu:d16b090e-6ed9-457e-b4ad-a9788fc0fe7a",
-          "user_gybabf5mmskx7a24:f6d9de74-cf8d-4041-910e-f3b9dbaf41be"
+          "user_gybabf5mmskx7a24:f6d9de74-cf8d-4041-910e-f3b9dbaf41be",
+          "user_0bhp2ga3msl1uk6h:f14ddffd-a9ed-4ef5-aa54-b4525baa61c6"
         ],
         "pendingAttack": null
       }
