@@ -116265,7 +116265,7 @@
           }
         ],
         "weather": "sunny",
-        "updatedAt": 1790474855804,
+        "updatedAt": 1790474866517,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
@@ -118223,7 +118223,7 @@
             "bonus": "+2 Força Bruta",
             "effect": "",
             "actions": [],
-            "weight": 0.001,
+            "weight": 1,
             "weightUnit": "kg",
             "id": "custom-eq-z9vv7wfb",
             "folderId": "custom"

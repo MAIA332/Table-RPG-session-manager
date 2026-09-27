@@ -116265,7 +116265,7 @@
           }
         ],
         "weather": "sunny",
-        "updatedAt": 1790474364551,
+        "updatedAt": 1790474855804,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
@@ -118208,6 +118208,24 @@
             "weight": 150,
             "weightUnit": "g",
             "id": "custom-eq-vbthhrho",
+            "folderId": "custom"
+          },
+          {
+            "name": "Lança com ponta de âmbar",
+            "category": "weapon",
+            "cost": 100,
+            "purchasable": false,
+            "detail": "Lança arrancada da estátua",
+            "damage": "",
+            "defense": "",
+            "mdef": "",
+            "type": "",
+            "bonus": "+2 Força Bruta",
+            "effect": "",
+            "actions": [],
+            "weight": 0.001,
+            "weightUnit": "kg",
+            "id": "custom-eq-z9vv7wfb",
             "folderId": "custom"
           }
         ],
