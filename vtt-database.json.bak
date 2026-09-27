@@ -1124,7 +1124,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790478293337,
+        "updatedAt": 1790479106744,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -1236,6 +1236,12 @@
             "name": "Resfriado",
             "target": "dex",
             "value": -1
+          },
+          {
+            "id": "item_equipped:custom-eq-u26mxku6",
+            "name": "Bônus ativos: Anel de prismarina",
+            "target": "item_state_hidden",
+            "value": 1
           }
         ],
         "customItems": [],
