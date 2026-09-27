@@ -120698,8 +120698,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 946,
-        "updatedAt": 1790544791748,
+        "revision": 947,
+        "updatedAt": 1790545898442,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -120725,6 +120725,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "7ce75b6c-3522-4dd1-905b-3a60f2314e2a",
+            "at": 1790545898442,
+            "characterId": "char_u267bpepmsusoyuv",
+            "text": "Amélia Candinari chegou a 0 HP. Vigor: 8 + 3 + 1 = 12. Agonizando. Permanece com 0 HP e precisa de socorro.",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_u267bpepmsusoyuv",
+              "characterName": "Amélia Candinari",
+              "playerName": "Miih",
+              "attribute": "Morte · Vigor [d8 + d8 + d8] · Agonizando · Permanece com 0 HP e precisa de socorro.",
+              "result": 12,
+              "breakdown": "8 + 3 + 1",
+              "modifier": 0
+            }
+          },
           {
             "id": "1cfaaf36-a704-4d43-aa5d-bbb031229a8e",
             "at": 1790544706206,
@@ -121333,12 +121349,6 @@
               "breakdown": "5 + 10",
               "modifier": 1
             }
-          },
-          {
-            "id": "aa0180eb-74fb-4a7f-b250-3c5320d7c838",
-            "at": 1790474625308,
-            "text": "Amélia Candinari decidiu reagir a Golpe de lança.",
-            "characterId": "char_u267bpepmsusoyuv"
           }
         ],
         "receipts": [
@@ -122277,21 +122287,21 @@
             "active": false
           },
           "char_u267bpepmsusoyuv": {
-            "id": "78326b00-121c-466c-ac6f-0dd1ea049a84",
-            "at": 1790536519225,
+            "id": "7ce75b6c-3522-4dd1-905b-3a60f2314e2a",
+            "at": 1790545898442,
             "characterId": "char_u267bpepmsusoyuv",
             "characterName": "Amélia Candinari",
             "die": "d8",
             "rolls": [
+              8,
               3,
-              1,
-              4
+              1
             ],
-            "total": 8,
+            "total": 12,
             "status": "dying",
             "label": "Agonizando",
             "effect": "Permanece com 0 HP e precisa de socorro.",
-            "active": false
+            "active": true
           }
         }
       }
