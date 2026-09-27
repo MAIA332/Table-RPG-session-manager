@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 528,
-        "updatedAt": 1790473005180,
+        "revision": 529,
+        "updatedAt": 1790473005390,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -111841,6 +111841,9 @@
               "name": "Amélia Candinari",
               "avatar": "https://i.pinimg.com/736x/b2/91/a0/b291a08d6a221acb0d4b7ff9605714f4.jpg"
             }
+          ],
+          "approverIds": [
+            "user_reulc3j3ms3snnxu"
           ]
         },
         "actorCharacterId": null,
