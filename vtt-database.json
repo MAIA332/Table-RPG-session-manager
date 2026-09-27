@@ -1140,7 +1140,6 @@
           }
         ],
         "equipment": [
-          "custom-eq-u26mxku6",
           "custom-eq-ahg7o1rj",
           "custom-eq-q4qaujz6",
           "eq-sword",
@@ -1157,7 +1156,7 @@
           "maxHp": 86,
           "mp": 0,
           "maxMp": 60,
-          "ip": 3.5,
+          "ip": 3.6,
           "maxIp": 6,
           "fp": 4,
           "xp": 62,
@@ -1173,7 +1172,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790539820693,
+        "updatedAt": 1790542205565,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -1285,12 +1284,6 @@
             "name": "Resfriado",
             "target": "dex",
             "value": -1
-          },
-          {
-            "id": "item_equipped:custom-eq-u26mxku6",
-            "name": "Bônus ativos: Anel de prismarina",
-            "target": "item_state_hidden",
-            "value": 1
           },
           {
             "id": "item_equipped:custom-eq-1ebbfips",
@@ -127965,9 +127958,25 @@
             "status": "accepted",
             "createdAt": 1790541984409,
             "resolvedAt": 1790541987273
+          },
+          {
+            "id": "transfer_97jpih9gmukaljzx",
+            "campaignId": "camp_o5slw0ptmsjhu84l",
+            "donorCharacterId": "char_jlhky6s9mstuuli0",
+            "donorCharacterName": "Kael Veyr",
+            "donorOwnerId": "user_gd68ua63msnua1nb",
+            "recipientCharacterId": "char_4uf4pocfmstw6x65",
+            "recipientCharacterName": "Thorfinn Lyngstad",
+            "recipientOwnerId": "user_0bhp2ga3msl1uk6h",
+            "itemId": "custom-eq-u26mxku6",
+            "itemName": "Anel de prismarina",
+            "itemKind": "equipment",
+            "donorItemBonusesActive": true,
+            "status": "pending",
+            "createdAt": 1790542205565
           }
         ],
-        "updatedAt": 1790541987273
+        "updatedAt": 1790542205565
       }
     ],
     [
