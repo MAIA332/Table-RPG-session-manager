@@ -111351,8 +111351,8 @@
     [
       "camp_2m0dl7e8mu1uqagj",
       {
-        "revision": 155,
-        "updatedAt": 1790469576050,
+        "revision": 156,
+        "updatedAt": 1790469576238,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -111370,6 +111370,9 @@
               "name": "Meu personagem",
               "avatar": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQe8f1G9QAPCNRumqUu458xqktiqaEfsuxJr1aLstReXUEplnWVBOK1qhru&s=10"
             }
+          ],
+          "approverIds": [
+            "user_reulc3j3ms3snnxu"
           ]
         },
         "actorCharacterId": null,

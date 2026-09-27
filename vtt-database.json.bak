@@ -111351,9 +111351,9 @@
     [
       "camp_2m0dl7e8mu1uqagj",
       {
-        "revision": 154,
-        "updatedAt": 1790019368105,
-        "enabled": true,
+        "revision": 155,
+        "updatedAt": 1790469576050,
+        "enabled": false,
         "spotlight": {
           "side": "group",
           "activePlayerId": null,
@@ -111370,9 +111370,6 @@
               "name": "Meu personagem",
               "avatar": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQe8f1G9QAPCNRumqUu458xqktiqaEfsuxJr1aLstReXUEplnWVBOK1qhru&s=10"
             }
-          ],
-          "approverIds": [
-            "user_reulc3j3ms3snnxu"
           ]
         },
         "actorCharacterId": null,
@@ -112016,7 +112013,8 @@
           "user_reulc3j3ms3snnxu:6cf5c142-6c53-49e4-8b60-e17bbc12c328",
           "user_reulc3j3ms3snnxu:b6de34b0-b661-42b1-bd17-9a68cb76c9a4",
           "user_reulc3j3ms3snnxu:7c4f2ef0-c2fe-429d-b349-d5aada1b3074",
-          "user_ex0bq249ms6myjd2:44a975ed-2aff-487f-9d1d-9e68d4856817"
+          "user_ex0bq249ms6myjd2:44a975ed-2aff-487f-9d1d-9e68d4856817",
+          "user_reulc3j3ms3snnxu:b65cebd7-d698-4eb2-abee-fb387fac03ea"
         ],
         "pendingAttack": null
       }
