@@ -1484,7 +1484,7 @@
         ],
         "zenit": 487,
         "resources": {
-          "hp": 46,
+          "hp": 47,
           "maxHp": 77,
           "mp": 65,
           "maxMp": 70,
@@ -1504,7 +1504,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790471122525,
+        "updatedAt": 1790471123320,
         "customModifiers": [
           {
             "id": "s1uckf",
