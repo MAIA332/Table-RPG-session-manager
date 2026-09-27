@@ -114744,7 +114744,7 @@
             "id": "eadf1558-cc33-4f54-9c91-5cfae7e0608b",
             "name": "Kael 2",
             "url": "https://zipline.sinapselabs.com.br/u/nz2AFv.webp",
-            "isPublic": false,
+            "isPublic": true,
             "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
             "ownerId": "user_reulc3j3ms3snnxu",
             "ownerName": "GILGAMESH",
@@ -116061,7 +116061,7 @@
           }
         ],
         "weather": "fog",
-        "updatedAt": 1790469437501,
+        "updatedAt": 1790469438682,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
