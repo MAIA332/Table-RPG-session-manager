@@ -1543,7 +1543,7 @@
         ],
         "zenit": 487,
         "resources": {
-          "hp": 51,
+          "hp": 41,
           "maxHp": 77,
           "mp": 70,
           "maxMp": 70,
@@ -1563,7 +1563,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790474397218,
+        "updatedAt": 1790474514978,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -111838,11 +111838,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 668,
-        "updatedAt": 1790474508657,
+        "revision": 669,
+        "updatedAt": 1790474514978,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 2,
@@ -111991,6 +111991,35 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "30bca11a-bc7d-4407-870b-d6091167242f",
+            "at": 1790474514978,
+            "text": "Cavaleiro Estatua atingiu Amélia Candinari com Golpe de lança: 10 de dano. ",
+            "characterId": "char_u267bpepmsusoyuv",
+            "damage": 10
+          },
+          {
+            "id": "37a34f9f-f713-427a-a4e3-fc06a5c5da63:reflex",
+            "at": 1790474514978,
+            "characterId": "char_u267bpepmsusoyuv",
+            "text": "Amélia Candinari: Reflexos 7 contra 12 — falha.",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_u267bpepmsusoyuv",
+              "characterName": "Amélia Candinari",
+              "playerName": "Miih",
+              "attribute": "Reflexos contra 12 [d8 + d10]",
+              "result": 7,
+              "breakdown": "5 + 1",
+              "modifier": 1
+            }
+          },
+          {
+            "id": "60ed43d9-20de-43b8-9eb3-8013ed9bef13",
+            "at": 1790474514977,
+            "text": "Amélia Candinari decidiu reagir a Golpe de lança.",
+            "characterId": "char_u267bpepmsusoyuv"
+          },
           {
             "id": "37a34f9f-f713-427a-a4e3-fc06a5c5da63:hit",
             "at": 1790474508657,
@@ -112498,25 +112527,6 @@
             "text": "Agrat bat usou Garras Espectrais em Kael Veyr: falha. 0 de dano. ",
             "characterId": "char_jlhky6s9mstuuli0",
             "damage": 0
-          },
-          {
-            "id": "22470110-0e96-4c0b-a0d4-76137ab2041b",
-            "at": 1789867605962,
-            "text": "Agrat bat entrou em cena."
-          },
-          {
-            "id": "cb6cab27-ecd7-4186-b84a-d3e06fc2e74b",
-            "at": 1789861088414,
-            "text": "Planta carnivora usou Esporos em Thorfinn Lyngstad: acerto. 3 de dano. CD 10 de resistência, em caso de falha adormece por 2 minutos",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 3
-          },
-          {
-            "id": "74cfe597-bda8-4515-a311-b65b8a687891",
-            "at": 1789860927309,
-            "text": "Planta carnivora usou Esporos em Thorfinn Lyngstad: sucesso com custo. 3 de dano. CD 10 de resistência, em caso de falha adormece por 2 minutos",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 3
           }
         ],
         "receipts": [
@@ -113170,26 +113180,10 @@
           "user_reulc3j3ms3snnxu:2550efce-4619-4bc6-a344-3ea873e98f09",
           "user_reulc3j3ms3snnxu:30ac80cd-8445-42af-b528-1af03dcaba4b",
           "user_reulc3j3ms3snnxu:e059105c-7fcb-4488-a14b-8fcc44004acc",
-          "user_reulc3j3ms3snnxu:8da28b2a-fe40-4072-a7ba-f7fbc1565e1a"
+          "user_reulc3j3ms3snnxu:8da28b2a-fe40-4072-a7ba-f7fbc1565e1a",
+          "user_gybabf5mmskx7a24:c2735702-aa21-4db3-a6b3-e87240ee6d6a"
         ],
-        "pendingAttack": {
-          "id": "37a34f9f-f713-427a-a4e3-fc06a5c5da63",
-          "at": 1790474508657,
-          "characterId": "char_u267bpepmsusoyuv",
-          "creatureName": "Cavaleiro Estatua",
-          "attackName": "Golpe de lança",
-          "total": 12,
-          "rolls": [
-            4,
-            8
-          ],
-          "dice": [
-            "d12",
-            "d8"
-          ],
-          "damage": 10,
-          "effect": ""
-        }
+        "pendingAttack": null
       }
     ]
   ],
