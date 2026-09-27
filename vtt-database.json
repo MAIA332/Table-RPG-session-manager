@@ -1384,7 +1384,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790481285678,
+        "updatedAt": 1790481354878,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1529,6 +1529,12 @@
             "name": "Defesa mágica manual",
             "target": "sheet_defense_hidden",
             "value": 9
+          },
+          {
+            "id": "ttnfnq",
+            "name": "Enfraquecido",
+            "target": "dex",
+            "value": -2
           }
         ],
         "customItems": [],
