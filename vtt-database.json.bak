@@ -1303,7 +1303,8 @@
           "custom-eq-vbthhrho",
           "custom-eq-vbthhrho",
           "custom-eq-vbthhrho",
-          "custom-eq-vbthhrho"
+          "custom-eq-vbthhrho",
+          "custom-eq-vg3ez2gg"
         ],
         "zenit": 787,
         "resources": {
@@ -1311,7 +1312,7 @@
           "maxHp": 89,
           "mp": 56,
           "maxMp": 56,
-          "ip": 1.163,
+          "ip": 1.063,
           "maxIp": 6,
           "fp": 2,
           "xp": 75,
@@ -1329,7 +1330,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790472444160,
+        "updatedAt": 1790472516959,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -118231,11 +118232,12 @@
             "itemName": "Vinho hidromel branco suave",
             "itemKind": "equipment",
             "donorItemBonusesActive": false,
-            "status": "pending",
-            "createdAt": 1790472511515
+            "status": "accepted",
+            "createdAt": 1790472511515,
+            "resolvedAt": 1790472516959
           }
         ],
-        "updatedAt": 1790472511515
+        "updatedAt": 1790472516959
       }
     ],
     [
