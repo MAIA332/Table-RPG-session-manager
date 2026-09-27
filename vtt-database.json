@@ -1563,7 +1563,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790474090366,
+        "updatedAt": 1790474149421,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -111838,8 +111838,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 637,
-        "updatedAt": 1790474149219,
+        "revision": 638,
+        "updatedAt": 1790474149421,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -112003,16 +112003,22 @@
               "success": false,
               "damage": 8,
               "effect": ""
+            },
+            "char_u267bpepmsusoyuv": {
+              "total": 9,
+              "success": true,
+              "damage": 0,
+              "effect": ""
             }
           }
         },
         "log": [
           {
-            "id": "489f8782-83b4-481d-b784-a626c7a69314",
-            "at": 1790474149219,
-            "text": "Thorfinn Lyngstad: falha em Ataque lança em area. 8 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 8
+            "id": "ab28db1b-a592-4883-84fc-2181317f9f31",
+            "at": 1790474149421,
+            "text": "Amélia Candinari: sucesso em Ataque lança em area. 0 de dano. ",
+            "characterId": "char_u267bpepmsusoyuv",
+            "damage": 0
           },
           {
             "id": "17307a6a-26b5-49a5-bfdc-08d0d318b8d9",
@@ -113121,7 +113127,8 @@
           "user_reulc3j3ms3snnxu:e3741566-7576-419f-8d61-2326d803ab12",
           "user_reulc3j3ms3snnxu:c0685b20-131b-4656-8913-9cf960e2357c",
           "user_reulc3j3ms3snnxu:9489a03f-21ce-46d2-8aaf-aa524133bb49",
-          "user_0bhp2ga3msl1uk6h:d36e55d5-6d3d-4f99-91e8-c4a8b318ceb1"
+          "user_0bhp2ga3msl1uk6h:d36e55d5-6d3d-4f99-91e8-c4a8b318ceb1",
+          "user_gybabf5mmskx7a24:a891ead1-8bcf-4ce1-a77f-463ab26abac9"
         ],
         "pendingAttack": null
       }
