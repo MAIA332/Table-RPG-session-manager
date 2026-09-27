@@ -111838,8 +111838,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 627,
-        "updatedAt": 1790474076615,
+        "revision": 628,
+        "updatedAt": 1790474082835,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111975,6 +111975,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "b4c58e26-4a25-4386-aa6e-7720490de8b1:hit",
+            "at": 1790474082835,
+            "text": "Cavaleiro Estatua usou Golpe de lança em Amélia Candinari: acerto 14, aguardando reação.",
+            "characterId": "char_u267bpepmsusoyuv",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_u267bpepmsusoyuv",
+              "characterName": "Cavaleiro Estatua",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
+              "result": 14,
+              "breakdown": "6 + 8",
+              "modifier": 0
+            }
+          },
           {
             "id": "ccef8c87-0006-45a5-890d-eeeb65cad315",
             "at": 1790474029492,
@@ -112440,13 +112456,6 @@
             "text": "Amélia Candinari: falha em Coordenação de algas. 3 de dano. Os jogadores que falharem ficam presos por uma rodada",
             "characterId": "char_u267bpepmsusoyuv",
             "damage": 3
-          },
-          {
-            "id": "4b48dac3-b205-4951-8fcb-1ef8be9c4f61",
-            "at": 1789858878540,
-            "text": "Thorfinn Lyngstad: sucesso em Coordenação de algas. 0 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 0
           }
         ],
         "receipts": [
@@ -113060,9 +113069,27 @@
           "user_0bhp2ga3msl1uk6h:4139ed4d-5886-4ba4-90b7-dcfb64e25464",
           "user_reulc3j3ms3snnxu:8c0b1203-aefa-4b44-8173-a62b4a88b0b2",
           "user_gd68ua63msnua1nb:0f210727-0472-421c-91ab-00c0f73c0d57",
-          "user_reulc3j3ms3snnxu:54810a47-7421-4809-9648-894a866e903a"
+          "user_reulc3j3ms3snnxu:54810a47-7421-4809-9648-894a866e903a",
+          "user_reulc3j3ms3snnxu:b40e5364-fa4a-4a02-b6ca-d970975486b4"
         ],
-        "pendingAttack": null
+        "pendingAttack": {
+          "id": "b4c58e26-4a25-4386-aa6e-7720490de8b1",
+          "at": 1790474082835,
+          "characterId": "char_u267bpepmsusoyuv",
+          "creatureName": "Cavaleiro Estatua",
+          "attackName": "Golpe de lança",
+          "total": 14,
+          "rolls": [
+            6,
+            8
+          ],
+          "dice": [
+            "d12",
+            "d8"
+          ],
+          "damage": 10,
+          "effect": ""
+        }
       }
     ]
   ],
