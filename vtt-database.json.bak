@@ -114416,7 +114416,7 @@
             "id": "ef7b80b9-3ac7-488a-946f-af31cf638040",
             "name": "Mapa do pantano",
             "url": "https://zipline.sinapselabs.com.br/u/mcBAi2.png",
-            "isPublic": false,
+            "isPublic": true,
             "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
             "ownerId": "user_reulc3j3ms3snnxu",
             "ownerName": "GILGAMESH",
@@ -116053,7 +116053,7 @@
           }
         ],
         "weather": "fog",
-        "updatedAt": 1790464355645,
+        "updatedAt": 1790464369951,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",

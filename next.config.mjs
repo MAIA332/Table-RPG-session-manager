@@ -20,6 +20,18 @@ const nextConfig = {
       }
     ]
   },
+  webpack: (config) => {
+    // Ignora alterações nos arquivos do banco de dados para evitar reloads acidentais
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: [
+        ...((config.watchOptions && config.watchOptions.ignored) || []),
+        '**/vtt-database.json',
+        '**/vtt-database.json.bak'
+      ],
+    };
+    return config;
+  },
 }
 
-export default nextConfig
+export default nextConfig;

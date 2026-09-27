@@ -15,6 +15,7 @@ import {
   enforceInventoryDatabase,
 } from "./inventory-server"
 import { applyInventoryRules } from "./character"
+import { exec } from "child_process"
 
 type Subscriber = (event: RealtimeEvent) => void
 type PresenceSubscriber = (snapshot: Record<string, number>) => void
@@ -246,7 +247,12 @@ function acquireDatabaseLock(): number {
           continue
         }
       } catch {}
-      Atomics.wait(lockWaitBuffer, 0, 0, 25)
+      
+      // Correção: Substitui o Atomics.wait que causa Crash na thread principal
+      const waitTime = Date.now() + 25;
+      while (Date.now() < waitTime) {
+        // Loop bloqueante intencional simulando espera síncrona sem quebrar o Node
+      }
     }
   }
   throw new Error("O banco de dados está ocupado por outro processo.")
@@ -313,6 +319,14 @@ function writeStoreFile(
       replaceFile(backupTempPath, DB_BACKUP_PATH)
     }
     replaceFile(tempPath, DB_FILE_PATH)
+
+    // AUTO-COMMIT GIT: Roda de forma assíncrona para não quebrar o processo síncrono do store
+    exec(`git add "${DB_FILE_PATH}" "${DB_BACKUP_PATH}" && git commit -m "auto: salva estado da campanha"`, (error) => {
+      if (error && !error.message.includes('nothing to commit')) {
+        console.error('[VTT DB] Erro no auto-commit do Git:', error.message);
+      }
+    });
+
   } finally {
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath)
   }
