@@ -1372,7 +1372,7 @@
         ],
         "zenit": 787,
         "resources": {
-          "hp": 89,
+          "hp": 90,
           "maxHp": 95,
           "mp": 59,
           "maxMp": 59,
@@ -1395,7 +1395,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790542224978,
+        "updatedAt": 1790542226623,
         "customModifiers": [
           {
             "id": "6ute35",
