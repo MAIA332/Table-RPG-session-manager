@@ -1153,7 +1153,7 @@
         ],
         "zenit": 734,
         "resources": {
-          "hp": 0,
+          "hp": 1,
           "maxHp": 86,
           "mp": 0,
           "maxMp": 60,
@@ -1173,7 +1173,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790538714706,
+        "updatedAt": 1790538715078,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -120689,8 +120689,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 892,
-        "updatedAt": 1790536524762,
+        "revision": 893,
+        "updatedAt": 1790538715080,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -120728,6 +120728,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "d7aafebd-4762-46b0-9590-de513892773d",
+            "at": 1790538715078,
+            "characterId": "char_jlhky6s9mstuuli0",
+            "text": "Kael Veyr chegou a 0 HP. Vigor: 7 + 5 + 8 = 20. Resistiu à morte. Recupera 1 HP e pode voltar a agir.",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Kael Veyr",
+              "playerName": "Mateus Lopes de Deus",
+              "attribute": "Morte · Vigor [d8 + d8 + d8] · Resistiu à morte · Recupera 1 HP e pode voltar a agir.",
+              "result": 20,
+              "breakdown": "7 + 5 + 8",
+              "modifier": 0
+            }
+          },
           {
             "id": "78326b00-121c-466c-ac6f-0dd1ea049a84",
             "at": 1790536519225,
@@ -121346,22 +121362,6 @@
             "at": 1790474470230,
             "text": "Kael Veyr evitou Golpe de lança de Cavaleiro Estatua. Nenhum dano aplicado.",
             "characterId": "char_jlhky6s9mstuuli0"
-          },
-          {
-            "id": "7b17932a-d33d-46b0-abf9-1c380c06e6eb:reflex",
-            "at": 1790474470230,
-            "characterId": "char_jlhky6s9mstuuli0",
-            "text": "Kael Veyr: Reflexos 15 contra 13 — sucesso.",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_jlhky6s9mstuuli0",
-              "characterName": "Kael Veyr",
-              "playerName": "Mateus Lopes de Deus",
-              "attribute": "Reflexos contra 13 [d8 + d10]",
-              "result": 15,
-              "breakdown": "7 + 9",
-              "modifier": -1
-            }
           }
         ],
         "receipts": [
@@ -122237,20 +122237,20 @@
         "pendingAttack": null,
         "deathChecks": {
           "char_jlhky6s9mstuuli0": {
-            "id": "69a24da2-8e31-4562-a319-1c26cb5a47d4",
-            "at": 1790536448433,
+            "id": "d7aafebd-4762-46b0-9590-de513892773d",
+            "at": 1790538715078,
             "characterId": "char_jlhky6s9mstuuli0",
             "characterName": "Kael Veyr",
             "die": "d8",
             "rolls": [
               7,
-              1,
-              7
+              5,
+              8
             ],
-            "total": 15,
-            "status": "stable",
-            "label": "Estabilizado",
-            "effect": "Inconsciente com 0 HP, sem deterioração automática.",
+            "total": 20,
+            "status": "recovered",
+            "label": "Resistiu à morte",
+            "effect": "Recupera 1 HP e pode voltar a agir.",
             "active": false
           },
           "char_u267bpepmsusoyuv": {
