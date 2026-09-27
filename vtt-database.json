@@ -1594,7 +1594,6 @@
           "custom-eq-1vxsbh3o",
           "custom-eq-1vxsbh3o",
           "custom-eq-phorangi",
-          "custom-eq-ahg7o1rj",
           "custom-eq-156iasrj"
         ],
         "zenit": 487,
@@ -1603,7 +1602,7 @@
           "maxHp": 77,
           "mp": 5,
           "maxMp": 70,
-          "ip": 4.2,
+          "ip": 4.3,
           "maxIp": 6,
           "fp": 1,
           "xp": 62,
@@ -1620,7 +1619,7 @@
           "cskill-1szrrx": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790542376742,
+        "updatedAt": 1790542383990,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -128021,9 +128020,25 @@
             "status": "accepted",
             "createdAt": 1790542376742,
             "resolvedAt": 1790542379041
+          },
+          {
+            "id": "transfer_62wufyp6mukapdo6",
+            "campaignId": "camp_o5slw0ptmsjhu84l",
+            "donorCharacterId": "char_u267bpepmsusoyuv",
+            "donorCharacterName": "Amélia Candinari",
+            "donorOwnerId": "user_gybabf5mmskx7a24",
+            "recipientCharacterId": "char_4uf4pocfmstw6x65",
+            "recipientCharacterName": "Thorfinn Lyngstad",
+            "recipientOwnerId": "user_0bhp2ga3msl1uk6h",
+            "itemId": "custom-eq-ahg7o1rj",
+            "itemName": "Raiz de Casca-Férrea",
+            "itemKind": "equipment",
+            "donorItemBonusesActive": false,
+            "status": "pending",
+            "createdAt": 1790542383990
           }
         ],
-        "updatedAt": 1790542379041
+        "updatedAt": 1790542383990
       }
     ],
     [
