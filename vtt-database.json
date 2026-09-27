@@ -1391,7 +1391,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790544508090,
+        "updatedAt": 1790544613597,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -120687,11 +120687,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 933,
-        "updatedAt": 1790544612134,
+        "revision": 934,
+        "updatedAt": 1790544613597,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 0,
@@ -120832,13 +120832,22 @@
           "targets": [
             "char_4uf4pocfmstw6x65"
           ],
-          "outcomes": {}
+          "outcomes": {
+            "char_4uf4pocfmstw6x65": {
+              "total": 18,
+              "success": true,
+              "damage": 0,
+              "effect": ""
+            }
+          }
         },
         "log": [
           {
-            "id": "942684bc-6f47-4302-b09f-3661cdd9ff3b",
-            "at": 1790544612134,
-            "text": "Sereia do pantano: Canto da sereia!"
+            "id": "cec8d706-0847-42bb-94ac-48533c333687",
+            "at": 1790544613597,
+            "text": "Thorfinn Lyngstad: sucesso em Canto da sereia. 0 de dano. ",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "damage": 0
           },
           {
             "id": "b88fc108-ba08-4588-8c14-324ac7333f28",
@@ -122361,7 +122370,8 @@
           "user_reulc3j3ms3snnxu:063fbb4a-69cb-42c5-96fc-71117057a693",
           "user_reulc3j3ms3snnxu:ef23bbfc-950a-4656-a518-60c7a4002a29",
           "user_reulc3j3ms3snnxu:6b8f0ba1-7ef0-4ede-abf5-36020405b4b2",
-          "user_reulc3j3ms3snnxu:8914873e-4c16-4e30-ad68-73f3fdd2c6a2"
+          "user_reulc3j3ms3snnxu:8914873e-4c16-4e30-ad68-73f3fdd2c6a2",
+          "user_0bhp2ga3msl1uk6h:35b5ccfd-ab5e-47ba-8ef4-9a636f4af6c5"
         ],
         "pendingAttack": null,
         "deathChecks": {
