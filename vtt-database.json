@@ -111837,8 +111837,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 735,
-        "updatedAt": 1790478318214,
+        "revision": 736,
+        "updatedAt": 1790478318725,
         "enabled": true,
         "spotlight": {
           "side": "group",
@@ -111852,7 +111852,8 @@
               "user_reulc3j3ms3snnxu"
             ],
             "approved": [
-              "user_reulc3j3ms3snnxu"
+              "user_reulc3j3ms3snnxu",
+              "user_gybabf5mmskx7a24"
             ]
           },
           "tokens": 2,
@@ -113356,7 +113357,8 @@
           "user_reulc3j3ms3snnxu:c177d40f-514a-4623-9fbe-baaffec25a93",
           "user_gd68ua63msnua1nb:609c3d2f-5e38-49b2-b7de-d9f232067a9e",
           "user_0bhp2ga3msl1uk6h:1356ed00-93da-4dcb-9e50-f9b87b6f6d61",
-          "user_reulc3j3ms3snnxu:24d400e7-27cf-4b5d-933c-b37703d6736a"
+          "user_reulc3j3ms3snnxu:24d400e7-27cf-4b5d-933c-b37703d6736a",
+          "user_gybabf5mmskx7a24:3d94f8e9-a204-4bf1-aed0-295784c264de"
         ],
         "pendingAttack": null
       }
