@@ -1527,7 +1527,7 @@
         ],
         "zenit": 487,
         "resources": {
-          "hp": 77,
+          "hp": 69,
           "maxHp": 77,
           "mp": 70,
           "maxMp": 70,
@@ -1547,7 +1547,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790472511515,
+        "updatedAt": 1790472898173,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -111822,11 +111822,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 517,
-        "updatedAt": 1790472897687,
+        "revision": 518,
+        "updatedAt": 1790472898173,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 1,
@@ -111980,16 +111980,22 @@
               "success": true,
               "damage": 0,
               "effect": ""
+            },
+            "char_u267bpepmsusoyuv": {
+              "total": 7,
+              "success": false,
+              "damage": 8,
+              "effect": ""
             }
           }
         },
         "log": [
           {
-            "id": "ab8c5ebb-2faa-4874-935a-113079996917",
-            "at": 1790472897687,
-            "text": "Thorfinn Lyngstad: sucesso em Ataque lança em area. 0 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 0
+            "id": "d8cf3b0f-f989-4e70-8cdd-be8c67679bb9",
+            "at": 1790472898173,
+            "text": "Amélia Candinari: falha em Ataque lança em area. 8 de dano. ",
+            "characterId": "char_u267bpepmsusoyuv",
+            "damage": 8
           },
           {
             "id": "4d09634d-94e7-4ee9-9f79-7d6be54d97c6",
@@ -112881,7 +112887,8 @@
           "user_reulc3j3ms3snnxu:b0b301d8-2e61-41cd-8be2-b4fab1e2fdcd",
           "user_reulc3j3ms3snnxu:0ee6112f-e773-4c54-bed8-02a677ba6c33",
           "user_reulc3j3ms3snnxu:757e4176-d815-4d8e-8dec-984b7015e4ec",
-          "user_0bhp2ga3msl1uk6h:09eb1a95-ca84-495d-bab1-f3534266cd1c"
+          "user_0bhp2ga3msl1uk6h:09eb1a95-ca84-495d-bab1-f3534266cd1c",
+          "user_gybabf5mmskx7a24:e3de00de-56a3-4221-b8a3-f1e3748bdae3"
         ]
       }
     ]
