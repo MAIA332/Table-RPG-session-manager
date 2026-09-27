@@ -1543,7 +1543,7 @@
         ],
         "zenit": 487,
         "resources": {
-          "hp": 71,
+          "hp": 51,
           "maxHp": 77,
           "mp": 70,
           "maxMp": 70,
@@ -1563,7 +1563,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790474169733,
+        "updatedAt": 1790474397218,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -111838,8 +111838,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 653,
-        "updatedAt": 1790474395064,
+        "revision": 654,
+        "updatedAt": 1790474397218,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -112013,13 +112013,22 @@
             "char_u267bpepmsusoyuv",
             "char_jlhky6s9mstuuli0"
           ],
-          "outcomes": {}
+          "outcomes": {
+            "char_u267bpepmsusoyuv": {
+              "total": 6,
+              "success": false,
+              "damage": 20,
+              "effect": ""
+            }
+          }
         },
         "log": [
           {
-            "id": "f35adc13-6056-4134-898b-dd80baecca11",
-            "at": 1790474395064,
-            "text": "Cavaleiro Estatua: Multiplas pedras!"
+            "id": "c6ca8e3c-dd59-4169-a325-1f5469d15169",
+            "at": 1790474397218,
+            "text": "Amélia Candinari: falha em Multiplas pedras. 20 de dano. ",
+            "characterId": "char_u267bpepmsusoyuv",
+            "damage": 20
           },
           {
             "id": "feb55ad8-f017-4ad5-a328-4ead9021a255",
@@ -113144,7 +113153,8 @@
           "user_reulc3j3ms3snnxu:027a29b5-fbfa-4f2c-9a44-7188539507dd",
           "user_reulc3j3ms3snnxu:603d4dd7-aa84-409c-b8f2-271edb649ee9",
           "user_reulc3j3ms3snnxu:f1bc2809-a319-4a9e-a884-8a6d6df59315",
-          "user_reulc3j3ms3snnxu:554398dd-e21a-4bf3-85e4-5b5fb9f750ba"
+          "user_reulc3j3ms3snnxu:554398dd-e21a-4bf3-85e4-5b5fb9f750ba",
+          "user_gybabf5mmskx7a24:9f9665f6-00d2-4d09-a0a7-0eeb3ca3f388"
         ],
         "pendingAttack": null
       }
