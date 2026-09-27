@@ -111837,11 +111837,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 721,
-        "updatedAt": 1790478111118,
+        "revision": 722,
+        "updatedAt": 1790478117424,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 1,
@@ -112007,6 +112007,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "25516c9a-53c0-43cd-90ae-c8203a93b1b6",
+            "at": 1790478117424,
+            "text": "Rei Morto errou Thorfinn Lyngstad. Nenhum dano aplicado.",
+            "characterId": "char_4uf4pocfmstw6x65"
+          },
+          {
+            "id": "6eb0395d-5a54-4d54-92d4-4ef7a4fe5a3e:hit",
+            "at": 1790478117424,
+            "text": "Rei Morto usou Raiz podre em Thorfinn Lyngstad: acerto 12, errou.",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_4uf4pocfmstw6x65",
+              "characterName": "Rei Morto",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Raiz podre [d12 + d12]",
+              "result": 12,
+              "breakdown": "1 + 11",
+              "modifier": 0
+            }
+          },
           {
             "id": "dfd09949-40b4-4fe2-83b7-08f8a20452bb",
             "at": 1790477868840,
@@ -112585,20 +112607,6 @@
             "text": "Kael Veyr: falha em Espinhos negros. 10 de dano. ",
             "characterId": "char_jlhky6s9mstuuli0",
             "damage": 10
-          },
-          {
-            "id": "260c8c1d-4465-470b-bfe7-68364fd27e33",
-            "at": 1789870031121,
-            "text": "Amélia Candinari: falha em Espinhos negros. 10 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 10
-          },
-          {
-            "id": "f8b93505-2ae4-450f-a251-0fbf9c773448",
-            "at": 1789870013226,
-            "text": "Amélia Candinari: sucesso em Espinhos negros. 0 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 0
           }
         ],
         "receipts": [
@@ -113304,7 +113312,8 @@
           "user_gd68ua63msnua1nb:eb8eb892-fe69-4d3d-a9fd-176aff0b3fe1",
           "user_reulc3j3ms3snnxu:b71ff92b-43aa-443e-87bf-7bf39063455c",
           "user_gybabf5mmskx7a24:972817a7-4fb2-4623-9d16-2271b9b5eaca",
-          "user_reulc3j3ms3snnxu:9b6de44a-7684-4c10-8f42-a98e5362cc1c"
+          "user_reulc3j3ms3snnxu:9b6de44a-7684-4c10-8f42-a98e5362cc1c",
+          "user_reulc3j3ms3snnxu:c51a2151-5130-45b8-8d36-6617cbee84ad"
         ],
         "pendingAttack": null
       }
