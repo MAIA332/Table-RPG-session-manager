@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 550,
-        "updatedAt": 1790473255814,
+        "revision": 551,
+        "updatedAt": 1790473264049,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111952,13 +111952,43 @@
             "equipment": [],
             "instanceId": "bf4e2db0-d62b-4a91-a12c-ccf4002b3a98",
             "currentHp": 70,
-            "currentMp": 20,
+            "currentMp": 5,
             "currentIp": 6
           }
         ],
         "playerAttacks": {},
-        "qte": null,
+        "qte": {
+          "id": "9a3d7710-566c-4689-a9f0-96194d50ff87",
+          "ability": {
+            "id": "fa4f3f63-ae79-4a38-bef7-4e609a995238",
+            "kind": "qte",
+            "name": "Ataque lança em area",
+            "cost": {
+              "amount": 15,
+              "resource": "mp"
+            },
+            "seconds": 5,
+            "checkId": "c23",
+            "difficulty": 8,
+            "failureDamage": "8",
+            "failureEffect": "",
+            "successDamage": "0",
+            "successEffect": ""
+          },
+          "deadline": 1790473269049,
+          "targets": [
+            "char_4uf4pocfmstw6x65",
+            "char_u267bpepmsusoyuv",
+            "char_jlhky6s9mstuuli0"
+          ],
+          "outcomes": {}
+        },
         "log": [
+          {
+            "id": "8c3221e8-d127-4df8-a7b1-6631a1011dc2",
+            "at": 1790473264049,
+            "text": "Cavaleiro Estatua: Ataque lança em area!"
+          },
           {
             "id": "dbdf5352-ea45-4aa5-944e-e089df93a04f",
             "at": 1790473190871,
@@ -112376,13 +112406,6 @@
             "text": "Criatura dentre a nevoa usou Golpe em Thorfinn Lyngstad: acerto. 11 de dano. ",
             "characterId": "char_4uf4pocfmstw6x65",
             "damage": 11
-          },
-          {
-            "id": "f64b6195-b3b5-466a-bea2-19549d82951a",
-            "at": 1789854684193,
-            "text": "Criatura dentre a nevoa usou Troca de posição na nevoa em Kael Veyr: falha. 0 de dano. ",
-            "characterId": "char_jlhky6s9mstuuli0",
-            "damage": 0
           }
         ],
         "receipts": [
@@ -112919,7 +112942,8 @@
           "user_0bhp2ga3msl1uk6h:94d2de24-c7bf-43cf-8d08-4be987bc3ebf",
           "user_gybabf5mmskx7a24:685c2081-bfaf-4813-ba92-564dc54f3fa3",
           "user_reulc3j3ms3snnxu:f24c7b1a-89b3-4c76-9d74-6cc987c4a449",
-          "user_reulc3j3ms3snnxu:33333084-fe36-4e5c-84be-1d21bb11e530"
+          "user_reulc3j3ms3snnxu:33333084-fe36-4e5c-84be-1d21bb11e530",
+          "user_reulc3j3ms3snnxu:f5bd7d29-0c7f-4e91-8144-3959edf556b8"
         ],
         "pendingAttack": null
       }
