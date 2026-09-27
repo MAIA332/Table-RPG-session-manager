@@ -114564,6 +114564,16 @@
             "ownerId": "user_reulc3j3ms3snnxu",
             "ownerName": "GILGAMESH",
             "createdAt": 1790463292730
+          },
+          {
+            "id": "b9baa60f-91c8-478d-9b01-709a6094385c",
+            "name": "segundo portão",
+            "url": "https://zipline.sinapselabs.com.br/u/rEOdh2.png",
+            "isPublic": false,
+            "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
+            "ownerId": "user_reulc3j3ms3snnxu",
+            "ownerName": "GILGAMESH",
+            "createdAt": 1790469677271
           }
         ],
         "lore": [
@@ -115816,7 +115826,7 @@
           }
         ],
         "weather": "fog",
-        "updatedAt": 1790469438682,
+        "updatedAt": 1790469675430,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
