@@ -111837,14 +111837,14 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 705,
-        "updatedAt": 1790477851477,
+        "revision": 706,
+        "updatedAt": 1790477865636,
         "enabled": true,
         "spotlight": {
           "side": "gm",
           "activePlayerId": null,
           "request": null,
-          "tokens": 1,
+          "tokens": 0,
           "players": [
             {
               "id": "user_0bhp2ga3msl1uk6h",
@@ -112005,8 +112005,38 @@
           }
         ],
         "playerAttacks": {},
-        "qte": null,
+        "qte": {
+          "id": "94dd4bac-6990-4c1c-b53a-847c54863fe9",
+          "ability": {
+            "id": "1e76b69c-95a2-4e84-8a65-408a50f8a9db",
+            "kind": "qte",
+            "name": "Pressão de espinhos",
+            "cost": {
+              "amount": 1,
+              "resource": "token"
+            },
+            "seconds": 5,
+            "checkId": "c23",
+            "difficulty": 14,
+            "failureDamage": "25",
+            "failureEffect": "No chão cresce uma camada de espinhos",
+            "successDamage": "0",
+            "successEffect": ""
+          },
+          "deadline": 1790477870636,
+          "targets": [
+            "char_4uf4pocfmstw6x65",
+            "char_u267bpepmsusoyuv",
+            "char_jlhky6s9mstuuli0"
+          ],
+          "outcomes": {}
+        },
         "log": [
+          {
+            "id": "8ad9cf5b-1d56-476e-917c-b933bde3e55e",
+            "at": 1790477865636,
+            "text": "Rei Morto: Pressão de espinhos!"
+          },
           {
             "id": "49598649-a0b1-42f1-8f85-a945244cfc02",
             "at": 1790477777148,
@@ -112592,13 +112622,6 @@
             "text": "Amélia Candinari: sucesso em Espinhos negros. 0 de dano. ",
             "characterId": "char_u267bpepmsusoyuv",
             "damage": 0
-          },
-          {
-            "id": "a1223aa3-4b12-4278-a452-d03b146af3f1",
-            "at": 1789869993424,
-            "text": "Agrat bat usou Garras Espectrais em Kael Veyr: acerto. 10 de dano. Se o ataque acertar, ela da um segundo hit com metade do dano",
-            "characterId": "char_jlhky6s9mstuuli0",
-            "damage": 10
           }
         ],
         "receipts": [
@@ -113288,7 +113311,8 @@
           "user_reulc3j3ms3snnxu:11d3f9a8-6ea2-4bc3-a8d1-6ebb54ec6ee3",
           "user_reulc3j3ms3snnxu:be361af5-c3a5-4c0e-a97d-c9222fd5a450",
           "user_reulc3j3ms3snnxu:6dec61a4-81fd-4494-a66c-1b9e1931979b",
-          "user_reulc3j3ms3snnxu:4ee6ad05-d1f9-438f-becc-86724ad41c27"
+          "user_reulc3j3ms3snnxu:4ee6ad05-d1f9-438f-becc-86724ad41c27",
+          "user_reulc3j3ms3snnxu:2d63cd1f-4098-4641-af62-633a15af2cec"
         ],
         "pendingAttack": null
       }
