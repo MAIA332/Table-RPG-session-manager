@@ -111015,6 +111015,11 @@
             "x": 28,
             "y": 11,
             "type": "character"
+          },
+          "char_4uf4pocfmstw6x65": {
+            "x": 18,
+            "y": 16,
+            "type": "character"
           }
         },
         "name": "Novo Mapa de Batalha",
