@@ -120687,8 +120687,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 910,
-        "updatedAt": 1790544333862,
+        "revision": 911,
+        "updatedAt": 1790544365845,
         "enabled": true,
         "spotlight": {
           "side": "group",
@@ -120794,8 +120794,8 @@
                 },
                 "seconds": 5,
                 "checkId": "c29",
-                "difficulty": 12,
-                "failureDamage": "7",
+                "difficulty": 15,
+                "failureDamage": "8",
                 "failureEffect": "Alvos falhados ficam adormecidos",
                 "successDamage": "0",
                 "successEffect": ""
@@ -120812,6 +120812,11 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "613d88bf-d2e1-472c-be9e-cd2e30ede030",
+            "at": 1790544365845,
+            "text": "Habilidades de Sereia do pantano atualizadas pelo Mestre."
+          },
           {
             "id": "3170bb47-f76c-460a-882f-6ce8385e8119",
             "at": 1790544326044,
@@ -121448,13 +121453,6 @@
               "breakdown": "6 + 2",
               "modifier": 0
             }
-          },
-          {
-            "id": "30bca11a-bc7d-4407-870b-d6091167242f",
-            "at": 1790474514978,
-            "text": "Cavaleiro Estatua atingiu Amélia Candinari com Golpe de lança: 10 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 10
           }
         ],
         "receipts": [
@@ -122336,7 +122334,8 @@
           "user_reulc3j3ms3snnxu:1e94b04f-ed6c-454a-a300-11e6a9e950d0",
           "user_reulc3j3ms3snnxu:5bba8a5c-3fb5-4eed-87b3-4aae5e426799",
           "user_0bhp2ga3msl1uk6h:d27657f2-273a-4346-b286-25cb456b9cfe",
-          "user_reulc3j3ms3snnxu:18850d38-1942-4921-8b44-cab71b174e21"
+          "user_reulc3j3ms3snnxu:18850d38-1942-4921-8b44-cab71b174e21",
+          "user_reulc3j3ms3snnxu:e0058256-4518-495b-abbb-ff162ad3669c"
         ],
         "pendingAttack": null,
         "deathChecks": {
@@ -125507,7 +125506,7 @@
           }
         ],
         "weather": "sunny",
-        "updatedAt": 1790543814842,
+        "updatedAt": 1790544365845,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
@@ -125601,99 +125600,6 @@
                   "type": "trevas",
                   "description": "Troca de posição com um jogador"
                 }
-              }
-            ],
-            "spells": [],
-            "equipment": []
-          },
-          {
-            "name": "Sereia do pantano",
-            "imageUrl": "https://i.pinimg.com/736x/f5/96/5c/f5965ccb9d4428c79e80ebdb136a98b9.jpg",
-            "level": 8,
-            "species": "Monstro",
-            "maxHp": 27,
-            "maxMp": 20,
-            "def": 10,
-            "mdef": 10,
-            "attributes": {
-              "dex": "d10",
-              "ins": "d6",
-              "mig": "d6",
-              "wlp": "d10"
-            },
-            "id": "custom-f961f0c3-e18d-4524-8b84-6dcacd581408",
-            "affinities": {
-              "physical": "none",
-              "air": "none",
-              "bolt": "none",
-              "dark": "none",
-              "earth": "none",
-              "fire": "none",
-              "ice": "none",
-              "light": "none",
-              "poison": "none"
-            },
-            "basicAttacks": [
-              {
-                "name": "Golpe",
-                "attributes": [
-                  "mig",
-                  "mig"
-                ],
-                "damage": 7,
-                "type": "físico",
-                "description": "Dano: 7; alvo: Defesa Física"
-              },
-              {
-                "name": "Cuspe de água fervente",
-                "attributes": [
-                  "ins",
-                  "dex"
-                ],
-                "damage": 10,
-                "type": "físico",
-                "description": "Dano: 10; alvo: Defesa Mágica"
-              }
-            ],
-            "combatVersion": 2,
-            "basicAttacksV2": [
-              {
-                "name": "Golpe",
-                "attributes": [
-                  "mig",
-                  "mig"
-                ],
-                "targetDefense": "physical",
-                "damage": "7",
-                "type": "físico"
-              },
-              {
-                "name": "Cuspe de água fervente",
-                "attributes": [
-                  "ins",
-                  "dex"
-                ],
-                "targetDefense": "magical",
-                "damage": "10",
-                "type": "físico"
-              }
-            ],
-            "abilities": [
-              {
-                "id": "e1d27025-16d5-4ddf-b099-e2926f054507",
-                "kind": "qte",
-                "name": "Canto da sereia",
-                "cost": {
-                  "amount": 1,
-                  "resource": "token"
-                },
-                "seconds": 5,
-                "checkId": "c29",
-                "difficulty": 12,
-                "failureDamage": "7",
-                "failureEffect": "Alvos falhados ficam adormecidos",
-                "successDamage": "0",
-                "successEffect": ""
               }
             ],
             "spells": [],
@@ -126728,6 +126634,99 @@
                 "successEffect": ""
               }
             ]
+          },
+          {
+            "name": "Sereia do pantano",
+            "imageUrl": "https://i.pinimg.com/736x/f5/96/5c/f5965ccb9d4428c79e80ebdb136a98b9.jpg",
+            "level": 8,
+            "species": "Monstro",
+            "maxHp": 27,
+            "maxMp": 20,
+            "def": 10,
+            "mdef": 10,
+            "attributes": {
+              "dex": "d10",
+              "ins": "d6",
+              "mig": "d6",
+              "wlp": "d10"
+            },
+            "id": "custom-f961f0c3-e18d-4524-8b84-6dcacd581408",
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Golpe",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 7,
+                "type": "físico",
+                "description": "Dano: 7; alvo: Defesa Física"
+              },
+              {
+                "name": "Cuspe de água fervente",
+                "attributes": [
+                  "ins",
+                  "dex"
+                ],
+                "damage": 10,
+                "type": "físico",
+                "description": "Dano: 10; alvo: Defesa Mágica"
+              }
+            ],
+            "combatVersion": 2,
+            "basicAttacksV2": [
+              {
+                "name": "Golpe",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "targetDefense": "physical",
+                "damage": "7",
+                "type": "físico"
+              },
+              {
+                "name": "Cuspe de água fervente",
+                "attributes": [
+                  "ins",
+                  "dex"
+                ],
+                "targetDefense": "magical",
+                "damage": "10",
+                "type": "físico"
+              }
+            ],
+            "abilities": [
+              {
+                "id": "e1d27025-16d5-4ddf-b099-e2926f054507",
+                "kind": "qte",
+                "name": "Canto da sereia",
+                "cost": {
+                  "amount": 1,
+                  "resource": "token"
+                },
+                "seconds": 5,
+                "checkId": "c29",
+                "difficulty": 15,
+                "failureDamage": "8",
+                "failureEffect": "Alvos falhados ficam adormecidos",
+                "successDamage": "0",
+                "successEffect": ""
+              }
+            ],
+            "spells": [],
+            "equipment": []
           }
         ],
         "customEquipment": [
