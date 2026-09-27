@@ -111837,8 +111837,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 731,
-        "updatedAt": 1790478276325,
+        "revision": 732,
+        "updatedAt": 1790478285622,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -112007,6 +112007,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "b6609850-664d-40e8-8a2b-64a781e731c8:hit",
+            "at": 1790478285616,
+            "text": "Rei Morto usou Raizes Fétidas em Kael Veyr: acerto 19, aguardando reação.",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Rei Morto",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Raizes Fétidas [d12 + d12]",
+              "result": 19,
+              "breakdown": "7 + 12",
+              "modifier": 0
+            }
+          },
           {
             "id": "25516c9a-53c0-43cd-90ae-c8203a93b1b6",
             "at": 1790478117424,
@@ -112599,13 +112615,6 @@
             "at": 1789870179486,
             "text": "Amélia Candinari: falha em Espinhos negros. 10 de dano. ",
             "characterId": "char_u267bpepmsusoyuv",
-            "damage": 10
-          },
-          {
-            "id": "0203a354-1e64-4646-b7a7-cb8e3e167971",
-            "at": 1789870090205,
-            "text": "Kael Veyr: falha em Espinhos negros. 10 de dano. ",
-            "characterId": "char_jlhky6s9mstuuli0",
             "damage": 10
           }
         ],
@@ -113322,9 +113331,27 @@
           "user_0bhp2ga3msl1uk6h:28bab523-d592-443e-b669-f7dd3100f2c5",
           "user_gybabf5mmskx7a24:f5862813-fbf4-4d93-82ed-79f18039cebe",
           "user_reulc3j3ms3snnxu:fbf1af2d-5f1f-4ef5-ae5e-74d3bea95d6b",
-          "user_reulc3j3ms3snnxu:5b695a3f-ee84-4cec-be6b-9419f1cdba14"
+          "user_reulc3j3ms3snnxu:5b695a3f-ee84-4cec-be6b-9419f1cdba14",
+          "user_reulc3j3ms3snnxu:c177d40f-514a-4623-9fbe-baaffec25a93"
         ],
-        "pendingAttack": null
+        "pendingAttack": {
+          "id": "b6609850-664d-40e8-8a2b-64a781e731c8",
+          "at": 1790478285616,
+          "characterId": "char_jlhky6s9mstuuli0",
+          "creatureName": "Rei Morto",
+          "attackName": "Raizes Fétidas",
+          "total": 19,
+          "rolls": [
+            7,
+            12
+          ],
+          "dice": [
+            "d12",
+            "d12"
+          ],
+          "damage": 25,
+          "effect": ""
+        }
       }
     ]
   ],
