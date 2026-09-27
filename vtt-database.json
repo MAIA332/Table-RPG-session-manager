@@ -120687,14 +120687,14 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 921,
-        "updatedAt": 1790544504886,
+        "revision": 922,
+        "updatedAt": 1790544506401,
         "enabled": true,
         "spotlight": {
           "side": "gm",
           "activePlayerId": null,
           "request": null,
-          "tokens": 1,
+          "tokens": 0,
           "players": [
             {
               "id": "user_0bhp2ga3msl1uk6h",
@@ -120810,8 +120810,36 @@
           }
         ],
         "playerAttacks": {},
-        "qte": null,
+        "qte": {
+          "id": "a77c42cd-2407-4a11-bf07-3fc96c983a37",
+          "ability": {
+            "id": "e1d27025-16d5-4ddf-b099-e2926f054507",
+            "kind": "qte",
+            "name": "Canto da sereia",
+            "cost": {
+              "amount": 1,
+              "resource": "token"
+            },
+            "seconds": 5,
+            "checkId": "c29",
+            "difficulty": 15,
+            "failureDamage": "8",
+            "failureEffect": "Alvos falhados ficam adormecidos",
+            "successDamage": "0",
+            "successEffect": ""
+          },
+          "deadline": 1790544511401,
+          "targets": [
+            "char_4uf4pocfmstw6x65"
+          ],
+          "outcomes": {}
+        },
         "log": [
+          {
+            "id": "a4b3002b-ab34-42fb-8db4-b5f1952324a8",
+            "at": 1790544506401,
+            "text": "Sereia do pantano: Canto da sereia!"
+          },
           {
             "id": "afa86a25-25c5-42c4-b043-c5ea8c0ecffe",
             "at": 1790544407890,
@@ -121438,12 +121466,6 @@
               "breakdown": "12 + 1",
               "modifier": 0
             }
-          },
-          {
-            "id": "ffc64d03-affe-4030-89b6-1431d801c7e9",
-            "at": 1790474599317,
-            "text": "Cavaleiro Estatua errou Kael Veyr. Nenhum dano aplicado.",
-            "characterId": "char_jlhky6s9mstuuli0"
           }
         ],
         "receipts": [
@@ -122336,7 +122358,8 @@
           "user_reulc3j3ms3snnxu:b14e2721-d5bf-42c6-b5b9-7c2655c7f56c",
           "user_reulc3j3ms3snnxu:e43dce21-0632-425b-9aa2-2ec9789b521c",
           "user_reulc3j3ms3snnxu:95466a83-8bde-4a12-a2d0-d0b36ccb066d",
-          "user_reulc3j3ms3snnxu:5641a9d8-2ef6-4ebc-a40a-d124dbe970f6"
+          "user_reulc3j3ms3snnxu:5641a9d8-2ef6-4ebc-a40a-d124dbe970f6",
+          "user_reulc3j3ms3snnxu:e5ac28d1-66ca-40e5-8cf0-bafe8e30c4cb"
         ],
         "pendingAttack": null,
         "deathChecks": {
