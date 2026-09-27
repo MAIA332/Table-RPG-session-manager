@@ -1374,7 +1374,8 @@
           "custom-eq-8a9thfm5",
           "custom-eq-tqob7exa",
           "custom-eq-ahg7o1rj",
-          "custom-eq-z9vv7wfb"
+          "custom-eq-z9vv7wfb",
+          "eq-dagger"
         ],
         "zenit": 787,
         "resources": {
@@ -1382,7 +1383,7 @@
           "maxHp": 95,
           "mp": 12,
           "maxMp": 59,
-          "ip": 2.213,
+          "ip": 1.913,
           "maxIp": 6,
           "fp": 0,
           "xp": 85,
@@ -1401,7 +1402,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790536192983,
+        "updatedAt": 1790541987273,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -127963,11 +127964,12 @@
             "itemName": "Adaga de Aço",
             "itemKind": "equipment",
             "donorItemBonusesActive": false,
-            "status": "pending",
-            "createdAt": 1790541984409
+            "status": "accepted",
+            "createdAt": 1790541984409,
+            "resolvedAt": 1790541987273
           }
         ],
-        "updatedAt": 1790541984409
+        "updatedAt": 1790541987273
       }
     ],
     [
