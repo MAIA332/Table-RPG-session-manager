@@ -1396,7 +1396,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790546014013,
+        "updatedAt": 1790546054393,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1543,22 +1543,22 @@
             "value": 1
           },
           {
+            "id": "dpsjuf",
+            "name": "Cansado",
+            "target": "dex",
+            "value": -2
+          },
+          {
             "id": "sheet_defense:physical",
             "name": "Defesa manual",
             "target": "sheet_defense_hidden",
-            "value": 17
+            "value": 19
           },
           {
             "id": "sheet_defense:magical",
             "name": "Defesa mágica manual",
             "target": "sheet_defense_hidden",
             "value": 20
-          },
-          {
-            "id": "dpsjuf",
-            "name": "Cansado",
-            "target": "dex",
-            "value": -2
           }
         ],
         "customItems": [],
