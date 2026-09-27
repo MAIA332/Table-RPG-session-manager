@@ -1329,7 +1329,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790472554984,
+        "updatedAt": 1790472897687,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 516,
-        "updatedAt": 1790472896110,
+        "revision": 517,
+        "updatedAt": 1790472897687,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111974,13 +111974,22 @@
             "char_4uf4pocfmstw6x65",
             "char_u267bpepmsusoyuv"
           ],
-          "outcomes": {}
+          "outcomes": {
+            "char_4uf4pocfmstw6x65": {
+              "total": 11,
+              "success": true,
+              "damage": 0,
+              "effect": ""
+            }
+          }
         },
         "log": [
           {
-            "id": "d1bedf8a-f7a6-459c-93e6-2c43f1808a15",
-            "at": 1790472896110,
-            "text": "Cavaleiro Estatua: Ataque lança em area!"
+            "id": "ab8c5ebb-2faa-4874-935a-113079996917",
+            "at": 1790472897687,
+            "text": "Thorfinn Lyngstad: sucesso em Ataque lança em area. 0 de dano. ",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "damage": 0
           },
           {
             "id": "4d09634d-94e7-4ee9-9f79-7d6be54d97c6",
@@ -112871,7 +112880,8 @@
           "user_gybabf5mmskx7a24:572d5641-1fb3-4ea3-863c-50fa939781bb",
           "user_reulc3j3ms3snnxu:b0b301d8-2e61-41cd-8be2-b4fab1e2fdcd",
           "user_reulc3j3ms3snnxu:0ee6112f-e773-4c54-bed8-02a677ba6c33",
-          "user_reulc3j3ms3snnxu:757e4176-d815-4d8e-8dec-984b7015e4ec"
+          "user_reulc3j3ms3snnxu:757e4176-d815-4d8e-8dec-984b7015e4ec",
+          "user_0bhp2ga3msl1uk6h:09eb1a95-ca84-495d-bab1-f3534266cd1c"
         ]
       }
     ]
