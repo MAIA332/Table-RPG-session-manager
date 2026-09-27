@@ -114919,7 +114919,7 @@
             "id": "b00fcb07-76e9-432a-b5da-0b6dc6dd8c02",
             "name": "Boss figth 2",
             "url": "https://zipline.sinapselabs.com.br/u/ZxB9ei.png",
-            "isPublic": false,
+            "isPublic": true,
             "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
             "ownerId": "user_reulc3j3ms3snnxu",
             "ownerName": "GILGAMESH",
@@ -116276,7 +116276,7 @@
           }
         ],
         "weather": "sunny",
-        "updatedAt": 1790475246503,
+        "updatedAt": 1790477621215,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
