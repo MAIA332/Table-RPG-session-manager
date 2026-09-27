@@ -1373,7 +1373,6 @@
           "custom-eq-480ajzbp",
           "custom-eq-8a9thfm5",
           "custom-eq-tqob7exa",
-          "custom-eq-ahg7o1rj",
           "custom-eq-z9vv7wfb",
           "eq-dagger"
         ],
@@ -1383,7 +1382,7 @@
           "maxHp": 95,
           "mp": 59,
           "maxMp": 59,
-          "ip": 1.913,
+          "ip": 2.013,
           "maxIp": 6,
           "fp": 0,
           "xp": 85,
@@ -1402,7 +1401,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790542188468,
+        "updatedAt": 1790542189061,
         "customModifiers": [
           {
             "id": "6ute35",
