@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 509,
-        "updatedAt": 1789870266648,
+        "revision": 510,
+        "updatedAt": 1790472863181,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -111857,10 +111857,113 @@
           "char_4uf4pocfmstw6x65",
           "char_u267bpepmsusoyuv"
         ],
-        "creatures": [],
+        "creatures": [
+          {
+            "name": "Cavaleiro Estatua",
+            "imageUrl": "https://zipline.sinapselabs.com.br/u/BZxdbc.png",
+            "level": 11,
+            "species": "Construto",
+            "maxHp": 89,
+            "maxMp": 20,
+            "def": 10,
+            "mdef": 12,
+            "attributes": {
+              "dex": "d12",
+              "ins": "d6",
+              "mig": "d8",
+              "wlp": "d6"
+            },
+            "id": "custom-1fe744f1-d4ab-4aa0-b3a5-d149b463bca5",
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Golpe de lança",
+                "attributes": [
+                  "dex",
+                  "mig"
+                ],
+                "damage": 10,
+                "type": "físico",
+                "description": "Dano: 10; alvo: Defesa Física"
+              },
+              {
+                "name": "Golpe",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 8,
+                "type": "físico",
+                "description": "Dano: 8; alvo: Defesa Física"
+              }
+            ],
+            "combatVersion": 2,
+            "basicAttacksV2": [
+              {
+                "name": "Golpe de lança",
+                "attributes": [
+                  "dex",
+                  "mig"
+                ],
+                "targetDefense": "physical",
+                "damage": "10",
+                "type": "físico"
+              },
+              {
+                "name": "Golpe",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "targetDefense": "physical",
+                "damage": "8",
+                "type": "físico"
+              }
+            ],
+            "abilities": [
+              {
+                "id": "fa4f3f63-ae79-4a38-bef7-4e609a995238",
+                "kind": "qte",
+                "name": "Ataque lança em area",
+                "cost": {
+                  "amount": 15,
+                  "resource": "mp"
+                },
+                "seconds": 5,
+                "checkId": "c23",
+                "difficulty": 8,
+                "failureDamage": "8",
+                "failureEffect": "",
+                "successDamage": "0",
+                "successEffect": ""
+              }
+            ],
+            "spells": [],
+            "equipment": [],
+            "instanceId": "bf4e2db0-d62b-4a91-a12c-ccf4002b3a98",
+            "currentHp": 89,
+            "currentMp": 20,
+            "currentIp": 6
+          }
+        ],
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "4d09634d-94e7-4ee9-9f79-7d6be54d97c6",
+            "at": 1790472863181,
+            "text": "Cavaleiro Estatua entrou em cena."
+          },
           {
             "id": "408f60f7-fa12-4011-ad6f-79e77bcc408d",
             "at": 1789870179486,
@@ -112249,13 +112352,6 @@
             "text": "Kael Veyr: sucesso em Novo ataque 2. 0 de dano. ",
             "characterId": "char_jlhky6s9mstuuli0",
             "damage": 0
-          },
-          {
-            "id": "a819e97c-8f61-46c1-a982-bec757af5589",
-            "at": 1789517570239,
-            "text": "Thorfinn Lyngstad: falha em Novo ataque 2. 10 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 10
           }
         ],
         "receipts": [
@@ -112752,7 +112848,8 @@
           "user_gybabf5mmskx7a24:c631dfbf-8518-4679-81f9-f91722517b4b",
           "user_reulc3j3ms3snnxu:4c3b1bb3-027c-4fdf-91db-94697c31fd4f",
           "user_reulc3j3ms3snnxu:8bb5bd4c-607b-4cd0-968b-59e72d4ad8e7",
-          "user_reulc3j3ms3snnxu:91d2a700-e210-4e2f-ab07-72a3d740ca45"
+          "user_reulc3j3ms3snnxu:91d2a700-e210-4e2f-ab07-72a3d740ca45",
+          "user_reulc3j3ms3snnxu:fde84566-80b8-4b38-ba68-aa32873c56ae"
         ]
       }
     ]
