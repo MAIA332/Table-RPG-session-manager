@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 573,
-        "updatedAt": 1790473468757,
+        "revision": 574,
+        "updatedAt": 1790473475307,
         "enabled": true,
         "spotlight": {
           "side": "group",
@@ -111957,51 +111957,7 @@
           }
         ],
         "playerAttacks": {},
-        "qte": {
-          "id": "f846a335-558b-4c55-90db-ccf0839bae6b",
-          "ability": {
-            "id": "fa4f3f63-ae79-4a38-bef7-4e609a995238",
-            "kind": "qte",
-            "name": "Ataque lança em area",
-            "cost": {
-              "amount": 15,
-              "resource": "mp"
-            },
-            "seconds": 5,
-            "checkId": "c23",
-            "difficulty": 8,
-            "failureDamage": "8",
-            "failureEffect": "",
-            "successDamage": "0",
-            "successEffect": ""
-          },
-          "deadline": 1790473471445,
-          "targets": [
-            "char_4uf4pocfmstw6x65",
-            "char_u267bpepmsusoyuv",
-            "char_jlhky6s9mstuuli0"
-          ],
-          "outcomes": {
-            "char_jlhky6s9mstuuli0": {
-              "total": 14,
-              "success": true,
-              "damage": 0,
-              "effect": ""
-            },
-            "char_4uf4pocfmstw6x65": {
-              "total": 14,
-              "success": true,
-              "damage": 0,
-              "effect": ""
-            },
-            "char_u267bpepmsusoyuv": {
-              "total": 10,
-              "success": true,
-              "damage": 0,
-              "effect": ""
-            }
-          }
-        },
+        "qte": null,
         "log": [
           {
             "id": "a172f5e0-4ac1-44d8-ab34-8bddbdbab299",
@@ -112998,7 +112954,8 @@
           "user_reulc3j3ms3snnxu:507d0e48-58f9-4a06-a6d5-2c5c35843244",
           "user_gd68ua63msnua1nb:a9303994-6023-4650-8df9-f4b4ad84d203",
           "user_0bhp2ga3msl1uk6h:8955e6c7-5e7e-436a-8c1c-d973e4efe55c",
-          "user_gybabf5mmskx7a24:6440dae4-3ec4-4fd8-9d71-2b273be263b4"
+          "user_gybabf5mmskx7a24:6440dae4-3ec4-4fd8-9d71-2b273be263b4",
+          "user_reulc3j3ms3snnxu:2a49d64a-4b69-4305-88f5-32ac78a2eb36"
         ],
         "pendingAttack": null
       }
