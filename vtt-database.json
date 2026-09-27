@@ -1317,7 +1317,7 @@
         ],
         "zenit": 787,
         "resources": {
-          "hp": 58,
+          "hp": 33,
           "maxHp": 95,
           "mp": 34,
           "maxMp": 59,
@@ -1340,7 +1340,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790477701054,
+        "updatedAt": 1790477868840,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -111837,11 +111837,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 708,
-        "updatedAt": 1790477868330,
+        "revision": 709,
+        "updatedAt": 1790477868840,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 0,
@@ -112041,16 +112041,22 @@
               "success": true,
               "damage": 0,
               "effect": ""
+            },
+            "char_4uf4pocfmstw6x65": {
+              "total": 7,
+              "success": false,
+              "damage": 25,
+              "effect": "No chão cresce uma camada de espinhos"
             }
           }
         },
         "log": [
           {
-            "id": "eedcbc28-1231-4a3e-8b06-dc1ee58215aa",
-            "at": 1790477868330,
-            "text": "Kael Veyr: sucesso em Pressão de espinhos. 0 de dano. ",
-            "characterId": "char_jlhky6s9mstuuli0",
-            "damage": 0
+            "id": "dfd09949-40b4-4fe2-83b7-08f8a20452bb",
+            "at": 1790477868840,
+            "text": "Thorfinn Lyngstad: falha em Pressão de espinhos. 25 de dano. No chão cresce uma camada de espinhos",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "damage": 25
           },
           {
             "id": "49598649-a0b1-42f1-8f85-a945244cfc02",
@@ -113329,7 +113335,8 @@
           "user_reulc3j3ms3snnxu:4ee6ad05-d1f9-438f-becc-86724ad41c27",
           "user_reulc3j3ms3snnxu:2d63cd1f-4098-4641-af62-633a15af2cec",
           "user_gybabf5mmskx7a24:c19dcb75-fc1b-4a19-92a1-bb5618fc9bbf",
-          "user_gd68ua63msnua1nb:536eb074-02a4-471e-b683-916f600801d6"
+          "user_gd68ua63msnua1nb:536eb074-02a4-471e-b683-916f600801d6",
+          "user_0bhp2ga3msl1uk6h:9f6d4927-c137-4299-ad80-05d8b491db34"
         ],
         "pendingAttack": null
       }
