@@ -1107,7 +1107,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790471924949,
+        "updatedAt": 1790473266624,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -111822,11 +111822,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 553,
-        "updatedAt": 1790473266048,
+        "revision": 554,
+        "updatedAt": 1790473266624,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 2,
@@ -111993,16 +111993,22 @@
               "success": false,
               "damage": 8,
               "effect": ""
+            },
+            "char_jlhky6s9mstuuli0": {
+              "total": 15,
+              "success": true,
+              "damage": 0,
+              "effect": ""
             }
           }
         },
         "log": [
           {
-            "id": "b38b430f-4c01-434a-b193-f945b5f13baa",
-            "at": 1790473266048,
-            "text": "Amélia Candinari: falha em Ataque lança em area. 8 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 8
+            "id": "c21732d2-4d2a-4d33-917b-3a532a1d627a",
+            "at": 1790473266624,
+            "text": "Kael Veyr: sucesso em Ataque lança em area. 0 de dano. ",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "damage": 0
           },
           {
             "id": "dbdf5352-ea45-4aa5-944e-e089df93a04f",
@@ -112960,7 +112966,8 @@
           "user_reulc3j3ms3snnxu:33333084-fe36-4e5c-84be-1d21bb11e530",
           "user_reulc3j3ms3snnxu:f5bd7d29-0c7f-4e91-8144-3959edf556b8",
           "user_0bhp2ga3msl1uk6h:23b3cb37-a360-48b7-9bae-0bca86714e22",
-          "user_gybabf5mmskx7a24:36a19950-b871-4622-bfc3-fd3baf82f9b4"
+          "user_gybabf5mmskx7a24:36a19950-b871-4622-bfc3-fd3baf82f9b4",
+          "user_gd68ua63msnua1nb:cb2f3175-e3f6-4237-ba42-10f3ba741f2b"
         ],
         "pendingAttack": null
       }
