@@ -1542,7 +1542,7 @@
         ],
         "zenit": 487,
         "resources": {
-          "hp": 41,
+          "hp": 16,
           "maxHp": 77,
           "mp": 70,
           "maxMp": 70,
@@ -1562,7 +1562,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790475197156,
+        "updatedAt": 1790477867337,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -111837,8 +111837,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 706,
-        "updatedAt": 1790477865636,
+        "revision": 707,
+        "updatedAt": 1790477867337,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -112029,13 +112029,22 @@
             "char_u267bpepmsusoyuv",
             "char_jlhky6s9mstuuli0"
           ],
-          "outcomes": {}
+          "outcomes": {
+            "char_u267bpepmsusoyuv": {
+              "total": 7,
+              "success": false,
+              "damage": 25,
+              "effect": "No chão cresce uma camada de espinhos"
+            }
+          }
         },
         "log": [
           {
-            "id": "8ad9cf5b-1d56-476e-917c-b933bde3e55e",
-            "at": 1790477865636,
-            "text": "Rei Morto: Pressão de espinhos!"
+            "id": "6c501bec-2fe2-40c7-9501-22a66b6a6d1d",
+            "at": 1790477867337,
+            "text": "Amélia Candinari: falha em Pressão de espinhos. 25 de dano. No chão cresce uma camada de espinhos",
+            "characterId": "char_u267bpepmsusoyuv",
+            "damage": 25
           },
           {
             "id": "49598649-a0b1-42f1-8f85-a945244cfc02",
@@ -113312,7 +113321,8 @@
           "user_reulc3j3ms3snnxu:be361af5-c3a5-4c0e-a97d-c9222fd5a450",
           "user_reulc3j3ms3snnxu:6dec61a4-81fd-4494-a66c-1b9e1931979b",
           "user_reulc3j3ms3snnxu:4ee6ad05-d1f9-438f-becc-86724ad41c27",
-          "user_reulc3j3ms3snnxu:2d63cd1f-4098-4641-af62-633a15af2cec"
+          "user_reulc3j3ms3snnxu:2d63cd1f-4098-4641-af62-633a15af2cec",
+          "user_gybabf5mmskx7a24:c19dcb75-fc1b-4a19-92a1-bb5618fc9bbf"
         ],
         "pendingAttack": null
       }
