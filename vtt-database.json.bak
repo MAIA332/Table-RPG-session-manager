@@ -120687,8 +120687,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 944,
-        "updatedAt": 1790544777063,
+        "revision": 945,
+        "updatedAt": 1790544777287,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -120701,6 +120701,9 @@
               "name": "Thorfinn Lyngstad",
               "avatar": "https://i.pinimg.com/736x/c5/2d/f4/c52df4e33825fd430c74e418d3a01790.jpg"
             }
+          ],
+          "approverIds": [
+            "user_reulc3j3ms3snnxu"
           ]
         },
         "actorCharacterId": null,
