@@ -111838,8 +111838,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 652,
-        "updatedAt": 1790474372423,
+        "revision": 653,
+        "updatedAt": 1790474395064,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111984,13 +111984,43 @@
             "equipment": [],
             "instanceId": "bf4e2db0-d62b-4a91-a12c-ccf4002b3a98",
             "currentHp": 34,
-            "currentMp": 5,
+            "currentMp": 0,
             "currentIp": 6
           }
         ],
         "playerAttacks": {},
-        "qte": null,
+        "qte": {
+          "id": "57619578-884d-4205-a5ec-9366f03c2ca1",
+          "ability": {
+            "id": "5708ca51-52c1-4395-94ad-721e19f4bd12",
+            "kind": "qte",
+            "name": "Multiplas pedras",
+            "cost": {
+              "amount": 5,
+              "resource": "mp"
+            },
+            "seconds": 5,
+            "checkId": "c23",
+            "difficulty": 16,
+            "failureDamage": "20",
+            "failureEffect": "",
+            "successDamage": "0",
+            "successEffect": ""
+          },
+          "deadline": 1790474400064,
+          "targets": [
+            "char_4uf4pocfmstw6x65",
+            "char_u267bpepmsusoyuv",
+            "char_jlhky6s9mstuuli0"
+          ],
+          "outcomes": {}
+        },
         "log": [
+          {
+            "id": "f35adc13-6056-4134-898b-dd80baecca11",
+            "at": 1790474395064,
+            "text": "Cavaleiro Estatua: Multiplas pedras!"
+          },
           {
             "id": "feb55ad8-f017-4ad5-a328-4ead9021a255",
             "at": 1790474364551,
@@ -112474,13 +112504,6 @@
             "at": 1789860362611,
             "text": "Thorfinn Lyngstad: sucesso em Puxada de vinhas. 0 de dano. ",
             "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 0
-          },
-          {
-            "id": "5ead5b8e-38e2-48b3-bfe2-80070a2781bb",
-            "at": 1789860361939,
-            "text": "Kael Veyr: sucesso em Puxada de vinhas. 0 de dano. ",
-            "characterId": "char_jlhky6s9mstuuli0",
             "damage": 0
           }
         ],
@@ -113120,7 +113143,8 @@
           "user_gd68ua63msnua1nb:25886e2f-1547-46d4-8294-ecce28b5f2c8",
           "user_reulc3j3ms3snnxu:027a29b5-fbfa-4f2c-9a44-7188539507dd",
           "user_reulc3j3ms3snnxu:603d4dd7-aa84-409c-b8f2-271edb649ee9",
-          "user_reulc3j3ms3snnxu:f1bc2809-a319-4a9e-a884-8a6d6df59315"
+          "user_reulc3j3ms3snnxu:f1bc2809-a319-4a9e-a884-8a6d6df59315",
+          "user_reulc3j3ms3snnxu:554398dd-e21a-4bf3-85e4-5b5fb9f750ba"
         ],
         "pendingAttack": null
       }
