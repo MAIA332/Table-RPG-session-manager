@@ -1346,7 +1346,7 @@
           "cskill-38ymn4": 2
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790473630614,
+        "updatedAt": 1790473799464,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1469,22 +1469,22 @@
             "value": -2
           },
           {
+            "id": "item_equipped:custom-eq-2h9c6v8u",
+            "name": "Bônus ativos: Roupa de Capitão",
+            "target": "item_state_hidden",
+            "value": 1
+          },
+          {
             "id": "sheet_defense:physical",
             "name": "Defesa manual",
             "target": "sheet_defense_hidden",
-            "value": 15
+            "value": 17
           },
           {
             "id": "sheet_defense:magical",
             "name": "Defesa mágica manual",
             "target": "sheet_defense_hidden",
             "value": 9
-          },
-          {
-            "id": "item_equipped:custom-eq-2h9c6v8u",
-            "name": "Bônus ativos: Roupa de Capitão",
-            "target": "item_state_hidden",
-            "value": 1
           }
         ],
         "customItems": [],
