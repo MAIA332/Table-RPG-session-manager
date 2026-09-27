@@ -1104,7 +1104,7 @@
         ],
         "zenit": 734,
         "resources": {
-          "hp": 86,
+          "hp": 66,
           "maxHp": 86,
           "mp": 40,
           "maxMp": 60,
@@ -1124,7 +1124,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790474150617,
+        "updatedAt": 1790474400129,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -111838,11 +111838,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 655,
-        "updatedAt": 1790474397440,
+        "revision": 656,
+        "updatedAt": 1790474400129,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 5,
@@ -112025,10 +112025,23 @@
               "success": false,
               "damage": 20,
               "effect": ""
+            },
+            "char_jlhky6s9mstuuli0": {
+              "total": null,
+              "success": false,
+              "damage": 20,
+              "effect": ""
             }
           }
         },
         "log": [
+          {
+            "id": "8a0b8570-256b-42ec-8242-f4eaa0b9ed2c",
+            "at": 1790474400129,
+            "text": "Kael Veyr: tempo esgotado em Multiplas pedras. 20 de dano. ",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "damage": 20
+          },
           {
             "id": "3f3cfda2-23cc-46a2-bd1e-a8250ca5c457",
             "at": 1790474397440,
@@ -112513,13 +112526,6 @@
             "text": "Amélia Candinari: falha em Puxada de vinhas. 6 de dano. ",
             "characterId": "char_u267bpepmsusoyuv",
             "damage": 6
-          },
-          {
-            "id": "6cf934ee-275a-434e-a99f-f42ca9454dc9",
-            "at": 1789860362611,
-            "text": "Thorfinn Lyngstad: sucesso em Puxada de vinhas. 0 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 0
           }
         ],
         "receipts": [
