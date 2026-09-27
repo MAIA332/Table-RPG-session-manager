@@ -1609,7 +1609,8 @@
           "custom-eq-1vxsbh3o",
           "custom-eq-22lyzyze",
           "custom-eq-phorangi",
-          "custom-eq-ahg7o1rj"
+          "custom-eq-ahg7o1rj",
+          "custom-eq-156iasrj"
         ],
         "zenit": 487,
         "resources": {
@@ -1617,7 +1618,7 @@
           "maxHp": 77,
           "mp": 5,
           "maxMp": 70,
-          "ip": 2.6,
+          "ip": 2.5,
           "maxIp": 6,
           "fp": 1,
           "xp": 62,
@@ -1634,7 +1635,7 @@
           "cskill-1szrrx": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790481890393,
+        "updatedAt": 1790482202550,
         "customModifiers": [
           {
             "id": "s1uckf",

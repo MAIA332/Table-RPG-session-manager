@@ -1401,7 +1401,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790481814598,
+        "updatedAt": 1790482145795,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1536,22 +1536,22 @@
             "value": 0
           },
           {
+            "id": "ttnfnq",
+            "name": "Enfraquecido",
+            "target": "dex",
+            "value": -2
+          },
+          {
             "id": "sheet_defense:physical",
             "name": "Defesa manual",
             "target": "sheet_defense_hidden",
-            "value": 19
+            "value": 17
           },
           {
             "id": "sheet_defense:magical",
             "name": "Defesa mágica manual",
             "target": "sheet_defense_hidden",
             "value": 9
-          },
-          {
-            "id": "ttnfnq",
-            "name": "Enfraquecido",
-            "target": "dex",
-            "value": -2
           }
         ],
         "customItems": [],
