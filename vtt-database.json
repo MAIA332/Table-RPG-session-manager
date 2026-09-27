@@ -1288,6 +1288,10 @@
           {
             "classId": "chanter",
             "level": 1
+          },
+          {
+            "classId": "mutant",
+            "level": 1
           }
         ],
         "equipment": [
@@ -1317,9 +1321,9 @@
         "zenit": 787,
         "resources": {
           "hp": 64,
-          "maxHp": 89,
+          "maxHp": 95,
           "mp": 34,
-          "maxMp": 56,
+          "maxMp": 59,
           "ip": 1.513,
           "maxIp": 6,
           "fp": 2,
@@ -1335,10 +1339,11 @@
           "he-coagulation": 1,
           "pa-monster": 1,
           "ch-siren": 1,
-          "cskill-38ymn4": 2
+          "cskill-38ymn4": 2,
+          "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790475048369,
+        "updatedAt": 1790477152716,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1477,6 +1482,12 @@
             "name": "Bônus ativos: Lança com ponta de âmbar",
             "target": "item_state_hidden",
             "value": 1
+          },
+          {
+            "id": "free_skill:mu-akro",
+            "name": "Concessão gratuita: Akromorfose",
+            "target": "skill_grant_hidden",
+            "value": 0
           }
         ],
         "customItems": [],
