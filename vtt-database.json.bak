@@ -120683,8 +120683,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 891,
-        "updatedAt": 1790536519225,
+        "revision": 892,
+        "updatedAt": 1790536524762,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -122262,7 +122262,7 @@
             "status": "dying",
             "label": "Agonizando",
             "effect": "Permanece com 0 HP e precisa de socorro.",
-            "active": true
+            "active": false
           }
         }
       }
