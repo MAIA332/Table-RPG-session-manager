@@ -111838,8 +111838,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 600,
-        "updatedAt": 1790473875648,
+        "revision": 601,
+        "updatedAt": 1790473879313,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -111975,6 +111975,22 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "10a88c41-8e1f-48c6-ad3a-a9e78e02db6e:hit",
+            "at": 1790473879312,
+            "text": "Cavaleiro Estatua usou Golpe de lança em Kael Veyr: acerto 11, aguardando reação.",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Cavaleiro Estatua",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
+              "result": 11,
+              "breakdown": "10 + 1",
+              "modifier": 0
+            }
+          },
           {
             "id": "c7701649-d24c-4fd2-a275-b5cb8d215c09",
             "at": 1790473633285,
@@ -112412,13 +112428,6 @@
             "id": "e9d884b8-c420-46e0-9175-a38185ad8935",
             "at": 1789858523743,
             "text": "Monstro do pantano: Coordenação de algas!"
-          },
-          {
-            "id": "84524a69-41e9-402b-8077-c3db1c7a92a8",
-            "at": 1789857890522,
-            "text": "Monstro do pantano usou Soco pantanoso em Thorfinn Lyngstad: acerto. 7 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 7
           }
         ],
         "receipts": [
@@ -113005,9 +113014,27 @@
           "user_reulc3j3ms3snnxu:8496b8ac-355f-4584-8fda-aee075b4cbd5",
           "user_reulc3j3ms3snnxu:6ef3d8db-bf8c-4099-980f-679a3baa833b",
           "user_reulc3j3ms3snnxu:bde5c737-aad2-4ca1-a202-6a7b1234f9d7",
-          "user_reulc3j3ms3snnxu:ad5016a2-fcf8-4b12-a685-1b437d40bc90"
+          "user_reulc3j3ms3snnxu:ad5016a2-fcf8-4b12-a685-1b437d40bc90",
+          "user_reulc3j3ms3snnxu:244250cb-e7ca-4518-acf8-017d6fb25302"
         ],
-        "pendingAttack": null
+        "pendingAttack": {
+          "id": "10a88c41-8e1f-48c6-ad3a-a9e78e02db6e",
+          "at": 1790473879312,
+          "characterId": "char_jlhky6s9mstuuli0",
+          "creatureName": "Cavaleiro Estatua",
+          "attackName": "Golpe de lança",
+          "total": 11,
+          "rolls": [
+            10,
+            1
+          ],
+          "dice": [
+            "d12",
+            "d8"
+          ],
+          "damage": 10,
+          "effect": ""
+        }
       }
     ]
   ],
