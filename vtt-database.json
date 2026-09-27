@@ -111838,8 +111838,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 649,
-        "updatedAt": 1790474305037,
+        "revision": 650,
+        "updatedAt": 1790474364551,
         "enabled": true,
         "spotlight": {
           "side": "group",
@@ -111962,6 +111962,22 @@
                 "failureEffect": "",
                 "successDamage": "0",
                 "successEffect": ""
+              },
+              {
+                "id": "5708ca51-52c1-4395-94ad-721e19f4bd12",
+                "kind": "qte",
+                "name": "Multiplas pedras",
+                "cost": {
+                  "amount": 5,
+                  "resource": "mp"
+                },
+                "seconds": 5,
+                "checkId": "c23",
+                "difficulty": 16,
+                "failureDamage": "20",
+                "failureEffect": "",
+                "successDamage": "0",
+                "successEffect": ""
               }
             ],
             "spells": [],
@@ -111975,6 +111991,11 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "feb55ad8-f017-4ad5-a328-4ead9021a255",
+            "at": 1790474364551,
+            "text": "Habilidades de Cavaleiro Estatua atualizadas pelo Mestre."
+          },
           {
             "id": "78c237df-682c-40e1-85dc-17a51f9a2087",
             "at": 1790474150617,
@@ -112461,11 +112482,6 @@
             "text": "Kael Veyr: sucesso em Puxada de vinhas. 0 de dano. ",
             "characterId": "char_jlhky6s9mstuuli0",
             "damage": 0
-          },
-          {
-            "id": "46ab8ecf-06df-4ee8-b535-50ba4149ea84",
-            "at": 1789860360277,
-            "text": "Planta carnivora: Puxada de vinhas!"
           }
         ],
         "receipts": [
@@ -113101,7 +113117,8 @@
           "user_gybabf5mmskx7a24:f1bcff2b-4327-40a0-b89b-572c0c6a8232",
           "user_0bhp2ga3msl1uk6h:7125b684-6d66-4391-91f1-931589668de6",
           "user_reulc3j3ms3snnxu:95beb5ff-8e5d-4f46-be00-6bf7f331ef66",
-          "user_gd68ua63msnua1nb:25886e2f-1547-46d4-8294-ecce28b5f2c8"
+          "user_gd68ua63msnua1nb:25886e2f-1547-46d4-8294-ecce28b5f2c8",
+          "user_reulc3j3ms3snnxu:027a29b5-fbfa-4f2c-9a44-7188539507dd"
         ],
         "pendingAttack": null
       }
@@ -116219,101 +116236,8 @@
           }
         ],
         "weather": "sunny",
-        "updatedAt": 1790473984902,
+        "updatedAt": 1790474364551,
         "customCreatures": [
-          {
-            "name": "Cavaleiro Estatua",
-            "imageUrl": "https://zipline.sinapselabs.com.br/u/BZxdbc.png",
-            "level": 11,
-            "species": "Construto",
-            "maxHp": 89,
-            "maxMp": 20,
-            "def": 10,
-            "mdef": 12,
-            "attributes": {
-              "dex": "d12",
-              "ins": "d6",
-              "mig": "d8",
-              "wlp": "d6"
-            },
-            "id": "custom-1fe744f1-d4ab-4aa0-b3a5-d149b463bca5",
-            "affinities": {
-              "physical": "none",
-              "air": "none",
-              "bolt": "none",
-              "dark": "none",
-              "earth": "none",
-              "fire": "none",
-              "ice": "none",
-              "light": "none",
-              "poison": "none"
-            },
-            "basicAttacks": [
-              {
-                "name": "Golpe de lança",
-                "attributes": [
-                  "dex",
-                  "mig"
-                ],
-                "damage": 10,
-                "type": "físico",
-                "description": "Dano: 10; alvo: Defesa Física"
-              },
-              {
-                "name": "Golpe",
-                "attributes": [
-                  "mig",
-                  "mig"
-                ],
-                "damage": 8,
-                "type": "físico",
-                "description": "Dano: 8; alvo: Defesa Física"
-              }
-            ],
-            "combatVersion": 2,
-            "basicAttacksV2": [
-              {
-                "name": "Golpe de lança",
-                "attributes": [
-                  "dex",
-                  "mig"
-                ],
-                "targetDefense": "physical",
-                "damage": "10",
-                "type": "físico"
-              },
-              {
-                "name": "Golpe",
-                "attributes": [
-                  "mig",
-                  "mig"
-                ],
-                "targetDefense": "physical",
-                "damage": "8",
-                "type": "físico"
-              }
-            ],
-            "abilities": [
-              {
-                "id": "fa4f3f63-ae79-4a38-bef7-4e609a995238",
-                "kind": "qte",
-                "name": "Ataque lança em area",
-                "cost": {
-                  "amount": 15,
-                  "resource": "mp"
-                },
-                "seconds": 5,
-                "checkId": "c23",
-                "difficulty": 8,
-                "failureDamage": "8",
-                "failureEffect": "",
-                "successDamage": "0",
-                "successEffect": ""
-              }
-            ],
-            "spells": [],
-            "equipment": []
-          },
           {
             "name": "Criatura dentre a nevoa",
             "imageUrl": "http://zipline.sinapselabs.com.br/u/2uMG2M.png",
@@ -117373,6 +117297,115 @@
             "equipment": [
               "Fuso das Maldições de Agrat"
             ]
+          },
+          {
+            "name": "Cavaleiro Estatua",
+            "imageUrl": "https://zipline.sinapselabs.com.br/u/BZxdbc.png",
+            "level": 11,
+            "species": "Construto",
+            "maxHp": 89,
+            "maxMp": 20,
+            "def": 10,
+            "mdef": 12,
+            "attributes": {
+              "dex": "d12",
+              "ins": "d6",
+              "mig": "d8",
+              "wlp": "d6"
+            },
+            "id": "custom-1fe744f1-d4ab-4aa0-b3a5-d149b463bca5",
+            "affinities": {
+              "physical": "none",
+              "air": "none",
+              "bolt": "none",
+              "dark": "none",
+              "earth": "none",
+              "fire": "none",
+              "ice": "none",
+              "light": "none",
+              "poison": "none"
+            },
+            "basicAttacks": [
+              {
+                "name": "Golpe de lança",
+                "attributes": [
+                  "dex",
+                  "mig"
+                ],
+                "damage": 10,
+                "type": "físico",
+                "description": "Dano: 10; alvo: Defesa Física"
+              },
+              {
+                "name": "Golpe",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "damage": 8,
+                "type": "físico",
+                "description": "Dano: 8; alvo: Defesa Física"
+              }
+            ],
+            "combatVersion": 2,
+            "basicAttacksV2": [
+              {
+                "name": "Golpe de lança",
+                "attributes": [
+                  "dex",
+                  "mig"
+                ],
+                "targetDefense": "physical",
+                "damage": "10",
+                "type": "físico"
+              },
+              {
+                "name": "Golpe",
+                "attributes": [
+                  "mig",
+                  "mig"
+                ],
+                "targetDefense": "physical",
+                "damage": "8",
+                "type": "físico"
+              }
+            ],
+            "abilities": [
+              {
+                "id": "fa4f3f63-ae79-4a38-bef7-4e609a995238",
+                "kind": "qte",
+                "name": "Ataque lança em area",
+                "cost": {
+                  "amount": 15,
+                  "resource": "mp"
+                },
+                "seconds": 5,
+                "checkId": "c23",
+                "difficulty": 8,
+                "failureDamage": "8",
+                "failureEffect": "",
+                "successDamage": "0",
+                "successEffect": ""
+              },
+              {
+                "id": "5708ca51-52c1-4395-94ad-721e19f4bd12",
+                "kind": "qte",
+                "name": "Multiplas pedras",
+                "cost": {
+                  "amount": 5,
+                  "resource": "mp"
+                },
+                "seconds": 5,
+                "checkId": "c23",
+                "difficulty": 16,
+                "failureDamage": "20",
+                "failureEffect": "",
+                "successDamage": "0",
+                "successEffect": ""
+              }
+            ],
+            "spells": [],
+            "equipment": []
           }
         ],
         "customEquipment": [
