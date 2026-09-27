@@ -1111,7 +1111,7 @@
           "ip": 3.6,
           "maxIp": 6,
           "fp": 4,
-          "xp": 52,
+          "xp": 62,
           "lp": 0
         },
         "skills": {
@@ -1124,7 +1124,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790474975273,
+        "updatedAt": 1790475040313,
         "customModifiers": [
           {
             "id": "lamvsl",
