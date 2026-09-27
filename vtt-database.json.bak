@@ -1104,7 +1104,7 @@
         ],
         "zenit": 734,
         "resources": {
-          "hp": 76,
+          "hp": 51,
           "maxHp": 86,
           "mp": 20,
           "maxMp": 60,
@@ -1124,7 +1124,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790478203735,
+        "updatedAt": 1790478293337,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -111837,11 +111837,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 732,
-        "updatedAt": 1790478285622,
+        "revision": 733,
+        "updatedAt": 1790478293337,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 2,
@@ -112007,6 +112007,35 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "e0ad9cb3-260d-4e39-a7df-cf1bdcf429e3",
+            "at": 1790478293337,
+            "text": "Rei Morto atingiu Kael Veyr com Raizes Fétidas: 25 de dano. ",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "damage": 25
+          },
+          {
+            "id": "b6609850-664d-40e8-8a2b-64a781e731c8:reflex",
+            "at": 1790478293337,
+            "characterId": "char_jlhky6s9mstuuli0",
+            "text": "Kael Veyr: Reflexos 13 contra 19 — falha.",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Kael Veyr",
+              "playerName": "Mateus Lopes de Deus",
+              "attribute": "Reflexos contra 19 [d8 + d10]",
+              "result": 13,
+              "breakdown": "4 + 10",
+              "modifier": -1
+            }
+          },
+          {
+            "id": "bfe0ad32-e991-4958-bae7-0b863225c14f",
+            "at": 1790478293336,
+            "text": "Kael Veyr decidiu reagir a Raizes Fétidas.",
+            "characterId": "char_jlhky6s9mstuuli0"
+          },
           {
             "id": "b6609850-664d-40e8-8a2b-64a781e731c8:hit",
             "at": 1790478285616,
@@ -112597,25 +112626,6 @@
               "breakdown": "7 + 8",
               "modifier": 0
             }
-          },
-          {
-            "id": "d8cf3b0f-f989-4e70-8cdd-be8c67679bb9",
-            "at": 1790472898173,
-            "text": "Amélia Candinari: falha em Ataque lança em area. 8 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 8
-          },
-          {
-            "id": "4d09634d-94e7-4ee9-9f79-7d6be54d97c6",
-            "at": 1790472863181,
-            "text": "Cavaleiro Estatua entrou em cena."
-          },
-          {
-            "id": "408f60f7-fa12-4011-ad6f-79e77bcc408d",
-            "at": 1789870179486,
-            "text": "Amélia Candinari: falha em Espinhos negros. 10 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 10
           }
         ],
         "receipts": [
@@ -113332,26 +113342,10 @@
           "user_gybabf5mmskx7a24:f5862813-fbf4-4d93-82ed-79f18039cebe",
           "user_reulc3j3ms3snnxu:fbf1af2d-5f1f-4ef5-ae5e-74d3bea95d6b",
           "user_reulc3j3ms3snnxu:5b695a3f-ee84-4cec-be6b-9419f1cdba14",
-          "user_reulc3j3ms3snnxu:c177d40f-514a-4623-9fbe-baaffec25a93"
+          "user_reulc3j3ms3snnxu:c177d40f-514a-4623-9fbe-baaffec25a93",
+          "user_gd68ua63msnua1nb:609c3d2f-5e38-49b2-b7de-d9f232067a9e"
         ],
-        "pendingAttack": {
-          "id": "b6609850-664d-40e8-8a2b-64a781e731c8",
-          "at": 1790478285616,
-          "characterId": "char_jlhky6s9mstuuli0",
-          "creatureName": "Rei Morto",
-          "attackName": "Raizes Fétidas",
-          "total": 19,
-          "rolls": [
-            7,
-            12
-          ],
-          "dice": [
-            "d12",
-            "d12"
-          ],
-          "damage": 25,
-          "effect": ""
-        }
+        "pendingAttack": null
       }
     ]
   ],
