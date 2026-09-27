@@ -111838,11 +111838,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 687,
-        "updatedAt": 1790474665848,
+        "revision": 688,
+        "updatedAt": 1790474668887,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 1,
@@ -111991,6 +111991,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "03981eec-c1c1-4d46-8059-551d47f6e66e",
+            "at": 1790474668887,
+            "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
+            "characterId": "char_4uf4pocfmstw6x65"
+          },
+          {
+            "id": "84a0847c-b361-4d7a-b469-4307a60ee887:hit",
+            "at": 1790474668887,
+            "text": "Cavaleiro Estatua usou Golpe de lança em Thorfinn Lyngstad: acerto 9, errou.",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_4uf4pocfmstw6x65",
+              "characterName": "Cavaleiro Estatua",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
+              "result": 9,
+              "breakdown": "1 + 8",
+              "modifier": 0
+            }
+          },
           {
             "id": "99606162-888d-4a7a-b86d-c3624d9c799e",
             "at": 1790474625308,
@@ -112547,20 +112569,6 @@
             "text": "Agrat bat usou Festim da Megera em Thorfinn Lyngstad: acerto. 15 de dano. Um ataque mágico de sucção de vida. Metade do dano causado a esse alvo cura o HP de Agrat Bat.",
             "characterId": "char_4uf4pocfmstw6x65",
             "damage": 15
-          },
-          {
-            "id": "613be3b6-03e3-4003-a3ca-70e2190bfdb8",
-            "at": 1789869157889,
-            "text": "Amélia Candinari: falha em Espinhos negros. 10 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 10
-          },
-          {
-            "id": "c2d03f4d-c329-4b1e-920d-5c57d04c4e64",
-            "at": 1789869055418,
-            "text": "Amélia Candinari: falha em Espinhos negros. 10 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 10
           }
         ],
         "receipts": [
@@ -113233,7 +113241,8 @@
           "user_0bhp2ga3msl1uk6h:8c80d852-9425-4af5-b01f-605215fcfb6f",
           "user_reulc3j3ms3snnxu:8ed1906e-ccd5-46e6-81aa-9768ea9c9551",
           "user_reulc3j3ms3snnxu:65dddac5-2674-44ec-a3f7-bf980dcee946",
-          "user_reulc3j3ms3snnxu:e9422890-52df-480e-8d30-b6baa776c2b3"
+          "user_reulc3j3ms3snnxu:e9422890-52df-480e-8d30-b6baa776c2b3",
+          "user_reulc3j3ms3snnxu:56644e78-22ec-4492-a2f3-e8351c8a2eec"
         ],
         "pendingAttack": null
       }
