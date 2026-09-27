@@ -120687,23 +120687,20 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 943,
-        "updatedAt": 1790544759260,
-        "enabled": true,
+        "revision": 944,
+        "updatedAt": 1790544777063,
+        "enabled": false,
         "spotlight": {
           "side": "group",
           "activePlayerId": null,
           "request": null,
-          "tokens": 2,
+          "tokens": 0,
           "players": [
             {
               "id": "user_0bhp2ga3msl1uk6h",
               "name": "Thorfinn Lyngstad",
               "avatar": "https://i.pinimg.com/736x/c5/2d/f4/c52df4e33825fd430c74e418d3a01790.jpg"
             }
-          ],
-          "approverIds": [
-            "user_reulc3j3ms3snnxu"
           ]
         },
         "actorCharacterId": null,
@@ -122340,7 +122337,8 @@
           "user_reulc3j3ms3snnxu:1db28dbf-a2d9-4c2a-a9f8-2074400a469c",
           "user_0bhp2ga3msl1uk6h:f3b05026-d252-4b2b-962a-04f05d593552",
           "user_reulc3j3ms3snnxu:64ef3c89-7d19-4fe3-b587-250316c18574",
-          "user_reulc3j3ms3snnxu:9ef96232-ed1e-409d-b553-72a1d89160d5"
+          "user_reulc3j3ms3snnxu:9ef96232-ed1e-409d-b553-72a1d89160d5",
+          "user_reulc3j3ms3snnxu:d1a4a081-6c66-45a9-b626-1b8900d77b3c"
         ],
         "pendingAttack": null,
         "deathChecks": {
