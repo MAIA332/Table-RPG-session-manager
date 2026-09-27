@@ -1580,7 +1580,7 @@
           "maxMp": 70,
           "ip": 2.6,
           "maxIp": 6,
-          "fp": 2,
+          "fp": 1,
           "xp": 62,
           "lp": 0
         },
@@ -1595,7 +1595,7 @@
           "cskill-1szrrx": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790480185445,
+        "updatedAt": 1790480565667,
         "customModifiers": [
           {
             "id": "s1uckf",
