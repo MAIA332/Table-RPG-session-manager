@@ -1368,7 +1368,7 @@
         ],
         "zenit": 787,
         "resources": {
-          "hp": 87,
+          "hp": 72,
           "maxHp": 95,
           "mp": 57,
           "maxMp": 59,
@@ -1391,7 +1391,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790544613597,
+        "updatedAt": 1790544706206,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -120687,11 +120687,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 940,
-        "updatedAt": 1790544704494,
+        "revision": 941,
+        "updatedAt": 1790544706206,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 2,
@@ -120832,13 +120832,22 @@
           "targets": [
             "char_4uf4pocfmstw6x65"
           ],
-          "outcomes": {}
+          "outcomes": {
+            "char_4uf4pocfmstw6x65": {
+              "total": 17,
+              "success": false,
+              "damage": 15,
+              "effect": "Alvos falhados ficam adormecidos"
+            }
+          }
         },
         "log": [
           {
-            "id": "03bdc98a-d3a6-4076-a157-75d60c8cf0b5",
-            "at": 1790544704494,
-            "text": "Sereia do pantano: Canto da sereia!"
+            "id": "1cfaaf36-a704-4d43-aa5d-bbb031229a8e",
+            "at": 1790544706206,
+            "text": "Thorfinn Lyngstad: falha em Canto da sereia. 15 de dano. Alvos falhados ficam adormecidos",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "damage": 15
           },
           {
             "id": "3d13837e-b965-4a8b-ad97-7d6918ffeeb9",
@@ -122358,7 +122367,8 @@
           "user_reulc3j3ms3snnxu:1d80f13d-c2ae-4123-955e-3b24b88b697e",
           "user_reulc3j3ms3snnxu:f653e0fc-eb78-4c7e-ae03-4887057a4514",
           "user_reulc3j3ms3snnxu:7b70643d-e0cd-467d-a8d1-28480c5a1646",
-          "user_reulc3j3ms3snnxu:1db28dbf-a2d9-4c2a-a9f8-2074400a469c"
+          "user_reulc3j3ms3snnxu:1db28dbf-a2d9-4c2a-a9f8-2074400a469c",
+          "user_0bhp2ga3msl1uk6h:f3b05026-d252-4b2b-962a-04f05d593552"
         ],
         "pendingAttack": null,
         "deathChecks": {
