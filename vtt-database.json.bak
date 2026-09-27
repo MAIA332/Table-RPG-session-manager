@@ -1125,7 +1125,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790475251695,
+        "updatedAt": 1790475420402,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -1237,12 +1237,6 @@
             "name": "Resfriado",
             "target": "dex",
             "value": -1
-          },
-          {
-            "id": "rlx6nzj",
-            "name": "Enfraquecido",
-            "target": "dex",
-            "value": -2
           }
         ],
         "customItems": [],
