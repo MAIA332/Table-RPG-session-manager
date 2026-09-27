@@ -123959,7 +123959,7 @@
             "id": "0c417104-feb2-4a06-8046-74e6fff67d69",
             "name": "Mapa batalha boss",
             "url": "https://zipline.sinapselabs.com.br/u/AHHhUM.png",
-            "isPublic": false,
+            "isPublic": true,
             "folderId": "859c7cba-e404-4123-908f-799ff04919ff",
             "ownerId": "user_reulc3j3ms3snnxu",
             "ownerName": "GILGAMESH",
@@ -125416,7 +125416,7 @@
           }
         ],
         "weather": "rain",
-        "updatedAt": 1790541959825,
+        "updatedAt": 1790541966200,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
