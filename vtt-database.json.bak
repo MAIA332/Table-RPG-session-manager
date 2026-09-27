@@ -115842,7 +115842,7 @@
           }
         ],
         "weather": "sunny",
-        "updatedAt": 1790471742629,
+        "updatedAt": 1790471833577,
         "customCreatures": [
           {
             "name": "Cavaleiro Estatua",
@@ -117751,6 +117751,24 @@
             "weight": 100,
             "weightUnit": "g",
             "id": "custom-eq-mq7flfc4",
+            "folderId": "custom"
+          },
+          {
+            "name": "Lamina de ambar",
+            "category": "armor",
+            "cost": 50,
+            "purchasable": false,
+            "detail": "Ponta de lança feita de âmbar",
+            "damage": "",
+            "defense": "",
+            "mdef": "",
+            "type": "",
+            "bonus": "",
+            "effect": "",
+            "actions": [],
+            "weight": 150,
+            "weightUnit": "g",
+            "id": "custom-eq-vbthhrho",
             "folderId": "custom"
           }
         ],
