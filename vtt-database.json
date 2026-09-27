@@ -116154,7 +116154,7 @@
           }
         ],
         "weather": "sunny",
-        "updatedAt": 1790472595006,
+        "updatedAt": 1790473984902,
         "customCreatures": [
           {
             "name": "Cavaleiro Estatua",
@@ -116543,8 +116543,8 @@
             "species": "Aberração",
             "maxHp": 150,
             "maxMp": 150,
-            "def": 16,
-            "mdef": 16,
+            "def": 25,
+            "mdef": 25,
             "attributes": {
               "dex": "d12",
               "ins": "d12",
