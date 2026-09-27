@@ -1547,7 +1547,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790473495019,
+        "updatedAt": 1790473633285,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -111822,11 +111822,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 585,
-        "updatedAt": 1790473630614,
+        "revision": 586,
+        "updatedAt": 1790473633285,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 1,
@@ -111993,16 +111993,22 @@
               "success": false,
               "damage": 8,
               "effect": ""
+            },
+            "char_u267bpepmsusoyuv": {
+              "total": 8,
+              "success": true,
+              "damage": 0,
+              "effect": ""
             }
           }
         },
         "log": [
           {
-            "id": "bfc7c955-4ab7-4ef8-a16b-d3cba5cc2504",
-            "at": 1790473630614,
-            "text": "Thorfinn Lyngstad: falha em Ataque lança em area. 8 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 8
+            "id": "c7701649-d24c-4fd2-a275-b5cb8d215c09",
+            "at": 1790473633285,
+            "text": "Amélia Candinari: sucesso em Ataque lança em area. 0 de dano. ",
+            "characterId": "char_u267bpepmsusoyuv",
+            "damage": 0
           },
           {
             "id": "0338cf45-b921-4de7-8494-309ed10ec90a",
@@ -113012,7 +113018,8 @@
           "user_reulc3j3ms3snnxu:61b2c573-c3fb-47d7-abb8-cf28bb4de929",
           "user_reulc3j3ms3snnxu:acabda03-2a0d-4b1c-a8cc-a1e8548ced09",
           "user_gd68ua63msnua1nb:841f2849-ead3-4700-b8ec-f3b2e1927711",
-          "user_0bhp2ga3msl1uk6h:f8afe62c-4856-430c-88fc-7adf87729fb0"
+          "user_0bhp2ga3msl1uk6h:f8afe62c-4856-430c-88fc-7adf87729fb0",
+          "user_gybabf5mmskx7a24:70b342ef-096f-4944-ad72-55fe527fed10"
         ],
         "pendingAttack": null
       }
