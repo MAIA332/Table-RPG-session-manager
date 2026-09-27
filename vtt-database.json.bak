@@ -111822,11 +111822,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 545,
-        "updatedAt": 1790473187381,
+        "revision": 546,
+        "updatedAt": 1790473190871,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 3,
@@ -111959,6 +111959,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "dbdf5352-ea45-4aa5-944e-e089df93a04f",
+            "at": 1790473190871,
+            "text": "Cavaleiro Estatua errou Thorfinn Lyngstad. Nenhum dano aplicado.",
+            "characterId": "char_4uf4pocfmstw6x65"
+          },
+          {
+            "id": "1fb22bcb-ee3c-4775-8c6d-d7aeb835acd9:hit",
+            "at": 1790473190871,
+            "text": "Cavaleiro Estatua usou Golpe de lança em Thorfinn Lyngstad: acerto 8, errou.",
+            "characterId": "char_4uf4pocfmstw6x65",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_4uf4pocfmstw6x65",
+              "characterName": "Cavaleiro Estatua",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
+              "result": 8,
+              "breakdown": "6 + 2",
+              "modifier": 0
+            }
+          },
           {
             "id": "ffe6114c-988b-4c42-9c6e-eaf02e7de3da",
             "at": 1790472960039,
@@ -112360,20 +112382,6 @@
             "at": 1789854684193,
             "text": "Criatura dentre a nevoa usou Troca de posição na nevoa em Kael Veyr: falha. 0 de dano. ",
             "characterId": "char_jlhky6s9mstuuli0",
-            "damage": 0
-          },
-          {
-            "id": "791a6017-afb0-43b0-9d96-17a92cf9d2cd",
-            "at": 1789854583746,
-            "text": "Criatura dentre a nevoa usou Troca de posição na nevoa em Amélia Candinari: sucesso com custo. 3 de dano. Troca de posição com um jogador",
-            "characterId": "char_u267bpepmsusoyuv",
-            "damage": 3
-          },
-          {
-            "id": "7715903e-6495-40fc-bb59-0edac293d2d4",
-            "at": 1789854379538,
-            "text": "Criatura dentre a nevoa usou Golpe em Thorfinn Lyngstad: falha. 0 de dano. ",
-            "characterId": "char_4uf4pocfmstw6x65",
             "damage": 0
           }
         ],
@@ -112906,7 +112914,8 @@
           "user_reulc3j3ms3snnxu:72d788bc-4c6e-4e68-b28f-44a4964c8e58",
           "user_0bhp2ga3msl1uk6h:bfa80fd7-a0c6-46a3-b193-a556940dd44e",
           "user_reulc3j3ms3snnxu:420154ab-d412-4b48-a4db-39a071f0e162",
-          "user_reulc3j3ms3snnxu:23f8ef8d-3904-4732-a47d-cde77e4897b5"
+          "user_reulc3j3ms3snnxu:23f8ef8d-3904-4732-a47d-cde77e4897b5",
+          "user_reulc3j3ms3snnxu:6108ad00-cd5a-40b5-a609-ccbbe1696f16"
         ],
         "pendingAttack": null
       }
