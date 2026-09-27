@@ -1384,7 +1384,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790546176517,
+        "updatedAt": 1790546179756,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1529,12 +1529,6 @@
             "name": "Bônus ativos: Anel de Rubi incandescente",
             "target": "item_state_hidden",
             "value": 1
-          },
-          {
-            "id": "dpsjuf",
-            "name": "Cansado",
-            "target": "dex",
-            "value": -2
           },
           {
             "id": "sheet_defense:physical",
