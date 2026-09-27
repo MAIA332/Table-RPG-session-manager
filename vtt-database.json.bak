@@ -1599,7 +1599,6 @@
           }
         ],
         "equipment": [
-          "eq-dagger",
           "eq-lantern",
           "eq-sword",
           "custom-eq-3ijbdddm",
@@ -1617,7 +1616,7 @@
           "maxHp": 77,
           "mp": 5,
           "maxMp": 70,
-          "ip": 2.6,
+          "ip": 2.9,
           "maxIp": 6,
           "fp": 1,
           "xp": 62,
@@ -1634,7 +1633,7 @@
           "cskill-1szrrx": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790536524181,
+        "updatedAt": 1790541984408,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -127950,9 +127949,25 @@
             "status": "accepted",
             "createdAt": 1790475197156,
             "resolvedAt": 1790475203906
+          },
+          {
+            "id": "transfer_35ogcc5pmukagtcp",
+            "campaignId": "camp_o5slw0ptmsjhu84l",
+            "donorCharacterId": "char_u267bpepmsusoyuv",
+            "donorCharacterName": "Amélia Candinari",
+            "donorOwnerId": "user_gybabf5mmskx7a24",
+            "recipientCharacterId": "char_4uf4pocfmstw6x65",
+            "recipientCharacterName": "Thorfinn Lyngstad",
+            "recipientOwnerId": "user_0bhp2ga3msl1uk6h",
+            "itemId": "eq-dagger",
+            "itemName": "Adaga de Aço",
+            "itemKind": "equipment",
+            "donorItemBonusesActive": false,
+            "status": "pending",
+            "createdAt": 1790541984409
           }
         ],
-        "updatedAt": 1790475203906
+        "updatedAt": 1790541984409
       }
     ],
     [
