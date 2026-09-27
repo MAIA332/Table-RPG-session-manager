@@ -1382,7 +1382,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790547352960,
+        "updatedAt": 1790547371446,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1532,7 +1532,7 @@
             "id": "sheet_defense:physical",
             "name": "Defesa manual",
             "target": "sheet_defense_hidden",
-            "value": 19
+            "value": 17
           },
           {
             "id": "sheet_defense:magical",
