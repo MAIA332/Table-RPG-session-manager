@@ -116272,7 +116272,7 @@
           }
         ],
         "weather": "sunny",
-        "updatedAt": 1790474866517,
+        "updatedAt": 1790475246503,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",
@@ -116649,7 +116649,7 @@
                 "seconds": 5,
                 "checkId": "c23",
                 "difficulty": 14,
-                "failureDamage": "19",
+                "failureDamage": "25",
                 "failureEffect": "No chão cresce uma camada de espinhos",
                 "successDamage": "0",
                 "successEffect": ""
