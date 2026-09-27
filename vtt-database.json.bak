@@ -1148,7 +1148,8 @@
           "custom-eq-kzuvpfq0",
           "custom-eq-jjueige1",
           "custom-eq-mq7flfc4",
-          "custom-eq-ahg7o1rj"
+          "custom-eq-ahg7o1rj",
+          "custom-eq-p5pwv2kk"
         ],
         "zenit": 734,
         "resources": {
@@ -1156,7 +1157,7 @@
           "maxHp": 86,
           "mp": 0,
           "maxMp": 60,
-          "ip": 3.6,
+          "ip": 3.5,
           "maxIp": 6,
           "fp": 4,
           "xp": 62,
@@ -1172,7 +1173,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790481923436,
+        "updatedAt": 1790482110023,
         "customModifiers": [
           {
             "id": "lamvsl",
