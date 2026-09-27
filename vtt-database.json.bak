@@ -1631,7 +1631,7 @@
           "cskill-1szrrx": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790545084789,
+        "updatedAt": 1790545236943,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -1761,6 +1761,12 @@
             "name": "Concessão gratuita: Raizes ancetrais",
             "target": "skill_grant_hidden",
             "value": 1
+          },
+          {
+            "id": "wwfrgr",
+            "name": "Fome",
+            "target": "all",
+            "value": -2
           }
         ],
         "customItems": [
