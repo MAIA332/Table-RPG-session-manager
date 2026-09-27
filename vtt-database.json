@@ -111351,8 +111351,8 @@
     [
       "camp_2m0dl7e8mu1uqagj",
       {
-        "revision": 156,
-        "updatedAt": 1790469576238,
+        "revision": 157,
+        "updatedAt": 1790469578667,
         "enabled": false,
         "spotlight": {
           "side": "group",
@@ -111380,122 +111380,7 @@
           "char_x5rby0nmmu1xqicr",
           "char_h71sn0spmu1ut8ax"
         ],
-        "creatures": [
-          {
-            "id": "cr-wolf",
-            "name": "Lobo Zumbi",
-            "imageUrl": "https://preview.redd.it/the-zombie-virus-spread-to-wildlife-ex-wolves-birds-bears-v0-ry0uc5mpm82c1.jpg?width=640&crop=smart&auto=webp&s=593110ee26508e4e81b5bcd3bb56ddc2112a549a",
-            "level": 10,
-            "species": "Besta",
-            "attributes": {
-              "dex": "d10",
-              "ins": "d8",
-              "mig": "d8",
-              "wlp": "d6"
-            },
-            "maxHp": 50,
-            "maxMp": 20,
-            "def": 11,
-            "mdef": 8,
-            "affinities": {
-              "physical": "none",
-              "air": "none",
-              "bolt": "none",
-              "dark": "none",
-              "earth": "none",
-              "fire": "none",
-              "ice": "RS",
-              "light": "none",
-              "poison": "none"
-            },
-            "basicAttacks": [
-              {
-                "name": "Mordida Feroz",
-                "attributes": [
-                  "dex",
-                  "mig"
-                ],
-                "damage": 8,
-                "type": "físico"
-              }
-            ],
-            "spells": [
-              "Uivo da Matilha: Gaste 10 PM. Dá a todos os aliados do tipo Besta +2 no próximo Teste de Precisão."
-            ],
-            "equipment": [],
-            "abilities": [
-              {
-                "id": "3ffb2a48-40e5-4888-8459-795b798ab9f2",
-                "kind": "attack",
-                "name": "Salto atacante",
-                "cost": {
-                  "amount": 10,
-                  "resource": "mp"
-                },
-                "attack": {
-                  "name": "Golpe",
-                  "attributes": [
-                    "dex",
-                    "mig"
-                  ],
-                  "targetDefense": "physical",
-                  "damage": "2d12",
-                  "type": "físico",
-                  "description": "TESTE"
-                }
-              },
-              {
-                "id": "834b2c1a-e3c6-4f55-bffb-e793b4b6785a",
-                "kind": "qte",
-                "name": "Salto qte",
-                "cost": {
-                  "amount": 8,
-                  "resource": "mp"
-                },
-                "seconds": 10,
-                "checkId": "c23",
-                "difficulty": 12,
-                "failureDamage": "10",
-                "failureEffect": "",
-                "successDamage": "0",
-                "successEffect": ""
-              },
-              {
-                "id": "76aadf12-66d8-4bdc-abf3-616718d5f7a9",
-                "kind": "qte",
-                "name": "Uivo da Matilha",
-                "cost": {
-                  "amount": 1,
-                  "resource": "token"
-                },
-                "seconds": 7,
-                "checkId": "dex",
-                "difficulty": 12,
-                "failureDamage": "15",
-                "failureEffect": "Uivo da Matilha: Gaste 10 PM. Dá a todos os aliados do tipo Besta +2 no próximo Teste de Precisão.",
-                "successDamage": "0",
-                "successEffect": ""
-              }
-            ],
-            "combatVersion": 2,
-            "instanceId": "de459718-cdc3-4e71-968b-f5986778f307",
-            "currentHp": 50,
-            "currentMp": 10,
-            "currentIp": 6,
-            "basicAttacksV2": [
-              {
-                "name": "Mordida Feroz",
-                "attributes": [
-                  "dex",
-                  "mig"
-                ],
-                "damage": "8",
-                "type": "físico",
-                "targetDefense": "physical"
-              }
-            ]
-          }
-        ],
+        "creatures": [],
         "playerAttacks": {
           "char_h71sn0spmu1ut8ax": []
         },
@@ -112017,7 +111902,8 @@
           "user_reulc3j3ms3snnxu:b6de34b0-b661-42b1-bd17-9a68cb76c9a4",
           "user_reulc3j3ms3snnxu:7c4f2ef0-c2fe-429d-b349-d5aada1b3074",
           "user_ex0bq249ms6myjd2:44a975ed-2aff-487f-9d1d-9e68d4856817",
-          "user_reulc3j3ms3snnxu:b65cebd7-d698-4eb2-abee-fb387fac03ea"
+          "user_reulc3j3ms3snnxu:b65cebd7-d698-4eb2-abee-fb387fac03ea",
+          "user_reulc3j3ms3snnxu:737cb72d-d3f3-4a3c-9c63-86f18185c754"
         ],
         "pendingAttack": null
       }
