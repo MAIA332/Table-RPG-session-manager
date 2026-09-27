@@ -111822,8 +111822,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 519,
-        "updatedAt": 1790472900712,
+        "revision": 520,
+        "updatedAt": 1790472904127,
         "enabled": true,
         "spotlight": {
           "side": "group",
@@ -111835,7 +111835,9 @@
               "user_gybabf5mmskx7a24",
               "user_reulc3j3ms3snnxu"
             ],
-            "approved": []
+            "approved": [
+              "user_gybabf5mmskx7a24"
+            ]
           },
           "tokens": 1,
           "players": [
@@ -112897,7 +112899,8 @@
           "user_reulc3j3ms3snnxu:757e4176-d815-4d8e-8dec-984b7015e4ec",
           "user_0bhp2ga3msl1uk6h:09eb1a95-ca84-495d-bab1-f3534266cd1c",
           "user_gybabf5mmskx7a24:e3de00de-56a3-4221-b8a3-f1e3748bdae3",
-          "user_0bhp2ga3msl1uk6h:c8dfe2ae-783c-423e-8a38-aae7a7dfbdae"
+          "user_0bhp2ga3msl1uk6h:c8dfe2ae-783c-423e-8a38-aae7a7dfbdae",
+          "user_gybabf5mmskx7a24:c33ca175-a41b-49d9-ada4-6c6c08b1d6e3"
         ]
       }
     ]
