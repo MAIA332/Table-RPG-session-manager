@@ -1120,7 +1120,7 @@
         ],
         "zenit": 734,
         "resources": {
-          "hp": 51,
+          "hp": 43,
           "maxHp": 86,
           "mp": 10,
           "maxMp": 60,
@@ -1140,7 +1140,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790479307696,
+        "updatedAt": 1790480190455,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -120644,11 +120644,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 820,
-        "updatedAt": 1790480187054,
+        "revision": 821,
+        "updatedAt": 1790480190455,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 2,
@@ -120899,10 +120899,23 @@
               "success": false,
               "damage": 8,
               "effect": ""
+            },
+            "char_jlhky6s9mstuuli0": {
+              "total": null,
+              "success": false,
+              "damage": 8,
+              "effect": ""
             }
           }
         },
         "log": [
+          {
+            "id": "2b6a918b-5a76-4ab9-a45c-383cf3886d71",
+            "at": 1790480190455,
+            "text": "Kael Veyr: tempo esgotado em Pressão. 8 de dano. ",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "damage": 8
+          },
           {
             "id": "cae9b4f8-b512-46b9-92de-b502793d2a8f",
             "at": 1790480187054,
@@ -121501,12 +121514,6 @@
               "breakdown": "7 + 7",
               "modifier": -1
             }
-          },
-          {
-            "id": "3dc023ef-5e16-49a1-a6a9-ace1051e268e",
-            "at": 1790473886306,
-            "text": "Kael Veyr decidiu reagir a Golpe de lança.",
-            "characterId": "char_jlhky6s9mstuuli0"
           }
         ],
         "receipts": [
