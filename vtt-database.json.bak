@@ -1296,7 +1296,6 @@
         ],
         "equipment": [
           "custom-eq-2h9c6v8u",
-          "eq-dagger",
           "custom-eq-ci0g0jmf",
           "custom-eq-ci0g0jmf",
           "custom-eq-jmhi67kt",
@@ -1323,7 +1322,7 @@
           "maxHp": 95,
           "mp": 34,
           "maxMp": 59,
-          "ip": 1.813,
+          "ip": 2.113,
           "maxIp": 6,
           "fp": 2,
           "xp": 85,
@@ -1342,7 +1341,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790477694429,
+        "updatedAt": 1790477697339,
         "customModifiers": [
           {
             "id": "6ute35",
