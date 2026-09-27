@@ -1519,7 +1519,6 @@
           "custom-eq-1vxsbh3o",
           "custom-eq-1vxsbh3o",
           "custom-eq-1vxsbh3o",
-          "custom-eq-ahg7o1rj",
           "custom-eq-22lyzyze",
           "custom-eq-phorangi",
           "custom-eq-p5pwv2kk",
@@ -1531,7 +1530,7 @@
           "maxHp": 77,
           "mp": 70,
           "maxMp": 70,
-          "ip": 2.4,
+          "ip": 2.5,
           "maxIp": 6,
           "fp": 2,
           "xp": 52,
@@ -1547,7 +1546,7 @@
           "ge-nature": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790473468757,
+        "updatedAt": 1790473469775,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -118498,9 +118497,25 @@
             "status": "rejected",
             "createdAt": 1790473460261,
             "resolvedAt": 1790473463066
+          },
+          {
+            "id": "transfer_px9t3agfmuj5ob4f",
+            "campaignId": "camp_o5slw0ptmsjhu84l",
+            "donorCharacterId": "char_u267bpepmsusoyuv",
+            "donorCharacterName": "Amélia Candinari",
+            "donorOwnerId": "user_gybabf5mmskx7a24",
+            "recipientCharacterId": "char_jlhky6s9mstuuli0",
+            "recipientCharacterName": "Kael Veyr",
+            "recipientOwnerId": "user_gd68ua63msnua1nb",
+            "itemId": "custom-eq-ahg7o1rj",
+            "itemName": "Raiz de Casca-Férrea",
+            "itemKind": "equipment",
+            "donorItemBonusesActive": false,
+            "status": "pending",
+            "createdAt": 1790473469775
           }
         ],
-        "updatedAt": 1790473463066
+        "updatedAt": 1790473469775
       }
     ],
     [
