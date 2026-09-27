@@ -1124,7 +1124,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790473923727,
+        "updatedAt": 1790474150617,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -111838,11 +111838,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 638,
-        "updatedAt": 1790474149421,
+        "revision": 639,
+        "updatedAt": 1790474150617,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 0,
@@ -112009,15 +112009,21 @@
               "success": true,
               "damage": 0,
               "effect": ""
+            },
+            "char_jlhky6s9mstuuli0": {
+              "total": 14,
+              "success": true,
+              "damage": 0,
+              "effect": ""
             }
           }
         },
         "log": [
           {
-            "id": "ab28db1b-a592-4883-84fc-2181317f9f31",
-            "at": 1790474149421,
-            "text": "Amélia Candinari: sucesso em Ataque lança em area. 0 de dano. ",
-            "characterId": "char_u267bpepmsusoyuv",
+            "id": "78c237df-682c-40e1-85dc-17a51f9a2087",
+            "at": 1790474150617,
+            "text": "Kael Veyr: sucesso em Ataque lança em area. 0 de dano. ",
+            "characterId": "char_jlhky6s9mstuuli0",
             "damage": 0
           },
           {
@@ -113128,7 +113134,8 @@
           "user_reulc3j3ms3snnxu:c0685b20-131b-4656-8913-9cf960e2357c",
           "user_reulc3j3ms3snnxu:9489a03f-21ce-46d2-8aaf-aa524133bb49",
           "user_0bhp2ga3msl1uk6h:d36e55d5-6d3d-4f99-91e8-c4a8b318ceb1",
-          "user_gybabf5mmskx7a24:a891ead1-8bcf-4ce1-a77f-463ab26abac9"
+          "user_gybabf5mmskx7a24:a891ead1-8bcf-4ce1-a77f-463ab26abac9",
+          "user_gd68ua63msnua1nb:e9c1f96e-6582-46c6-9314-65b90a6248f0"
         ],
         "pendingAttack": null
       }
