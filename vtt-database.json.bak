@@ -1151,7 +1151,7 @@
         ],
         "zenit": 734,
         "resources": {
-          "hp": 19,
+          "hp": 20,
           "maxHp": 86,
           "mp": 0,
           "maxMp": 60,
@@ -1171,7 +1171,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790548874426,
+        "updatedAt": 1790548875373,
         "customModifiers": [
           {
             "id": "lamvsl",

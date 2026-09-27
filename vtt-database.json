@@ -1171,7 +1171,7 @@
           "mu-geno": 1
         },
         "createdAt": 1786766850648,
-        "updatedAt": 1790548875373,
+        "updatedAt": 1790548879035,
         "customModifiers": [
           {
             "id": "lamvsl",
@@ -1277,6 +1277,12 @@
             "name": "Resfriado",
             "target": "dex",
             "value": -1
+          },
+          {
+            "id": "a6tauk",
+            "name": "Enjoado",
+            "target": "dex",
+            "value": -6
           }
         ],
         "customItems": [],
