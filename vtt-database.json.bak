@@ -120644,8 +120644,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 817,
-        "updatedAt": 1790480154839,
+        "revision": 818,
+        "updatedAt": 1790480183394,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -120858,13 +120858,43 @@
             ],
             "instanceId": "8630be02-dd7c-45a6-9b6e-93fb25b071c7",
             "currentHp": 45,
-            "currentMp": 150,
+            "currentMp": 135,
             "currentIp": 6
           }
         ],
         "playerAttacks": {},
-        "qte": null,
+        "qte": {
+          "id": "a173cc5e-0e7c-4a1a-8b6a-2289ed49c525",
+          "ability": {
+            "id": "f1422b4e-1016-4993-87df-0a8818884166",
+            "kind": "qte",
+            "name": "Pressão",
+            "cost": {
+              "amount": 15,
+              "resource": "mp"
+            },
+            "seconds": 7,
+            "checkId": "c23",
+            "difficulty": 20,
+            "failureDamage": "8",
+            "failureEffect": "",
+            "successDamage": "0",
+            "successEffect": ""
+          },
+          "deadline": 1790480190394,
+          "targets": [
+            "char_4uf4pocfmstw6x65",
+            "char_u267bpepmsusoyuv",
+            "char_jlhky6s9mstuuli0"
+          ],
+          "outcomes": {}
+        },
         "log": [
+          {
+            "id": "187e6da0-8a85-446d-ae3b-06f6a5c4629d",
+            "at": 1790480183394,
+            "text": "Rei Morto: Pressão!"
+          },
           {
             "id": "aa5a442e-d0ee-495e-8aad-ef8416c1c071",
             "at": 1790480120309,
@@ -121462,22 +121492,6 @@
             "at": 1790473886306,
             "text": "Kael Veyr decidiu reagir a Golpe de lança.",
             "characterId": "char_jlhky6s9mstuuli0"
-          },
-          {
-            "id": "10a88c41-8e1f-48c6-ad3a-a9e78e02db6e:hit",
-            "at": 1790473879312,
-            "text": "Cavaleiro Estatua usou Golpe de lança em Kael Veyr: acerto 11, aguardando reação.",
-            "characterId": "char_jlhky6s9mstuuli0",
-            "roll": {
-              "type": "dice:roll",
-              "characterId": "char_jlhky6s9mstuuli0",
-              "characterName": "Cavaleiro Estatua",
-              "playerName": "Mestre",
-              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
-              "result": 11,
-              "breakdown": "10 + 1",
-              "modifier": 0
-            }
           }
         ],
         "receipts": [
@@ -122279,7 +122293,8 @@
           "user_reulc3j3ms3snnxu:3a4ffe05-765e-43c4-bb0e-f2d9b5878431",
           "user_reulc3j3ms3snnxu:2d812253-f5e6-41d8-9aa1-c3375dec7f0c",
           "user_reulc3j3ms3snnxu:63eff3c1-62c4-420f-b19a-42807db38b73",
-          "user_reulc3j3ms3snnxu:6b4c635f-b107-4d9a-b8d1-277fbf8b71d0"
+          "user_reulc3j3ms3snnxu:6b4c635f-b107-4d9a-b8d1-277fbf8b71d0",
+          "user_reulc3j3ms3snnxu:d16b090e-6ed9-457e-b4ad-a9788fc0fe7a"
         ],
         "pendingAttack": null
       }

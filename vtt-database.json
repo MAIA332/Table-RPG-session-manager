@@ -1574,7 +1574,7 @@
         ],
         "zenit": 487,
         "resources": {
-          "hp": 16,
+          "hp": 8,
           "maxHp": 77,
           "mp": 40,
           "maxMp": 70,
@@ -1595,7 +1595,7 @@
           "cskill-1szrrx": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790480075225,
+        "updatedAt": 1790480185445,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -120644,8 +120644,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 818,
-        "updatedAt": 1790480183394,
+        "revision": 819,
+        "updatedAt": 1790480185445,
         "enabled": true,
         "spotlight": {
           "side": "gm",
@@ -120887,13 +120887,22 @@
             "char_u267bpepmsusoyuv",
             "char_jlhky6s9mstuuli0"
           ],
-          "outcomes": {}
+          "outcomes": {
+            "char_u267bpepmsusoyuv": {
+              "total": 11,
+              "success": false,
+              "damage": 8,
+              "effect": ""
+            }
+          }
         },
         "log": [
           {
-            "id": "187e6da0-8a85-446d-ae3b-06f6a5c4629d",
-            "at": 1790480183394,
-            "text": "Rei Morto: Pressão!"
+            "id": "aea57206-7051-4a9e-bb1f-241c23e7670a",
+            "at": 1790480185445,
+            "text": "Amélia Candinari: falha em Pressão. 8 de dano. ",
+            "characterId": "char_u267bpepmsusoyuv",
+            "damage": 8
           },
           {
             "id": "aa5a442e-d0ee-495e-8aad-ef8416c1c071",
@@ -122294,7 +122303,8 @@
           "user_reulc3j3ms3snnxu:2d812253-f5e6-41d8-9aa1-c3375dec7f0c",
           "user_reulc3j3ms3snnxu:63eff3c1-62c4-420f-b19a-42807db38b73",
           "user_reulc3j3ms3snnxu:6b4c635f-b107-4d9a-b8d1-277fbf8b71d0",
-          "user_reulc3j3ms3snnxu:d16b090e-6ed9-457e-b4ad-a9788fc0fe7a"
+          "user_reulc3j3ms3snnxu:d16b090e-6ed9-457e-b4ad-a9788fc0fe7a",
+          "user_gybabf5mmskx7a24:f6d9de74-cf8d-4041-910e-f3b9dbaf41be"
         ],
         "pendingAttack": null
       }
