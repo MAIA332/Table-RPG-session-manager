@@ -1537,6 +1537,10 @@
           {
             "classId": "geomancer",
             "level": 1
+          },
+          {
+            "classId": "custom-class-pv0c730o",
+            "level": 1
           }
         ],
         "equipment": [
@@ -1571,10 +1575,11 @@
           "cl-purify": 1,
           "cl-sanctuary": 2,
           "cl-breath": 1,
-          "ge-nature": 1
+          "ge-nature": 1,
+          "cskill-1szrrx": 1
         },
         "createdAt": 1786823694967,
-        "updatedAt": 1790477867337,
+        "updatedAt": 1790479535033,
         "customModifiers": [
           {
             "id": "s1uckf",
@@ -1698,6 +1703,12 @@
             "name": "Concessão gratuita: Revolta da Natureza",
             "target": "skill_grant_hidden",
             "value": 0
+          },
+          {
+            "id": "free_skill:cskill-1szrrx",
+            "name": "Concessão gratuita: Raizes ancetrais",
+            "target": "skill_grant_hidden",
+            "value": 1
           }
         ],
         "customItems": [
