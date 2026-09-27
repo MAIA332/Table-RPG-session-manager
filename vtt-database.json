@@ -111838,11 +111838,11 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 675,
-        "updatedAt": 1790474588302,
+        "revision": 676,
+        "updatedAt": 1790474599317,
         "enabled": true,
         "spotlight": {
-          "side": "gm",
+          "side": "group",
           "activePlayerId": null,
           "request": null,
           "tokens": 1,
@@ -111991,6 +111991,28 @@
         "playerAttacks": {},
         "qte": null,
         "log": [
+          {
+            "id": "ffc64d03-affe-4030-89b6-1431d801c7e9",
+            "at": 1790474599317,
+            "text": "Cavaleiro Estatua errou Kael Veyr. Nenhum dano aplicado.",
+            "characterId": "char_jlhky6s9mstuuli0"
+          },
+          {
+            "id": "7f3b15f4-7b6b-427f-8d53-b117e431973e:hit",
+            "at": 1790474599317,
+            "text": "Cavaleiro Estatua usou Golpe de lança em Kael Veyr: acerto 8, errou.",
+            "characterId": "char_jlhky6s9mstuuli0",
+            "roll": {
+              "type": "dice:roll",
+              "characterId": "char_jlhky6s9mstuuli0",
+              "characterName": "Cavaleiro Estatua",
+              "playerName": "Mestre",
+              "attribute": "Ataque inimigo · Golpe de lança [d12 + d8]",
+              "result": 8,
+              "breakdown": "6 + 2",
+              "modifier": 0
+            }
+          },
           {
             "id": "30bca11a-bc7d-4407-870b-d6091167242f",
             "at": 1790474514978,
@@ -112513,20 +112535,6 @@
             "text": "Agrat bat usou Festim da Megera em Thorfinn Lyngstad: acerto. 15 de dano. Um ataque mágico de sucção de vida. Metade do dano causado a esse alvo cura o HP de Agrat Bat.",
             "characterId": "char_4uf4pocfmstw6x65",
             "damage": 15
-          },
-          {
-            "id": "74e4707d-4e8e-4d58-8633-4194b977f12c",
-            "at": 1789867742567,
-            "text": "Thorfinn Lyngstad: falha em Invadir a mente. 2 de dano. O Jogador recebe Condição de confusão (-2 de WLP)",
-            "characterId": "char_4uf4pocfmstw6x65",
-            "damage": 2
-          },
-          {
-            "id": "aaf9988e-fa9f-40cb-99e1-2fa50845be72",
-            "at": 1789867637379,
-            "text": "Agrat bat usou Garras Espectrais em Kael Veyr: falha. 0 de dano. ",
-            "characterId": "char_jlhky6s9mstuuli0",
-            "damage": 0
           }
         ],
         "receipts": [
@@ -113187,7 +113195,8 @@
           "user_gybabf5mmskx7a24:9a12ef44-76c3-48a0-8897-2d4989262d3b",
           "user_reulc3j3ms3snnxu:8eea3f85-fb56-4220-9626-7666d3c1ade0",
           "user_gd68ua63msnua1nb:4769452b-4f47-4235-abe6-217ffabc9c99",
-          "user_reulc3j3ms3snnxu:cafd2dc3-6780-4e87-acf4-51e32f07898d"
+          "user_reulc3j3ms3snnxu:cafd2dc3-6780-4e87-acf4-51e32f07898d",
+          "user_reulc3j3ms3snnxu:a53cd013-be0e-47dd-b7c0-67962136a299"
         ],
         "pendingAttack": null
       }
