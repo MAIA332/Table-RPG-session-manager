@@ -120644,8 +120644,8 @@
     [
       "camp_o5slw0ptmsjhu84l",
       {
-        "revision": 821,
-        "updatedAt": 1790480190455,
+        "revision": 822,
+        "updatedAt": 1790480193181,
         "enabled": true,
         "spotlight": {
           "side": "group",
@@ -120863,51 +120863,7 @@
           }
         ],
         "playerAttacks": {},
-        "qte": {
-          "id": "a173cc5e-0e7c-4a1a-8b6a-2289ed49c525",
-          "ability": {
-            "id": "f1422b4e-1016-4993-87df-0a8818884166",
-            "kind": "qte",
-            "name": "Pressão",
-            "cost": {
-              "amount": 15,
-              "resource": "mp"
-            },
-            "seconds": 7,
-            "checkId": "c23",
-            "difficulty": 20,
-            "failureDamage": "8",
-            "failureEffect": "",
-            "successDamage": "0",
-            "successEffect": ""
-          },
-          "deadline": 1790480190394,
-          "targets": [
-            "char_4uf4pocfmstw6x65",
-            "char_u267bpepmsusoyuv",
-            "char_jlhky6s9mstuuli0"
-          ],
-          "outcomes": {
-            "char_u267bpepmsusoyuv": {
-              "total": 11,
-              "success": false,
-              "damage": 8,
-              "effect": ""
-            },
-            "char_4uf4pocfmstw6x65": {
-              "total": 14,
-              "success": false,
-              "damage": 8,
-              "effect": ""
-            },
-            "char_jlhky6s9mstuuli0": {
-              "total": null,
-              "success": false,
-              "damage": 8,
-              "effect": ""
-            }
-          }
-        },
+        "qte": null,
         "log": [
           {
             "id": "2b6a918b-5a76-4ab9-a45c-383cf3886d71",
@@ -122318,7 +122274,8 @@
           "user_reulc3j3ms3snnxu:6b4c635f-b107-4d9a-b8d1-277fbf8b71d0",
           "user_reulc3j3ms3snnxu:d16b090e-6ed9-457e-b4ad-a9788fc0fe7a",
           "user_gybabf5mmskx7a24:f6d9de74-cf8d-4041-910e-f3b9dbaf41be",
-          "user_0bhp2ga3msl1uk6h:f14ddffd-a9ed-4ef5-aa54-b4525baa61c6"
+          "user_0bhp2ga3msl1uk6h:f14ddffd-a9ed-4ef5-aa54-b4525baa61c6",
+          "user_reulc3j3ms3snnxu:74e0ae9b-b3a9-4492-bda7-b228a2252e70"
         ],
         "pendingAttack": null
       }
