@@ -125411,10 +125411,17 @@
             "url": "https://zipline.sinapselabs.com.br/u/ZdL4Xh.mp3",
             "loopable": true,
             "isCustom": true
+          },
+          {
+            "id": "snd_custom_rt5yqfc",
+            "name": "Canto da sereia",
+            "url": "http://zipline.sinapselabs.com.br/u/w3cmUG.mp3",
+            "loopable": true,
+            "isCustom": true
           }
         ],
         "weather": "sunny",
-        "updatedAt": 1790543424528,
+        "updatedAt": 1790543806813,
         "customCreatures": [
           {
             "name": "Criatura dentre a nevoa",

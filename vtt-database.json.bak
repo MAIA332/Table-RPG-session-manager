@@ -1391,7 +1391,7 @@
           "mu-akro": 1
         },
         "createdAt": 1786769105261,
-        "updatedAt": 1790542444939,
+        "updatedAt": 1790543740828,
         "customModifiers": [
           {
             "id": "6ute35",
@@ -1532,18 +1532,6 @@
             "value": -2
           },
           {
-            "id": "sheet_defense:physical",
-            "name": "Defesa manual",
-            "target": "sheet_defense_hidden",
-            "value": 17
-          },
-          {
-            "id": "sheet_defense:magical",
-            "name": "Defesa mágica manual",
-            "target": "sheet_defense_hidden",
-            "value": 9
-          },
-          {
             "id": "item_equipped:custom-eq-u26mxku6",
             "name": "Bônus ativos: Anel de prismarina",
             "target": "item_state_hidden",
@@ -1554,6 +1542,18 @@
             "name": "Bônus ativos: Anel de Rubi incandescente",
             "target": "item_state_hidden",
             "value": 1
+          },
+          {
+            "id": "sheet_defense:physical",
+            "name": "Defesa manual",
+            "target": "sheet_defense_hidden",
+            "value": 17
+          },
+          {
+            "id": "sheet_defense:magical",
+            "name": "Defesa mágica manual",
+            "target": "sheet_defense_hidden",
+            "value": 20
           }
         ],
         "customItems": [],
