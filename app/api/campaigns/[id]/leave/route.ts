@@ -42,6 +42,6 @@ export async function POST(
     }
   }
 
-  saveToDisk(store)
+  await saveToDisk(store)
   return NextResponse.json({ success: true })
 }

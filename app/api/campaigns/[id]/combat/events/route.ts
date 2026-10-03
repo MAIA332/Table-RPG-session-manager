@@ -17,7 +17,7 @@ export async function GET(
     if (!user)
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
     const { id } = await params
-    const initial = getCombat(id, user.id)
+    const initial = await getCombat(id, user.id)
     const encoder = new TextEncoder()
     let cleanup = () => {}
     const stream = new ReadableStream<Uint8Array>({
@@ -53,12 +53,12 @@ export async function GET(
         }
         const queueRefresh = () => {
           if (closed || queued) return
-          // Coalesce publication and filesystem notifications for the same write.
-          queued = setTimeout(() => {
+          // Coalesce storage and realtime notifications for the same write.
+          queued = setTimeout(async () => {
             queued = undefined
             if (closed) return
             try {
-              emit(getCombat(id, user.id))
+              emit(await getCombat(id, user.id))
             } catch {
               cleanup()
             }

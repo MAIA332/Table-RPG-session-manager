@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   const key = transferKey(donor.campaignId)
   store.characters.set(donor.id, nextDonor)
   store.campaignState.set(key, { transfers: [...readTransfers(donor.campaignId), transfer], updatedAt: Date.now() })
-  saveToDisk(store)
+  await saveToDisk(store)
   publish(donor.campaignId, { type: "character:updated", character: nextDonor })
   publish(donor.campaignId, { type: "item-transfer:created", transfer })
   return NextResponse.json({ transfer, donor: nextDonor })

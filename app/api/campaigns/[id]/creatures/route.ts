@@ -15,7 +15,7 @@ export async function GET(
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
     const { id } = await params
     return NextResponse.json(
-      { creatures: getCombat(id, user.id).creatures },
+      { creatures: (await getCombat(id, user.id)).creatures },
       { headers: { "Cache-Control": "no-store" } },
     )
   } catch (error) {
@@ -32,7 +32,7 @@ export async function POST(
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
     const { id } = await params,
       body = await readCombatBody(request),
-      state = getCombat(id, user.id)
+      state = await getCombat(id, user.id)
     if (state.viewerRole !== "gm")
       throw new CombatError("Ação exclusiva do Mestre", 403)
     const type =
@@ -44,7 +44,7 @@ export async function POST(
             ? "remove-creature"
             : null
     if (!type) throw new CombatError("Ação inválida")
-    const combat = commandCombat(id, user.id, {
+    const combat = await commandCombat(id, user.id, {
       ...body,
       type,
       commandId: body.commandId || randomUUID(),

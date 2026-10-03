@@ -53,7 +53,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   store.characters.set(nextRecipient.id, nextRecipient)
   store.characters.set(nextDonor.id, nextDonor)
   store.campaignState.set(key, { transfers: transfers.map(entry => entry.id === id ? resolved : entry), updatedAt: now })
-  saveToDisk(store)
+  await saveToDisk(store)
   if (resolution === "accepted") publish(transfer.campaignId, { type: "character:updated", character: nextRecipient })
   else publish(transfer.campaignId, { type: "character:updated", character: nextDonor })
   publish(transfer.campaignId, { type: "item-transfer:resolved", transfer: resolved, donor: nextDonor, recipient: resolution === "accepted" ? nextRecipient : undefined })

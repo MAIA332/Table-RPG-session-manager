@@ -23,7 +23,7 @@ function getNotes(key: string) {
   return store.personalNotes.get(key)?.notes || []
 }
 
-function saveNotes(key: string, notes: PersonalNote[]) {
+async function saveNotes(key: string, notes: PersonalNote[]) {
   const current = store.personalNotes.get(key)
   const updatedAt = Math.max(Date.now(), Number(current?.updatedAt || 0) + 1)
   store.personalNotes.set(key, {
@@ -31,7 +31,7 @@ function saveNotes(key: string, notes: PersonalNote[]) {
     notes,
     updatedAt,
   })
-  saveToDisk(store)
+  await saveToDisk(store)
   return notes
 }
 
@@ -58,7 +58,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     createdAt: now,
     updatedAt: now,
   }
-  saveNotes(key, [note, ...notes])
+  await saveNotes(key, [note, ...notes])
   return NextResponse.json({ note }, { status: 201 })
 }
 
@@ -78,7 +78,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     content: String(body?.content ?? current.content).slice(0, 30000),
     updatedAt: Math.max(Date.now(), current.updatedAt + 1),
   }
-  saveNotes(key, notes.map((entry) => entry.id === id ? note : entry))
+  await saveNotes(key, notes.map((entry) => entry.id === id ? note : entry))
   return NextResponse.json({ note })
 }
 
@@ -91,6 +91,6 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const notes = getNotes(key)
   if (!notes.some((note) => note.id === id)) return NextResponse.json({ error: "Anotação não encontrada." }, { status: 404 })
 
-  saveNotes(key, notes.filter((note) => note.id !== id))
+  await saveNotes(key, notes.filter((note) => note.id !== id))
   return NextResponse.json({ success: true })
 }

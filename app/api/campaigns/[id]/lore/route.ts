@@ -32,6 +32,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const body = await request.json().catch(() => null)
   if (!Array.isArray(body?.entries)) return NextResponse.json({ error: "Dados inválidos." }, { status: 400 })
 
-  const state = updateCampaignState(access.campaignId, { lore: body.entries })
+  const state = await updateCampaignState(access.campaignId, { lore: body.entries })
   return NextResponse.json({ success: true, count: state.lore.length })
 }

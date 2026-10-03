@@ -21,14 +21,14 @@ function getFlowcharts(key: string): PersonalFlowchart[] {
   return store.personalNotes.get(key)?.flowcharts || []
 }
 
-function saveFlowcharts(key: string, flowcharts: PersonalFlowchart[]) {
+async function saveFlowcharts(key: string, flowcharts: PersonalFlowchart[]) {
   const current = store.personalNotes.get(key)
   store.personalNotes.set(key, {
     notes: current?.notes || [],
     flowcharts,
     updatedAt: Math.max(Date.now(), Number(current?.updatedAt || 0) + 1),
   })
-  saveToDisk(store)
+  await saveToDisk(store)
 }
 
 function cleanNodes(value: unknown): FlowchartNode[] | null {
@@ -89,7 +89,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     createdAt: now,
     updatedAt: now,
   }
-  saveFlowcharts(key, [flowchart, ...flowcharts])
+  await saveFlowcharts(key, [flowchart, ...flowcharts])
   return NextResponse.json({ flowchart }, { status: 201 })
 }
 
@@ -112,7 +112,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     edges,
     updatedAt: Math.max(Date.now(), current.updatedAt + 1),
   }
-  saveFlowcharts(key, flowcharts.map((entry) => entry.id === flowchart.id ? flowchart : entry))
+  await saveFlowcharts(key, flowcharts.map((entry) => entry.id === flowchart.id ? flowchart : entry))
   return NextResponse.json({ flowchart })
 }
 
@@ -124,6 +124,6 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const body = await request.json().catch(() => null)
   const id = String(body?.id || "")
   if (!flowcharts.some((flowchart) => flowchart.id === id)) return NextResponse.json({ error: "Fluxograma não encontrado." }, { status: 404 })
-  saveFlowcharts(key, flowcharts.filter((flowchart) => flowchart.id !== id))
+  await saveFlowcharts(key, flowcharts.filter((flowchart) => flowchart.id !== id))
   return NextResponse.json({ success: true })
 }

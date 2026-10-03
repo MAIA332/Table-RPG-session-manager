@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
   if (!campaign.members.some((m) => m.userId === user.id)) {
     campaign.members.push({ userId: user.id, role: "player" })
-    saveToDisk(store)
+    await saveToDisk(store)
   }
   return NextResponse.json({ campaign })
 }

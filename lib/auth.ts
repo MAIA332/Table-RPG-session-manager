@@ -19,10 +19,10 @@ export function verifyPassword(password: string, stored: string): boolean {
   return check === hash
 }
 
-export function createSession(userId: string): string {
+export async function createSession(userId: string): Promise<string> {
   const token = genId("sess")
   store.sessions.set(token, { token, userId, createdAt: Date.now() })
-  saveToDisk(store)
+  await saveToDisk(store)
   return token
 }
 

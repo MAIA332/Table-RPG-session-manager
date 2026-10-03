@@ -38,6 +38,6 @@ export async function POST(request: Request) {
     createdAt: Date.now(),
   }
   store.campaigns.set(campaign.id, campaign)
-  saveToDisk(store)
+  await saveToDisk(store)
   return NextResponse.json({ campaign })
 }

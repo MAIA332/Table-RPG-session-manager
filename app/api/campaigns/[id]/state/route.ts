@@ -1,5 +1,3 @@
-import fs from "fs/promises"
-import path from "path"
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { CAMPAIGN_STATE_ARRAY_FIELDS, getCampaignState, getCampaignStateFields, updateCampaignState } from "@/lib/campaign-state"
@@ -19,30 +17,12 @@ async function getAccess(params: Promise<{ id: string }>) {
   return { campaignId, role, user }
 }
 
-async function migrateLegacyState(campaignId: string) {
-  const raw = store.campaignState.get(campaignId) || {}
-  const patch: Record<string, unknown> = {}
 
-  if (!Object.prototype.hasOwnProperty.call(raw, "lore") && store.lore.has(campaignId)) {
-    patch.lore = store.lore.get(campaignId) || []
-  }
-
-  if (!Object.prototype.hasOwnProperty.call(raw, "gallery")) {
-    try {
-      const filePath = path.join(process.cwd(), "data", `gallery_${campaignId}.json`)
-      const gallery = JSON.parse(await fs.readFile(filePath, "utf-8"))
-      if (Array.isArray(gallery)) patch.gallery = gallery
-    } catch { }
-  }
-
-  if (Object.keys(patch).length > 0) updateCampaignState(campaignId, patch)
-}
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await getAccess(params)
   if (access.error) return access.error
 
-  await migrateLegacyState(access.campaignId)
   const state = getCampaignState(access.campaignId)
   const persistedFields = getCampaignStateFields(access.campaignId)
 
@@ -135,6 +115,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Nenhum campo persistente informado." }, { status: 400 })
 
-  const state = updateCampaignState(access.campaignId, patch)
+  const state = await updateCampaignState(access.campaignId, patch)
   return NextResponse.json({ success: true, state, persistedFields: getCampaignStateFields(access.campaignId) })
 }

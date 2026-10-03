@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   character.ownerId = targetUserId
   character.updatedAt = Date.now()
-  saveToDisk(store)
+  await saveToDisk(store)
   publish(character.campaignId, { type: "character:updated", character })
 
   return NextResponse.json({ success: true, character })

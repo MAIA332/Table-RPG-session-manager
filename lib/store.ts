@@ -1,6 +1,5 @@
+import "server-only"
 import type { CombatSession } from "./combat-types"
-import fs from "fs"
-import path from "path"
 import type {
   Campaign,
   Character,
@@ -10,12 +9,11 @@ import type {
   PersonalNote,
 } from "./types"
 import type { GameMap } from "@/lib/map-types"
-import {
-  campaignItemCatalog,
-  enforceInventoryDatabase,
-} from "./inventory-server"
+import { campaignItemCatalog, enforceInventoryDatabase } from "./inventory-server"
 import { applyInventoryRules } from "./character"
-import { exec } from "child_process"
+import { getMongoDb } from "./mongodb"
+import type { AnyBulkWriteOperation, Collection } from "mongodb"
+import { notifyCombatStorageChanged } from "./combat-file-notifications"
 
 type Subscriber = (event: RealtimeEvent) => void
 type PresenceSubscriber = (snapshot: Record<string, number>) => void
@@ -57,25 +55,31 @@ interface StoreShape {
   presenceSubscribers: Set<PresenceSubscriber>
 }
 
-interface PersistedStore {
-  users: [string, User][]
-  sessions: [string, SessionToken][]
-  campaigns: [string, Campaign][]
-  characters: [string, Character][]
-  characterTombstones: [string, number][]
-  maps: [string, GameMap][]
-  lore: [string, any[]][]
-  combatSessions: [string, CombatSession][]
-  campaignState: [string, Record<string, unknown>][]
-  personalNotes: [string, PersonalNotesRecord][]
+const PERSISTED_COLLECTIONS = [
+  "users",
+  "sessions",
+  "campaigns",
+  "characters",
+  "characterTombstones",
+  "maps",
+  "lore",
+  "combatSessions",
+  "campaignState",
+  "personalNotes",
+] as const
+
+type PersistedCollection = (typeof PERSISTED_COLLECTIONS)[number]
+type PersistedSnapshot = Record<PersistedCollection, Map<string, unknown>>
+
+type MongoStoreDocument = {
+  _id: string
+  collection: PersistedCollection
+  key: string
+  value: unknown
 }
 
-const DB_FILE_PATH = process.env.VTT_DB_FILE
-  ? path.resolve(process.env.VTT_DB_FILE)
-  : path.join(process.cwd(), "vtt-database.json")
-const DB_BACKUP_PATH = `${DB_FILE_PATH}.bak`
-const DB_LOCK_PATH = `${DB_FILE_PATH}.lock`
-const lockWaitBuffer = new Int32Array(new SharedArrayBuffer(4))
+const MONGO_COLLECTION =
+  process.env.MONGODB_COLLECTION?.trim() || "vtt_store"
 
 function createEmptyStore(): StoreShape {
   return {
@@ -98,58 +102,14 @@ function createEmptyStore(): StoreShape {
   }
 }
 
-function parseEntries<T>(value: unknown, field: string): Map<string, T> {
-  if (value === undefined) return new Map()
-  if (!Array.isArray(value))
-    throw new Error(`Campo ${field} inválido no banco de dados.`)
-
-  const entries = value.map((entry) => {
-    if (
-      !Array.isArray(entry) ||
-      entry.length !== 2 ||
-      typeof entry[0] !== "string"
-    ) {
-      throw new Error(`Entrada inválida em ${field}.`)
-    }
-    return [entry[0], entry[1] as T] as [string, T]
-  })
-
-  return new Map(entries)
+function cloneValue<T>(value: T): T {
+  return structuredClone(value)
 }
 
-function readStoreFile(filePath: string): StoreShape {
-  const parsed = JSON.parse(fs.readFileSync(filePath, "utf-8")) as Record<
-    string,
-    unknown
-  >
-  if (!parsed || typeof parsed !== "object")
-    throw new Error("Formato inválido do banco de dados.")
-
-  return {
-    ...createEmptyStore(),
-    users: parseEntries<User>(parsed.users, "users"),
-    sessions: parseEntries<SessionToken>(parsed.sessions, "sessions"),
-    campaigns: parseEntries<Campaign>(parsed.campaigns, "campaigns"),
-    characters: parseEntries<Character>(parsed.characters, "characters"),
-    characterTombstones: parseEntries<number>(
-      parsed.characterTombstones,
-      "characterTombstones",
-    ),
-    maps: parseEntries<GameMap>(parsed.maps, "maps"),
-    lore: parseEntries<any[]>(parsed.lore, "lore"),
-    combatSessions: parseEntries<CombatSession>(
-      parsed.combatSessions,
-      "combatSessions",
-    ),
-    campaignState: parseEntries<Record<string, unknown>>(
-      parsed.campaignState,
-      "campaignState",
-    ),
-    personalNotes: parseEntries<PersonalNotesRecord>(
-      parsed.personalNotes,
-      "personalNotes",
-    ),
-  }
+function cloneMap<T>(source: Map<string, T>): Map<string, T> {
+  return new Map(
+    [...source.entries()].map(([key, value]) => [key, cloneValue(value)] as [string, T]),
+  )
 }
 
 function characterTimestamp(character: Character): number {
@@ -159,265 +119,185 @@ function characterTimestamp(character: Character): number {
   )
 }
 
-function reconcileCharacters(target: StoreShape, source: StoreShape): void {
-  for (const [id, deletedAt] of source.characterTombstones) {
-    const currentDeletedAt = target.characterTombstones.get(id) ?? 0
-    if (deletedAt > currentDeletedAt)
-      target.characterTombstones.set(id, deletedAt)
-  }
-
-  for (const [id, persistedCharacter] of source.characters) {
-    const currentCharacter = target.characters.get(id)
-    if (
-      !currentCharacter ||
-      characterTimestamp(persistedCharacter) >
-        characterTimestamp(currentCharacter)
-    ) {
-      target.characters.set(id, persistedCharacter)
-    }
-  }
-
-  for (const [id, deletedAt] of target.characterTombstones) {
-    const character = target.characters.get(id)
-    if (character && deletedAt >= characterTimestamp(character))
-      target.characters.delete(id)
+function createEmptySnapshot(): PersistedSnapshot {
+  return {
+    users: new Map(),
+    sessions: new Map(),
+    campaigns: new Map(),
+    characters: new Map(),
+    characterTombstones: new Map(),
+    maps: new Map(),
+    lore: new Map(),
+    combatSessions: new Map(),
+    campaignState: new Map(),
+    personalNotes: new Map(),
   }
 }
 
-function reconcileCampaignState(target: StoreShape, source: StoreShape): void {
-  for (const [id, session] of source.combatSessions) {
-    const current = target.combatSessions.get(id)
-    if (!current || session.revision > current.revision)
-      target.combatSessions.set(id, session)
-  }
-  for (const [campaignId, persistedState] of source.campaignState) {
-    const currentState = target.campaignState.get(campaignId)
-    const persistedAt = Number(persistedState.updatedAt) || 0
-    const currentAt = Number(currentState?.updatedAt) || 0
-    if (!currentState || persistedAt > currentAt)
-      target.campaignState.set(campaignId, persistedState)
-  }
-}
-
-function reconcilePersonalNotes(target: StoreShape, source: StoreShape): void {
-  for (const [key, persistedRecord] of source.personalNotes) {
-    const currentRecord = target.personalNotes.get(key)
-    if (
-      !currentRecord ||
-      Number(persistedRecord.updatedAt) > Number(currentRecord.updatedAt)
-    ) {
-      target.personalNotes.set(key, persistedRecord)
-    }
-  }
-}
-
-function serializeStore(storeData: StoreShape): PersistedStore {
-  const lore = new Map(storeData.lore)
+function snapshotFromStore(storeData: StoreShape): PersistedSnapshot {
+  const lore = cloneMap(storeData.lore)
   for (const [campaignId, campaignState] of storeData.campaignState) {
     if (Array.isArray(campaignState.lore))
-      lore.set(campaignId, campaignState.lore)
+      lore.set(campaignId, cloneValue(campaignState.lore))
   }
 
   return {
-    users: Array.from(storeData.users.entries()),
-    sessions: Array.from(storeData.sessions.entries()),
-    campaigns: Array.from(storeData.campaigns.entries()),
-    characters: Array.from(storeData.characters.entries()),
-    characterTombstones: Array.from(storeData.characterTombstones.entries()),
-    maps: Array.from(storeData.maps.entries()),
-    lore: Array.from(lore.entries()),
-    combatSessions: Array.from(storeData.combatSessions.entries()),
-    campaignState: Array.from(storeData.campaignState.entries()),
-    personalNotes: Array.from(storeData.personalNotes.entries()),
+    users: cloneMap(storeData.users),
+    sessions: cloneMap(storeData.sessions),
+    campaigns: cloneMap(storeData.campaigns),
+    characters: cloneMap(storeData.characters),
+    characterTombstones: cloneMap(storeData.characterTombstones),
+    maps: cloneMap(storeData.maps),
+    lore,
+    combatSessions: cloneMap(storeData.combatSessions),
+    campaignState: cloneMap(storeData.campaignState),
+    personalNotes: cloneMap(storeData.personalNotes),
   }
 }
 
-function acquireDatabaseLock(): number {
-  for (let attempt = 0; attempt < 120; attempt++) {
-    try {
-      const handle = fs.openSync(DB_LOCK_PATH, "wx")
-      fs.writeFileSync(handle, `${process.pid}\n${Date.now()}`, "utf-8")
-      return handle
-    } catch (error: any) {
-      if (error?.code !== "EEXIST") throw error
-      try {
-        const age = Date.now() - fs.statSync(DB_LOCK_PATH).mtimeMs
-        if (age > 30_000) {
-          fs.unlinkSync(DB_LOCK_PATH)
-          continue
-        }
-      } catch {}
-      
-      // Correção: Substitui o Atomics.wait que causa Crash na thread principal
-      const waitTime = Date.now() + 25;
-      while (Date.now() < waitTime) {
-        // Loop bloqueante intencional simulando espera síncrona sem quebrar o Node
-      }
-    }
-  }
-  throw new Error("O banco de dados está ocupado por outro processo.")
+function storeFromSnapshot(snapshot: PersistedSnapshot): StoreShape {
+  const next = createEmptyStore()
+  next.users = cloneMap(snapshot.users as Map<string, User>)
+  next.sessions = cloneMap(snapshot.sessions as Map<string, SessionToken>)
+  next.campaigns = cloneMap(snapshot.campaigns as Map<string, Campaign>)
+  next.characters = cloneMap(snapshot.characters as Map<string, Character>)
+  next.characterTombstones = cloneMap(snapshot.characterTombstones as Map<string, number>)
+  next.maps = cloneMap(snapshot.maps as Map<string, GameMap>)
+  next.lore = cloneMap(snapshot.lore as Map<string, any[]>)
+  next.combatSessions = cloneMap(snapshot.combatSessions as Map<string, CombatSession>)
+  next.campaignState = cloneMap(
+    snapshot.campaignState as Map<string, Record<string, unknown>>,
+  )
+  next.personalNotes = cloneMap(
+    snapshot.personalNotes as Map<string, PersonalNotesRecord>,
+  )
+  return next
 }
 
-function releaseDatabaseLock(handle: number): void {
-  try {
-    fs.closeSync(handle)
-  } catch {}
-  try {
-    fs.unlinkSync(DB_LOCK_PATH)
-  } catch {}
+function replacePersistedMaps(target: StoreShape, source: StoreShape): void {
+  target.users = source.users
+  target.sessions = source.sessions
+  target.campaigns = source.campaigns
+  target.characters = source.characters
+  target.characterTombstones = source.characterTombstones
+  target.maps = source.maps
+  target.lore = source.lore
+  target.combatSessions = source.combatSessions
+  target.campaignState = source.campaignState
+  target.personalNotes = source.personalNotes
 }
 
-function replaceFile(sourcePath: string, targetPath: string): void {
-  fs.renameSync(sourcePath, targetPath)
-
-  const dirHandle = fs.openSync(path.dirname(targetPath), "r")
-
+function equivalent(a: unknown, b: unknown): boolean {
   try {
-    fs.fsyncSync(dirHandle)
-  } finally {
-    fs.closeSync(dirHandle)
+    return JSON.stringify(a) === JSON.stringify(b)
+  } catch {
+    return false
   }
 }
 
-function writeStoreFile(
-  storeData: StoreShape,
-  preservePrimaryAsBackup: boolean,
-): void {
-  const previous = fs.existsSync(DB_FILE_PATH)
-    ? readStoreFile(DB_FILE_PATH)
-    : undefined
-  try {
-    enforceInventoryDatabase(storeData, previous)
-  } catch (error) {
-    if (previous) {
-      storeData.characters = previous.characters
-      storeData.campaignState = previous.campaignState
-    }
-    throw error
-  }
-  const serialized = JSON.stringify(serializeStore(storeData), null, 2)
-  const tempPath = `${DB_FILE_PATH}.tmp-${process.pid}-${Date.now()}`
-  const tempHandle = fs.openSync(tempPath, "wx")
+function mongoDocumentId(collection: PersistedCollection, key: string): string {
+  return `${collection}:${key}`
+}
 
-  try {
-    fs.writeFileSync(tempHandle, serialized, "utf-8")
-    fs.fsyncSync(tempHandle)
-  } finally {
-    fs.closeSync(tempHandle)
+async function ensureMongoCollection(): Promise<Collection<MongoStoreDocument>> {
+  const db = await getMongoDb()
+  return db.collection<MongoStoreDocument>(MONGO_COLLECTION)
+}
+
+async function loadFromMongo(): Promise<StoreShape> {
+  const collection = await ensureMongoCollection()
+  const docs = await collection.find({}).toArray()
+  const loaded = createEmptyStore()
+
+  for (const doc of docs) {
+    if (!PERSISTED_COLLECTIONS.includes(doc.collection)) continue
+    if (typeof doc.key !== "string") continue
+    const target = loaded[doc.collection] as Map<string, unknown>
+    target.set(doc.key, cloneValue(doc.value))
   }
 
-  try {
-    if (preservePrimaryAsBackup && fs.existsSync(DB_FILE_PATH)) {
-      const backupTempPath = `${DB_BACKUP_PATH}.tmp-${process.pid}-${Date.now()}`
-      fs.copyFileSync(DB_FILE_PATH, backupTempPath)
-      replaceFile(backupTempPath, DB_BACKUP_PATH)
+  return loaded
+}
+
+async function persistSnapshot(
+  snapshot: PersistedSnapshot,
+  previous: PersistedSnapshot,
+): Promise<boolean> {
+  const collection = await ensureMongoCollection()
+  const operations: AnyBulkWriteOperation<MongoStoreDocument>[] = []
+  let changed = false
+
+  for (const collectionName of PERSISTED_COLLECTIONS) {
+    const current = snapshot[collectionName]
+    const previousMap = previous[collectionName]
+
+    for (const [key, value] of current) {
+      if (previousMap.has(key) && equivalent(previousMap.get(key), value)) continue
+      changed = true
+      operations.push({
+        updateOne: {
+          filter: { _id: mongoDocumentId(collectionName, key) },
+          update: {
+            $set: {
+              collection: collectionName,
+              key,
+              value: cloneValue(value),
+            },
+          },
+          upsert: true,
+        },
+      })
     }
-    replaceFile(tempPath, DB_FILE_PATH)
 
-    // AUTO-COMMIT GIT: Roda de forma assíncrona para não quebrar o processo síncrono do store
-    exec(`git add "${DB_FILE_PATH}" "${DB_BACKUP_PATH}" && git commit -m "auto: salva estado da campanha"`, (error) => {
-      if (error && !error.message.includes('nothing to commit')) {
-        console.error('[VTT DB] Erro no auto-commit do Git:', error.message);
-      }
-    });
+    for (const key of previousMap.keys()) {
+      if (current.has(key)) continue
+      changed = true
+      operations.push({
+        deleteOne: {
+          filter: { _id: mongoDocumentId(collectionName, key) },
+        },
+      })
+    }
+  }
 
-  } finally {
-    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath)
+  if (!operations.length) return false
+  await collection.bulkWrite(operations, { ordered: false })
+  return changed
+}
+
+const globalForStore = globalThis as unknown as {
+  __vttStore?: StoreShape
+  __vttStoreReady?: Promise<void>
+  __vttPersistedSnapshot?: PersistedSnapshot
+  __vttPersistenceQueue?: Promise<void>
+}
+
+export const store: StoreShape =
+  globalForStore.__vttStore ?? createEmptyStore()
+
+globalForStore.__vttStore = store
+
+async function initializeStore(): Promise<void> {
+  const loaded = await loadFromMongo()
+  replacePersistedMaps(store, loaded)
+  globalForStore.__vttPersistedSnapshot = snapshotFromStore(store)
+}
+
+if (!globalForStore.__vttStoreReady) {
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    globalForStore.__vttStoreReady = Promise.resolve()
+  } else {
+    globalForStore.__vttStoreReady = initializeStore().catch((error) => {
+      globalForStore.__vttStoreReady = undefined
+      throw error
+    })
   }
 }
 
-export function saveToDisk(storeData: StoreShape): void {
-  const lockHandle = acquireDatabaseLock()
-  try {
-    let primaryStore: StoreShape | null = null
-    let backupStore: StoreShape | null = null
-    let primaryReadError: unknown = null
+void globalForStore.__vttStoreReady
 
-    if (fs.existsSync(DB_FILE_PATH)) {
-      try {
-        primaryStore = readStoreFile(DB_FILE_PATH)
-      } catch (error) {
-        primaryReadError = error
-      }
-    }
-    if (fs.existsSync(DB_BACKUP_PATH)) {
-      try {
-        backupStore = readStoreFile(DB_BACKUP_PATH)
-      } catch {}
-    }
-
-    if (primaryReadError && !backupStore) {
-      throw new Error(
-        "O banco principal está inválido e não há backup válido. A gravação foi cancelada para proteger os dados.",
-        { cause: primaryReadError },
-      )
-    }
-
-    if (primaryStore) {
-      reconcileCharacters(storeData, primaryStore)
-      reconcileCampaignState(storeData, primaryStore)
-      reconcilePersonalNotes(storeData, primaryStore)
-    }
-    if (backupStore) {
-      reconcileCharacters(storeData, backupStore)
-      reconcileCampaignState(storeData, backupStore)
-      reconcilePersonalNotes(storeData, backupStore)
-    }
-
-    if (primaryReadError && fs.existsSync(DB_FILE_PATH)) {
-      fs.renameSync(DB_FILE_PATH, `${DB_FILE_PATH}.corrupt-${Date.now()}`)
-    }
-
-    writeStoreFile(storeData, Boolean(primaryStore))
-  } finally {
-    releaseDatabaseLock(lockHandle)
-  }
-}
-
-export function loadFromDisk(): StoreShape {
-  const primaryExists = fs.existsSync(DB_FILE_PATH)
-  const backupExists = fs.existsSync(DB_BACKUP_PATH)
-  let primaryStore: StoreShape | null = null
-  let backupStore: StoreShape | null = null
-  let primaryReadError: unknown = null
-  let backupReadError: unknown = null
-
-  if (primaryExists) {
-    try {
-      primaryStore = readStoreFile(DB_FILE_PATH)
-    } catch (error) {
-      primaryReadError = error
-    }
-  }
-  if (backupExists) {
-    try {
-      backupStore = readStoreFile(DB_BACKUP_PATH)
-    } catch (error) {
-      backupReadError = error
-    }
-  }
-
-  if (!primaryStore && !backupStore) {
-    if (!primaryExists && !backupExists) return createEmptyStore()
-    throw new Error(
-      "Não foi possível carregar o banco principal nem o backup.",
-      { cause: primaryReadError ?? backupReadError },
-    )
-  }
-
-  const loadedStore = primaryStore ?? backupStore!
-  if (primaryStore && backupStore) {
-    reconcileCharacters(loadedStore, backupStore)
-    reconcileCampaignState(loadedStore, backupStore)
-    reconcilePersonalNotes(loadedStore, backupStore)
-  }
-
-  return loadedStore
-}
-
-const globalForStore = globalThis as unknown as { __vttStore?: StoreShape }
-
-export const store: StoreShape = globalForStore.__vttStore ?? loadFromDisk()
+if (!globalForStore.__vttPersistedSnapshot)
+  globalForStore.__vttPersistedSnapshot = snapshotFromStore(store)
 
 if (!store.combatSessions) store.combatSessions = new Map()
 if (!store.maps) store.maps = new Map()
@@ -433,6 +313,42 @@ if (!store.releasedPresenceConnections)
 if (!store.presenceSubscribers) store.presenceSubscribers = new Set()
 
 globalForStore.__vttStore = store
+
+function enqueuePersistence<T>(task: () => Promise<T>): Promise<T> {
+  const queue = globalForStore.__vttPersistenceQueue ?? Promise.resolve()
+  const operation = queue.then(task)
+  globalForStore.__vttPersistenceQueue = operation.then(
+    () => undefined,
+    () => undefined,
+  )
+  return operation
+}
+
+export async function saveToDisk(storeData: StoreShape): Promise<void> {
+  const previous = globalForStore.__vttPersistedSnapshot ?? createEmptySnapshot()
+  const previousStore = storeFromSnapshot(previous)
+
+  try {
+    enforceInventoryDatabase(storeData, previousStore)
+  } catch (error) {
+    // Preserve the previous safety behavior: only inventory-backed state is
+    // rolled back when its validation fails. Other pending changes remain.
+    storeData.characters = previousStore.characters
+    storeData.campaignState = previousStore.campaignState
+    storeData.lore = previousStore.lore
+    throw error
+  }
+
+  const snapshot = snapshotFromStore(storeData)
+
+  await enqueuePersistence(async () => {
+    const changed = await persistSnapshot(snapshot, globalForStore.__vttPersistedSnapshot ?? createEmptySnapshot())
+    if (changed) {
+      globalForStore.__vttPersistedSnapshot = snapshot
+      notifyCombatStorageChanged()
+    }
+  })
+}
 
 export function deleteCharacterFromStore(characterId: string): void {
   const character = store.characters.get(characterId)
@@ -473,7 +389,7 @@ export function publish(campaignId: string, event: RealtimeEvent): void {
 // O mestre recebe a lista para gerenciamento; o player recebe somente o que pode ouvir.
 export function getVisibleSounds(
   campaignId: string,
-  userId: string
+  userId: string,
 ): CampaignSound[] {
   const campaign = store.campaigns.get(campaignId)
   if (!campaign) return []
@@ -483,16 +399,13 @@ export function getVisibleSounds(
 
   const sounds = store.activeSounds.get(campaignId) || []
 
-  return sounds.filter(sound =>
-    role === "gm" ||
-    sound.targetUserId == null ||
-    sound.targetUserId === userId
+  return sounds.filter(
+    (sound) =>
+      role === "gm" || sound.targetUserId == null || sound.targetUserId === userId,
   )
 }
 
 export function notifySoundsChanged(campaignId: string): void {
-  // Não transmite URL, destinatário nem identificador do som ao canal coletivo.
-  // Cada cliente atualiza sua lista pela rota autenticada de sons.
   publish(campaignId, { type: "sound:changed" } as unknown as RealtimeEvent)
 }
 
@@ -633,44 +546,35 @@ export function getMemberRole(campaign: Campaign, userId: string) {
   return campaign.members.find((m) => m.userId === userId)?.role
 }
 
-/** Read, resolve and persist under the same disk lock. Callback MUST be synchronous.
- * Nothing is published or applied to the live store before the disk write succeeds.
+/**
+ * Executa uma transação síncrona sobre um snapshot do estado persistido e
+ * aguarda a gravação no MongoDB antes de retornar o valor da transação.
  */
 export function transactStore<T>(
   callback: (draft: StoreShape) => { value: T; changed: boolean },
-): T {
-  fs.mkdirSync(path.dirname(DB_FILE_PATH), { recursive: true })
-  const lock = acquireDatabaseLock()
-  try {
-    const draft = loadFromDisk()
+): Promise<T> {
+  return enqueuePersistence(async () => {
+    const draft = storeFromSnapshot(snapshotFromStore(store))
     const result = callback(draft)
     if (result && typeof (result as any).then === "function")
       throw new Error("Transação assíncrona não permitida")
+
     if (result.changed) {
-      let primaryValid = false
-      if (fs.existsSync(DB_FILE_PATH)) {
-        try {
-          readStoreFile(DB_FILE_PATH)
-          primaryValid = true
-        } catch {
-          fs.renameSync(DB_FILE_PATH, `${DB_FILE_PATH}.corrupt-${Date.now()}`)
-        }
+      const previous = globalForStore.__vttPersistedSnapshot ?? createEmptySnapshot()
+      const previousStore = storeFromSnapshot(previous)
+      try {
+        enforceInventoryDatabase(draft, previousStore)
+      } catch (error) {
+        throw error
       }
-      writeStoreFile(draft, primaryValid)
+
+      const snapshot = snapshotFromStore(draft)
+      replacePersistedMaps(store, draft)
+      await persistSnapshot(snapshot, previous)
+      globalForStore.__vttPersistedSnapshot = snapshot
+      notifyCombatStorageChanged()
     }
-    // Keep live subscriptions and presence. Replace only persisted collections.
-    store.users = draft.users
-    store.sessions = draft.sessions
-    store.campaigns = draft.campaigns
-    store.characters = draft.characters
-    store.characterTombstones = draft.characterTombstones
-    store.maps = draft.maps
-    store.lore = draft.lore
-    store.campaignState = draft.campaignState
-    store.personalNotes = draft.personalNotes
-    store.combatSessions = draft.combatSessions
+
     return result.value
-  } finally {
-    releaseDatabaseLock(lock)
-  }
+  })
 }

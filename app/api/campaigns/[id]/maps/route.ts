@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (store.maps.has(input.id)) return fail("Já existe um mapa com esse identificador.", 409)
     const newMap: GameMap = { ...input, campaignId, isPublic: false, tokens: input.tokens || {}, tiles: input.tiles || {} }
     store.maps.set(newMap.id, newMap)
-    saveToDisk(store)
+    await saveToDisk(store)
     notify(campaignId)
     return NextResponse.json({ success: true, map: newMap })
   }
@@ -58,7 +58,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return fail("Movimento de token inválido.")
     map.tokens ??= {}
     map.tokens[tokenId] = { x, y, type: tokenType }
-    saveToDisk(store)
+    await saveToDisk(store)
     notify(campaignId)
     return NextResponse.json({ success: true })
   }
@@ -66,7 +66,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (action === "visibility" || action === "show") {
     if (action === "visibility" && typeof body.isPublic !== "boolean") return fail("Visibilidade inválida.")
     map.isPublic = action === "show" || body.isPublic
-    saveToDisk(store)
+    await saveToDisk(store)
     notify(campaignId, map.id, action === "show")
     return NextResponse.json({ success: true, map })
   }
@@ -83,7 +83,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     map.tiles ??= {}
     map.tiles[`${tile.x},${tile.y}`] = tile
   } else return fail("Ação inválida.")
-  saveToDisk(store)
+  await saveToDisk(store)
   notify(campaignId)
   return NextResponse.json({ success: true })
 }

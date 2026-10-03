@@ -109,7 +109,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       requesterId: user.id, requesterName: user.name, createdAt: Date.now(),
     }
     requests.push(galleryRequest)
-    updateCampaignState(campaignId, { galleryBroadcastRequests: requests })
+    await updateCampaignState(campaignId, { galleryBroadcastRequests: requests })
     publish(campaignId, { type: "gallery:broadcast-requested", requestId: galleryRequest.id })
     return NextResponse.json(galleryResponse(access))
   } else if (action === "resolve-broadcast") {
@@ -119,7 +119,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const galleryRequest = requests.find(entry => entry.id === body.requestId)
     if (!galleryRequest) return NextResponse.json({ error: "Solicitação não encontrada." }, { status: 404 })
     requests = requests.filter(entry => entry.id !== galleryRequest.id)
-    updateCampaignState(campaignId, { galleryBroadcastRequests: requests })
+    await updateCampaignState(campaignId, { galleryBroadcastRequests: requests })
     publish(campaignId, { type: "gallery:broadcast-resolved", requestId: galleryRequest.id, requesterId: galleryRequest.requesterId, resolution })
     if (resolution === "approved") showImage(campaignId, { url: galleryRequest.imageUrl, name: galleryRequest.imageName }, targetUserId)
     return NextResponse.json(galleryResponse(access))
@@ -132,7 +132,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   } else {
     return NextResponse.json({ error: "Ação inválida." }, { status: 400 })
   }
-  updateCampaignState(campaignId, { gallery: images, galleryFolders: folders.filter(folder => !folder.isPlayerFolder), galleryBroadcastRequests: requests })
+  await updateCampaignState(campaignId, { gallery: images, galleryFolders: folders.filter(folder => !folder.isPlayerFolder), galleryBroadcastRequests: requests })
   publish(campaignId, { type: "gallery:changed" })
   return NextResponse.json(galleryResponse(access))
 }

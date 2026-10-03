@@ -30,7 +30,7 @@ export async function GET(
     }
     const { id } = await params
     return NextResponse.json(
-      { combat: getCombat(id, user.id) },
+      { combat: await getCombat(id, user.id) },
       { headers: { ...corsHeaders, "Cache-Control": "no-store" } },
     )
   } catch (error) {
@@ -53,7 +53,7 @@ export async function POST(
     console.log("📍 [COMBAT POST] Body lido:", body.type);
     
     return NextResponse.json(
-      { combat: commandCombat(id, user.id, body) },
+      { combat: await commandCombat(id, user.id, body) },
       { headers: { ...corsHeaders, "Cache-Control": "no-store" } },
     )
   } catch (error) {

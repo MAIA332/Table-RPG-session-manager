@@ -327,10 +327,10 @@ function schedule(campaignId: string, s: CombatSession) {
   timers.delete(campaignId)
   if (!s.qte || qteComplete(s.qte)) return
   const timer = setTimeout(
-    () => {
+    async () => {
       timers.delete(campaignId)
       try {
-        const result = transactStore((db) => {
+        const result = await transactStore((db) => {
           const current = db.combatSessions.get(campaignId)
           if (!current || !db.campaigns.has(campaignId))
             return { value: null, changed: false }
@@ -356,8 +356,8 @@ function schedule(campaignId: string, s: CombatSession) {
   timer.unref?.()
   timers.set(campaignId, timer)
 }
-export function getCombat(campaignId: string, userId: string): CombatSnapshot {
-  const result = transactStore((db) => {
+export async function getCombat(campaignId: string, userId: string): Promise<CombatSnapshot> {
+  const result = await transactStore((db) => {
     authorize(db, campaignId, userId)
     const s = db.combatSessions.get(campaignId) || newSession()
     const expired = expire(db, campaignId, s)
@@ -478,11 +478,11 @@ function spend(
     c.currentMp -= cost.amount
   }
 }
-export function commandCombat(
+export async function commandCombat(
   campaignId: string,
   userId: string,
   input: unknown,
-): CombatSnapshot {
+): Promise<CombatSnapshot> {
   requireTrue(
     input && typeof input === "object" && !Array.isArray(input),
     "Comando inválido",
@@ -490,7 +490,7 @@ export function commandCombat(
   const command = input as CombatCommand
   const commandId = text(command.commandId, "ID do comando", 100)
   text(command.type, "Tipo", 40)
-  const result = transactStore((db) => {
+  const result = await transactStore((db) => {
     const { campaign, role } = authorize(db, campaignId, userId)
     const gm = role === "gm",
       s:any = db.combatSessions.get(campaignId) || newSession()
@@ -1066,5 +1066,5 @@ export function commandCombat(
   schedule(campaignId, result.session)
   return result.view
 }
-// Recover durable deadlines after a process restart. Missed deadlines resolve once under the disk lock.
+// Recover durable deadlines after a process restart. Missed deadlines resolve through the MongoDB-backed store.
 for (const [id, s] of store.combatSessions) schedule(id, s)

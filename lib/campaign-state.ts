@@ -62,7 +62,7 @@ export function getCampaignStateFields(campaignId: string): string[] {
   return [...CAMPAIGN_STATE_ARRAY_FIELDS, "weather"].filter(field => Object.prototype.hasOwnProperty.call(raw, field))
 }
 
-export function updateCampaignState(campaignId: string, patch: Record<string, unknown>): CampaignState {
+export async function updateCampaignState(campaignId: string, patch: Record<string, unknown>): Promise<CampaignState> {
   const current = store.campaignState.get(campaignId) || {}
   const next: Record<string, unknown> = { ...current }
   for (const field of CAMPAIGN_STATE_ARRAY_FIELDS) {
@@ -74,7 +74,7 @@ export function updateCampaignState(campaignId: string, patch: Record<string, un
   next.updatedAt = Date.now()
   store.campaignState.set(campaignId, next)
   if (Array.isArray(next.lore)) store.lore.set(campaignId, next.lore)
-  saveToDisk(store)
+  await saveToDisk(store)
   return getCampaignState(campaignId)
 }
 

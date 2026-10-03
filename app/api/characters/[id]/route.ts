@@ -40,7 +40,7 @@ export async function PATCH(
   if (!body || typeof body !== "object" || Array.isArray(body))
     return NextResponse.json({ error: "Dados inválidos." }, { status: 400 })
   try {
-    const updated = transactStore((db) => {
+    const updated = await transactStore((db) => {
       const current = db.characters.get(id)
       if (!current) throw new RequestError("Personagem não encontrado.", 404)
       const campaign = db.campaigns.get(current.campaignId)
@@ -211,7 +211,7 @@ export async function DELETE(
   if (character.ownerId !== user.id && role !== "gm")
     return NextResponse.json({ error: "Sem permissão." }, { status: 403 })
   deleteCharacterFromStore(id)
-  saveToDisk(store)
+  await saveToDisk(store)
   publish(character.campaignId, { type: "character:deleted", characterId: id })
   return NextResponse.json({ ok: true })
 }

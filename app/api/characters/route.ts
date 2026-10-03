@@ -67,7 +67,7 @@ export async function POST(request: Request) {
   const normalizedCharacter = applyInventoryRules(character as Character)
   store.characters.set(character.id, normalizedCharacter)
   store.characterTombstones.delete(character.id)
-  saveToDisk(store)
+  await saveToDisk(store)
   publish(campaignId, { type: "character:created", character: normalizedCharacter })
 
   return NextResponse.json({ character: normalizedCharacter })
