@@ -1,5 +1,8 @@
 "use client"
 import { normalizeStoreFolders } from "@/lib/store-folders"
+import { ClassBooksWorkbench } from "./class-books"
+import { getCampaignClassCatalog } from "@/lib/class-catalog"
+import { CLASSES } from "@/lib/game-data"
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -67,6 +70,8 @@ export interface Member {
 }
 
 interface GmPanelProps {
+  campaignId: string
+  booksRevision?: number
   isOpen: boolean
   onClose: () => void
   characters: Character[]
@@ -76,7 +81,7 @@ interface GmPanelProps {
   customClasses: any[]
   onCreateEquipment: (eq: any) => void | Promise<void>
   onDeleteEquipment: (id: string) => void
-  onCreateClass: (cls: any) => void
+  onCreateClass: (cls: GameClass) => void | Promise<void>
   onDeleteClass: (id: string) => void
   onGiveZenits: (targetId: string, amount: number) => Promise<void>
   onGiveCustomItem: (
@@ -623,6 +628,8 @@ function createBonusDraft(): GameSkillBonus {
 }
 
 export function GmPanel({
+  campaignId,
+  booksRevision = 0,
   isOpen,
   onClose,
   characters,
@@ -718,6 +725,7 @@ export function GmPanel({
 
   // Estado para expandir os detalhes da classe homebrew
   const [expandedClassId, setExpandedClassId] = useState<string | null>(null)
+  const [savingClass, setSavingClass] = useState(false)
 
   const allFolders = normalizeStoreFolders(storeFolders)
 
@@ -745,11 +753,13 @@ export function GmPanel({
     expanded,
     onToggle,
     onDelete,
+    onEdit,
   }: {
     cls: GameClass
     expanded: boolean
     onToggle: () => void
     onDelete: () => void
+    onEdit: () => void
   }) {
     const attributeLabels: Record<GameClass["primaryAttribute"], string> = {
       mig: "Vigor (MIG)",
@@ -787,7 +797,7 @@ export function GmPanel({
                 </h4>
 
                 <span className="text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 shrink-0">
-                  Homebrew
+                  {cls.parentClassId ? "Subclasse" : "Homebrew"}
                 </span>
               </div>
 
@@ -823,6 +833,7 @@ export function GmPanel({
             />
           </button>
 
+          <button type="button" onClick={onEdit} title="Editar classe ou subclasse" className="p-2 rounded-lg text-amber-300 hover:bg-amber-500/10"><Pencil className="size-4" /></button>
           <button
             type="button"
             onClick={(e) => {
@@ -1204,7 +1215,8 @@ export function GmPanel({
     }))
   }
 
-  function handleSaveClass() {
+  async function handleSaveClass() {
+    if (savingClass) return
     if (
       !classDraft.name.trim() ||
       !classDraft.archetype.trim() ||
@@ -1217,12 +1229,27 @@ export function GmPanel({
       (skill) => skill.name.trim() !== "" && skill.description.trim() !== "",
     )
 
-    if (validSkills.length === 0) {
-      return alert("A classe precisa ter pelo menos 1 habilidade válida.")
+    // Bases precisam de pelo menos uma habilidade para o criador distribuir níveis.
+    // Subclasses podem existir somente para livros, sem pontos de perícia próprios.
+    if (!classDraft.parentClassId && validSkills.length === 0) {
+      return alert("Classes base precisam de ao menos uma habilidade. Subclasses podem ter apenas Grimório/Blueprints.")
+    }
+    if (classDraft.parentClassId && !getCampaignClassCatalog(characters, customClasses).some(cls =>
+      !cls.parentClassId && cls.id === classDraft.parentClassId)) {
+      return alert("A classe-mãe não existe no catálogo desta campanha.")
+    }
+    const conflictingSkillIds = new Set(
+      [...getCampaignClassCatalog(characters, customClasses)]
+        .filter(cls => cls.id !== classDraft.id)
+        .flatMap(cls => cls.skills.map(skill => skill.id)),
+    )
+    if (validSkills.some(skill => conflictingSkillIds.has(skill.id))) {
+      return alert("Uma habilidade possui o mesmo ID de outra classe. Crie um novo identificador.")
     }
 
     const newClass: GameClass = {
-      id: "custom-class-" + Math.random().toString(36).substring(2, 10),
+      id: classDraft.id || "custom-class-" + Math.random().toString(36).substring(2, 10),
+      ...(classDraft.parentClassId ? { parentClassId: classDraft.parentClassId } : {}),
 
       name: classDraft.name.trim(),
       archetype: classDraft.archetype.trim(),
@@ -1235,7 +1262,7 @@ export function GmPanel({
       skills: validSkills.map((skill) => ({
         ...skill,
 
-        id: "cskill-" + Math.random().toString(36).substring(2, 8),
+        id: classDraft.id && skill.id ? skill.id : "cskill-" + Math.random().toString(36).substring(2, 8),
 
         name: skill.name.trim(),
         maxLevel: Number(skill.maxLevel),
@@ -1258,7 +1285,15 @@ export function GmPanel({
       })),
     }
 
-    onCreateClass(newClass)
+    setSavingClass(true)
+    try {
+      await onCreateClass(newClass)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Não foi possível salvar a classe.")
+      setSavingClass(false)
+      return
+    }
+    setSavingClass(false)
 
     setClassDraft({
       id: "",
@@ -1273,7 +1308,7 @@ export function GmPanel({
 
     setExpandedSkillId(null)
 
-    alert("Classe criada! Jogadores agora poderão escolhê-la.")
+    alert("Classe / subclasse salva no banco de dados.")
   }
 
   async function handleGiveLoot() {
@@ -1947,6 +1982,7 @@ export function GmPanel({
                                     expandedClassId === cls.id ? null : cls.id,
                                   )
                                 }
+                                onEdit={() => { setClassDraft(structuredClone(cls)); setExpandedSkillId(null) }}
                                 onDelete={() => {
                                   onDeleteClass(cls.id)
 
@@ -1960,6 +1996,7 @@ export function GmPanel({
                         </div>
                       </div>
 
+                      <ClassBooksWorkbench campaignId={campaignId} characters={characters} refreshToken={booksRevision} />
                       <div className="flex items-center gap-3">
                         <div className="h-px flex-1 bg-white/5" />
 
@@ -1991,6 +2028,16 @@ export function GmPanel({
                         </div>
 
                         <div className="p-4 space-y-4">
+                          <label className="flex flex-col gap-1.5 text-xs text-amber-400">
+                            Tipo de criação
+                            <select className="bg-[#111] border border-white/10 rounded-lg px-3 py-2.5 text-sm" value={classDraft.parentClassId || ""} onChange={e => updateClass("parentClassId", e.target.value || undefined)}>
+                              <option value="">Classe independente</option>
+                              {getCampaignClassCatalog(characters, Array.isArray(customClasses) ? customClasses : []).filter(c => !c.parentClassId && c.id !== classDraft.id).map(c => (
+                                <option key={c.id} value={c.id}>Subclasse de {c.name}</option>
+                              ))}
+                            </select>
+                          </label>
+                          {classDraft.id && <p className="text-xs text-amber-300">Editando classe existente. O ID será preservado para não perder vínculos dos personagens.</p>}
                           <div className="grid grid-cols-2 gap-3">
                             <label className="flex flex-col gap-1.5">
                               <span className="text-[9px] uppercase tracking-widest font-bold text-amber-500">
@@ -2215,10 +2262,11 @@ export function GmPanel({
                       {/* SALVAR */}
                       <Button
                         className="h-11 bg-amber-600 text-white hover:bg-amber-700 font-bold"
-                        onClick={handleSaveClass}
+                        onClick={() => void handleSaveClass()}
+                        disabled={savingClass}
                       >
                         <Save className="size-4 mr-2" />
-                        Oficializar Classe
+                        {savingClass ? "Salvando..." : classDraft.id ? "Salvar alterações" : classDraft.parentClassId ? "Criar Subclasse" : "Oficializar Classe"}
                       </Button>
                     </div>
                   ) : (

@@ -9,6 +9,7 @@ import type {
   PersonalNote,
 } from "./types"
 import type { GameMap } from "@/lib/map-types"
+import type { CampaignClassBooks } from "./class-books"
 import { campaignItemCatalog, enforceInventoryDatabase } from "./inventory-server"
 import { applyInventoryRules } from "./character"
 import { getMongoDb } from "./mongodb"
@@ -46,6 +47,7 @@ interface StoreShape {
   lore: Map<string, any[]>
   combatSessions: Map<string, CombatSession>
   campaignState: Map<string, Record<string, unknown>>
+  classBooks: Map<string, CampaignClassBooks>
   personalNotes: Map<string, PersonalNotesRecord>
   activeSounds: Map<string, CampaignSound[]>
   subscribers: Map<string, Set<Subscriber>>
@@ -65,6 +67,7 @@ const PERSISTED_COLLECTIONS = [
   "lore",
   "combatSessions",
   "campaignState",
+  "classBooks",
   "personalNotes",
 ] as const
 
@@ -92,6 +95,7 @@ function createEmptyStore(): StoreShape {
     lore: new Map(),
     combatSessions: new Map(),
     campaignState: new Map(),
+    classBooks: new Map(),
     personalNotes: new Map(),
     activeSounds: new Map(),
     subscribers: new Map(),
@@ -130,6 +134,7 @@ function createEmptySnapshot(): PersistedSnapshot {
     lore: new Map(),
     combatSessions: new Map(),
     campaignState: new Map(),
+    classBooks: new Map(),
     personalNotes: new Map(),
   }
 }
@@ -151,6 +156,7 @@ function snapshotFromStore(storeData: StoreShape): PersistedSnapshot {
     lore,
     combatSessions: cloneMap(storeData.combatSessions),
     campaignState: cloneMap(storeData.campaignState),
+    classBooks: cloneMap(storeData.classBooks),
     personalNotes: cloneMap(storeData.personalNotes),
   }
 }
@@ -165,6 +171,7 @@ function storeFromSnapshot(snapshot: PersistedSnapshot): StoreShape {
   next.maps = cloneMap(snapshot.maps as Map<string, GameMap>)
   next.lore = cloneMap(snapshot.lore as Map<string, any[]>)
   next.combatSessions = cloneMap(snapshot.combatSessions as Map<string, CombatSession>)
+  next.classBooks = cloneMap(snapshot.classBooks as Map<string, CampaignClassBooks>)
   next.campaignState = cloneMap(
     snapshot.campaignState as Map<string, Record<string, unknown>>,
   )
@@ -184,6 +191,7 @@ function replacePersistedMaps(target: StoreShape, source: StoreShape): void {
   target.lore = source.lore
   target.combatSessions = source.combatSessions
   target.campaignState = source.campaignState
+  target.classBooks = source.classBooks
   target.personalNotes = source.personalNotes
 }
 
@@ -296,6 +304,10 @@ if (!globalForStore.__vttStoreReady) {
 
 void globalForStore.__vttStoreReady
 
+// Compatibilidade com HMR: versões anteriores do store não tinham classBooks.
+if (!store.classBooks) store.classBooks = new Map()
+if (globalForStore.__vttPersistedSnapshot && !globalForStore.__vttPersistedSnapshot.classBooks)
+  globalForStore.__vttPersistedSnapshot.classBooks = new Map()
 if (!globalForStore.__vttPersistedSnapshot)
   globalForStore.__vttPersistedSnapshot = snapshotFromStore(store)
 
@@ -303,6 +315,7 @@ if (!store.combatSessions) store.combatSessions = new Map()
 if (!store.maps) store.maps = new Map()
 if (!store.lore) store.lore = new Map()
 if (!store.campaignState) store.campaignState = new Map()
+if (!store.classBooks) store.classBooks = new Map()
 if (!store.personalNotes) store.personalNotes = new Map()
 if (!store.activeSounds) store.activeSounds = new Map()
 if (!store.characterTombstones) store.characterTombstones = new Map()

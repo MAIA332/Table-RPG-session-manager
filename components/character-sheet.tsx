@@ -16,6 +16,8 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 
 import { apiFetch } from "@/lib/client"
+import { getCampaignClassCatalog } from "@/lib/class-catalog"
+import { CharacterBookShelf } from "./class-books"
 import { InventoryEquipment } from "./inventory-equipment"
 import {
   equippedItemBonuses,
@@ -115,7 +117,7 @@ import {
 } from "lucide-react"
 import { HazardBanner, HazardData } from "./condition-manager"
 import { StoreModal } from "./store-modal"
-import { span } from "motion/react-client"
+import { h3, span } from "motion/react-client"
 
 // ==========================================
 // TIPAGENS EXPORTADAS PARA A ROOM
@@ -416,193 +418,23 @@ function CombinedChecksPanel({
   )
 }
 
-function BlueprintApp({ character, editable, onSpendMp }: any) {
-  const skillLvl = character.skills["ti-gadgets"] || 0
-  const currentMp = character.resources.mp
-  const currentIp = character.resources.ip
-
-  if (skillLvl === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 bg-destructive/10 border border-destructive/30 rounded-xl text-center">
-        <Lock className="size-10 text-destructive mb-3" />
-        <h3 className="font-bold text-destructive text-lg">Acesso Negado</h3>
-        <p className="text-sm text-destructive/80 mt-2 max-w-sm">
-          Este Almanaque possui travas de segurança intrincadas. Apenas um
-          Inventor treinado com a perícia <strong>"Aparelhos"</strong> pode
-          decifrar e construir estes projetos Magitech.
-        </p>
-      </div>
-    )
-  }
-
-  const blueprints = [
-    {
-      level: 1,
-      name: "Magiesfera Luminosa",
-      mpCost: 5,
-      ipCost: 1,
-      reqItem: null,
-      desc: "Cria uma esfera de luz. Requer 1 IP como peça.",
-    },
-    {
-      level: 2,
-      name: "Gancho Pneumático",
-      mpCost: 10,
-      ipCost: 0,
-      reqItem: "sucata",
-      reqItemName: "Sucata de Ferro",
-      desc: "Permite escalar superfícies. Consome uma [Sucata de Ferro].",
-    },
-    {
-      level: 3,
-      name: "Bomba de Fumaça",
-      mpCost: 15,
-      ipCost: 2,
-      reqItem: null,
-      desc: "Cobre a área em fumaça. Requer 2 IP de reagentes.",
-    },
-    {
-      level: 4,
-      name: "Drone Escoteiro",
-      mpCost: 20,
-      ipCost: 0,
-      reqItem: "lente-magica",
-      reqItemName: "Lente Mágica",
-      desc: "Pequeno robô voador. Consome uma [Lente Mágica].",
-    },
-    {
-      level: 5,
-      name: "Canhão Magitech",
-      mpCost: 30,
-      ipCost: 0,
-      reqItem: "nucleo-energia",
-      reqItemName: "Núcleo de Energia",
-      desc: "Dispara uma rajada concentrada. Consome um [Núcleo de Energia].",
-    },
-  ]
-
-  function handleCraft(bp: any) {
-    if (!editable) return
-
-    if (currentMp < bp.mpCost)
-      return alert(`Sua Mente (MP) é insuficiente. Necessário: ${bp.mpCost}.`)
-
-    if (bp.ipCost > 0) {
-      return alert(
-        "Este projeto ainda usa IP como material. Cadastre os materiais como itens com peso antes de utilizá-lo.",
-      )
-    } else if (bp.reqItem) {
-      const itemIndex = character.equipment.findIndex((itemId: string) =>
-        itemId.includes(bp.reqItem),
-      )
-      if (itemIndex === -1)
-        return alert(
-          `Falta material: Você precisa ter o item [${bp.reqItemName}] no equipamento para construir isto.`,
-        )
-      onSpendMp(bp.mpCost)
-      alert(`[${bp.name}] criado com sucesso consumindo [${bp.reqItemName}]!`)
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="bg-primary/10 border border-primary/30 p-4 rounded-xl mb-2 shadow-inner">
-        <p className="text-sm text-primary font-bold">
-          Nível da Perícia 'Aparelhos': {skillLvl}
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Sua mochila possui:{" "}
-          <span className="font-bold text-white">{currentIp} IP</span>.
-        </p>
-      </div>
-
-      {blueprints.map((bp) => {
-        const unlocked = skillLvl >= bp.level
-        let hasItem = false
-        if (bp.reqItem) {
-          hasItem = character.equipment.some((itemId: string) =>
-            itemId.includes(bp.reqItem!),
-          )
-        }
-
-        const canAfford =
-          currentMp >= bp.mpCost &&
-          (bp.ipCost > 0 ? currentIp >= bp.ipCost : hasItem)
-
-        return (
-          <div
-            key={bp.level}
-            className={`p-4 rounded-xl border transition-all ${unlocked ? "border-border/50 bg-card/50" : "border-destructive/20 bg-destructive/5 opacity-60 grayscale"}`}
-          >
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-              <div className="flex-1 pr-4">
-                <h4
-                  className={`font-bold ${unlocked ? "text-foreground" : "text-destructive"} flex items-center gap-2 flex-wrap`}
-                >
-                  {bp.name}
-                  <span className="text-[10px] bg-background border border-border px-1.5 py-0.5 rounded text-muted-foreground uppercase tracking-widest">
-                    Req: Nv. {bp.level}
-                  </span>
-                </h4>
-                <p className="text-xs text-muted-foreground mt-1.5 leading-snug">
-                  {bp.desc}
-                </p>
-
-                {unlocked && (
-                  <div className="mt-2 text-[10px] font-mono flex gap-2">
-                    <span
-                      className={
-                        currentMp >= bp.mpCost
-                          ? "text-blue-400"
-                          : "text-red-400"
-                      }
-                    >
-                      -{bp.mpCost} MP
-                    </span>
-                    {bp.ipCost > 0 && (
-                      <span
-                        className={
-                          currentIp >= bp.ipCost
-                            ? "text-green-400"
-                            : "text-red-400"
-                        }
-                      >
-                        -{bp.ipCost} IP
-                      </span>
-                    )}
-                    {bp.reqItem && (
-                      <span
-                        className={hasItem ? "text-green-400" : "text-red-400"}
-                      >
-                        Req: {bp.reqItemName}{" "}
-                        {hasItem ? "(Na Mochila)" : "(Falta)"}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {unlocked ? (
-                <Button
-                  size="sm"
-                  disabled={!canAfford || !editable}
-                  onClick={() => handleCraft(bp)}
-                  className={`gap-2 shrink-0 font-bold h-9 ${canAfford ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-zinc-800 text-zinc-500"}`}
-                >
-                  <Zap className="size-3.5" />{" "}
-                  {canAfford ? "Construir" : "Materiais Insuf."}
-                </Button>
-              ) : (
-                <span className="text-[10px] uppercase font-bold text-destructive flex items-center gap-1.5 shrink-0 bg-background/50 px-2 py-1 rounded">
-                  <Lock className="size-3" /> Bloqueado
-                </span>
-              )}
-            </div>
-          </div>
-        )
-      })}
+/**
+ * Item legado do Inventor: mantém a relíquia, mas não oferece mais receitas
+ * hardcoded nem desconta PM/materiais via estado local. O novo livro é
+ * configurado pelo mestre e validado no servidor.
+ */
+function BlueprintApp({ character, isGm }: { character: Character; isGm: boolean }) {
+  return <div className="space-y-4">
+    <div className="rounded-xl border border-amber-600/30 bg-amber-950/15 p-4">
+      <h3 className="font-bold text-amber-200">Almanaque de Projetos Magitech</h3>
+      <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+        Esta relíquia foi preservada para compatibilidade. Os projetos agora são
+        criados e publicados pelo mestre na Biblioteca de Mecânicas.
+        Nenhum material ou recurso é consumido sem confirmação do servidor.
+      </p>
     </div>
-  )
+    <CharacterBookShelf campaignId={character.campaignId} character={character} isGm={isGm} />
+  </div>
 }
 
 // ==========================================
@@ -1420,9 +1252,11 @@ function getSpentSkillPoints(
   for (const owned of classes) {
     const classId = owned.classId ?? owned.id
     const definition = catalog.find((c) => c.id === classId)
-    const classSkills = (definition?.skills ?? []).filter(
-      (skill: any) => !counted.has(skill.id),
-    )
+    const classSkills = [
+      ...(definition?.skills ?? []),
+      ...catalog.filter((specialization: any) => specialization.parentClassId === classId)
+        .flatMap((specialization: any) => specialization.skills ?? []),
+    ].filter((skill: any) => !counted.has(skill.id))
     let ranks = 0
     let free = 0
     for (const skill of classSkills) {
@@ -1684,6 +1518,7 @@ export function CharacterSheet({
   campaignMembers = [],
   campaignCharacters = [],
   customClasses = [],
+  booksRevision = 0,
   activeHazards = [],
   customEquipment = [],
   storeFolders = [],
@@ -1955,16 +1790,23 @@ export function CharacterSheet({
     zenitInputRef.current?.select()
   }, [editingZenit])
 
-  const allClasses = useMemo<any[]>(() => {
-    const catalog = new Map<string, any>()
-    for (const definition of [...CLASSES, ...(customClasses || [])]) {
-      catalog.set(definition.id, {
-        ...definition,
-        skills: definition.skills || [],
-      })
-    }
-    return [...catalog.values()]
-  }, [customClasses])
+  const allClasses = useMemo<any[]>(() =>
+    getCampaignClassCatalog([...(campaignCharacters || []), character], customClasses || []),
+    [campaignCharacters, character, customClasses],
+  )
+  const [chosenSubclassIds, setChosenSubclassIds] = useState<string[]>([])
+  useEffect(() => {
+    let active = true
+    // A seleção é persistida no Mongo pela API de livros, não na lista de níveis.
+    if (!isExpanded && !defaultExpanded) return
+    void apiFetch<{ progress?: { subclassIds?: string[] } }>(
+      `/api/campaigns/${encodeURIComponent(character.campaignId)}/class-books?characterId=${encodeURIComponent(character.id)}`,
+      { cache: "no-store" },
+    ).then(result => {
+      if (active) setChosenSubclassIds(Array.isArray(result.progress?.subclassIds) ? result.progress.subclassIds : [])
+    }).catch(() => {})
+    return () => { active = false }
+  }, [character.campaignId, character.id, isExpanded, defaultExpanded, booksRevision])
   const customSkillIds = new Set<string>(
     (customClasses || []).flatMap((c: any) =>
       (c.skills || []).map((skill: any) => skill.id),
@@ -2339,6 +2181,7 @@ export function CharacterSheet({
     const skill = classMatch?.skills.find((entry: any) => entry.id === skillId)
     const currentRank = skillRank(skillsObj[skillId])
     if (!classMatch || !skill || currentRank >= skillMaxRank(skill)) return
+    if (classMatch.parentClassId && !isGm && !chosenSubclassIds.includes(classMatch.id)) return
     if (!isGm && unspentPoints <= 0) return
 
     skillWriteRef.current = true
@@ -2346,17 +2189,20 @@ export function CharacterSheet({
     setSkillSaveError(null)
     const newSkills = { ...skillsObj, [skillId]: currentRank + 1 }
     const newClasses = (character.classes || []).map((c: any) => ({ ...c }))
+    const targetClassId = classMatch.parentClassId || classMatch.id
     const existingClass = newClasses.find(
-      (c: any) => (c.classId ?? c.id) === classMatch.id,
+      (c: any) => (c.classId ?? c.id) === targetClassId,
     )
-    const previousRanks = classMatch.skills.reduce(
-      (sum: number, entry: any) => sum + skillRank(skillsObj[entry.id]),
-      0,
-    )
+    // As perícias de subclasse evoluem o nível da classe mãe, sem um nível extra.
+    const previousRanks = allClasses
+      .filter((definition: any) => definition.id === targetClassId ||
+        (definition.parentClassId === targetClassId && chosenSubclassIds.includes(definition.id)))
+      .flatMap((definition: any) => definition.skills)
+      .reduce((sum: number, entry: any) => sum + skillRank(skillsObj[entry.id]), 0)
     if (existingClass)
       existingClass.level =
         Math.max(skillRank(existingClass.level), previousRanks) + 1
-    else newClasses.push({ classId: classMatch.id, level: previousRanks + 1 })
+    else newClasses.push({ classId: targetClassId, level: previousRanks + 1 })
 
     const freeRanks =
       getFreeSkillRanks(skillId, currentRank, allMods, customSkillIds) +
@@ -3283,8 +3129,7 @@ export function CharacterSheet({
                                   item.type === "app-blueprints"
                                 const hasGadgetsSkill =
                                   (character.skills["ti-gadgets"] || 0) > 0
-                                const isLockedForThisChar =
-                                  isAppBlueprint && !hasGadgetsSkill
+                                const isLockedForThisChar = false // Acesso aos livros é decidido pelo servidor.
 
                                 return (
                                   <div key={item.id}>
@@ -3490,13 +3335,7 @@ export function CharacterSheet({
                         </div>
                       )}
                       {viewingItem.type === "app-blueprints" && (
-                        <BlueprintApp
-                          character={character}
-                          editable={editable}
-                          onSpendMp={(cost: number) =>
-                            patchResource("mp", -cost)
-                          }
-                        />
+                        <BlueprintApp character={character} isGm={isGm} />
                       )}
                     </div>
 

@@ -20,6 +20,8 @@ import Image from "next/image"
 import { apiFetch } from "@/lib/client"
 import { useRealtime } from "@/lib/use-realtime"
 import { CharacterCreator } from "@/components/character-creator"
+import { CharacterBookShelf, ClassCardReveal } from "./class-books"
+import { createClientId } from "@/lib/client-id"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
 import {
@@ -641,7 +643,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     abilityId?: string,
   ) =>
     setCombatActionRequest({
-      id: crypto.randomUUID(),
+      id: createClientId(),
       instanceId,
       attackIndex,
       abilityId,
@@ -833,6 +835,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [customCreatures, setCustomCreatures] = useState<Creature[]>([])
   const [customEquipment, setCustomEquipment] = useState<any[]>([])
   const [customClasses, setCustomClasses] = useState<any[]>([])
+  const [booksRevision, setBooksRevision] = useState(0)
+  const [cardReveal, setCardReveal] = useState<{ cardName: string; cardImage?: string | null; cardEffects?: string; casterName: string } | null>(null)
+  const cardRevealTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (cardRevealTimer.current) clearTimeout(cardRevealTimer.current) }, [])
   const [storeFolders, setStoreFolders] = useState<StoreFolder[]>([])
 
   const [activeHazards, setActiveHazards] = useState<HazardData[]>([])
@@ -1472,24 +1478,26 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     } catch (error) { console.warn("Não foi possível atualizar o cache do bestiário.", error) }
   }
 
-  const saveCustomClassesToStorage = (clsArray: any[]) => {
+  const saveCustomClassesToStorage = async (clsArray: any[]) => {
+    if (!isGm) throw new Error("Somente o mestre pode editar classes.")
+    // MongoDB é a fonte de verdade: não anuncie a atualização antes da gravação.
+    await persistCampaignState({ customClasses: clsArray })
     setCustomClasses(clsArray)
-    localStorage.setItem(
-      `custom_classes_${data.campaign.id}`,
-      JSON.stringify(clsArray),
-    )
-    void persistCampaignState({ customClasses: clsArray })
-
-    apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
+    try {
+      localStorage.setItem(`custom_classes_${data.campaign.id}`, JSON.stringify(clsArray))
+    } catch {}
+    // Mantém o mecanismo de atualização de classes já usado pelo RPG.
+    await apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
       method: "POST",
       body: JSON.stringify({
         characterId: "sys_classes",
         characterName: "Sistema",
         playerName: "Mestre",
-        attribute: `SYNC_CLASSES:UPDATE`,
+        attribute: "SYNC_CLASSES:UPDATE",
         result: JSON.stringify(clsArray),
       }),
     }).catch(console.error)
+    setBooksRevision(v => v + 1)
   }
 
   const saveCustomEquipmentToStorage = (eqs: any[]) => {
@@ -1722,7 +1730,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           return
         }
       }
-      const uid = `${track.id}_${crypto.randomUUID()}`
+      const uid = `${track.id}_${createClientId()}`
       const sound = { id: uid, trackId: track.id, url: track.url, loop, targetUserId }
       setActiveSounds((prev) => [
         ...prev.filter((item) => item.id !== uid),
@@ -1778,6 +1786,34 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const seenCombatRolls = useRef(new Set<string>())
   const handleEvent = useCallback(
     (event: any) => {
+      if (event.type === "class-books:updated" || event.type === "class-books:played") {
+        setBooksRevision(current => current + 1)
+        if (event.type === "class-books:played" && event.action === "cast") {
+          setCardReveal({
+            cardName: String(event.cardName || "Magia"),
+            cardImage: typeof event.cardImage === "string" ? event.cardImage : null,
+            cardEffects: String(event.cardEffects || ""),
+            casterName: String(event.casterName || "Viajante"),
+          })
+          if (cardRevealTimer.current) clearTimeout(cardRevealTimer.current)
+          cardRevealTimer.current = setTimeout(() => setCardReveal(null), 3500)
+        }
+        if (event.type === "class-books:played") {
+          void apiFetch<{ characters: Character[] }>(`/api/campaigns/${data.campaign.id}`)
+            .then(result => {
+              if (!Array.isArray(result.characters)) return
+              setCharacters(current => {
+                const received = new Map(result.characters.map(c => [c.id, c]))
+                return current.map(c => {
+                  const next = received.get(c.id)
+                  return next && Number(next.updatedAt || 0) >= Number(c.updatedAt || 0) ? next : c
+                })
+              })
+            })
+            .catch(() => undefined)
+        }
+        return
+      }
       if (
         event.type === "gallery:changed" ||
         event.type === "gallery:broadcast-requested"
@@ -2695,7 +2731,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   }
 
   function syncCutscene(action: "PLAY" | "STOP" | "SCENE", payload?: any) {
-    if (action === "PLAY") payload = { ...payload, playbackId: crypto.randomUUID() }
+    if (action === "PLAY") payload = { ...payload, playbackId: createClientId() }
     const attr = `SYNC_CUTSCENE:${action}`
     const result = payload
       ? typeof payload === "string"
@@ -3081,7 +3117,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       const durationMs = minutes * 60 * 1000
 
       const newHazard: HazardData = {
-        id: crypto.randomUUID(),
+        id: createClientId(),
         type,
         duration: durationMs,
         endTime: Date.now() + durationMs,
@@ -3213,7 +3249,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   async function spawnCreature(creature: Creature) {
     const instance = {
       ...creature,
-      instanceId: crypto.randomUUID(),
+      instanceId: createClientId(),
       currentHp: creature.maxHp,
       currentMp: creature.maxMp,
       currentIp: 6,
@@ -3345,6 +3381,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   return (
     <div className="rpg-page mx-auto flex min-h-dvh max-w-[1680px] flex-col px-3 py-4 sm:px-4 md:h-screen md:px-6 md:py-6">
+      <ClassCardReveal value={cardReveal} />
       {mounted &&
         createPortal(
           <>
@@ -3454,6 +3491,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     </h1>
                     <CharacterCreator
                       campaignId={data.campaign.id}
+                      campaignCharacters={characters}
+                      customClasses={customClasses}
                       onCancel={() => setCreating(false)}
                       onCreated={(c) => {
                         setCharacters((prev) =>
@@ -3756,6 +3795,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             </AnimatePresence>
 
             <GmPanel
+              campaignId={data.campaign.id}
+              booksRevision={booksRevision}
               isOpen={showGmPanel}
               onClose={() => setShowGmPanel(false)}
               characters={characters}
@@ -3770,13 +3811,33 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 )
               }
               onCreateClass={(cls) =>
-                saveCustomClassesToStorage([...customClasses, cls])
-              } // <-- AQUI
-              onDeleteClass={(id) =>
-                saveCustomClassesToStorage(
-                  customClasses.filter((c: any) => c.id !== id),
-                )
-              } // <-- AQUI
+                saveCustomClassesToStorage([
+                  ...customClasses.filter((existing: any) => existing.id !== cls.id),
+                  cls,
+                ])
+              }
+              onDeleteClass={(id) => {
+                void (async () => {
+                  const definition = customClasses.find((cls: any) => cls.id === id)
+                  if (characters.some(c => (c.classes || []).some((entry: any) =>
+                    entry === id || entry?.classId === id || entry?.id === id)) ||
+                    customClasses.some((cls: any) => cls.parentClassId === id) ||
+                    (definition?.skills || []).some((skill: any) =>
+                      characters.some(character => Number(character.skills?.[skill.id] || 0) > 0))) {
+                    throw new Error("A classe/subclasse possui personagens, habilidades ou especializações vinculadas.")
+                  }
+                  const response = await apiFetch<{
+                    books?: { classId: string }[]
+                    characterProgress?: Record<string, { subclassIds?: string[] }>
+                  }>(`/api/campaigns/${encodeURIComponent(data.campaign.id)}/class-books`, { cache: "no-store" })
+                  if ((response.books || []).some(book => book.classId === id) ||
+                    Object.values(response.characterProgress || {}).some(progress =>
+                      progress.subclassIds?.includes(id))) {
+                    throw new Error("Antes de excluir, desvincule os livros e especializações dos personagens.")
+                  }
+                  await saveCustomClassesToStorage(customClasses.filter((cls: any) => cls.id !== id))
+                })().catch(error => alert(error instanceof Error ? error.message : "Falha ao excluir classe."))
+              }}
               onGiveZenits={handleGiveZenits}
               onGiveCustomItem={handleGiveCustomItem}
               onGiveSystemItem={handleGiveSystemItem}
@@ -4060,6 +4121,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           onOptimistic={applyOptimistic}
                           activeHazards={activeHazards}
                           customClasses={customClasses}
+                          booksRevision={booksRevision}
                           customEquipment={customEquipment}
                           onRoll={(
                             attr: string,
@@ -5104,6 +5166,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   ) : (
                     <div className="flex flex-col gap-6">
                       {myCharacters.map((c) => (
+                        <div key={c.id}>
+                          <CharacterBookShelf campaignId={data.campaign.id} character={c} isGm={isGm} refreshToken={booksRevision} />
                         <CharacterSheet
                           key={c.id}
                           spotlightActive={
@@ -5119,6 +5183,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           isGm={isGm}
                           isOwned={true}
                           customClasses={customClasses}
+                          booksRevision={booksRevision}
                           campaignMembers={data.members}
                           campaignCharacters={characters}
                           customEquipment={customEquipment}
@@ -5140,6 +5205,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           }
                           storeFolders={storeFolders}
                         />
+                        </div>
                       ))}
                     </div>
                   )}
@@ -5154,6 +5220,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     </h2>
                     <div className="flex flex-col gap-6">
                       {otherCharacters.map((c) => (
+                        <div key={c.id}>
+                          {isGm && <CharacterBookShelf campaignId={data.campaign.id} character={c} isGm refreshToken={booksRevision} />}
                         <CharacterSheet
                           key={c.id}
                           spotlightActive={
@@ -5172,6 +5240,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           campaignCharacters={characters}
                           customEquipment={customEquipment}
                           customClasses={customClasses}
+                          booksRevision={booksRevision}
                           onOptimistic={applyOptimistic}
                           onRoll={(
                             attr: string,
@@ -5190,6 +5259,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           }
                           storeFolders={storeFolders}
                         />
+                        </div>
                       ))}
                     </div>
                   </section>

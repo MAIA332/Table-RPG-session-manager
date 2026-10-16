@@ -255,3 +255,4 @@ export type RealtimeEvent =
       resolution: "approved" | "rejected"
     }
   | { type: "gallery:image-show"; url: string; name: string }
+  | { type: "class-books:updated";}

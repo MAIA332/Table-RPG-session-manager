@@ -6,7 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  allowedDevOrigins: ['jrpg.slip.io', 'app-mortemagica.sinapselabs.com.br'],
+  allowedDevOrigins: ['jrpg.slip.io', 'app-mortemagica.sinapselabs.com.br','192.168.18.57'],
   async headers() {
     return [
       {
