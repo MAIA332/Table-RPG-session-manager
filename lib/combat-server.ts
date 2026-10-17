@@ -14,6 +14,7 @@ import {
 } from "./combat-model"
 import { answerQte, createQte, expireQte, qteComplete } from "./qte-model"
 import { resolveAttack } from "./automated-attack"
+import { validateBestiaryCombat, validateBestiaryDice } from "./bestiary-attack-formula"
 import {
   characterDefense,
   characterRoll,
@@ -115,7 +116,7 @@ function applyDamage(db: Database, c: Character, damage: number, s: CombatSessio
   })
   reconcileDeath(db, db.characters.get(c.id)!, s)
 }
-function reconcileDeath(db: Database, c: Character, s: any): boolean {
+function reconcileDeath(db: Database, c: Character, s: CombatSession): boolean {
   const checks = s.deathChecks ??= {}
   const previous = checks[c.id]
   if (c.resources.hp > 0) {
@@ -142,7 +143,7 @@ function reconcileDeath(db: Database, c: Character, s: any): boolean {
     id: check.id, at: check.at, characterId: c.id,
     text: `${c.name} chegou a 0 HP. Vigor: ${rolls.join(" + ")} = ${total}. ${result.label}. ${result.effect}`,
     roll: {
-      type: "dice:roll", characterId: c.id, characterName: c.name,
+      type: "dice:roll" as const, characterId: c.id, characterName: c.name,
       playerName: db.users.get(c.ownerId)?.name || "Jogador",
       attribute: `Morte · Vigor [${die} + ${die} + ${die}] · ${result.label} · ${result.effect}`,
       result: total, breakdown: rolls.join(" + "), modifier: 0,
@@ -384,7 +385,7 @@ function validateAttack(value: unknown): Attack {
     a.targetDefense === "physical" || a.targetDefense === "magical",
     "Defesa alvo inválida",
   )
-  const error = validateCombat([a], [])
+  const error = validateBestiaryCombat([a], [])
   requireTrue(!error, error || "")
   if (a.description !== undefined)
     requireTrue(
@@ -417,6 +418,8 @@ function validateCreature(value: unknown): CombatCreature {
       ),
     "Dados da criatura inválidos",
   )
+  const diceError = validateBestiaryDice(c.attributes)
+  requireTrue(!diceError, diceError || "Dados inválidos")
   c.currentHp = integer(c.currentHp ?? c.maxHp, "HP", 0, c.maxHp)
   c.currentMp = integer(c.currentMp ?? c.maxMp, "MP", 0, c.maxMp)
   c.basicAttacksV2 = legacyAttacks(c).map(validateAttack)
@@ -446,7 +449,7 @@ function validateCreature(value: unknown): CombatCreature {
       if (a.kind === "attack") validateAttack(a.attack)
       if (a.kind === "qte") checkDefinition(a.checkId)
     }
-    const error = validateCombat(
+    const error = validateBestiaryCombat(
       c.basicAttacksV2.length
         ? c.basicAttacksV2
         : [
@@ -493,7 +496,7 @@ export async function commandCombat(
   const result = await transactStore((db) => {
     const { campaign, role } = authorize(db, campaignId, userId)
     const gm = role === "gm",
-      s:any = db.combatSessions.get(campaignId) || newSession()
+      s = db.combatSessions.get(campaignId) || newSession()
     const receipt = `${userId}:${commandId}`
     if (s.receipts.includes(receipt))
       return {
@@ -539,7 +542,7 @@ export async function commandCombat(
       requireTrue(gm, "Ação exclusiva do Mestre", 403)
     const getCreature = () => {
       const c = s.creatures.find(
-        (c:any) => c.instanceId === text(command.instanceId, "Criatura"),
+        (c) => c.instanceId === text(command.instanceId, "Criatura"),
       )
       requireTrue(c, "Criatura não encontrada", 404)
       return c
@@ -563,7 +566,7 @@ export async function commandCombat(
       case "spawn": {
         const c = validateCreature(command.creature)
         requireTrue(
-          !s.creatures.some((x:any) => x.instanceId === c.instanceId),
+          !s.creatures.some((x) => x.instanceId === c.instanceId),
           "Instância já existe",
           409,
         )
@@ -594,7 +597,7 @@ export async function commandCombat(
       }
       case "remove-creature": {
         const c = getCreature()
-        s.creatures = s.creatures.filter((x:any) => x.instanceId !== c.instanceId)
+        s.creatures = s.creatures.filter((x) => x.instanceId !== c.instanceId)
         break
       }
       case "start":
@@ -709,7 +712,7 @@ export async function commandCombat(
       case "request": {
         requireTrue(s.enabled, "Combate não iniciado")
         const ownedParticipants = s.participantCharacterIds.filter(
-          (id:any) => db.characters.get(id)?.ownerId === userId,
+          (id) => db.characters.get(id)?.ownerId === userId,
         )
         const requestedId =
           command.characterId ??
@@ -870,7 +873,7 @@ export async function commandCombat(
         let attack: Attack,
           cost = { amount: 0, resource: "token" as "token" | "mp" }
         if (typeof command.abilityId === "string") {
-          const ability = c.abilities?.find((a:any) => a.id === command.abilityId)
+          const ability = c.abilities?.find((a) => a.id === command.abilityId)
           requireTrue(
             ability?.kind === "attack",
             "Habilidade de ataque não encontrada",
@@ -896,6 +899,13 @@ export async function commandCombat(
           0,
           random,
         )
+        // Defesa contra motores antigos que porventura só rolem dois atributos.
+        // Não registra o ataque nem aplica dano se algum dado da fórmula faltar.
+        requireTrue(
+          result.rolls.length === attack.attributes.length,
+          "A rolagem não processou todos os dados da fórmula. Atualize o motor de combate.",
+          409,
+        )
         const attackId = randomUUID()
         const at = Date.now()
         s.log = [{
@@ -903,7 +913,7 @@ export async function commandCombat(
           text: `${c.name} usou ${attack.name} em ${target.name}: acerto ${result.total}, ${result.outcome === "failure" ? "errou" : "aguardando reação"}.`,
           characterId: target.id,
           roll: {
-            type: "dice:roll", characterId: target.id, characterName: c.name,
+            type: "dice:roll" as const, characterId: target.id, characterName: c.name,
             playerName: "Mestre",
             attribute: `Ataque inimigo · ${attack.name} [${attack.attributes.map(a => c.attributes[a]).join(" + ")}]`,
             result: result.total, breakdown: result.rolls.join(" + "), modifier: 0,
@@ -944,7 +954,7 @@ export async function commandCombat(
             id: `${attack.id}:reflex`, at: Date.now(), characterId: target.id,
             text: `${target.name}: Reflexos ${rolled.total} contra ${attack.total} — ${avoided ? "sucesso" : "falha"}.`,
             roll: {
-              type: "dice:roll", characterId: target.id, characterName: target.name,
+              type: "dice:roll" as const, characterId: target.id, characterName: target.name,
               playerName: db.users.get(target.ownerId)?.name || "Jogador",
               attribute: `Reflexos contra ${attack.total} [${check.attrs.map(a => target.attributes[a as keyof Character["attributes"]]).join(" + ")}]`,
               result: rolled.total, breakdown: rolled.rolls.join(" + "), modifier: rolled.modifier,
@@ -975,10 +985,10 @@ export async function commandCombat(
         )
         const c = getCreature()
         requireTrue(c.currentHp > 0, "Criatura derrotada")
-        const a = c.abilities?.find((a:any) => a.id === command.abilityId)
+        const a = c.abilities?.find((a) => a.id === command.abilityId)
         requireTrue(a?.kind === "qte", "QTE não encontrado")
         const targets = s.participantCharacterIds.filter(
-          (id:any) => (db.characters.get(id)?.resources.hp || 0) > 0,
+          (id) => (db.characters.get(id)?.resources.hp || 0) > 0,
         )
         requireTrue(targets.length, "Nenhum alvo vivo")
         spend(s, c, a.cost)
@@ -1066,5 +1076,5 @@ export async function commandCombat(
   schedule(campaignId, result.session)
   return result.view
 }
-// Recover durable deadlines after a process restart. Missed deadlines resolve through the MongoDB-backed store.
+// Recover durable deadlines after a process restart. Missed deadlines resolve once under the disk lock.
 for (const [id, s] of store.combatSessions) schedule(id, s)
