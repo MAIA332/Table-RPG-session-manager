@@ -22,6 +22,7 @@ import { useRealtime } from "@/lib/use-realtime"
 import { CharacterCreator } from "@/components/character-creator"
 import { CharacterBookShelf, ClassCardReveal } from "./class-books"
 import { createClientId } from "@/lib/client-id"
+import { upsertArchivedNPC, upsertNurseryNPC, linkSpawnedCharacter } from "@/lib/npc-nursery"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
 import {
@@ -548,6 +549,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   // Berçário de NPCs Customizados
   const [showNursery, setShowNursery] = useState(false)
   const [customNPCs, setCustomNPCs] = useState<NPCDraft[]>([])
+  const customNPCsRef = useRef<NPCDraft[]>([])
+  const nurseryWriteQueueRef = useRef<Promise<unknown>>(Promise.resolve())
+  const archivingCharacterIdsRef = useRef(new Set<string>())
 
   // Loots Caídos de NPCs mortos
   const [showDroppedLoots, setShowDroppedLoots] = useState(false)
@@ -1077,7 +1081,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           )
           if (savedNPCs) {
             try {
-              setCustomNPCs(JSON.parse(savedNPCs))
+              const restored = JSON.parse(savedNPCs)
+              if (Array.isArray(restored)) {
+                customNPCsRef.current = restored
+                setCustomNPCs(restored)
+              }
             } catch (e) {}
           }
 
@@ -1396,6 +1404,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         )
         setLoreEntries(lore)
         setCutscenes(savedCutscenes)
+        customNPCsRef.current = savedNPCs
         setCustomNPCs(savedNPCs)
         setNpcLoots(savedLoots)
         setCustomCreatures(savedCustomCreatures)
@@ -2629,60 +2638,44 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   }
 
   async function handleArchiveCharacter(character: Character) {
-    if (!character || !character.id) return
-
-    // Confirmação para evitar cliques acidentais se você não tem o Modal
-    if (
-      !confirm(
-        `Deseja realmente arquivar ${character.name} no Berçário e removê-lo do jogo?`,
-      )
-    )
-      return
-
-    // 1. Converte o personagem em um rascunho de NPC (NPCDraft)
-    const draft: NPCDraft = {
-      id: "npc-" + Math.random().toString(36).substring(2, 9),
-      name: character.name,
-      avatarUrl: character.avatarUrl || "",
-      origin: character.origin || "Herói Caído/Aposentado",
-      identity: character.identity || "",
-      theme: character.theme || "",
-      classes: character.classes || [],
-      skills: character.skills || {},
-      attributes: character.attributes,
-      equipment: character.equipment || [],
-    }
-
+    if (!isGm || !character?.id || archivingCharacterIdsRef.current.has(character.id)) return
+    // CharacterSheet já pede confirmação no modal de arquivamento.
+    archivingCharacterIdsRef.current.add(character.id)
     try {
-      // 2. Deleta da base de dados PRIMEIRO.
-      // Se falhar aqui, não removemos da tela nem salvamos no Berçário para evitar inconsistências.
-      await apiFetch(`/api/characters/${character.id}`, { method: "DELETE" })
-
-      // 3. Se a exclusão no banco for um sucesso, salva o NPC no Berçário local
-      const updatedNPCs = [draft, ...customNPCs]
-      saveCustomNPCsToStorage(updatedNPCs)
-
-      // 4. Remove da tela atual otimisticamente
-      setCharacters((prev) => prev.filter((c) => c.id !== character.id))
-      if (selectedCombatCharId === character.id) setSelectedCombatCharId(null)
-
-      alert(
-        `O personagem ${character.name} foi arquivado e agora está disponível no Berçário!`,
-      )
-    } catch (err: any) {
-      console.error("Falha ao arquivar o personagem.", err)
-      // Se o erro for de que o personagem não existe, a gente força a limpeza da tela
-      // para resolver a dessincronização fantasma.
-      if (err.message && err.message.includes("nao encontrado")) {
-        setCharacters((prev) => prev.filter((c) => c.id !== character.id))
-        alert(
-          `Este personagem já não existia mais no banco de dados. Ele foi removido da tela.`,
-        )
-      } else {
-        alert(
-          `Erro ao tentar arquivar o personagem: ${err.message || "Erro desconhecido"}`,
-        )
+      // Importante: arquivar NÃO cria sempre um novo NPC. A origem e os IDs
+      // de invocações anteriores permitem reencontrar o mesmo registro.
+      const draft: NPCDraft = {
+        id: `npc-archived-${character.id}`,
+        sourceCharacterId: character.id,
+        linkedCharacterIds: [character.id],
+        name: character.name,
+        avatarUrl: character.avatarUrl || "",
+        origin: character.origin || "Herói Caído/Aposentado",
+        identity: character.identity || "",
+        theme: character.theme || "",
+        classes: character.classes || [],
+        skills: character.skills || {},
+        attributes: character.attributes,
+        equipment: character.equipment || [],
       }
+
+      // Segurança: só exclui a ficha ativa DEPOIS de confirmar o salvamento
+      // do NPC no estado persistido da campanha (MongoDB).
+      await commitCustomNPCs(previous => upsertArchivedNPC(previous, draft))
+      try {
+        await apiFetch(`/api/characters/${character.id}`, { method: "DELETE" })
+      } catch (deleteError) {
+        // Registro do NPC já está salvo; repetir a ação não criará duplicatas.
+        throw new Error(`NPC salvo no Berçário, mas a ficha ativa não pôde ser removida: ${deleteError instanceof Error ? deleteError.message : "erro desconhecido"}. Tente arquivar novamente; a operação é idempotente.`)
+      }
+      setCharacters(prev => prev.filter(c => c.id !== character.id))
+      if (selectedCombatCharId === character.id) setSelectedCombatCharId(null)
+      alert(`${character.name} foi arquivado no Berçário sem duplicar o registro.`)
+    } catch (error) {
+      console.error("Falha ao arquivar personagem", error)
+      alert(error instanceof Error ? error.message : "Não foi possível arquivar.")
+    } finally {
+      archivingCharacterIdsRef.current.delete(character.id)
     }
   }
 
@@ -2755,17 +2748,36 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     void changeMapVisibility(mapId, true, true)
   }
 
-  const saveCustomNPCsToStorage = (npcs: NPCDraft[]) => {
-    setCustomNPCs(npcs)
-    localStorage.setItem(
-      `custom_npcs_${data.campaign.id}`,
-      JSON.stringify(npcs),
-    )
-    void persistCampaignState({ customNPCs: npcs })
+  /**
+   * Serializa modificações no Berçário para não perder NPCs quando criação,
+   * edição, invocação e arquivamento acontecem próximos no tempo.
+   * A interface só confirma a alteração após o MongoDB confirmar o PATCH.
+   */
+  function commitCustomNPCs(
+    updater: (current: NPCDraft[]) => NPCDraft[],
+  ): Promise<NPCDraft[]> {
+    const task = nurseryWriteQueueRef.current.catch(() => undefined).then(async () => {
+      const next = updater(customNPCsRef.current)
+      if (!Array.isArray(next)) throw new Error("Lista de NPCs inválida.")
+      if (JSON.stringify(next) === JSON.stringify(customNPCsRef.current)) return customNPCsRef.current
+      await persistCampaignState({ customNPCs: next })
+      customNPCsRef.current = next
+      setCustomNPCs(next)
+      try {
+        localStorage.setItem(`custom_npcs_${data.campaign.id}`, JSON.stringify(next))
+      } catch { /* O servidor já confirmou a persistência. */ }
+      return next
+    })
+    nurseryWriteQueueRef.current = task.then(() => undefined, () => undefined)
+    return task
   }
 
-  function handleDeleteCustomNPC(id: string) {
-    saveCustomNPCsToStorage(customNPCs.filter((c) => c.id !== id))
+  async function handleDeleteCustomNPC(id: string) {
+    await commitCustomNPCs(current => current.filter(c => c.id !== id))
+  }
+
+  async function handleSaveCustomNPC(npc: NPCDraft) {
+    await commitCustomNPCs(current => upsertNurseryNPC(current, npc))
   }
 
   async function spawnNPC(draft: NPCDraft) {
@@ -2778,7 +2790,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         },
         customEquipment,
       )
-      await apiFetch(`/api/characters`, {
+      const response = await apiFetch<{ character: Character }>(`/api/characters`, {
         method: "POST",
         body: JSON.stringify({
           campaignId: data.campaign.id,
@@ -2793,10 +2805,19 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           equipment: draft.equipment,
         }),
       })
+      // A ficha ativa tem seu próprio ID. Guardar a ligação permite arquivá-la
+      // mais tarde no MESMO registro da origem, sem criar um NPC duplicado.
+      if (response.character?.id) {
+        try {
+          await commitCustomNPCs(current => linkSpawnedCharacter(current, draft.id, response.character.id))
+        } catch (linkError) {
+          alert(`NPC invocado, mas não foi possível salvar o vínculo com o Berçário: ${linkError instanceof Error ? linkError.message : "erro"}. Não invoque novamente sem verificar a sala.`)
+        }
+      }
       setShowNursery(false)
     } catch (err) {
       console.error(err)
-      alert(err instanceof Error ? err.message : "Erro ao invocar NPC.")
+      throw err
     }
   }
 
@@ -3574,10 +3595,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               customNPCs={customNPCs}
               onSpawn={spawnNPC}
               onDelete={handleDeleteCustomNPC}
-              onCreated={(newNpc) => {
-                saveCustomNPCsToStorage([newNpc, ...customNPCs])
-                alert(`${newNpc.name} foi adicionado ao Berçário!`)
-              }}
+              customClasses={customClasses}
+              campaignCharacters={characters}
+              onCreated={handleSaveCustomNPC}
             />
 
             {/* MANAGER DE CUTSCENES (Mestre) */}

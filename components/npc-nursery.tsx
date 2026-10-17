@@ -3,9 +3,11 @@
 import React, { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
-import { UserPlus, X, Save, Target, Trash2, ChevronDown } from "lucide-react"
+import { UserPlus, X, Save, Target, Trash2, ChevronDown, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { NPCCreator, type NPCDraft } from "@/components/character-sheet"
+import type { Character } from "@/lib/types"
+import type { GameClass } from "@/lib/game-data"
 
 // Variantes de animação (trazidas para o componente para mantê-lo independente)
 const overlayVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 }, exit: { opacity: 0, transition: { duration: 0.2 } } } as any
@@ -15,13 +17,27 @@ interface NpcNurseryProps {
   isOpen: boolean;
   onClose: () => void;
   customNPCs: NPCDraft[];
-  onSpawn: (npc: NPCDraft) => void;
-  onDelete: (id: string) => void;
-  onCreated: (newNpc: NPCDraft) => void;
+  onSpawn: (npc: NPCDraft) => void | Promise<void>;
+  onDelete: (id: string) => void | Promise<void>;
+  onCreated: (newNpc: NPCDraft) => void | Promise<void>;
+  customClasses?: GameClass[];
+  campaignCharacters?: Character[];
 }
 
-export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onCreated }: NpcNurseryProps) {
+export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onCreated, customClasses = [], campaignCharacters = [] }: NpcNurseryProps) {
   const [expandedNpcId, setExpandedNpcId] = useState<string | null>(null);
+  const [editingNpcId, setEditingNpcId] = useState<string | null>(null);
+  const [busyNpcId, setBusyNpcId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const editingNpc = customNPCs.find(npc => npc.id === editingNpcId);
+
+  async function runAction(id: string, action: () => void | Promise<void>) {
+    if (busyNpcId) return;
+    setActionError(null); setBusyNpcId(id);
+    try { await action() }
+    catch (error) { setActionError(error instanceof Error ? error.message : "Não foi possível persistir a alteração.") }
+    finally { setBusyNpcId(null) }
+  }
 
   return (
     <AnimatePresence>
@@ -41,6 +57,7 @@ export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onC
               </button>
             </div>
 
+            {actionError && <div role="alert" className="border-b border-red-500/30 bg-red-500/10 px-6 py-3 text-sm text-red-300">{actionError}</div>}
             <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
               <div className="lg:w-1/3 border-r border-border/40 p-6 flex flex-col gap-4 bg-black/20 overflow-y-auto custom-scrollbar-sepia">
                 <h5 className="text-xs font-bold uppercase tracking-widest border-b border-white/10 pb-2 flex items-center gap-2">
@@ -151,10 +168,16 @@ export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onC
 
                         {/* AÇÕES INFERIORES */}
                         <div className="flex gap-2 w-full mt-1">
-                          <Button size="sm" className="flex-1 bg-destructive/10 border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => onSpawn(npc)}>
+                          <Button size="sm" className="flex-1 bg-destructive/10 border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground" disabled={!!busyNpcId} onClick={() => void runAction(npc.id, () => onSpawn(npc))}>
                             <Target className="size-3 mr-1.5" /> Invocar
                           </Button>
-                          <Button size="sm" variant="outline" className="px-3 border-border/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => onDelete(npc.id)}>
+                          <Button size="sm" variant="outline" disabled={!!busyNpcId} title={`Editar ${npc.name}`} aria-label={`Editar ${npc.name}`} className="px-3 border-primary/30 text-primary hover:bg-primary/10" onClick={() => { setEditingNpcId(npc.id); setActionError(null); }}>
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button size="sm" variant="outline" disabled={!!busyNpcId} className="px-3 border-border/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => {
+                            if (!window.confirm(`Excluir ${npc.name} do Berçário?`)) return;
+                            void runAction(npc.id, async () => { await onDelete(npc.id); if (editingNpcId === npc.id) setEditingNpcId(null); });
+                          }}>
                             <Trash2 className="size-4" />
                           </Button>
                         </div>
@@ -166,8 +189,16 @@ export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onC
 
               <div className="lg:w-2/3 px-6 pb-12 pt-6 overflow-y-auto custom-scrollbar-sepia flex justify-center">
                 <NPCCreator
-                  onCreated={onCreated}
-                  onCancel={onClose}
+                  key={editingNpc?.id ?? "new-npc"}
+                  initialNpc={editingNpc}
+                  customClasses={customClasses}
+                  campaignCharacters={campaignCharacters}
+                  nurseryNPCs={customNPCs}
+                  onCreated={async npc => {
+                    await onCreated(npc);
+                    if (editingNpcId) setEditingNpcId(null);
+                  }}
+                  onCancel={() => editingNpcId ? setEditingNpcId(null) : onClose()}
                 />
               </div>
 

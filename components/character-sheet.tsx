@@ -16,8 +16,9 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 
 import { apiFetch } from "@/lib/client"
-import { getCampaignClassCatalog } from "@/lib/class-catalog"
+import { baseGameClasses, getCampaignClassCatalog } from "@/lib/class-catalog"
 import { CharacterBookShelf } from "./class-books"
+import { createClientId } from "@/lib/client-id"
 import { InventoryEquipment } from "./inventory-equipment"
 import {
   equippedItemBonuses,
@@ -40,9 +41,9 @@ import {
   INVENTORY_ACTIONS,
   CLASSES,
   EQUIPMENT,
-  ATTRIBUTE_PROFILES,
   STARTING_ZENIT,
   GameSkillBonus,
+  type GameClass,
 } from "@/lib/game-data"
 import { applyInventoryRules, computeMaxResources } from "@/lib/character"
 import {
@@ -51,7 +52,6 @@ import {
   ClassesStep,
   EquipmentStep,
 } from "@/components/creator-steps"
-import { AttributesStep } from "@/components/attributes-step"
 import type {
   AttributeKey,
   Character,
@@ -163,6 +163,8 @@ export interface NPCDraft {
   skills: Record<string, number>
   attributes: Record<AttributeKey, DieSize>
   equipment: string[]
+  sourceCharacterId?: string
+  linkedCharacterIds?: string[]
 }
 
 const ATTR_KEYS: AttributeKey[] = ["dex", "ins", "mig", "wlp"]
@@ -440,246 +442,174 @@ function BlueprintApp({ character, isGm }: { character: Character; isGm: boolean
 // ==========================================
 // CRIADOR DE NPC
 // ==========================================
-export function NPCCreator({
-  onCreated,
-  onCancel,
+const NPC_DICE = ["d6", "d8", "d10", "d12", "d14", "d16", "d18", "d20"] as const
+const NPC_DICE_LABELS: Record<AttributeKey, string> = {
+  dex: "Destreza", ins: "Intuição", mig: "Vigor", wlp: "Vontade",
+}
+
+/** Dados de NPC: cada atributo é independente (sem orçamento de 8 pontos). */
+function NPCAttributesStep({
+  attributes, onChange,
 }: {
-  onCreated: (npc: NPCDraft) => void
+  attributes: Record<AttributeKey, DieSize>
+  onChange: (next: Record<AttributeKey, DieSize>) => void
+}) {
+  return <div className="space-y-5">
+    <div>
+      <h3 className="font-serif text-xl font-bold text-foreground">Dados do NPC</h3>
+      <p className="mt-1 text-sm text-muted-foreground">O mestre escolhe livremente o dado de cada atributo, até d20. Não há limite compartilhado de pontos.</p>
+    </div>
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {ATTR_KEYS.map(key => <label key={key} className="flex flex-col gap-3 rounded-lg border border-destructive/25 bg-card/40 p-4 text-center">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{NPC_DICE_LABELS[key]}</span>
+        <span className="font-serif text-3xl font-black text-destructive">{attributes[key]}</span>
+        <select
+          aria-label={`Dado de ${NPC_DICE_LABELS[key]}`}
+          value={attributes[key]}
+          onChange={event => onChange({ ...attributes, [key]: event.target.value as DieSize })}
+          className="w-full rounded-md border border-border bg-background px-2 py-2 text-center font-mono text-sm text-foreground"
+        >
+          {NPC_DICE.map(die => <option key={die} value={die}>{die}</option>)}
+        </select>
+      </label>)}
+    </div>
+  </div>
+}
+
+/** Reutilizado para criar e editar os NPCs já salvos no Berçário. */
+export function NPCCreator({
+  onCreated, onCancel, initialNpc, customClasses = [], campaignCharacters = [], nurseryNPCs = [],
+}: {
+  onCreated: (npc: NPCDraft) => void | Promise<void>
   onCancel: () => void
+  initialNpc?: NPCDraft
+  customClasses?: GameClass[]
+  campaignCharacters?: Character[]
+  nurseryNPCs?: NPCDraft[]
 }) {
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
-  const [name, setName] = useState("")
-  const [avatarUrl, setAvatarUrl] = useState("")
-  const [origin, setOrigin] = useState("")
-  const [identity, setIdentity] = useState("")
-  const [theme, setTheme] = useState("")
-  const [skillLevels, setSkillLevels] = useState<Record<string, number>>({})
-  const [profileId, setProfileId] = useState<string>(ATTRIBUTE_PROFILES[0].id)
-  const [customAttributes, setCustomAttributes] = useState<
-    Record<AttributeKey, DieSize>
-  >({ dex: "d8", ins: "d8", mig: "d8", wlp: "d8" })
-  const [equipment, setEquipment] = useState<string[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [name, setName] = useState(initialNpc?.name ?? "")
+  const [avatarUrl, setAvatarUrl] = useState(initialNpc?.avatarUrl ?? "")
+  const [origin, setOrigin] = useState(initialNpc?.origin ?? "")
+  const [identity, setIdentity] = useState(initialNpc?.identity ?? "")
+  const [theme, setTheme] = useState(initialNpc?.theme ?? "")
+  const [skillLevels, setSkillLevels] = useState<Record<string, number>>({ ...(initialNpc?.skills ?? {}) })
+  const [skillsEdited, setSkillsEdited] = useState(false)
+  const [attributes, setAttributes] = useState<Record<AttributeKey, DieSize>>({
+    dex: initialNpc?.attributes?.dex ?? "d8", ins: initialNpc?.attributes?.ins ?? "d8",
+    mig: initialNpc?.attributes?.mig ?? "d8", wlp: initialNpc?.attributes?.wlp ?? "d8",
+  })
+  const [equipment, setEquipment] = useState<string[]>([...(initialNpc?.equipment ?? [])])
 
-  const totalLevels = useMemo(
-    () => Object.values(skillLevels).reduce((s, n) => s + n, 0),
-    [skillLevels],
-  )
+  const catalog = useMemo(() => getCampaignClassCatalog(
+    [...campaignCharacters, ...nurseryNPCs],
+    customClasses,
+    (initialNpc?.classes ?? []).map(cls => cls.classId),
+  ), [campaignCharacters, nurseryNPCs, customClasses, initialNpc])
+  const classes = useMemo(() => baseGameClasses(catalog), [catalog])
+  const totalLevels = useMemo(() => Object.values(skillLevels).reduce((sum, level) => sum + level, 0), [skillLevels])
   const classLevels = useMemo(() => {
-    const cl: Record<string, number> = {}
-    CLASSES.forEach((c) => {
-      let classLvl = 0
-      c.skills.forEach((s) => {
-        classLvl += skillLevels[s.id] || 0
-      })
-      if (classLvl > 0) cl[c.id] = classLvl
-    })
-    return cl
-  }, [skillLevels])
+    if (initialNpc && !skillsEdited) {
+      return Object.fromEntries((initialNpc.classes || []).map(cls => [cls.classId, cls.level]))
+    }
+    const next: Record<string, number> = {}
+    for (const cls of classes) {
+      const level = cls.skills.reduce((sum, skill) => sum + (skillLevels[skill.id] || 0), 0)
+      if (level > 0) next[cls.id] = level
+    }
+    // Classes históricas, ou registradas sem níveis nas perícias-base,
+    // não desaparecem ao editar uma habilidade de outra classe.
+    for (const cls of initialNpc?.classes ?? []) {
+      const definition = classes.find(c => c.id === cls.classId)
+      const hadBaseRanks = definition?.skills.some(skill => (initialNpc?.skills?.[skill.id] ?? 0) > 0) ?? false
+      if (!Object.prototype.hasOwnProperty.call(next, cls.classId) && !hadBaseRanks) {
+        next[cls.classId] = cls.level
+      }
+    }
+    return next
+  }, [initialNpc, skillsEdited, skillLevels, classes])
   const chosenClassCount = Object.keys(classLevels).length
-
-  const attributes = useMemo<Record<AttributeKey, DieSize>>(() => {
-    if (profileId === "custom") return customAttributes
-    return (
-      ATTRIBUTE_PROFILES.find((p) => p.id === profileId)?.dice ||
-      customAttributes
-    )
-  }, [profileId, customAttributes])
-
-  const customPoints = useMemo(
-    () =>
-      Object.values(customAttributes).reduce((acc, die) => {
-        return (
-          acc + (die === "d6" ? 1 : die === "d8" ? 2 : die === "d10" ? 3 : 4)
-        )
-      }, 0),
-    [customAttributes],
-  )
-
-  const spent = useMemo(
-    () => equipment.reduce((s, id) => s + (getEquipment(id)?.cost ?? 0), 0),
-    [equipment],
-  )
-  const remaining = STARTING_ZENIT - spent
-  const classesPayload: ClassLevel[] = useMemo(
-    () =>
-      Object.entries(classLevels).map(([classId, level]) => ({
-        classId,
-        level,
-      })),
-    [classLevels],
-  )
-  const preview = useMemo(
-    () => computeMaxResources(classesPayload, attributes),
-    [classesPayload, attributes],
-  )
+  const spent = useMemo(() => equipment.reduce((sum, id) => sum + (getEquipment(id)?.cost ?? 0), 0), [equipment])
+  const classesPayload: ClassLevel[] = useMemo(() => Object.entries(classLevels).map(([classId, level]) => ({ classId, level })), [classLevels])
+  const preview = useMemo(() => {
+    if (!classesPayload.every(entry => CLASSES.some(cls => cls.id === entry.classId))) return null
+    try {
+      const result = computeMaxResources(classesPayload, attributes)
+      return Number.isFinite(result.maxHp) && Number.isFinite(result.maxMp) ? result : null
+    } catch { return null }
+  }, [classesPayload, attributes])
 
   function setSkillLvl(skillId: string, level: number, max: number) {
     if (level < 0 || level > max) return
-    setSkillLevels((prev) => {
+    setSkillsEdited(true)
+    setSkillLevels(prev => {
       const next = { ...prev, [skillId]: level }
       if (level === 0) delete next[skillId]
       return next
     })
   }
 
-  function toggleEquipment(id: string) {
-    setEquipment((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    )
-  }
-
-  const canNext =
-    (step === 0 && name.trim().length > 0) ||
-    (step === 1 && totalLevels > 0) ||
-    (step === 2 && (profileId !== "custom" || customPoints === 8)) ||
-    step === 3
-
   async function submit() {
+    if (saving || !name.trim()) return
+    setError(null)
     setSaving(true)
-    const draft: NPCDraft = {
-      id: "npc-" + Math.random().toString(36).substring(2, 9),
-      name,
-      avatarUrl,
-      origin,
-      identity,
-      theme,
-      classes: classesPayload,
-      skills: skillLevels,
-      attributes,
-      equipment,
-    }
-    setTimeout(() => {
-      onCreated(draft)
+    try {
+      const draft: NPCDraft = {
+        ...(initialNpc ?? {}),
+        id: initialNpc?.id || `npc-${createClientId()}`,
+        name: name.trim(), avatarUrl, origin, identity, theme,
+        classes: classesPayload, skills: skillLevels, attributes, equipment,
+      }
+      await onCreated(draft)
+      if (!initialNpc) {
+        setStep(0)
+        setName(""); setAvatarUrl(""); setOrigin(""); setIdentity(""); setTheme("")
+        setSkillLevels({}); setSkillsEdited(false)
+        setAttributes({ dex: "d8", ins: "d8", mig: "d8", wlp: "d8" })
+        setEquipment([])
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível salvar o NPC no MongoDB.")
+    } finally {
       setSaving(false)
-      setStep(0)
-      setName("")
-      setAvatarUrl("")
-      setOrigin("")
-      setIdentity("")
-      setTheme("")
-      setSkillLevels({})
-      setEquipment([])
-    }, 500)
+    }
   }
 
-  return (
-    <div className="mx-auto max-w-3xl w-full">
-      <div className="mb-8 flex items-center justify-between">
-        {NPC_STEPS.map((label, i) => (
-          <div key={label} className="flex flex-1 items-center">
-            <div
-              className={`flex size-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold transition-colors ${i < step ? "border-destructive bg-destructive text-destructive-foreground" : i === step ? "border-destructive bg-destructive/15 text-destructive" : "border-border text-muted-foreground"}`}
-            >
-              {i < step ? <Check className="size-4" /> : i + 1}
-            </div>
-            <span
-              className={`ml-2 hidden text-sm sm:inline ${i === step ? "font-semibold text-foreground" : "text-muted-foreground"}`}
-            >
-              {label}
-            </span>
-            {i < NPC_STEPS.length - 1 && (
-              <div
-                className={`mx-2 h-px flex-1 ${i < step ? "bg-destructive" : "bg-border"}`}
-              />
-            )}
-          </div>
-        ))}
-      </div>
+  // NPC sem classe também pode ser editado ou salvo, a critério do mestre.
+  const canNext = step === 0 ? !!name.trim() : true
 
-      <div className="panel border-glow min-h-[360px] rounded-xl border border-destructive/30 p-6 relative">
-        {step === 0 && (
-          <EssenceStep
-            name={name}
-            setName={setName}
-            avatarUrl={avatarUrl}
-            setAvatarUrl={setAvatarUrl}
-            origin={origin}
-            setOrigin={setOrigin}
-            identity={identity}
-            setIdentity={setIdentity}
-            theme={theme}
-            setTheme={setTheme}
-          />
-        )}
-        {step === 1 && (
-          <ClassesStep
-            skillLevels={skillLevels}
-            setSkillLvl={setSkillLvl}
-            classLevels={classLevels}
-            totalLevels={totalLevels}
-            chosenCount={chosenClassCount}
-            isNpc
-          />
-        )}
-        {step === 2 && (
-          <AttributesStep
-            profileId={profileId}
-            setProfileId={setProfileId}
-            attributes={attributes}
-            customAttributes={customAttributes}
-            setCustomAttributes={setCustomAttributes}
-          />
-        )}
-        {step === 3 && (
-          <EquipmentStep
-            equipment={equipment}
-            toggle={toggleEquipment}
-            remaining={remaining}
-            spent={spent}
-            isNpc
-          />
-        )}
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-4 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
-        <span className="text-xs font-semibold uppercase tracking-widest text-destructive">
-          Ficha do NPC
-        </span>
-        <span className="flex items-center gap-1.5 text-[color:var(--hp)]">
-          <Heart className="size-4" /> {preview.maxHp} HP
-        </span>
-        <span className="flex items-center gap-1.5 text-[color:var(--mp)]">
-          <Zap className="size-4" /> {preview.maxMp} MP
-        </span>
-        <span className="flex items-center gap-1.5 text-muted-foreground">
-          <Swords className="size-4" /> Lv. {Math.max(1, totalLevels)}
-        </span>
-      </div>
-
-      <div className="mt-6 flex items-center justify-between">
-        <Button
-          variant="ghost"
-          onClick={() => (step === 0 ? onCancel() : setStep(step - 1))}
-          className="gap-1.5 text-muted-foreground"
-        >
-          <ArrowLeft className="size-4" /> {step === 0 ? "Cancelar" : "Voltar"}
-        </Button>
-        {step < NPC_STEPS.length - 1 ? (
-          <Button
-            onClick={() => setStep(step + 1)}
-            disabled={!canNext}
-            className="gap-1.5 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-          >
-            Próximo <ArrowRight className="size-4" />
-          </Button>
-        ) : (
-          <Button
-            onClick={submit}
-            disabled={saving || !canNext}
-            className="gap-1.5 font-semibold bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-          >
-            {saving ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Save className="size-4" />
-            )}{" "}
-            Salvar no Berçário
-          </Button>
-        )}
-      </div>
+  return <div className="mx-auto w-full max-w-3xl">
+    <div className="mb-5 flex items-center justify-between">
+      <h3 className="font-serif text-xl font-bold text-destructive">{initialNpc ? `Editar: ${initialNpc.name}` : "Forjar NPC"}</h3>
+      {initialNpc && <span className="text-xs text-muted-foreground">ID preservado</span>}
     </div>
-  )
+    <div className="mb-8 flex items-center justify-between">
+      {NPC_STEPS.map((label, i) => <div key={label} className="flex flex-1 items-center">
+        <div className={`flex size-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold ${i < step ? "border-destructive bg-destructive text-white" : i === step ? "border-destructive bg-destructive/15 text-destructive" : "border-border text-muted-foreground"}`}>{i < step ? <Check className="size-4" /> : i + 1}</div>
+        <span className="ml-2 hidden text-sm sm:inline">{label}</span>
+        {i < NPC_STEPS.length - 1 && <div className="mx-2 h-px flex-1 bg-border" />}
+      </div>)}
+    </div>
+    <div className="panel border-glow relative min-h-[360px] rounded-xl border border-destructive/30 p-5 sm:p-6">
+      {step === 0 && <EssenceStep name={name} setName={setName} avatarUrl={avatarUrl} setAvatarUrl={setAvatarUrl} origin={origin} setOrigin={setOrigin} identity={identity} setIdentity={setIdentity} theme={theme} setTheme={setTheme} />}
+      {step === 1 && <ClassesStep classes={classes} skillLevels={skillLevels} setSkillLvl={setSkillLvl} classLevels={classLevels} totalLevels={totalLevels} chosenCount={chosenClassCount} isNpc />}
+      {step === 2 && <NPCAttributesStep attributes={attributes} onChange={setAttributes} />}
+      {step === 3 && <EquipmentStep equipment={equipment} toggle={(id: string) => setEquipment(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])} remaining={STARTING_ZENIT - spent} spent={spent} isNpc />}
+    </div>
+    <div className="mt-4 flex flex-wrap items-center gap-4 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
+      <span className="text-xs font-semibold uppercase tracking-widest text-destructive">Ficha do NPC</span>
+      {preview ? <><span className="flex items-center gap-1.5 text-[color:var(--hp)]"><Heart className="size-4" /> {preview.maxHp} HP</span><span className="flex items-center gap-1.5 text-[color:var(--mp)]"><Zap className="size-4" /> {preview.maxMp} MP</span></> : <span className="text-xs text-muted-foreground">Recursos calculados pela ficha após salvar.</span>}
+      <span className="text-xs text-muted-foreground">{totalLevels} níveis em habilidades</span>
+    </div>
+    {error && <p role="alert" className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+    <div className="mt-6 flex items-center justify-between">
+      <Button variant="ghost" disabled={saving} onClick={() => step === 0 ? onCancel() : setStep(step - 1)}><ArrowLeft className="mr-1 size-4" />{step === 0 ? "Cancelar" : "Voltar"}</Button>
+      {step < NPC_STEPS.length - 1 ? <Button disabled={!canNext || saving} onClick={() => setStep(step + 1)}>Próximo <ArrowRight className="ml-1 size-4" /></Button>
+        : <Button disabled={saving || !name.trim()} onClick={() => void submit()}>{saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Save className="mr-2 size-4" />}{initialNpc ? "Salvar alterações" : "Salvar no Berçário"}</Button>}
+    </div>
+  </div>
 }
 
 // ==========================================
@@ -3521,9 +3451,14 @@ export function CharacterSheet({
                         Cancelar
                       </Button>
                       <Button
-                        onClick={() => {
+                        onClick={async () => {
                           setArchiving(true)
-                          onArchive(character)
+                          try {
+                            await onArchive(character)
+                          } finally {
+                            setArchiving(false)
+                            setShowArchiveConfirm(false)
+                          }
                         }}
                         disabled={archiving}
                         className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"

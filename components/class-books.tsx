@@ -27,35 +27,12 @@ interface BooksResponse {
 }
 
 async function call(campaignId: string, payload?: Record<string, unknown>, characterId?: string): Promise<BooksResponse & { success?: boolean }> {
-  // 1. Evita fazer o fetch se o ID da campanha estiver faltando (o que causaria um erro 404)
-  if (!campaignId || campaignId === "undefined") {
-    throw new Error("ID da campanha inválido ou ausente.");
-  }
-
   const url = `/api/campaigns/${encodeURIComponent(campaignId)}/class-books${characterId ? `?characterId=${encodeURIComponent(characterId)}` : ""}`
-  
   const response = await fetch(url, payload ? {
-    method: "POST", 
-    headers: { "Content-Type": "application/json" }, 
-    body: JSON.stringify(payload),
-  } : { 
-    cache: "no-store" 
-  })
-
-  // 2. Verifica o tipo de conteúdo antes de tentar fazer o parse para JSON
-  const contentType = response.headers.get("content-type");
-  if (!contentType || !contentType.includes("application/json")) {
-    const text = await response.text();
-    console.error("A API não retornou JSON. Resposta bruta:", text);
-    throw new Error(`Erro na API (Status: ${response.status}). A rota pode não existir ou falhou criticamente.`);
-  }
-
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+  } : { cache: "no-store" })
   const data = await response.json()
-  
-  if (!response.ok) {
-    throw new Error(data.error || "Erro ao carregar o grimório.")
-  }
-  
+  if (!response.ok) throw new Error(data.error || "Erro ao carregar o grimório.")
   return data
 }
 
