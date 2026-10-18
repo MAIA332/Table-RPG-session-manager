@@ -1,4 +1,5 @@
 "use client"
+
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { PendingMonsterAttack } from "@/lib/combat-types"
@@ -9,8 +10,11 @@ export function MonsterAttackOverlay({ attack, characterName, onAnswer }: {
   onAnswer: (choice: "react" | "pass") => Promise<void>
 }) {
   const initialAttack = useRef(attack).current
+  // Com a exibição desativada, a API entrega rolls/dice vazios para jogadores.
+  // A decisão da reação continua no servidor, sem revelar o número-alvo.
+  const privateRoll = !initialAttack.dice?.length || !initialAttack.rolls?.length
   const [ready, setReady] = useState(false)
-  const [faces, setFaces] = useState(attack.rolls)
+  const [faces, setFaces] = useState(initialAttack.rolls)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const locked = useRef(false)
@@ -19,19 +23,26 @@ export function MonsterAttackOverlay({ attack, characterName, onAnswer }: {
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
     dialog.current?.focus()
-    const interval = window.setInterval(() => {
-      setFaces(initialAttack.dice.map(die => {
-        const size = Number(die.replace(/^d/i, "")) || 6
-        return Math.floor(Math.random() * size) + 1
-      }))
-    }, 80)
+    let interval: number | undefined
+    if (!privateRoll) {
+      interval = window.setInterval(() => {
+        setFaces(initialAttack.dice.map(die => {
+          const size = Number(die.replace(/^d/i, "")) || 6
+          return Math.floor(Math.random() * size) + 1
+        }))
+      }, 80)
+    }
     const timer = window.setTimeout(() => {
-      clearInterval(interval)
+      if (interval !== undefined) clearInterval(interval)
       setFaces(initialAttack.rolls)
       setReady(true)
     }, 4400)
-    return () => { clearInterval(interval); clearTimeout(timer); previous?.focus() }
-  }, [initialAttack])
+    return () => {
+      if (interval !== undefined) clearInterval(interval)
+      clearTimeout(timer)
+      previous?.focus()
+    }
+  }, [initialAttack, privateRoll])
   useEffect(() => { if (ready) reactButton.current?.focus() }, [ready])
   const answer = async (choice: "react" | "pass") => {
     if (!ready || locked.current) return
@@ -59,21 +70,27 @@ export function MonsterAttackOverlay({ attack, characterName, onAnswer }: {
         className="w-full max-w-md rounded-2xl border border-amber-500/50 bg-zinc-950 p-6 text-zinc-100 shadow-2xl">
         <p className="mb-2 text-xs uppercase tracking-widest text-amber-400">{characterName} · Ataque inimigo</p>
         <h2 id="monster-attack-title" className="font-serif text-2xl font-bold">
-          {ready ? `${attack.creatureName} acertou!` : `${attack.creatureName} está atacando…`}
+          {ready ? `${attack.creatureName} atacou!` : `${attack.creatureName} está atacando…`}
         </h2>
         <p className="mt-2 text-zinc-400">{attack.attackName}</p>
-        <div className="my-6 flex justify-center gap-4" aria-hidden="true">
-          {faces.map((face, index) => (
-            <div key={index} className={`grid h-20 w-20 place-content-center rounded-xl border border-amber-400/60 bg-amber-500/10 text-center ${ready ? "" : "animate-pulse"}`}>
+        <div className="my-6 flex flex-wrap justify-center gap-2 sm:gap-4" aria-hidden="true">
+          {privateRoll ? (
+            <div className="grid size-20 place-items-center rounded-xl border border-amber-400/60 bg-amber-500/10 text-4xl font-black text-amber-200 animate-pulse">?</div>
+          ) : faces.map((face, index) => (
+            <div key={index} className={`grid size-16 place-content-center rounded-xl border border-amber-400/60 bg-amber-500/10 text-center sm:size-20 ${ready ? "" : "animate-pulse"}`}>
               <span className="text-3xl font-bold text-amber-300">{face}</span>
               <span className="text-xs text-zinc-400">{attack.dice[index]}</span>
             </div>
           ))}
         </div>
         <div id="monster-attack-description" aria-live="polite">
-          {ready ? <><p className="text-center text-xl font-bold">Acerto: {attack.total}</p>
-            <p className="mt-4 text-sm text-zinc-300">Reaja com Reflexos (DEX + INS). Um resultado de {attack.total} ou mais evita todo o dano. Se falhar ou deixar passar, você recebe o golpe.</p></>
-            : <p className="text-center text-zinc-400">Rolando os dados de acerto…</p>}
+          {ready ? <>
+            <p className="text-center text-xl font-bold">{privateRoll ? "Acerto oculto pelo Mestre" : `Acerto: ${attack.total}`}</p>
+            <p className="mt-4 text-sm text-zinc-300">{privateRoll
+              ? "Reaja com Reflexos (DEX + INS). A dificuldade não será revelada; o servidor comparará sua rolagem com o acerto secreto."
+              : `Reaja com Reflexos (DEX + INS). Um resultado de ${attack.total} ou mais evita todo o dano. Se falhar ou deixar passar, você recebe o golpe.`}
+            </p>
+          </> : <p className="text-center text-zinc-400">{privateRoll ? "O Mestre está realizando uma rolagem oculta…" : "Rolando os dados de acerto…"}</p>}
         </div>
         {ready && <div className="mt-6 flex gap-3">
           <button ref={reactButton} disabled={busy} onClick={() => void answer("react")}

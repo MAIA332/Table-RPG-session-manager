@@ -54,7 +54,24 @@ export function validateBestiaryCombat(attacks: Attack[], abilities: Ability[]):
       : [attack.attributes[0], attack.attributes[0]]
     return { ...attack, attributes: attributes as Attack["attributes"] }
   })
-  return validateCombat(compatAttacks, abilities)
+  // Habilidades de ataque também podem ter fórmulas de 1 a 4 dados.
+  for (const ability of abilities) {
+    if (ability.kind !== "attack") continue
+    const issue = validateBestiaryFormula(ability.attack?.attributes)
+    if (issue) return `Habilidade ${ability.name}: ${issue}`
+  }
+  const compatAbilities: Ability[] = abilities.map(ability => {
+    if (ability.kind !== "attack") return ability
+    const attributes = ability.attack.attributes
+    return {
+      ...ability,
+      attack: {
+        ...ability.attack,
+        attributes: (attributes.length === 2 ? attributes : [attributes[0], attributes[0]]) as Attack["attributes"],
+      },
+    }
+  })
+  return validateCombat(compatAttacks, compatAbilities)
 }
 
 export function formatBestiaryFormula(attributes: readonly string[], dice?: Partial<Record<BestiaryAttribute, string>>): string {

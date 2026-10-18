@@ -1,4 +1,5 @@
 "use client"
+import { createClientId } from "@/lib/client-id"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { CombatCommand, CombatSnapshot } from "./combat-types"
 export function useCombat(campaignId: string) {
@@ -93,7 +94,7 @@ export function useCombat(campaignId: string) {
       const version = generation.current
       const payload = {
         ...command,
-        commandId: crypto.randomUUID(),
+        commandId: createClientId(),
         expectedRevision: current.current.revision,
       }
       try {

@@ -1,5 +1,6 @@
 "use client"
 import { QTE_CHECKS } from "@/lib/combat-checks"
+import type { MonsterAttribute } from "@/lib/monster-dice"
 import { getEquipment } from "@/lib/game-data"
 import type { Attack, Ability } from "@/lib/combat-model"
 import type { CombatCreature } from "@/lib/combat-types"
@@ -15,6 +16,7 @@ export function CombatMonsterCard({
   onConfigure,
   onRemove,
   onVital,
+  onAttributeRoll,
 }: {
   creature: CombatCreature
   isGm: boolean
@@ -26,6 +28,7 @@ export function CombatMonsterCard({
   onQte: (id: string) => void
   onConfigure: () => void
   onRemove: () => void
+  onAttributeRoll?: (attribute: MonsterAttribute) => void
   onVital: (
     resource: "currentHp" | "currentMp",
     change: number | "full",
@@ -91,7 +94,7 @@ export function CombatMonsterCard({
         pending={pending}
         onChange={onVital}
       />
-      <CreatureSheetDetails creature={creature} />
+      <CreatureSheetDetails creature={creature} onAttributeRoll={onAttributeRoll} rollPending={pending} />
       {!canAct && creature.currentHp > 0 && (
         <p className="mb-3 rounded-lg bg-amber-300/5 p-3 text-xs text-amber-200">
           Para atacar, inicie o combate e assuma o Holofote. Aguarde qualquer
@@ -273,7 +276,11 @@ export function CreatureAbilityDetails({ ability }: { ability: Ability }) {
   )
 }
 
-export function CreatureSheetDetails({ creature }: { creature: CombatCreature }) {
+export function CreatureSheetDetails({ creature, onAttributeRoll, rollPending = false }: {
+  creature: CombatCreature
+  onAttributeRoll?: (attribute: MonsterAttribute) => void
+  rollPending?: boolean
+}) {
   const elements: Record<string, string> = { physical: "Físico", air: "Ar", bolt: "Raio", dark: "Trevas", earth: "Terra", fire: "Fogo", ice: "Gelo", light: "Luz", poison: "Veneno" }
   const affinityLabels: Record<string, string> = { none: "Normal", VU: "Vulnerável", RS: "Resistente", IM: "Imune", AB: "Absorve" }
   const affinities = creature.affinities || {}
@@ -283,7 +290,23 @@ export function CreatureSheetDetails({ creature }: { creature: CombatCreature })
       <div>
         <h4 className="mb-2 text-xs font-bold uppercase text-amber-100">Atributos e defesas</h4>
         <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {(["dex", "ins", "mig", "wlp"] as const).map(key => <div key={key} className="rounded-lg bg-white/5 p-2 text-center"><dt className="text-xs uppercase text-zinc-400">{key}</dt><dd className="font-bold text-amber-100">{creature.attributes?.[key] || "—"}</dd></div>)}
+          {(["dex", "ins", "mig", "wlp"] as const).map(key => (
+            <div key={key} className="rounded-lg bg-white/5 p-2 text-center">
+              <dt className="text-xs uppercase text-zinc-400">{key}</dt>
+              <dd className="font-bold text-amber-100">
+                {onAttributeRoll ? (
+                  <button type="button" disabled={rollPending}
+                    onClick={() => onAttributeRoll(key)}
+                    aria-label={`Rolar ${key.toUpperCase()} (${creature.attributes?.[key] || "dado"}) de ${creature.name}`}
+                    title={`Rolar ${creature.attributes?.[key]} de ${creature.name}`}
+                    className="w-full rounded-md border border-amber-400/30 p-1 font-bold transition hover:bg-amber-400/15 hover:text-amber-200 focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-40"
+                  >
+                    {creature.attributes?.[key] || "—"} <span aria-hidden="true" className="text-xs">🎲</span>
+                  </button>
+                ) : creature.attributes?.[key] || "—"}
+              </dd>
+            </div>
+          ))}
           <div className="col-span-2 rounded-lg bg-white/5 p-2"><dt className="text-xs text-zinc-400">Defesa Física</dt><dd className="font-bold">{creature.def}</dd></div>
           <div className="col-span-2 rounded-lg bg-white/5 p-2"><dt className="text-xs text-zinc-400">Defesa Mágica</dt><dd className="font-bold">{creature.mdef}</dd></div>
         </dl>

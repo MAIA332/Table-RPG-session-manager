@@ -22,6 +22,8 @@ import { useRealtime } from "@/lib/use-realtime"
 import { CharacterCreator } from "@/components/character-creator"
 import { CharacterBookShelf, ClassCardReveal } from "./class-books"
 import { createClientId } from "@/lib/client-id"
+import { createCombatInstanceId } from "@/lib/combat-instance-id"
+import type { MonsterDiceState } from "@/lib/monster-dice"
 import { upsertArchivedNPC, upsertNurseryNPC, linkSpawnedCharacter } from "@/lib/npc-nursery"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
@@ -53,7 +55,7 @@ import {
 
 import { NpcNursery } from "./npc-nursery"
 
-import { BASE_MAX_IP, EQUIPMENT, BESTIARY, getEquipment } from "@/lib/game-data"
+import { ATTRIBUTE_META, BASE_MAX_IP, EQUIPMENT, BESTIARY, getEquipment } from "@/lib/game-data"
 
 import type {
   Character,
@@ -3270,7 +3272,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   async function spawnCreature(creature: Creature) {
     const instance = {
       ...creature,
-      instanceId: createClientId(),
+      instanceId: createCombatInstanceId(),
       currentHp: creature.maxHp,
       currentMp: creature.maxMp,
       currentIp: 6,
@@ -3279,8 +3281,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     try {
       await combatController.send({ type: "spawn", creature: instance })
       setShowBestiary(false)
-    } catch {
-      /* useCombat displays the confirmation error in the combat HUD. */
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      setCombatUiError(`Não foi possível invocar ${creature.name}: ${detail}`)
+      console.error("[Bestiário] Falha ao invocar criatura", { name: creature.name, error })
+      throw error // O Bestiário exibe o motivo sem fechar a janela.
     }
   }
 
@@ -4087,9 +4092,18 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           isGm={isGm}
                           customEquipment={customEquipment}
                           onUpdate={updateCreatureVital}
-                          onRoll={(attr: string, res: number) =>
-                            handleBroadcastRoll(c.name, attr, res)
-                          }
+                          onRoll={(attr: string, _res: number) => {
+                            // A ficha legada sorteia uma prévia no navegador.
+                            // Ignoramos a prévia e usamos SOMENTE o dado
+                            // gerado/persistido pelo servidor do combate.
+                            const attribute = (["dex", "ins", "mig", "wlp"] as const)
+                              .find(key => attr.startsWith(`${ATTRIBUTE_META[key].label} [`))
+                            if (!attribute) {
+                              setCombatUiError(`Atributo não reconhecido: ${attr}`)
+                              return
+                            }
+                            void runCombat({ type: "monster-attribute-roll", instanceId: c.instanceId, attribute })
+                          }}
                           onKill={() => handleKillCreature(c)}
                         />
                       ))}
@@ -4906,9 +4920,17 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 <div className="flex flex-col lg:flex-row flex-1 min-h-0 gap-5">
                   {/* PAINEL DE INIMIGOS */}
                   <div className="flex-[3] flex flex-col min-h-0 bg-black/40 border border-destructive/30 rounded-xl p-5 overflow-y-auto custom-scrollbar-sepia relative shadow-[inset_0_0_40px_rgba(255,0,0,0.02)] backdrop-blur-sm">
-                    <h2 className="text-[10px] font-bold uppercase tracking-widest text-destructive flex items-center gap-2 mb-5 shrink-0">
-                      <Skull className="size-3" /> Ameaças em Cena
-                    </h2>
+                    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                      <h2 className="text-[10px] font-bold uppercase tracking-widest text-destructive flex items-center gap-2">
+                        <Skull className="size-3" /> Ameaças em Cena
+                      </h2>
+                      {isGm && <label className="flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs font-semibold text-amber-100">
+                        <input type="checkbox" disabled={combatController.pending}
+                          checked={(combatController.combat as (typeof combatController.combat & MonsterDiceState))?.shareMonsterRolls === true}
+                          onChange={event => void runCombat({ type: "set-monster-roll-visibility", enabled: event.target.checked })} />
+                        Mostrar dados dos monstros aos jogadores
+                      </label>}
+                    </div>
 
                     <div className="flex flex-wrap content-start gap-4 pb-10">
                       {(combatController.combat?.creatures || []).map(
@@ -4958,6 +4980,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                                   instanceId: creature.instanceId,
                                 })
                             }}
+                            onAttributeRoll={(attribute) => void runCombat({
+                              type: "monster-attribute-roll",
+                              instanceId: creature.instanceId,
+                              attribute,
+                            })}
                             onVital={(resource, change) => {
                               const max =
                                 resource === "currentHp"

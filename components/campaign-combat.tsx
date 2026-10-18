@@ -5,6 +5,8 @@ import { CreatureAbilitiesManager } from "./creature-abilities-manager"
 import { SpotlightPanel } from "./spotlight-panel"
 import { CreatureResourceControls, CreatureSheetDetails, CreatureAttackDetails, CreatureAbilityDetails } from "./combat-monster-card"
 import { MonsterAttackOverlay } from "./monster-attack-overlay"
+import { MonsterAttributeRollOverlay } from "./monster-attribute-roll-overlay"
+import type { MonsterAttribute, MonsterAttributeRoll, MonsterDiceState } from "@/lib/monster-dice"
 import { QteOverlay } from "./qte-overlay"
 import { AttackEditor } from "./creature-combat-editor"
 import {
@@ -60,6 +62,25 @@ export function CampaignCombat({
   const [playerAttack, setPlayerAttack] = useState(0),
     [target, setTarget] = useState(""),
     [bondId, setBondId] = useState("")
+  const diceView = combat as (typeof combat & MonsterDiceState)
+  const [visibleMonsterRoll, setVisibleMonsterRoll] = useState<MonsterAttributeRoll | null>(null)
+  const seenMonsterRolls = useRef(new Set<string>())
+  useEffect(() => {
+    const rolls = diceView?.monsterAttributeRolls || []
+    // Processa apenas eventos novos, não reapresenta os antigos após refresh.
+    for (const roll of rolls) {
+      if (seenMonsterRolls.current.has(roll.id)) continue
+      seenMonsterRolls.current.add(roll.id)
+      if (Math.abs(Date.now() + serverOffset - roll.at) < 7000)
+        setVisibleMonsterRoll(roll)
+    }
+  }, [diceView?.monsterAttributeRolls, serverOffset])
+  useEffect(() => {
+    if (!visibleMonsterRoll) return
+    const timer = window.setTimeout(() => setVisibleMonsterRoll((current:any) =>
+      current?.id === visibleMonsterRoll.id ? null : current), 3200)
+    return () => window.clearTimeout(timer)
+  }, [visibleMonsterRoll?.id])
   const [localError, setLocalError] = useState(""),
     [flash, setFlash] = useState<number | null>(null)
   const seen = useRef(new Set<string>()),
@@ -204,6 +225,7 @@ export function CampaignCombat({
       combat.qte.targets.every((id) => !!combat.qte!.outcomes[id]))
   return (
     <>
+      <MonsterAttributeRollOverlay roll={visibleMonsterRoll} />
       {editingAbilities &&
         combat?.creatures.find((c) => c.instanceId === editingAbilities) && (
           <CreatureAbilitiesManager
@@ -613,7 +635,14 @@ export function CampaignCombat({
                   </label>
                 )}
                 <section className="mt-5 space-y-4 rounded-xl border border-border/50 bg-card/20 p-4">
-                  <h3 className="font-bold">Criaturas em cena</h3>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-bold">Criaturas em cena</h3>
+                    {isGm && <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 p-2 text-xs font-semibold">
+                      <input type="checkbox" checked={diceView?.shareMonsterRolls === true} disabled={pending}
+                        onChange={event => void run({ type: "set-monster-roll-visibility", enabled: event.target.checked })} />
+                      Mostrar rolagens de monstros aos jogadores
+                    </label>}
+                  </div>
                   {!combat.creatures.length ? (
                     <p className="text-muted-foreground">
                       Adicione criaturas pelo Bestiário do Mestre.
@@ -711,7 +740,8 @@ export function CampaignCombat({
                               }}
                             />
                           )}
-                          {isGm && <CreatureSheetDetails creature={creature} />}
+                          {isGm && <CreatureSheetDetails creature={creature} rollPending={pending}
+                             onAttributeRoll={(attribute: MonsterAttribute) => void run({ type: "monster-attribute-roll", instanceId: creature.instanceId, attribute })} />}
                           {isGm && (
                             <div className="space-y-3">
                               <div className="flex flex-wrap gap-3">

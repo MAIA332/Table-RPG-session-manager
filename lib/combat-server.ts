@@ -13,7 +13,8 @@ import {
   type Ability,
 } from "./combat-model"
 import { answerQte, createQte, expireQte, qteComplete } from "./qte-model"
-import { resolveAttack } from "./automated-attack"
+import { resolveBestiaryAttack } from "./monster-attack-resolver"
+import { isMonsterAttribute, type MonsterDiceState } from "./monster-dice"
 import { validateBestiaryCombat, validateBestiaryDice } from "./bestiary-attack-formula"
 import {
   characterDefense,
@@ -242,7 +243,7 @@ function snapshot(
 ): CombatSnapshot {
   const { role } = authorize(db, campaignId, userId)
   const gm = role === "gm"
-  const { receipts, ...publicState } = s
+  const { receipts, monsterAttributeRolls, ...publicState } = s as CombatSession & MonsterDiceState
   const characters = [...db.characters.values()]
     .filter((c) => c.campaignId === campaignId)
     .map((c) => ({
@@ -260,6 +261,13 @@ function snapshot(
     }))
   return {
     ...publicState,
+    ...{
+      // Nunca transmite as rolagens privadas via JSON para os jogadores.
+      monsterAttributeRolls: gm
+        ? (monsterAttributeRolls || [])
+        : (monsterAttributeRolls || []).filter((entry:any) => entry.shared),
+      shareMonsterRolls: publicState.shareMonsterRolls === true,
+    },
     spotlight: {
       ...s.spotlight,
       tokens: gm ? s.spotlight.tokens : 0,
@@ -302,6 +310,30 @@ function snapshot(
             ([id]) => db.characters.get(id)?.ownerId === userId,
           ),
         ),
+    // Uma rolagem marcada como privada quando foi executada jamais entra
+    // no payload do jogador, ainda que a configuração seja alterada depois.
+    ...{
+      pendingAttack: !gm && s.pendingAttack &&
+        (s.pendingAttack as typeof s.pendingAttack & { monsterRollShared?: boolean }).monsterRollShared === false
+        ? { ...s.pendingAttack, total: 0, rolls: [], dice: [], damage: 0, effect: "" }
+        : s.pendingAttack,
+      log: gm ? s.log : s.log.map(entry => {
+        const visibility = entry as typeof entry & { monsterRollShared?: boolean }
+        if (visibility.monsterRollShared !== false) return entry
+        if (entry.id.endsWith(":hit")) {
+          return { ...entry, roll: undefined,
+            text: entry.text.replace(/: acerto \d+,/, ": rolagem oculta,") }
+        }
+        if (entry.id.endsWith(":reflex")) {
+          return { ...entry,
+            text: entry.text.replace(/contra \d+/, "contra dificuldade oculta"),
+            roll: entry.roll ? { ...entry.roll,
+              attribute: entry.roll.attribute.replace(/Reflexos contra \d+/, "Reflexos contra dificuldade oculta") } : undefined,
+          }
+        }
+        return { ...entry, roll: undefined }
+      }),
+    },
     characters,
     serverNow: Date.now(),
     viewerRole: role,
@@ -535,6 +567,8 @@ export async function commandCombat(
       "remove-creature",
       "set-attacks",
       "monster-attack",
+      "monster-attribute-roll",
+      "set-monster-roll-visibility",
       "start-qte",
       "close-qte",
     ]
@@ -559,10 +593,34 @@ export async function commandCombat(
     ) {
       throw new CombatError("Aguarde o QTE terminar antes de trocar o Holofote")
     }
-    if (s.pendingAttack && !["answer-attack", "end"].includes(command.type)) {
+    if (s.pendingAttack && !["answer-attack", "end", "monster-attribute-roll", "set-monster-roll-visibility"].includes(command.type)) {
       throw new CombatError("Aguarde o jogador resolver o ataque pendente", 409)
     }
     switch (command.type) {
+      case "set-monster-roll-visibility": {
+        requireTrue(typeof command.enabled === "boolean", "Visibilidade inválida")
+        ;(s as CombatSession & MonsterDiceState).shareMonsterRolls = command.enabled
+        break
+      }
+      case "monster-attribute-roll": {
+        // Não requer Holofote, mas somente GM pode rolar e escolher o atributo.
+        const creature = getCreature()
+        requireTrue(isMonsterAttribute(command.attribute), "Atributo de criatura inválido")
+        const attribute = command.attribute
+        const die = String(creature.attributes[attribute])
+        requireTrue(/^d(4|6|8|10|12|20)$/.test(die), "Dado da criatura inválido")
+        const size = Number(die.slice(1))
+        const state = s as CombatSession & MonsterDiceState
+        state.monsterAttributeRolls = [
+          ...((state.monsterAttributeRolls || []).slice(-39)),
+          { id: randomUUID(), instanceId: creature.instanceId,
+            creatureName: creature.name, attribute, die,
+            result: randomInt(1, size + 1), at: Date.now(),
+            shared: state.shareMonsterRolls === true },
+        ]
+        // NÃO usar addLog/publish(dice:roll): ambas as vias são públicas.
+        break
+      }
       case "spawn": {
         const c = validateCreature(command.creature)
         requireTrue(
@@ -891,12 +949,11 @@ export async function commandCombat(
           "Alvo fora do combate",
         )
         spend(s, c, cost)
-        const result = resolveAttack(
+        const result = resolveBestiaryAttack(
           attack,
           c.attributes,
           characterDefense(target, attack.targetDefense === "magical"),
           target.resources.hp,
-          0,
           random,
         )
         // Defesa contra motores antigos que porventura só rolem dois atributos.
@@ -906,9 +963,11 @@ export async function commandCombat(
           "A rolagem não processou todos os dados da fórmula. Atualize o motor de combate.",
           409,
         )
+        const monsterRollShared = (s as CombatSession & MonsterDiceState).shareMonsterRolls === true
         const attackId = randomUUID()
         const at = Date.now()
         s.log = [{
+          ...{ monsterRollShared },
           id: `${attackId}:hit`, at,
           text: `${c.name} usou ${attack.name} em ${target.name}: acerto ${result.total}, ${result.outcome === "failure" ? "errou" : "aguardando reação"}.`,
           characterId: target.id,
@@ -921,6 +980,7 @@ export async function commandCombat(
         }, ...s.log].slice(0, 60)
         if (result.outcome !== "failure") {
           s.pendingAttack = {
+            ...{ monsterRollShared },
             id: attackId, at, characterId: target.id, creatureName: c.name,
             attackName: attack.name, total: result.total, rolls: result.rolls,
             dice: attack.attributes.map(a => c.attributes[a]),
@@ -951,6 +1011,7 @@ export async function commandCombat(
             db.users.get(target.ownerId)?.name || "", check.id)
           avoided = rolled.total >= attack.total
           s.log = [{
+            ...{ monsterRollShared: (attack as typeof attack & { monsterRollShared?: boolean }).monsterRollShared !== false },
             id: `${attack.id}:reflex`, at: Date.now(), characterId: target.id,
             text: `${target.name}: Reflexos ${rolled.total} contra ${attack.total} — ${avoided ? "sucesso" : "falha"}.`,
             roll: {

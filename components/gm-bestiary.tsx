@@ -21,7 +21,7 @@ const modalVariants = { hidden: { opacity: 0, scale: 0.95, y: 20 }, visible: { o
 interface GmBestiaryProps {
   isOpen: boolean
   onClose: () => void
-  onSpawn: (creature: Creature) => void
+  onSpawn: (creature: Creature) => void | Promise<void>
   customCreatures: Creature[]
   onCreate: (creature: Creature) => void | Promise<void>
   onUpdate: (creature: Creature) => void | Promise<void>
@@ -31,6 +31,7 @@ interface GmBestiaryProps {
 export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate, onUpdate, onDelete }: GmBestiaryProps) {
   const [editingCreature, setEditingCreature] = useState<Creature | null>(null)
   const [saving, setSaving] = useState(false)
+  const [spawning, setSpawning] = useState(false)
   const savingRef = useRef(false)
   const [error, setError] = useState("")
   const [affinities, setAffinities] = useState<Creature["affinities"]>({ physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" })
@@ -155,6 +156,15 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
       savingRef.current = false
       setSaving(false)
     }
+  }
+
+  async function spawnSelected() {
+    if (!hoveredCreature || spawning || saving) return
+    setSpawning(true)
+    setError("")
+    try { await onSpawn(hoveredCreature) }
+    catch (error) { setError(error instanceof Error ? error.message : "Invocação não confirmada.") }
+    finally { setSpawning(false) }
   }
 
   async function deleteSelected() {
@@ -413,8 +423,8 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                       </div>
                     </div>
 
-                    <Button className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2 h-12 text-lg font-bold shadow-[0_0_15px_rgba(255,0,0,0.3)] mt-2" onClick={() => onSpawn(hoveredCreature)}>
-                      <Target className="size-5" /> Invocar para a Mesa
+                    <Button className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2 h-12 text-lg font-bold shadow-[0_0_15px_rgba(255,0,0,0.3)] mt-2" disabled={spawning || saving} onClick={() => void spawnSelected()}>
+                      <Target className="size-5" /> {spawning ? "Invocando..." : "Invocar para a Mesa"}
                     </Button>
                   </div>
                 ) : (

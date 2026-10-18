@@ -14,7 +14,7 @@ const input = "w-full min-w-0 rounded-lg border border-white/15 bg-zinc-900 p-2.
 type Props = {
   value: Attack
   onChange: (attack: Attack) => void
-  creatureDice?: any
+  creatureDice?: Partial<Record<BestiaryAttribute, string>>
 }
 
 /** Editor independente para ataques básicos do Bestiário.
@@ -58,7 +58,7 @@ export function BestiaryAttackEditor({ value, onChange, creatureDice }: Props) {
                   setAttributes(next)
                 }}
               >
-                {BESTIARY_ATTRIBUTES.map((key:any) => <option key={key} value={key}>{key.toUpperCase()} {creatureDice?.[key] ? `(${creatureDice[key]})` : ""}</option>)}
+                {BESTIARY_ATTRIBUTES.map(key => <option key={key} value={key}>{key.toUpperCase()} {creatureDice?.[key] ? `(${creatureDice[key]})` : ""}</option>)}
               </select>
               <button
                 type="button"
