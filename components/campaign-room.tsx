@@ -127,6 +127,7 @@ import { MapImporter } from "./map-importer"
 import { BattlemapEngine } from "./battlemap-engine"
 
 import { Soundpad, ActiveSound, type Track } from "./soundpad"
+import { SoundPlaybackEngine } from "./sound-playback-engine"
 import { CutsceneManager } from "./cutscene-manager"
 import { DeathCheckOverlay } from "./death-check-overlay"
 import { CutscenePlayer } from "./cutscene-player"
@@ -3517,6 +3518,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   return (
     <div className="rpg-page mx-auto flex min-h-dvh max-w-[1680px] flex-col px-3 py-4 sm:px-4 md:h-screen md:px-6 md:py-6">
       <ClassCardReveal value={cardReveal} />
+      {/* Motor único de áudio: permanece montado enquanto a sala estiver aberta. */}
+      <SoundPlaybackEngine
+        key={`${data.campaign.id}:${data.me.id}`}
+        activeSounds={activeSounds}
+        currentUserId={data.me.id}
+        isGm={isGm}
+        musicVolume={effectsVolume}
+        effectsVolume={effectsVolume}
+        onSoundEnded={handleSoundEnded}
+      />
       {mounted &&
         createPortal(
           <>
@@ -4332,7 +4343,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                         players={data.members.filter(member => member.role === "player")}
                         targetUserId={soundTargetUserId}
                         onTargetUserIdChange={setSoundTargetUserId}
-                        onSoundEnded={handleSoundEnded}
                         campaignId={data.campaign.id}
                         activeSounds={activeSounds}
                         customTracks={customSounds}
@@ -4418,22 +4428,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               )}
             </AnimatePresence>
 
-            {/* NOTA IMPORTANTE: Para os jogadores escutarem mesmo com o Modal Fechado, 
-              injetamos a engine "invisível" caso não seja GM e o modal não estiver aberto */}
-            {!showSoundpad && (
-              <div className="hidden">
-                <Soundpad
-                  isGm={false}
-                  currentUserId={data.me.id}
-                  onSoundEnded={handleSoundEnded}
-                  campaignId={data.campaign.id}
-                  activeSounds={activeSounds}
-                  customTracks={customSounds}
-                  musicVolume={effectsVolume}
-                  effectsVolume={effectsVolume}
-                />
-              </div>
-            )}
           </>,
           document.body,
         )}

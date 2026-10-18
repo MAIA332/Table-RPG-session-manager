@@ -38,6 +38,7 @@ interface SoundpadProps {
   players?: { userId: string; name: string }[];
   targetUserId?: string | null;
   onTargetUserIdChange?: (userId: string | null) => void;
+  /** Compatibilidade da API antiga; o callback agora pertence ao motor permanente. */
   onSoundEnded?: (sound: ActiveSound) => void;
   activeSounds: ActiveSound[];
   customTracks?: Track[];
@@ -51,7 +52,7 @@ interface SoundpadProps {
   onStopAll?: () => void;
 }
 
-export function Soundpad({ campaignId, currentUserId, players = [], targetUserId = null, onTargetUserIdChange, onSoundEnded, isGm, activeSounds, customTracks = [], musicVolume = 0.5, effectsVolume = 0.5, onCustomTracksChange, onMusicVolumeChange, onEffectsVolumeChange, onPlaySound, onStopSound, onStopAll }: SoundpadProps) {
+export function Soundpad({ campaignId, players = [], targetUserId = null, onTargetUserIdChange, isGm, activeSounds, customTracks = [], effectsVolume = 0.5, onCustomTracksChange, onMusicVolumeChange, onEffectsVolumeChange, onPlaySound, onStopSound, onStopAll }: SoundpadProps) {
   const [targetingReady, setTargetingReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
@@ -71,7 +72,6 @@ export function Soundpad({ campaignId, currentUserId, players = [], targetUserId
   const playTrack = (track: { id: string; url: string }, loop: boolean) => {
     if (canPlay) onPlaySound?.(track, loop, targetUserId);
   };
-  const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const [folders, setFolders] = useState<SoundFolder[]>([])
   const [activeFolder, setActiveFolder] = useState("all")
   const [folderName, setFolderName] = useState("")
@@ -184,51 +184,8 @@ export function Soundpad({ campaignId, currentUserId, players = [], targetUserId
     saveCustomTracks(customTracks.filter(t => t.id !== id));
   };
 
-  useEffect(() => {
-    const audibleSounds = activeSounds.filter(sound =>
-      isGm || sound.targetUserId == null || sound.targetUserId === currentUserId
-    );
-    const currentActiveIds = new Set(audibleSounds.map(s => s.id));
-
-    audibleSounds.forEach(sound => {
-      const volume = sound.loop ? musicVolume : effectsVolume;
-      if (!audioRefs.current[sound.id]) {
-        const audio = new Audio(sound.url);
-        audio.loop = sound.loop;
-        audio.volume = volume;
-        
-        audio.onended = () => {
-          onSoundEnded?.(sound);
-        };
-
-        audio.play().catch((err) => console.warn("Áudio não pôde ser tocado automaticamente:", err));
-        audioRefs.current[sound.id] = audio;
-      } else {
-        audioRefs.current[sound.id].volume = volume;
-        audioRefs.current[sound.id].loop = sound.loop;
-      }
-    });
-
-    Object.keys(audioRefs.current).forEach(id => {
-      if (!currentActiveIds.has(id)) {
-        const audio = audioRefs.current[id];
-        audio.pause();
-        audio.src = "";
-        delete audioRefs.current[id];
-      }
-    });
-  }, [activeSounds, currentUserId, isGm, musicVolume, effectsVolume, onSoundEnded]);
-
-  useEffect(() => {
-    return () => {
-       // eslint-disable-next-line react-hooks/exhaustive-deps
-       Object.values(audioRefs.current).forEach(a => { 
-           a.pause(); 
-           a.src = ""; 
-       });
-       audioRefs.current = {};
-    };
-  }, []);
+  // Reprodução de áudio acontece uma única vez em SoundPlaybackEngine,
+  // montado permanentemente em CampaignRoom (independente desta modal).
 
   const allTracks = [...SOUND_LIBRARY, ...customTracks];
   const folderForTrack = (id: string) => folders.find(folder => folder.trackIds.includes(id))?.id || "unfiled"
