@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { Dices, Sparkles, Trash2, Plus, Zap, Shield, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ItemArtwork } from "./item-artwork"
-import { ITEM_EQUIPPED_PREFIX, blankItemAction, buildItemUseUpdates, equippedItemBonuses, getItemActions, hasItemBonuses, itemBonusEntries, parseItemDice, rollItemDice, sumItemBonus, validateItemAction, EQUIPMENT_LIMITS, wearableKind, wearItemUpdates, wornCounts, type ItemAction } from "@/lib/item-mechanics"
+import { ITEM_EQUIPPED_PREFIX, blankItemAction, buildItemUseUpdates, equippedItemBonuses, getItemActions, hasItemBonuses, itemBonusEntries, parseItemDice, rollItemDice, sumItemBonus, validateItemAction, EQUIPMENT_LIMITS, wearableKind, wearItemUpdates, wornCounts, consumeInventoryItemUpdates, isConsumableItem, isMiscItem, type ItemAction } from "@/lib/item-mechanics"
 import { OVERWEIGHT_MODIFIER_ID } from "@/lib/character"
 
 type Props = {
@@ -69,10 +69,12 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
     async function useItem(item: any, index: number, action: ItemAction, key: string) {
         if (!editable || busy || lock.current) return
         if (action.requirement && !requirements[key]) return
+        const shouldConsume = isConsumableItem(item) || action.consume
+        if (shouldConsume && !window.confirm(`Consumir 1 unidade de "${item.name}" ao usar "${action.name}"? Esta ação não pode ser desfeita.`)) return
         lock.current = true; setActiveKey(key); setError(null); setResult(null)
         try {
             validateItemAction(action, character.attributes)
-            const updates = buildItemUseUpdates(character, item.id, index, action)
+            const updates = buildItemUseUpdates(character, item.id, index, { ...action, consume: shouldConsume })
             const dexPenalty = Number((character.customModifiers || []).find((modifier: any) => modifier.id === OVERWEIGHT_MODIFIER_ID)?.value) || 0
             const modifierFor = (expression: string | undefined, labels: string[]) => sumItemBonus(bonuses, labels) + (expression && /\bdex\b/i.test(expression) ? dexPenalty : 0)
             // Gera a rolagem uma vez. Só publica resultados após confirmar custos e consumo.
@@ -95,6 +97,22 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
                 if (!rolls.length && await onRoll?.(`ITEM_USE:${item.name} • ${action.name}`, "Habilidade utilizada.") === false) throw new Error("Falha no registro da sessão")
             } catch { setError("Item utilizado, mas não foi possível publicar o registro na sessão. Não repita o uso para reenviar.") }
         } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível usar o item.") }
+        finally { lock.current = false; setActiveKey(null) }
+    }
+
+    async function consumeItem(item: any, index: number, key: string) {
+        if (!editable || busy || lock.current || !isConsumableItem(item)) return
+        if (!window.confirm(`Tem certeza de que deseja consumir 1 unidade de "${item.name}"? O item será removido da mochila e esta ação não pode ser desfeita.`)) return
+        lock.current = true; setActiveKey(key); setError(null); setResult(null)
+        try {
+            const updates = consumeInventoryItemUpdates(character, item, index)
+            const updated = await onCommit(updates)
+            if (JSON.stringify(updated?.equipment) !== JSON.stringify(updates.equipment))
+                throw new Error("A API não confirmou a remoção. Atualize a mochila antes de repetir.")
+            setResult({ item: item.name, name: "Consumido", lines: ["Uma unidade removida da mochila."], stamp: Date.now() })
+            try { await onRoll?.(`ITEM_USE:${item.name} • Consumido`, "Uma unidade consumida.") }
+            catch { setError("Consumo confirmado, mas registro da sessão indisponível. Não repita para reenviar.") }
+        } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível consumir o item.") }
         finally { lock.current = false; setActiveKey(null) }
     }
 
@@ -204,6 +222,8 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
             const activated = hasItemBonuses(character, id)
             const parsedBonuses = itemBonusEntries(item)
             const kind = wearableKind(item)
+            const miscellaneous = isMiscItem(item)
+            const consumable = isConsumableItem(item)
             const isFirstCopy = (character.equipment || []).indexOf(id) === index
             const atLimit = kind ? counts[kind] >= EQUIPMENT_LIMITS[kind] : false
             const pulsing = activeKey?.startsWith(itemKey + ":") || (result?.item === item.name)
@@ -211,7 +231,7 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
                 <header className="flex items-start justify-between gap-3 border-b border-primary/15 bg-primary/5 p-4">
                     <div className="flex min-w-0 items-start gap-3">
                         {item.imageUrl && <ItemArtwork name={item.name} imageUrl={item.imageUrl} expandable className="size-14" />}
-                        <div className="min-w-0"><h4 className="font-serif text-base font-bold text-primary">{item.name}</h4><div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-wide text-muted-foreground">{item.type && <span>{item.type}</span>}{item.purchasable === false && <span className="text-purple-300">Loot raro</span>}{activated && <span className="text-emerald-300">Bônus ativos</span>}</div></div></div>
+                        <div className="min-w-0"><h4 className="font-serif text-base font-bold text-primary">{item.name}</h4><div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-wide text-muted-foreground">{item.type && <span>{item.type}</span>}{miscellaneous && <span>Diversos</span>}{consumable && <span className="text-amber-200">Consumível</span>}{item.purchasable === false && <span className="text-purple-300">Loot raro</span>}{activated && <span className="text-emerald-300">Bônus ativos</span>}</div></div></div>
                     <div className="flex shrink-0 items-center gap-1"><span className="rounded border border-primary/20 px-2 py-1 font-mono text-xs text-primary">{item.cost ?? 0}z</span>{isGm && <Button variant="ghost" size="sm" disabled={busy || !!activeKey} onClick={() => onRemove(index)} aria-label={`Remover ${item.name}`} className="h-8 w-8 p-0"><Trash2 className="size-4" /></Button>}</div>
                 </header>
                 {editable && onTransfer && transferTargets.length > 0 && (
@@ -231,8 +251,15 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
                 )}
                 <div className="space-y-3 p-4">
                     <div className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{renderDetail ? renderDetail(item.detail || "Sem descrição.") : item.detail || "Sem descrição."}</div>
-                    <div className="flex flex-wrap gap-2 text-[11px] font-mono">{[["Dano", item.damage], ["DEF", item.defense], ["M.DEF", item.mdef]].filter(([, value]) => value !== undefined && value !== null && value !== "").map(([label, value]) => <span key={String(label)} className="rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-primary">{label}: {String(value)}</span>)}</div>
-                    {item.bonus && <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 text-xs text-emerald-300">Bônus: {item.bonus}</p>}
+                    {consumable && <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                        <Button type="button" size="sm" disabled={!editable || busy || !!activeKey}
+                            onClick={() => void consumeItem(item, index, `${itemKey}:consume`)} className="gap-2 text-xs">
+                            <Trash2 className="size-3.5" />{activeKey === `${itemKey}:consume` ? "Consumindo..." : "Consumir"}
+                        </Button>
+                        <p className="mt-2 text-[10px] text-amber-200/80">Uma unidade removida após confirmação.</p>
+                    </div>}
+                    {!miscellaneous && <div className="flex flex-wrap gap-2 text-[11px] font-mono">{[["Dano", item.damage], ["DEF", item.defense], ["M.DEF", item.mdef]].filter(([, value]) => value !== undefined && value !== null && value !== "").map(([label, value]) => <span key={String(label)} className="rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-primary">{label}: {String(value)}</span>)}</div>}
+                    {!miscellaneous && item.bonus && <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 text-xs text-emerald-300">Bônus: {item.bonus}</p>}
                     {kind && isFirstCopy && <div className="space-y-1 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3">
                         <Button type="button" size="sm" variant={activated ? "outline" : "default"} className="gap-2 text-xs" disabled={!editable || busy || !!activeKey || (!activated && atLimit)} onClick={() => void toggleWear(item, itemKey + ":wear")}>
                             <Shield className="size-3.5" />{activeKey === itemKey + ":wear" ? "Salvando..." : activated ? "Retirar" : "Usar"}
@@ -240,8 +267,8 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
                         <p className="text-[10px] text-muted-foreground">{activated ? "Em uso: bônus e defesas ativos." : atLimit ? `Limite de ${kind === "armor" ? "armaduras" : "acessórios"} alcançado. Retire outro item.` : "Clique em Usar para ativar os bônus."}</p>
                     </div>}
                     {kind && !isFirstCopy && <p className="text-xs text-muted-foreground">Cópia adicional: o uso e os bônus são controlados na primeira unidade desse item.</p>}
-                    {!kind && parsedBonuses.length > 0 && <div className="space-y-2"><Button variant="outline" size="sm" disabled={!editable || busy || !!activeKey} onClick={() => toggleBonuses(item, itemKey + ":bonuses")} className="gap-2 text-xs"><Shield className="size-3.5" /> {activated ? "Desativar bônus" : "Ativar bônus"}</Button><p className="text-[10px] leading-relaxed text-muted-foreground">Bônus numéricos usam o nome exato do teste. Acerto/Ataque e Dano são aplicados nas ações dos itens. Cópias do mesmo item não acumulam bônus.</p></div>}
-                    {item.effect && <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 p-2 text-xs leading-relaxed text-amber-200">Efeito: {item.effect}</p>}
+                    {!miscellaneous && !kind && parsedBonuses.length > 0 && <div className="space-y-2"><Button variant="outline" size="sm" disabled={!editable || busy || !!activeKey} onClick={() => toggleBonuses(item, itemKey + ":bonuses")} className="gap-2 text-xs"><Shield className="size-3.5" /> {activated ? "Desativar bônus" : "Ativar bônus"}</Button><p className="text-[10px] leading-relaxed text-muted-foreground">Bônus numéricos usam o nome exato do teste. Acerto/Ataque e Dano são aplicados nas ações dos itens. Cópias do mesmo item não acumulam bônus.</p></div>}
+                    {!miscellaneous && item.effect && <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 p-2 text-xs leading-relaxed text-amber-200">Efeito: {item.effect}</p>}
                     {actions.length > 0 && <div className="space-y-3 border-t border-border/40 pt-3"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ações do item</p>
                         {actions.map(action => {
                             const key = `${itemKey}:${action.id}`

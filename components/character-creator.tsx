@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { ATTRIBUTE_PROFILES, CLASSES, getEquipment, STARTING_ZENIT, type GameClass } from "@/lib/game-data"
 import { computeMaxResources } from "@/lib/character"
 import { baseGameClasses, classLevelsFromSkills, getCampaignClassCatalog, subclassesFor } from "@/lib/class-catalog"
+import { playerVisibleClassCatalog, type CustomClassVisibility } from "@/lib/class-visibility"
 import type { AttributeKey, Character, ClassLevel, DieSize } from "@/lib/types"
 import { ArrowLeft, ArrowRight, Check, Coins, Heart, Loader2, Sparkles, Swords, Zap } from "lucide-react"
 import { EssenceStep, ClassesStep, EquipmentStep } from "./creator-steps"
@@ -49,7 +50,12 @@ export function CharacterCreator({ campaignId, campaignCharacters = [], customCl
     return () => { active = false }
   }, [campaignId])
 
-  const classes = useMemo(() => getCampaignClassCatalog(campaignCharacters, serverClasses), [campaignCharacters, serverClasses])
+  // TODAS as classes oficiais são sempre disponibilizadas; apenas homebrews
+  // respeitam a publicação do mestre. Nunca filtre pelo que já foi aprendido.
+  const classes = useMemo(() => playerVisibleClassCatalog(
+    getCampaignClassCatalog(campaignCharacters, serverClasses),
+    serverClasses as CustomClassVisibility[],
+  ), [campaignCharacters, serverClasses])
   const baseClasses = useMemo(() => baseGameClasses(classes), [classes])
   const totalLevels = useMemo(() => Object.values(skillLevels).reduce((sum, level) => sum + level, 0), [skillLevels])
   const classLevels = useMemo(() => classLevelsFromSkills(skillLevels, baseClasses), [skillLevels, baseClasses])

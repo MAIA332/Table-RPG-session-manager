@@ -17,6 +17,30 @@ export interface ItemAction {
 }
 export interface ItemBonus { target: string; value: number }
 export const ITEM_EQUIPPED_PREFIX = "item_equipped:"
+/** Itens de categoria Diversos não conferem efeitos mecânicos. */
+export function isMiscItem(item: unknown): boolean {
+  if (!item || typeof item !== "object") return false
+  const category = String((item as { category?: unknown }).category ?? "")
+  return ["misc", "diversos", "diverso", "miscellaneous"].includes(normalizeItemTarget(category))
+}
+export function isConsumableItem(item: unknown): boolean {
+  return item !== null && typeof item === "object" && (item as { consumable?: unknown }).consumable === true
+}
+/** Remove exatamente uma unidade; mantém o marcador ativo até a última cópia. */
+export function consumeInventoryItemUpdates(character: any, item: any, index: number): {
+  equipment: string[]
+  customModifiers?: any[]
+} {
+  if (!isConsumableItem(item)) throw new Error("Este item não é consumível.")
+  const equipment: string[] = Array.isArray(character?.equipment) ? character.equipment : []
+  if (!Number.isSafeInteger(index) || index < 0 || equipment[index] !== item.id)
+    throw new Error("Item não encontrado nessa posição da mochila. Recarregue a ficha.")
+  const remaining = equipment.filter((_: string, i: number) => i !== index)
+  const updates: { equipment: string[]; customModifiers?: any[] } = { equipment: remaining }
+  if (!remaining.includes(item.id))
+    updates.customModifiers = (character.customModifiers || []).filter((mod: any) => mod.id !== ITEM_EQUIPPED_PREFIX + item.id)
+  return updates
+}
 
 /** Quantidade máxima de modelos distintos vestidos ao mesmo tempo. */
 export const EQUIPMENT_LIMITS = { armor: 5, accessory: 8 } as const
@@ -60,7 +84,7 @@ export function wornDefenseBonuses(character: any, catalog: any[]) {
     .filter(id => (character?.customModifiers || []).some((m: any) => m.id === ITEM_EQUIPPED_PREFIX + id && m.value === 1))
     .map(id => catalog.find((it: any) => it.id === id))
     .filter((it: any) => it && !wearableKind(it))
-  const active = [...items, ...otherActive]
+  const active = [...items, ...otherActive].filter(item => !isMiscItem(item))
   const raw = (value: unknown) => {
     if (typeof value !== "number" && (typeof value !== "string" || !/^[+-]?\d+$/.test(value.trim()))) return 0
     const parsed = Number(value)
@@ -122,6 +146,7 @@ export function rollItemDice(expression: string, attributes: Record<string, stri
   return { ...parsed, values, modifier: parsed.modifier + bonus, total: values.reduce((a, b) => a + b, 0) + parsed.modifier + bonus }
 }
 export function itemBonusEntries(item: any): ItemBonus[] {
+  if (isMiscItem(item)) return []
   if (Array.isArray(item.passiveBonuses)) return item.passiveBonuses.filter((b: any) => typeof b.target === "string" && b.target.trim() && Number.isFinite(b.value))
   // Compatibilidade com "+6 Fôlego +3 Resistência +2 Força Bruta".
   return [...String(item.bonus || "").matchAll(/([+-]\s*\d+)\s+([^+\-;\n]+)/g)].map(match => ({ value: Number(match[1].replace(/\s/g, "")), target: match[2].replace(/[,\s]+$/, "").trim() })).filter(b => b.target)
@@ -130,7 +155,7 @@ export function equippedItemBonuses(character: any, catalog: any[]): ItemBonus[]
   return [...new Set<string>(character.equipment || [])].flatMap(id => {
     if (!hasItemBonuses(character, id)) return []
     const item = catalog.find(entry => entry.id === id)
-    return item ? itemBonusEntries(item) : []
+    return item && !isMiscItem(item) ? itemBonusEntries(item) : []
   })
 }
 export function sumItemBonus(bonuses: ItemBonus[], targets: string[]): number {
@@ -141,6 +166,7 @@ export function blankItemAction(): ItemAction {
   return { id: `action-${createClientId()}`, name: "Nova habilidade", kind: "utility", attackDice: "", damageDice: "", cost: 0, costResource: "mp", restoreAmount: 0, restoreResource: "hp", consume: false, requirement: "", effect: "" }
 }
 export function getItemActions(item: any): ItemAction[] {
+  if (isMiscItem(item)) return []
   if (Array.isArray(item.actions)) return item.actions.filter((action: any) => action && !(action.id === "legacy-use" && ["Usar item", "Rolar dano do item"].includes(action.name))).map((action: any, i: number) => ({ ...action, id: action.id || `action-${i}` }))
   return [] // Somente habilidades explicitamente cadastradas geram ações.
 

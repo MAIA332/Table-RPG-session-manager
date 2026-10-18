@@ -2,13 +2,14 @@ import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { CLASSES, type GameClass } from "@/lib/game-data"
 import { getCampaignClassCatalog } from "@/lib/class-catalog"
+import { isClassAvailableToPlayers, playerVisibleClassCatalog, type CustomClassVisibility } from "@/lib/class-visibility"
 import {
   accessibleClassIds,
   characterClassIds,
   emptyClassBooks,
   permittedBook,
   progressFor,
-  validateBook,
+  validateBook, 
   type CampaignClassBooks,
   type ClassBookDeck,
 } from "@/lib/class-books"
@@ -33,10 +34,10 @@ async function access(context: RouteContext) {
   return { id, user, role, error: null } as const
 }
 
-function customDefinitions(campaignId: string): Array<{ id: string; name: string; parentClassId?: string }> {
+function customDefinitions(campaignId: string): CustomClassVisibility[] {
   const state = store.campaignState.get(campaignId)
   const classes = Array.isArray(state?.customClasses) ? state.customClasses : []
-  return classes.filter((value): value is { id: string; name: string; parentClassId?: string } =>
+  return classes.filter((value): value is CustomClassVisibility =>
     Boolean(value && typeof value === "object" && typeof value.id === "string" && typeof value.name === "string"))
 }
 
@@ -95,7 +96,7 @@ export async function GET(request: Request, context: RouteContext) {
       .map((book) => gm ? book : permittedBook(book, progress))
   return NextResponse.json({
     books,
-    classes: allClasses(id),
+    classes: gm ? allClasses(id) : playerVisibleClassCatalog(allClasses(id), customDefinitions(id)),
     progress: { subclassIds: progress.subclassIds, granted: progress.granted },
     deckView: Object.fromEntries(Object.entries(progress.deck ?? {}).map(([bookId, deck]) => [
       bookId, { drawCount: deck.drawPile.length, hand: deck.hand, discardPile: deck.discardPile },
@@ -174,6 +175,8 @@ export async function POST(request: Request, context: RouteContext) {
           throw new Error("Personagem não autorizado.")
         const subclasses = customDefinitions(id)
         const subclass = subclasses.find((item) => item.id === body.subclassId && item.parentClassId)
+        if (!gm && !isClassAvailableToPlayers(body.subclassId, subclasses))
+          throw new Error("Subclasse ainda não liberada pelo mestre.")
         if (!subclass?.parentClassId || !characterClassIds(character).includes(subclass.parentClassId))
           throw new Error("A subclasse não pertence às classes desse personagem.")
         const progress = data.progress[characterId] ?? { subclassIds: [], granted: {} }

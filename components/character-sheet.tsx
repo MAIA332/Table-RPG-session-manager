@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "framer-motion"
 
 import { apiFetch } from "@/lib/client"
 import { baseGameClasses, getCampaignClassCatalog } from "@/lib/class-catalog"
+import { canPlayerUpgradeClass, playerVisibleClassCatalog, type CustomClassVisibility } from "@/lib/class-visibility"
 import { CharacterBookShelf } from "./class-books"
 import { createClientId } from "@/lib/client-id"
 import { InventoryEquipment, WornEquipmentSummary } from "./inventory-equipment"
@@ -1758,6 +1759,11 @@ export function CharacterSheet({
     customSkillIds,
   )
   const unspentPoints = Math.max(0, charLevel - totalSkillPointsSpent)
+  // Um jogador só pode aprender habilidades de classes publicadas pelo mestre.
+  // O histórico de classes e perícias continua completo para cálculo dos pontos.
+  const upgradeClassCatalog = isGm
+    ? allClasses
+    : playerVisibleClassCatalog(allClasses, customClasses as CustomClassVisibility[])
   const learnedSkillGroups = allClasses
     .map((definition: any) => {
       const learnedSkills = definition.skills.filter(
@@ -1835,6 +1841,8 @@ export function CharacterSheet({
         return "Escudo"
       case "accessory":
         return "Acessório"
+      case "misc":
+        return "Diversos"
       default:
         return "Item"
     }
@@ -2111,117 +2119,42 @@ export function CharacterSheet({
       pending ||
       skillWriteRef.current ||
       resourceWriteCountRef.current > 0
-    )
-      return
-    const classMatch = allClasses.find((c) =>
+    ) return
+
+    const definition = allClasses.find((c) =>
       c.skills.some((skill: any) => skill.id === skillId),
     )
-    const skill = classMatch?.skills.find((entry: any) => entry.id === skillId)
-    const currentRank = skillRank(skillsObj[skillId])
-    if (!classMatch || !skill || currentRank >= skillMaxRank(skill)) return
-    if (classMatch.parentClassId && !isGm && !chosenSubclassIds.includes(classMatch.id)) return
+    const skill = definition?.skills.find((entry: any) => entry.id === skillId)
+    if (!definition || !skill ||
+        skillRank(skillsObj[skillId]) >= skillMaxRank(skill)) return
+
+    if (!isGm && !canPlayerUpgradeClass(
+      definition,
+      customClasses as CustomClassVisibility[],
+      chosenSubclassIds,
+    )) {
+      setSkillSaveError("Essa classe ou subclasse não está liberada pelo mestre para evolução.")
+      return
+    }
     if (!isGm && unspentPoints <= 0) return
 
     skillWriteRef.current = true
     setPending(true)
     setSkillSaveError(null)
-    const newSkills = { ...skillsObj, [skillId]: currentRank + 1 }
-    const newClasses = (character.classes || []).map((c: any) => ({ ...c }))
-    const targetClassId = classMatch.parentClassId || classMatch.id
-    const existingClass = newClasses.find(
-      (c: any) => (c.classId ?? c.id) === targetClassId,
-    )
-    // As perícias de subclasse evoluem o nível da classe mãe, sem um nível extra.
-    const previousRanks = allClasses
-      .filter((definition: any) => definition.id === targetClassId ||
-        (definition.parentClassId === targetClassId && chosenSubclassIds.includes(definition.id)))
-      .flatMap((definition: any) => definition.skills)
-      .reduce((sum: number, entry: any) => sum + skillRank(skillsObj[entry.id]), 0)
-    if (existingClass)
-      existingClass.level =
-        Math.max(skillRank(existingClass.level), previousRanks) + 1
-    else newClasses.push({ classId: targetClassId, level: previousRanks + 1 })
-
-    const freeRanks =
-      getFreeSkillRanks(skillId, currentRank, allMods, customSkillIds) +
-      (isGm ? 1 : 0)
-    const grantId = `${FREE_SKILL_PREFIX}${skillId}`
-    const newMods = [
-      ...allMods.filter((mod: any) => mod.id !== grantId),
-      {
-        id: grantId,
-        name: `Concessão gratuita: ${skill.name}`,
-        target: "skill_grant_hidden",
-        value: freeRanks,
-      },
-    ]
-    // Não envia XP nem recalcula recursos ao conceder habilidades gratuitas.
-    const updates: any = {
-      skills: newSkills,
-      classes: newClasses,
-      customModifiers: newMods,
-    }
-
     try {
-      if (!isGm) {
-        // O cálculo existente conhece apenas as classes padrão.
-        const baseClasses = (classes: any[]) =>
-          classes.filter((c) =>
-            CLASSES.some((base) => base.id === (c.classId ?? c.id)),
-          )
-        const oldMaxes = computeMaxResources(
-          baseClasses(character.classes || []),
-          character.attributes,
-        )
-        const newMaxes = computeMaxResources(
-          baseClasses(newClasses),
-          character.attributes,
-        )
-        updates.resources = {
-          maxHp:
-            (displayResources.maxHp ?? oldMaxes.maxHp) +
-            newMaxes.maxHp -
-            oldMaxes.maxHp,
-          maxMp:
-            (displayResources.maxMp ?? oldMaxes.maxMp) +
-            newMaxes.maxMp -
-            oldMaxes.maxMp,
-          maxIp:
-            (displayResources.maxIp ?? oldMaxes.maxIp) +
-            newMaxes.maxIp -
-            oldMaxes.maxIp,
-        }
-      }
+      // O mesmo endpoint valida titularidade (jogador) ou papel GM (mestre),
+      // publicação, níveis e saldo de pontos, e grava tudo no MongoDB.
+      // Mestre concede gratuitamente; jogador consome pontos próprios.
       const { character: updated } = await apiFetch<{ character: Character }>(
-        `/api/characters/${character.id}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify(updates),
-        },
+        `/api/characters/${encodeURIComponent(character.id)}/learn-skill`,
+        { method: "POST", body: JSON.stringify({ skillId }) },
       )
-      // Só exibe sucesso com os dados confirmados pela API.
-      onOptimistic(updated)
-      const saved = updated as any
-      if (
-        skillRank(saved.skills?.[skillId]) !== newSkills[skillId] ||
-        !(saved.classes || []).some(
-          (c: any) =>
-            (c.classId ?? c.id) === classMatch.id &&
-            skillRank(c.level) ===
-              newClasses.find((c: any) => (c.classId ?? c.id) === classMatch.id)
-                .level,
-        ) ||
-        !(saved.customModifiers || []).some(
-          (mod: any) =>
-            mod.id === grantId && skillRank(mod.value) === freeRanks,
-        )
-      ) {
-        setSkillSaveError(
-          "A API não confirmou todos os dados da concessão. Recarregue a ficha e revise a rota PATCH de personagens antes de tentar novamente.",
-        )
-        return
+      if (skillRank(updated.skills?.[skillId]) !==
+          skillRank(skillsObj[skillId]) + 1) {
+        throw new Error("A API não confirmou a evolução. Atualize a ficha antes de tentar novamente.")
       }
-      if (!isGm) setShowLevelUp(false)
+      onOptimistic(updated)
+      setShowLevelUp(false)
     } catch (error) {
       setSkillSaveError(
         error instanceof Error
@@ -2673,7 +2606,8 @@ export function CharacterSheet({
                     <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1 relative">
                       {(() => {
                         // Filtra e prepara as classes antes de renderizar
-                        const filteredClasses = allClasses
+                        const filteredClasses = upgradeClassCatalog
+                          .filter((c: any) => isGm || canPlayerUpgradeClass(c, customClasses as CustomClassVisibility[], chosenSubclassIds))
                           .map((c) => {
                             // Pega apenas as habilidades que o jogador ainda pode upar
                             const availableSkills = c.skills.filter(

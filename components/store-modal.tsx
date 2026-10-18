@@ -95,6 +95,7 @@ export function StoreModal({
       armor: "Armadura",
       shield: "Escudo",
       accessory: "Acessório",
+      misc: "Diversos",
     }
     return labels[cat] || cat
   }
@@ -234,7 +235,7 @@ export function StoreModal({
                                 {item.name}
                               </p>
                               <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                {getCategoryLabel(item.category)}
+                                {getCategoryLabel(item.category)}{item.consumable === true ? " · Consumível" : ""}
                               </p>
                             </div>
                             <Button
@@ -293,6 +294,7 @@ export function StoreModal({
                         ["armor", "Armaduras"],
                         ["shield", "Escudos"],
                         ["accessory", "Acessórios"],
+                        ["misc", "Diversos"],
                       ].map(([id, label]) => (
                         <button
                           key={id}
@@ -369,13 +371,14 @@ export function StoreModal({
                               {item.category === "accessory" && (
                                 <Gem className="size-7 text-accent/70" />
                               )}
+                              {item.category === "misc" && <Package className="size-7 text-accent/70" />}
                              </div>}
                              <div className="pr-16">
                               <p className="font-bold text-sm text-foreground">
                                 {item.name}
                               </p>
                               <p className="mt-1 text-[9px] uppercase tracking-widest text-accent/70">
-                                {getCategoryLabel(item.category)}
+                                {getCategoryLabel(item.category)}{item.consumable === true ? " · Consumível" : ""}
                               </p>
                             </div>
                             <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
@@ -439,6 +442,7 @@ export function StoreModal({
                         {selectedStoreItem.category === "accessory" && (
                           <Gem className="size-24 text-accent/40" />
                         )}
+                        {selectedStoreItem.category === "misc" && <Package className="size-24 text-accent/40" />}
                        </div>}
                      </div>
                      <div className="flex-1 overflow-y-auto px-5 pb-5 custom-scrollbar-sepia">

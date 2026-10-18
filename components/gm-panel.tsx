@@ -2,6 +2,7 @@
 import { normalizeStoreFolders } from "@/lib/store-folders"
 import { ClassBooksWorkbench } from "./class-books"
 import { getCampaignClassCatalog } from "@/lib/class-catalog"
+import { isClassPublished, type CustomClassVisibility } from "@/lib/class-visibility"
 import { CLASSES } from "@/lib/game-data"
 
 import { useState } from "react"
@@ -686,6 +687,7 @@ export function GmPanel({
   const [sysDraft, setSysDraft] = useState<any>({
     name: "",
     category: "weapon",
+    consumable: false,
     imageUrl: "",
     cost: 100,
     purchasable: true,
@@ -713,8 +715,9 @@ export function GmPanel({
     description: "",
   })
 
-  const [classDraft, setClassDraft] = useState<GameClass>({
+  const [classDraft, setClassDraft] = useState<CustomClassVisibility>({
     id: "",
+    playerVisible: false,
     name: "",
     archetype: "",
     description: "",
@@ -729,6 +732,19 @@ export function GmPanel({
   // Estado para expandir os detalhes da classe homebrew
   const [expandedClassId, setExpandedClassId] = useState<string | null>(null)
   const [savingClass, setSavingClass] = useState(false)
+  const [publishingClassId, setPublishingClassId] = useState<string | null>(null)
+
+  async function changeClassVisibility(cls: GameClass) {
+    if (publishingClassId) return
+    setPublishingClassId(cls.id)
+    try {
+      await onCreateClass({ ...cls, playerVisible: !isClassPublished(cls) } as CustomClassVisibility)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Não foi possível alterar a publicação da classe.")
+    } finally {
+      setPublishingClassId(null)
+    }
+  }
 
   const allFolders = normalizeStoreFolders(storeFolders)
 
@@ -802,6 +818,9 @@ export function GmPanel({
                 <span className="text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 shrink-0">
                   {cls.parentClassId ? "Subclasse" : "Homebrew"}
                 </span>
+                <span className={`text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-full border ${isClassPublished(cls) ? "border-green-500/30 text-green-300" : "border-orange-500/30 text-orange-300"}`}>
+                  {isClassPublished(cls) ? "Liberada" : "Oculta"}
+                </span>
               </div>
 
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5 truncate">
@@ -836,6 +855,18 @@ export function GmPanel({
             />
           </button>
 
+          <button
+            type="button"
+            disabled={publishingClassId !== null}
+            onClick={() => void changeClassVisibility(cls)}
+            title={isClassPublished(cls) ? "Ocultar dos jogadores" : "Liberar aos jogadores"}
+            aria-label={`${isClassPublished(cls) ? "Ocultar" : "Liberar"} ${cls.name} para evolução`}
+            className={`rounded-md border p-2 text-xs font-bold disabled:opacity-50 ${isClassPublished(cls)
+              ? "border-green-600/40 text-green-300 hover:bg-green-700/10"
+              : "border-orange-500/40 text-orange-300 hover:bg-orange-700/10"}`}
+          >
+            {isClassPublished(cls) ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+          </button>
           <button type="button" onClick={onEdit} title="Editar classe ou subclasse" className="p-2 rounded-lg text-amber-300 hover:bg-amber-500/10"><Pencil className="size-4" /></button>
           <button
             type="button"
@@ -1109,7 +1140,8 @@ export function GmPanel({
     if (!sysDraft.name.trim() || !sysDraft.detail.trim())
       return alert("Preencha o nome e a descrição do equipamento.")
 
-    const actions = Array.isArray(sysDraft.actions) ? sysDraft.actions : []
+    const isMisc = sysDraft.category === "misc"
+    const actions = isMisc ? [] : Array.isArray(sysDraft.actions) ? sysDraft.actions : []
     try {
       actions.forEach((action: any) => validateItemAction(action))
     } catch (error) {
@@ -1138,6 +1170,7 @@ export function GmPanel({
       ...parsedWeight,
       imageUrl,
       actions,
+      consumable: sysDraft.consumable === true,
       id:
         sysDraft.id ||
         "custom-eq-" + Math.random().toString(36).substring(2, 10),
@@ -1145,13 +1178,16 @@ export function GmPanel({
       category: sysDraft.category,
       cost: Number(sysDraft.cost),
       purchasable: String(sysDraft.purchasable) === "true",
-      detail: sysDraft.detail,
-      damage: sysDraft.damage,
-      defense: sysDraft.defense,
-      mdef: sysDraft.mdef,
+      detail: isMisc
+        ? String(sysDraft.detail).replace(/\[(?:BÔNUS|BONUS|MODIFICADOR|PENALIDADE)\s*:[^\]]*\]/gi, "").trim()
+        : sysDraft.detail,
+      damage: isMisc ? "" : sysDraft.damage,
+      defense: isMisc ? "" : sysDraft.defense,
+      mdef: isMisc ? "" : sysDraft.mdef,
       type: sysDraft.type,
-      bonus: sysDraft.bonus,
-      effect: sysDraft.effect,
+      bonus: isMisc ? "" : sysDraft.bonus,
+      effect: isMisc ? "" : sysDraft.effect,
+      passiveBonuses: isMisc ? [] : (sysDraft.passiveBonuses || []),
 
       // Todo item custom começa na pasta CUSTOM
       folderId: sysDraft.folderId || "custom",
@@ -1162,6 +1198,7 @@ export function GmPanel({
       setSysDraft({
         name: "",
         category: "weapon",
+        consumable: false,
         imageUrl: "",
         cost: 100,
         purchasable: true,
@@ -1259,11 +1296,12 @@ export function GmPanel({
       return alert("Uma habilidade possui o mesmo ID de outra classe. Crie um novo identificador.")
     }
 
-    const newClass: GameClass = {
+    const newClass: CustomClassVisibility = {
       id: classDraft.id || "custom-class-" + Math.random().toString(36).substring(2, 10),
       ...(classDraft.parentClassId ? { parentClassId: classDraft.parentClassId } : {}),
 
       name: classDraft.name.trim(),
+      playerVisible: isClassPublished(classDraft),
       archetype: classDraft.archetype.trim(),
       description: classDraft.description.trim(),
 
@@ -1309,6 +1347,7 @@ export function GmPanel({
 
     setClassDraft({
       id: "",
+      playerVisible: false,
       name: "",
       archetype: "",
       description: "",
@@ -1536,6 +1575,8 @@ export function GmPanel({
                                           Custom
                                         </span>
                                       )}
+                                      {item.category === "misc" && <span className="text-[9px] text-sky-300">Diversos</span>}
+                                      {item.consumable === true && <span className="text-[9px] text-amber-200">Consumível</span>}
                                       {item.type && (
                                         <span className="text-[9px] bg-black/60 text-muted-foreground px-2 py-0.5 rounded-full border border-white/5 uppercase tracking-widest">
                                           {item.type}
@@ -1762,6 +1803,9 @@ export function GmPanel({
                                 setSysDraft({
                                   ...sysDraft,
                                   category: e.target.value,
+                                  ...(e.target.value === "misc"
+                                    ? { bonus: "", defense: "", mdef: "", damage: "", effect: "", actions: [], passiveBonuses: [] }
+                                    : {}),
                                 })
                               }
                               className="bg-[#111] border border-white/10 rounded p-2 text-sm outline-none focus:border-accent/50"
@@ -1770,8 +1814,15 @@ export function GmPanel({
                               <option value="armor">Armadura</option>
                               <option value="shield">Escudo</option>
                               <option value="accessory">Acessório</option>
+                              <option value="misc">Diversos</option>
                             </select>
                           </label>
+                          <label className="col-span-2 flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+                            <input type="checkbox" checked={sysDraft.consumable === true}
+                              onChange={event => setSysDraft({ ...sysDraft, consumable: event.target.checked })} />
+                            <span><strong>Consumível</strong><small className="block text-xs text-muted-foreground">Após confirmar, uma unidade será removida da mochila.</small></span>
+                          </label>
+                          {sysDraft.category === "misc" && <p className="col-span-2 rounded-lg border border-blue-500/30 p-3 text-xs text-blue-200">Itens Diversos são narrativos, sem bônus, modificadores ou ações mecânicas.</p>}
                           <label className="flex flex-col gap-1.5">
                             <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
                               Valor (Z)
@@ -1839,11 +1890,11 @@ export function GmPanel({
                               }
                               rows={3}
                               className="bg-[#111] border border-white/10 rounded p-2 text-sm outline-none resize-none focus:border-accent/50 custom-scrollbar-sepia"
-                              placeholder="[BÔNUS: +1 Dano]\n[MODIFICADOR: Precisão usa DES+VIG]"
+                              placeholder={sysDraft.category === "misc" ? "Descrição do item, uso narrativo e informações para o jogador" : "[BÔNUS: +1 Dano]\n[MODIFICADOR: Precisão usa DES+VIG]"}
                             />
                           </label>
 
-                          <div className="col-span-2 border-t border-white/5 pt-3 mt-1 grid grid-cols-3 gap-3">
+                          {sysDraft.category !== "misc" && <div className="col-span-2 border-t border-white/5 pt-3 mt-1 grid grid-cols-3 gap-3">
                             <input
                               type="text"
                               value={sysDraft.type}
@@ -1916,16 +1967,16 @@ export function GmPanel({
                               placeholder="Efeito Secundário"
                               className="bg-[#111] border border-white/10 rounded p-2 text-xs outline-none"
                             />
-                          </div>
+                          </div>}
 
-                          <div className="col-span-2">
+                          {sysDraft.category !== "misc" && <div className="col-span-2">
                             <ItemActionsEditor
                               actions={sysDraft.actions || []}
                               onChange={(actions) =>
                                 setSysDraft({ ...sysDraft, actions })
                               }
                             />
-                          </div>
+                          </div>}
                           <div className="col-span-2">
                             <ItemWeightField
                               value={sysDraft}
@@ -2019,7 +2070,7 @@ export function GmPanel({
                                     expandedClassId === cls.id ? null : cls.id,
                                   )
                                 }
-                                onEdit={() => { setClassDraft(structuredClone(cls)); setExpandedSkillId(null) }}
+                                onEdit={() => { setClassDraft({ ...structuredClone(cls), playerVisible: isClassPublished(cls) }); setExpandedSkillId(null) }}
                                 onDelete={() => {
                                   onDeleteClass(cls.id)
 
@@ -2075,6 +2126,14 @@ export function GmPanel({
                             </select>
                           </label>
                           {classDraft.id && <p className="text-xs text-amber-300">Editando classe existente. O ID será preservado para não perder vínculos dos personagens.</p>}
+                           <label className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+                             <input type="checkbox" checked={isClassPublished(classDraft)}
+                               onChange={event => setClassDraft(previous => ({ ...previous, playerVisible: event.target.checked }))} />
+                             <span>
+                               <strong>Liberar para evolução dos jogadores</strong>
+                               <small className="block text-xs text-muted-foreground">Desmarcada: a classe ou subclasse não aparece na tela Aprender. A concessão do mestre continua disponível.</small>
+                             </span>
+                           </label>
                           <div className="grid grid-cols-2 gap-3">
                             <label className="flex flex-col gap-1.5">
                               <span className="text-[9px] uppercase tracking-widest font-bold text-amber-500">
