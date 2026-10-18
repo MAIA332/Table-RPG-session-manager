@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { Dices, Sparkles, Trash2, Plus, Zap, Shield, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ItemArtwork } from "./item-artwork"
-import { ITEM_EQUIPPED_PREFIX, blankItemAction, buildItemUseUpdates, equippedItemBonuses, getItemActions, hasItemBonuses, itemBonusEntries, parseItemDice, rollItemDice, sumItemBonus, validateItemAction, type ItemAction } from "@/lib/item-mechanics"
+import { ITEM_EQUIPPED_PREFIX, blankItemAction, buildItemUseUpdates, equippedItemBonuses, getItemActions, hasItemBonuses, itemBonusEntries, parseItemDice, rollItemDice, sumItemBonus, validateItemAction, EQUIPMENT_LIMITS, wearableKind, wearItemUpdates, wornCounts, type ItemAction } from "@/lib/item-mechanics"
 import { OVERWEIGHT_MODIFIER_ID } from "@/lib/character"
 
 type Props = {
@@ -31,6 +31,7 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
     const [requirements, setRequirements] = useState<Record<string, boolean>>({})
     const [transferTarget, setTransferTarget] = useState<Record<string, string>>({})
     const bonuses = equippedItemBonuses(character, catalog)
+    const counts = wornCounts(character, catalog)
     const missingItems = new Map<string, { index: number; count: number }>()
         ; (character.equipment || []).forEach((id: string, index: number) => {
             if (catalog.some(item => item.id === id)) return
@@ -52,6 +53,19 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
         finally { lock.current = false; setActiveKey(null) }
     }
 
+    async function toggleWear(item: any, key: string) {
+        if (!editable || busy || lock.current) return
+        lock.current = true; setActiveKey(key); setError(null)
+        try {
+            const wasActive = hasItemBonuses(character, item.id)
+            const updates = wearItemUpdates(character, catalog, item.id)
+            const updated = await onCommit(updates)
+            if (hasItemBonuses(updated, item.id) === wasActive)
+                throw new Error("A API não confirmou o uso do item. Recarregue a mochila antes de tentar novamente.")
+        } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível alterar o uso do item.") }
+        finally { lock.current = false; setActiveKey(null) }
+    }
+
     async function useItem(item: any, index: number, action: ItemAction, key: string) {
         if (!editable || busy || lock.current) return
         if (action.requirement && !requirements[key]) return
@@ -63,8 +77,8 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
             const modifierFor = (expression: string | undefined, labels: string[]) => sumItemBonus(bonuses, labels) + (expression && /\bdex\b/i.test(expression) ? dexPenalty : 0)
             // Gera a rolagem uma vez. Só publica resultados após confirmar custos e consumo.
             const rolls = [
-                ...(action.attackDice?.trim() ? [{ kind: "Acerto", roll: rollItemDice(action.attackDice, character.attributes, modifierFor(action.attackDice, ["Acerto", "Ataque"])) }] : []),
-                ...(action.damageDice?.trim() ? [{ kind: "Dano", roll: rollItemDice(action.damageDice, character.attributes, modifierFor(action.damageDice, ["Dano"])) }] : [])
+                ...(action.attackDice?.trim() ? [{ kind: "Acerto", roll: rollItemDice(action.attackDice, character.attributes, modifierFor(action.attackDice, ["Acerto", "Ataque", ...(action.attackDice.match(/\b(dex|ins|mig|wlp)\b/gi) || [])])) }] : []),
+                ...(action.damageDice?.trim() ? [{ kind: "Dano", roll: rollItemDice(action.damageDice, character.attributes, modifierFor(action.damageDice, ["Dano", ...(action.damageDice.match(/\b(dex|ins|mig|wlp)\b/gi) || [])])) }] : [])
             ]
             if (Object.keys(updates).length) {
                 const updated = await onCommit(updates)
@@ -189,6 +203,9 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
             const actions = getItemActions(item)
             const activated = hasItemBonuses(character, id)
             const parsedBonuses = itemBonusEntries(item)
+            const kind = wearableKind(item)
+            const isFirstCopy = (character.equipment || []).indexOf(id) === index
+            const atLimit = kind ? counts[kind] >= EQUIPMENT_LIMITS[kind] : false
             const pulsing = activeKey?.startsWith(itemKey + ":") || (result?.item === item.name)
             return <motion.article key={itemKey} animate={pulsing && !reducedMotion ? { boxShadow: ["0 0 0px transparent", "0 0 18px rgba(34,211,238,.25)", "0 0 0px transparent"] } : { boxShadow: "0 0 0px transparent" }} transition={{ duration: 0.65 }} className="overflow-hidden rounded-xl border border-primary/30 bg-card/70">
                 <header className="flex items-start justify-between gap-3 border-b border-primary/15 bg-primary/5 p-4">
@@ -216,7 +233,14 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
                     <div className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{renderDetail ? renderDetail(item.detail || "Sem descrição.") : item.detail || "Sem descrição."}</div>
                     <div className="flex flex-wrap gap-2 text-[11px] font-mono">{[["Dano", item.damage], ["DEF", item.defense], ["M.DEF", item.mdef]].filter(([, value]) => value !== undefined && value !== null && value !== "").map(([label, value]) => <span key={String(label)} className="rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-primary">{label}: {String(value)}</span>)}</div>
                     {item.bonus && <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 text-xs text-emerald-300">Bônus: {item.bonus}</p>}
-                    {parsedBonuses.length > 0 && <div className="space-y-2"><Button variant="outline" size="sm" disabled={!editable || busy || !!activeKey} onClick={() => toggleBonuses(item, itemKey + ":bonuses")} className="gap-2 text-xs"><Shield className="size-3.5" /> {activated ? "Desativar bônus" : "Ativar bônus"}</Button><p className="text-[10px] leading-relaxed text-muted-foreground">Bônus numéricos usam o nome exato do teste. Acerto/Ataque e Dano são aplicados nas ações dos itens. Cópias do mesmo item não acumulam bônus.</p></div>}
+                    {kind && isFirstCopy && <div className="space-y-1 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3">
+                        <Button type="button" size="sm" variant={activated ? "outline" : "default"} className="gap-2 text-xs" disabled={!editable || busy || !!activeKey || (!activated && atLimit)} onClick={() => void toggleWear(item, itemKey + ":wear")}>
+                            <Shield className="size-3.5" />{activeKey === itemKey + ":wear" ? "Salvando..." : activated ? "Retirar" : "Usar"}
+                        </Button>
+                        <p className="text-[10px] text-muted-foreground">{activated ? "Em uso: bônus e defesas ativos." : atLimit ? `Limite de ${kind === "armor" ? "armaduras" : "acessórios"} alcançado. Retire outro item.` : "Clique em Usar para ativar os bônus."}</p>
+                    </div>}
+                    {kind && !isFirstCopy && <p className="text-xs text-muted-foreground">Cópia adicional: o uso e os bônus são controlados na primeira unidade desse item.</p>}
+                    {!kind && parsedBonuses.length > 0 && <div className="space-y-2"><Button variant="outline" size="sm" disabled={!editable || busy || !!activeKey} onClick={() => toggleBonuses(item, itemKey + ":bonuses")} className="gap-2 text-xs"><Shield className="size-3.5" /> {activated ? "Desativar bônus" : "Ativar bônus"}</Button><p className="text-[10px] leading-relaxed text-muted-foreground">Bônus numéricos usam o nome exato do teste. Acerto/Ataque e Dano são aplicados nas ações dos itens. Cópias do mesmo item não acumulam bônus.</p></div>}
                     {item.effect && <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 p-2 text-xs leading-relaxed text-amber-200">Efeito: {item.effect}</p>}
                     {actions.length > 0 && <div className="space-y-3 border-t border-border/40 pt-3"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ações do item</p>
                         {actions.map(action => {
@@ -240,6 +264,32 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
             </motion.article>
         })}
     </div>
+}
+
+/** Resumo sempre visível abaixo da capacidade da mochila. */
+export function WornEquipmentSummary({ character, catalog }: { character: any; catalog: any[] }) {
+    const counts = wornCounts(character, catalog)
+    const unique = new Set<string>()
+    const equipment = (character.equipment || []).flatMap((id: string) => {
+        if (unique.has(id)) return []
+        unique.add(id)
+        const item = catalog.find((entry: any) => entry.id === id)
+        return item && wearableKind(item) && hasItemBonuses(character, id) ? [item] : []
+    })
+    return <section className="mt-4 rounded-xl border border-primary/25 bg-card/40 p-4" aria-label="Itens em uso">
+        <h6 className="mb-3 flex items-center gap-2 text-sm font-bold text-primary"><Shield className="size-4" /> Itens em uso</h6>
+        <div className="mb-3 flex flex-wrap gap-2 text-xs font-semibold">
+            <span className="rounded bg-primary/10 px-2 py-1">Armaduras: {counts.armor}/{EQUIPMENT_LIMITS.armor}</span>
+            <span className="rounded bg-primary/10 px-2 py-1">Acessórios: {counts.accessory}/{EQUIPMENT_LIMITS.accessory}</span>
+        </div>
+        {!equipment.length ? <p className="text-xs text-muted-foreground">Nenhuma armadura ou acessório em uso.</p> :
+            <ul className="space-y-2">{equipment.map((item: any) => <li key={item.id} className="rounded-md border border-border/40 bg-black/20 px-3 py-2">
+                <span className="text-xs font-semibold text-foreground">{item.name}</span>
+                <span className="ml-2 text-[10px] text-muted-foreground">({wearableKind(item) === "armor" ? "Armadura" : "Acessório"})</span>
+                {!!item.bonus && <p className="mt-1 text-[10px] text-emerald-300">{item.bonus}</p>}
+                {(Number(item.defense) || Number(item.mdef)) ? <p className="mt-1 text-[10px] text-primary">{Number(item.defense) ? `DEF ${Number(item.defense) > 0 ? "+" : ""}${item.defense}` : ""} {Number(item.mdef) ? `M.DEF ${Number(item.mdef) > 0 ? "+" : ""}${item.mdef}` : ""}</p> : null}
+            </li>)}</ul>}
+    </section>
 }
 
 export function ItemActionsEditor({ actions, onChange }: { actions: ItemAction[]; onChange: (actions: ItemAction[]) => void }) {

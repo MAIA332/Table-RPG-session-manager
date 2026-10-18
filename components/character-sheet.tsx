@@ -19,11 +19,12 @@ import { apiFetch } from "@/lib/client"
 import { baseGameClasses, getCampaignClassCatalog } from "@/lib/class-catalog"
 import { CharacterBookShelf } from "./class-books"
 import { createClientId } from "@/lib/client-id"
-import { InventoryEquipment } from "./inventory-equipment"
+import { InventoryEquipment, WornEquipmentSummary } from "./inventory-equipment"
 import {
   equippedItemBonuses,
   isItemState,
   sumItemBonus,
+  wornDefenseBonuses,
 } from "@/lib/item-mechanics"
 import { ResourceBar } from "@/components/resource-bar"
 import { Button } from "@/components/ui/button"
@@ -1261,25 +1262,28 @@ function buildManualDefenseUpdates(
 
 function ManualDefenseFields({
   character,
+  catalog,
   editable,
   busy,
   onSave,
 }: {
   character: any
+  catalog: any[]
   editable: boolean
   busy: boolean
   onSave: (updates: any) => Promise<any>
 }) {
+  const itemDefense = wornDefenseBonuses(character, catalog)
   const modifiers = character.customModifiers || []
   const savedDefense = readManualDefense(modifiers, MANUAL_DEFENSE_IDS.defense)
   const savedMagicDefense = readManualDefense(
     modifiers,
     MANUAL_DEFENSE_IDS.magicDefense,
   )
-  const initialDefense =
-    savedDefense ?? defenseBaseValue(character.attributes.dex)
-  const initialMagicDefense =
-    savedMagicDefense ?? defenseBaseValue(character.attributes.ins)
+  const baseDefense = savedDefense ?? defenseBaseValue(character.attributes.dex)
+  const baseMagicDefense = savedMagicDefense ?? defenseBaseValue(character.attributes.ins)
+  const initialDefense = baseDefense + itemDefense.physical
+  const initialMagicDefense = baseMagicDefense + itemDefense.magical
   const [draft, setDraft] = useState({
     defense: String(initialDefense),
     magicDefense: String(initialMagicDefense),
@@ -1306,8 +1310,10 @@ function ManualDefenseFields({
       setError("Preencha os dois campos antes de salvar.")
       return
     }
-    const defense = Number(draft.defense)
-    const magicDefense = Number(draft.magicDefense)
+    // Campos exibem valores efetivos; persistimos apenas a base manual.
+    // Assim o bônus nunca será somado duas vezes ao reequipar/recarregar.
+    const defense = Number(draft.defense) - itemDefense.physical
+    const magicDefense = Number(draft.magicDefense) - itemDefense.magical
     saveLock.current = true
     setSaving(true)
     setError(null)
@@ -1402,14 +1408,16 @@ function ManualDefenseFields({
               className="w-full rounded-md border border-primary/25 bg-background px-3 py-2 text-center font-mono text-2xl font-bold text-primary outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
             />
             <span className="text-[10px] text-muted-foreground">
-              Valor inicial: dado de {field.base}
+              {field.key === "defense"
+                ? `Base ${baseDefense} ${itemDefense.physical >= 0 ? "+" : ""}${itemDefense.physical} de itens em uso`
+                : `Base ${baseMagicDefense} ${itemDefense.magical >= 0 ? "+" : ""}${itemDefense.magical} de itens em uso`} (dado de {field.base})
             </span>
           </label>
         ))}
       </div>
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-        Ajuste manualmente conforme seus itens e habilidades. Os valores salvos
-        não são recalculados.
+        Os campos mostram a defesa efetiva (base manual + itens em uso).
+        Ao salvar, apenas a base é persistida; equipar ou retirar itens atualiza os dois valores automaticamente.
       </p>
       {error && (
         <p role="alert" className="mt-2 text-xs text-destructive">
@@ -3187,6 +3195,7 @@ export function CharacterSheet({
                             </p>
                           )}
                         </div>
+                        <WornEquipmentSummary character={character} catalog={itemCatalog} />
                       </section>
                     </div>
                   </motion.div>
@@ -4067,6 +4076,7 @@ export function CharacterSheet({
                     <ManualDefenseFields
                       key={character.id}
                       character={character}
+                      catalog={itemCatalog}
                       editable={editable || isGm}
                       busy={pending}
                       onSave={commitItemUpdate}

@@ -265,7 +265,7 @@ function snapshot(
       // Nunca transmite as rolagens privadas via JSON para os jogadores.
       monsterAttributeRolls: gm
         ? (monsterAttributeRolls || [])
-        : (monsterAttributeRolls || []).filter((entry:any) => entry.shared),
+        : (monsterAttributeRolls || []).filter(entry => entry.shared),
       shareMonsterRolls: publicState.shareMonsterRolls === true,
     },
     spotlight: {
@@ -949,10 +949,12 @@ export async function commandCombat(
           "Alvo fora do combate",
         )
         spend(s, c, cost)
+        const state = db.campaignState.get(campaignId) || {}
+        const defenseEquipment = Array.isArray(state.customEquipment) ? state.customEquipment : []
         const result = resolveBestiaryAttack(
           attack,
           c.attributes,
-          characterDefense(target, attack.targetDefense === "magical"),
+          characterDefense(target, attack.targetDefense === "magical", defenseEquipment),
           target.resources.hp,
           random,
         )
