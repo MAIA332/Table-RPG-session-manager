@@ -508,6 +508,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [mounted, setMounted] = useState(false)
   const [data, setData] = useState(initial)
   const [characters, setCharacters] = useState<Character[]>(initial.characters)
+  const [inventorySyncError, setInventorySyncError] = useState<string | null>(null)
+  // Ignora respostas antigas se duas requisições forem iniciadas quase juntas.
+  const ownedInventoryRequestVersion = useRef(0)
+  const persistedInventoryCatalogLoaded = useRef(false)
   const [creating, setCreating] = useState(false)
   const [expandedCharacterId, setExpandedCharacterId] = useState<string | null>(
     null,
@@ -1312,7 +1316,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           )
           setGalleryImages(gallery)
           setLoreEntries(lore)
-          setCustomEquipment(customEq)
+          if (!persistedInventoryCatalogLoaded.current) setCustomEquipment(customEq)
           setCustomClasses(customCls)
           setWeather((res.state.weather || "clear") as WeatherType)
           storeJsonWhenIdle(`images_${data.campaign.id}`, gallery)
@@ -1410,7 +1414,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         setCustomNPCs(savedNPCs)
         setNpcLoots(savedLoots)
         setCustomCreatures(savedCustomCreatures)
-        setCustomEquipment(savedCustomEquipment)
+        if (!persistedInventoryCatalogLoaded.current) setCustomEquipment(savedCustomEquipment)
         setCustomClasses(savedCustomClasses)
         setDraftPolls(savedDrafts)
         setCustomSounds(savedSounds)
@@ -1794,6 +1798,101 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       .catch(console.error)
   }, [data.campaign.id, data.role, refreshSounds])
 
+  /**
+   * Reconciliacao do inventario com a fonte autoritativa (MongoDB).
+   * Um evento SSE ou um snapshot da sala nao substitui a leitura persistida.
+   * Apenas personagens pertencentes ao usuario autenticado sao retornados.
+   */
+  const refreshOwnedInventory = useCallback(async () => {
+    const version = ++ownedInventoryRequestVersion.current
+    const response = await fetch(
+      `/api/campaigns/${encodeURIComponent(data.campaign.id)}/owned-inventory`,
+      { cache: "no-store", credentials: "same-origin" },
+    )
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new Error(body.error || `Nao foi possivel sincronizar a mochila (${response.status}).`)
+    }
+    const body: {
+      characters?: Array<{
+        id: string
+        equipment: string[]
+        customItems: Character["customItems"]
+        updatedAt: number
+      }>
+      customEquipment?: any[]
+    } = await response.json()
+    if (version !== ownedInventoryRequestVersion.current) return
+    if (!Array.isArray(body.characters))
+      throw new Error("Inventario persistido: resposta invalida.")
+    const saved = new Map(body.characters.map((entry) => [entry.id, entry]))
+    // O catalogo tambem e persistido no Mongo. Um ID salvo no inventario
+    // sem seu cadastro pode fazer o item parecer ter desaparecido na mochila.
+    if (Array.isArray(body.customEquipment)) {
+      persistedInventoryCatalogLoaded.current = true
+      setCustomEquipment(body.customEquipment)
+    }
+    setCharacters((previous) => previous.map((character) => {
+      if (data.role !== "gm" && character.ownerId !== data.me.id) return character
+      const entry = saved.get(character.id)
+      if (!entry) return character
+      if (!Array.isArray(entry.equipment) || !Array.isArray(entry.customItems))
+        return character
+      // MongoDB e a fonte de verdade. Nao inferimos que o inventario e mais
+      // novo so porque outra parte da ficha tem um updatedAt diferente.
+      const sameEquipment = JSON.stringify(character.equipment || []) === JSON.stringify(entry.equipment)
+      const sameCustomItems = JSON.stringify(character.customItems || []) === JSON.stringify(entry.customItems)
+      const authoritativeUpdatedAt = Number(entry.updatedAt || 0) || character.updatedAt
+      if (sameEquipment && sameCustomItems && authoritativeUpdatedAt === character.updatedAt)
+        return character
+      return {
+        ...character,
+        equipment: entry.equipment,
+        customItems: entry.customItems,
+        updatedAt: authoritativeUpdatedAt,
+      }
+    }))
+    // Item registrado por ID, mas cadastro ausente do banco = item invisivel.
+    const catalogIds = new Set([
+      ...EQUIPMENT.map((item) => item.id),
+      ...(Array.isArray(body.customEquipment) ? body.customEquipment : [])
+        .filter((item: any) => item && typeof item.id === "string")
+        .map((item: any) => item.id),
+    ])
+    const missingCatalogId = body.characters.some((entry) =>
+      entry.equipment.some((itemId) => !catalogIds.has(itemId)),
+    )
+    setInventorySyncError(missingCatalogId
+      ? "Existem IDs de equipamentos salvos na mochila, mas sem cadastro persistido no catálogo. O Mestre precisa restaurar o cadastro com o mesmo ID."
+      : null)
+  }, [data.campaign.id, data.me.id, data.role])
+
+  // CTRL+F5, retomada da aba ou falha do SSE: inventario sempre consultado no Mongo.
+  useEffect(() => {
+    let active = true
+    const sync = () => {
+      void refreshOwnedInventory().catch((error) => {
+        if (active) setInventorySyncError(error instanceof Error ? error.message : "Falha ao sincronizar mochila.")
+      })
+    }
+    sync()
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") sync()
+    }
+    window.addEventListener("focus", sync)
+    document.addEventListener("visibilitychange", onVisibility)
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === "visible") sync()
+    }, 30000)
+    return () => {
+      active = false
+      ++ownedInventoryRequestVersion.current
+      window.removeEventListener("focus", sync)
+      document.removeEventListener("visibilitychange", onVisibility)
+      window.clearInterval(poll)
+    }
+  }, [refreshOwnedInventory])
+
   const seenCombatRolls = useRef(new Set<string>())
   const handleEvent = useCallback(
     (event: any) => {
@@ -2035,30 +2134,20 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         if (attr.startsWith("SYNC_ITEM_GIVEN")) {
           try {
             const payload = JSON.parse(String(event.result))
-
-            setCharacters((prev) =>
-              prev.map((c) => {
-                if (c.id === payload.charId) {
-                  return {
-                    ...c,
-                    ...payload.character,
-                    equipment: payload.character.equipment || [],
-                    customItems: payload.character.customItems || [],
-                    customModifiers: payload.character.customModifiers || [],
-                    bonds: payload.character.bonds || (c as any).bonds || [],
-                  }
-                }
-                return c
-              }),
-            )
-
-            if (payload.character.ownerId === data.me.id) {
-              setItemNotification(payload.itemName)
-              setInventoryToOpen(payload.charId)
-              setTimeout(() => setItemNotification(null), 8000)
+            // SSE anuncia a entrega; os itens e a ficha sao lidos do MongoDB.
+            // Compatibilidade com eventos legados que incluem payload.character.
+            const ownerId = payload.ownerId || payload.character?.ownerId
+            if (ownerId === data.me.id) {
+              setItemNotification(String(payload.itemName || "Novo item"))
+              setInventoryToOpen(String(payload.charId || ""))
+              window.setTimeout(() => setItemNotification(null), 8000)
             }
-          } catch (e) {
-            console.error("Falha ao sincronizar item", e)
+            // GM e jogador consultam exatamente a mesma fonte persistida.
+            void refreshOwnedInventory().catch((error) =>
+              setInventorySyncError(error instanceof Error ? error.message : "Falha ao confirmar entrega."),
+            )
+          } catch (error) {
+            console.error("Falha ao ler notificacao de item", error)
           }
           return
         }
@@ -2354,6 +2443,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       // HP changes outside /combat must reconcile death results immediately.
       if (event.type === "character:updated" || event.type === "character:created") {
         void combatController.refresh().catch(console.error)
+        if (event.character?.ownerId === data.me.id || data.role === "gm") {
+          void refreshOwnedInventory().catch((error) =>
+            setInventorySyncError(error instanceof Error ? error.message : "Falha ao sincronizar mochila."),
+          )
+        }
+      }
+      if (event.type === "item-transfer:resolved") {
+        void refreshOwnedInventory().catch((error) =>
+          setInventorySyncError(error instanceof Error ? error.message : "Falha ao sincronizar transferencia."),
+        )
       }
 
       setCharacters((prev) => {
@@ -2393,7 +2492,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         }
       })
     },
-    [data.campaign.id, data.me.id, refreshGallery, refreshSounds, refreshMaps, combatController.refresh],
+    [data.campaign.id, data.me.id, data.role, refreshGallery, refreshSounds, refreshMaps, combatController.refresh, refreshOwnedInventory],
   )
 
   useEffect(() => {
@@ -2967,7 +3066,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         },
       )
 
-      applyOptimistic({ ...updated, customItems: updatedCustomItems } as any)
+      // Nao apresentar um item como entregue quando o PATCH nao o retornou.
+      if (!Array.isArray(updated.customItems) ||
+          !updated.customItems.some((saved) => saved.id === newItem.id)) {
+        throw new Error("A API nao confirmou a relíquia no inventario persistido. Revise a rota PATCH de personagens.")
+      }
+      applyOptimistic(updated)
 
       apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
         method: "POST",
@@ -2978,7 +3082,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           attribute: `SYNC_ITEM_GIVEN`,
           result: JSON.stringify({
             charId: targetCharacter.id,
-            character: { ...updated, customItems: updatedCustomItems },
+            ownerId: targetCharacter.ownerId,
             itemName: newItem.name,
           }),
         }),
@@ -3008,6 +3112,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         `/api/characters/${targetCharacter.id}`,
         { method: "PATCH", body: JSON.stringify({ equipment: newEquipment }) },
       )
+      const savedCount = (updated.equipment || []).filter((id) => id === itemId).length
+      const expectedCount = newEquipment.filter((id) => id === itemId).length
+      if (savedCount < expectedCount) {
+        throw new Error("A API nao confirmou o equipamento no inventario persistido. Revise a rota PATCH de personagens.")
+      }
       applyOptimistic(updated)
 
       const itemObj =
@@ -3021,7 +3130,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           attribute: `SYNC_ITEM_GIVEN`,
           result: JSON.stringify({
             charId: targetCharacter.id,
-            character: updated,
+            ownerId: targetCharacter.ownerId,
             itemName: itemObj?.name || "Novo Equipamento",
           }),
         }),
@@ -5206,6 +5315,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       </Button>
                     </div>
                   </div>
+                  {inventorySyncError && (
+                    <p role="alert" className="mb-3 rounded-lg border border-amber-500/40 bg-amber-950/30 p-3 text-xs text-amber-200">
+                      Nao foi possivel confirmar a mochila no MongoDB: {inventorySyncError}
+                    </p>
+                  )}
                   {myCharacters.length === 0 ? (
                     <div className="rpg-empty rounded-md border border-dashed border-border/60 bg-black/20 p-8 text-center text-sm text-muted-foreground">
                       Você ainda não criou um viajante.

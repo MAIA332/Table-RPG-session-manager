@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Button } from "./ui/button"
 import { Volume2, Play, Square, Repeat, Activity, Plus, Trash2, Link as LinkIcon, Save, Disc3, Music } from "lucide-react"
+import { createClientId } from "@/lib/client-id"
 
 export interface Track {
   id: string;
@@ -133,7 +134,7 @@ export function Soundpad({ campaignId, currentUserId, players = [], targetUserId
   async function createFolder() {
     const name = folderName.trim()
     if (!name) return
-    const id = `sound-folder-${crypto.randomUUID()}`
+    const id = `sound-folder-${createClientId()}`
     if (await saveFolders([...folders, { id, name, trackIds: [] }])) {
       setFolderName("")
       setActiveFolder(id)

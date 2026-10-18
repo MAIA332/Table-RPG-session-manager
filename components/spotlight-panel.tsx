@@ -5,6 +5,7 @@ import {
   type SpotlightState,
   type SpotlightAction,
 } from "@/lib/combat-model"
+import { createClientId } from "@/lib/client-id"
 const button =
   "rounded-md border border-primary/35 bg-primary/10 px-4 py-3 text-sm font-semibold text-foreground transition hover:border-primary/70 hover:bg-primary/20 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-40"
 export function SpotlightAvatar({
@@ -173,7 +174,7 @@ export function SpotlightPanel({
               dispatch({
                 type: "request",
                 actorId: viewerId,
-                requestId: crypto.randomUUID(),
+                requestId: createClientId(),
               })
             }
           >

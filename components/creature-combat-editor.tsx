@@ -9,6 +9,7 @@ import {
   type Cost,
 } from "@/lib/combat-model"
 import { QTE_CHECKS } from "@/lib/combat-checks"
+import { createClientId } from "@/lib/client-id"
 const input =
   "w-full min-w-0 rounded-lg border border-white/15 bg-zinc-900 p-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
 function Field({ title, children }: { title: string; children: ReactNode }) {
@@ -385,7 +386,7 @@ export function AbilityEditor({
         type="button"
         className="w-full rounded-xl border border-dashed border-amber-300/50 p-4 font-semibold text-amber-200 hover:bg-amber-200/10 focus-visible:ring-2"
         onClick={() => {
-          const a = newAbility("attack", crypto.randomUUID())
+          const a = newAbility("attack", createClientId())
           onChange([...value, a])
           setOpenId(a.id)
         }}

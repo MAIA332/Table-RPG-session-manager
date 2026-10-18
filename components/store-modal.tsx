@@ -19,6 +19,8 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { ItemArtwork } from "./item-artwork"
+import { itemImageUrl } from "@/lib/item-image"
 import {
   formatWeight,
   inventoryStatus,
@@ -224,8 +226,8 @@ export function StoreModal({
                             key={`${id}-${index}`}
                             className="group flex items-center gap-3 p-3 rounded-lg bg-card/60 border border-border/50 hover:border-accent/40 hover:bg-card transition-all"
                           >
-                            <div className="size-9 shrink-0 rounded-md bg-black/40 border border-white/10 flex items-center justify-center">
-                              <Package className="size-4 text-accent/70" />
+                             <div className="shrink-0">
+                               <ItemArtwork name={item.name} imageUrl={item.imageUrl} className="size-9" fallback={<Package className="size-4 text-accent/70" />} />
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="font-bold text-xs text-foreground truncate">
@@ -354,7 +356,7 @@ export function StoreModal({
                                 <Coins className="size-3" /> {item.cost}z
                               </div>
                             </div>
-                            <div className="size-14 mb-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center group-hover:border-accent/30 transition-colors">
+                             {itemImageUrl(item.imageUrl) ? <div className="mb-4"><ItemArtwork name={item.name} imageUrl={item.imageUrl} className="size-20" /></div> : <div className="size-14 mb-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center group-hover:border-accent/30 transition-colors">
                               {item.category === "weapon" && (
                                 <Sword className="size-7 text-accent/70" />
                               )}
@@ -367,8 +369,8 @@ export function StoreModal({
                               {item.category === "accessory" && (
                                 <Gem className="size-7 text-accent/70" />
                               )}
-                            </div>
-                            <div className="pr-16">
+                             </div>}
+                             <div className="pr-16">
                               <p className="font-bold text-sm text-foreground">
                                 {item.name}
                               </p>
@@ -419,7 +421,12 @@ export function StoreModal({
                       </div>
                     </div>
                     <div className="p-6">
-                      <div className="aspect-square max-h-[180px] rounded-xl bg-gradient-to-br from-accent/10 via-black/30 to-black/60 border border-accent/20 flex items-center justify-center">
+                       {itemImageUrl(selectedStoreItem.imageUrl) ? (
+                         <div className="flex flex-col items-center gap-2">
+                           <ItemArtwork name={selectedStoreItem.name} imageUrl={selectedStoreItem.imageUrl} expandable className="h-48 w-full max-w-[280px]" />
+                           <span className="text-[10px] text-muted-foreground">Clique para ampliar a imagem</span>
+                         </div>
+                       ) : <div className="aspect-square max-h-[180px] rounded-xl bg-gradient-to-br from-accent/10 via-black/30 to-black/60 border border-accent/20 flex items-center justify-center">
                         {selectedStoreItem.category === "weapon" && (
                           <Sword className="size-24 text-accent/40" />
                         )}
@@ -432,9 +439,9 @@ export function StoreModal({
                         {selectedStoreItem.category === "accessory" && (
                           <Gem className="size-24 text-accent/40" />
                         )}
-                      </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto px-5 pb-5 custom-scrollbar-sepia">
+                       </div>}
+                     </div>
+                     <div className="flex-1 overflow-y-auto px-5 pb-5 custom-scrollbar-sepia">
                       <div className="space-y-5">
                         <div>
                           <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">

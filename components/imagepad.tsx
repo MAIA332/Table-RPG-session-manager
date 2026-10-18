@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Check, ChevronRight, Eye, EyeOff, Folder, FolderPlus, Image as ImageIcon, Loader2, Pencil, Plus, Search, Send, Trash2, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { GalleryBroadcastRequest, GalleryFolder, GalleryImage } from "@/lib/types"
+import { createClientId } from "@/lib/client-id"
 export type SharedImage = GalleryImage
 export type { GalleryFolder }
 const ROOT_FOLDER: GalleryFolder = { id: "root", name: "Todas as imagens" }
@@ -118,7 +119,7 @@ export function Imagepad({
       return
     }
     const folderId = isGm ? activeFolderId : ownFolder?.id || "root"
-    const image: SharedImage = { id: crypto.randomUUID(), name, url, isPublic: false, folderId, ownerId: myUserId, createdAt: Date.now() }
+    const image: SharedImage = { id: createClientId(), name, url, isPublic: false, folderId, ownerId: myUserId, createdAt: Date.now() }
     if (isGm) updateForGm([...normalizedImages, image])
     else await runAction("add", "add", { image })
     setNewName("")
@@ -139,7 +140,7 @@ export function Imagepad({
     const name = newFolderName.trim()
     if (!isGm || !name) return
     if (normalizedFolders.some((folder) => folder.name.trim().toLowerCase() === name.toLowerCase())) return setError("Já existe uma pasta com esse nome.")
-    const folder = { id: crypto.randomUUID(), name }
+    const folder = { id: createClientId(), name }
     updateForGm(normalizedImages, [...normalizedFolders, folder])
     setActiveFolderId(folder.id)
     setNewFolderName("")

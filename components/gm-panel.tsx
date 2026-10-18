@@ -39,6 +39,8 @@ import {
 import { ItemWeightField } from "./item-weight-field"
 import { weightFields, type ItemWeight } from "@/lib/inventory-weight"
 import { ItemActionsEditor } from "./inventory-equipment"
+import { ItemArtwork } from "./item-artwork"
+import { itemImageUrl, validateItemImageUrl } from "@/lib/item-image"
 import { getItemActions, validateItemAction } from "@/lib/item-mechanics"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
@@ -684,6 +686,7 @@ export function GmPanel({
   const [sysDraft, setSysDraft] = useState<any>({
     name: "",
     category: "weapon",
+    imageUrl: "",
     cost: 100,
     purchasable: true,
     detail: "",
@@ -1114,6 +1117,13 @@ export function GmPanel({
         error instanceof Error ? error.message : "Revise as ações do item.",
       )
     }
+    let imageUrl: string
+    try {
+      imageUrl = validateItemImageUrl(sysDraft.imageUrl)
+    } catch (error) {
+      return alert(error instanceof Error ? error.message : "URL de imagem inválida.")
+    }
+
     let parsedWeight: ItemWeight
     try {
       parsedWeight = weightFields(
@@ -1126,6 +1136,7 @@ export function GmPanel({
     const newEq = {
       ...sysDraft,
       ...parsedWeight,
+      imageUrl,
       actions,
       id:
         sysDraft.id ||
@@ -1151,6 +1162,7 @@ export function GmPanel({
       setSysDraft({
         name: "",
         category: "weapon",
+        imageUrl: "",
         cost: 100,
         purchasable: true,
         detail: "",
@@ -1505,6 +1517,12 @@ export function GmPanel({
                                 }
                                 className={`w-full flex flex-col text-left p-4 rounded-xl border transition-all duration-300 overflow-hidden ${isSelected ? "border-accent bg-accent/5 shadow-[0_0_20px_rgba(var(--accent-rgb, 212,175,55),0.1)]" : "border-white/5 bg-[#161616] hover:border-white/20 hover:bg-[#1a1a1a]"}`}
                               >
+                                {itemImageUrl(item.imageUrl) && (
+                                  <div className="mb-3 flex items-center gap-3">
+                                    <ItemArtwork name={item.name} imageUrl={item.imageUrl} className="size-14" />
+                                    <span className="text-[10px] text-muted-foreground">Imagem do item</span>
+                                  </div>
+                                )}
                                 <div className="flex justify-between items-start w-full gap-2">
                                   <div className="flex flex-col items-start gap-1.5">
                                     <p
@@ -1788,9 +1806,28 @@ export function GmPanel({
                               <option value="false">Não (Loot Oculto)</option>
                             </select>
                           </label>
-                          <label className="col-span-2 flex flex-col gap-1.5">
-                            <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
-                              Regras e Descrição
+                           <div className="col-span-2 flex flex-col gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                             <label className="flex flex-col gap-1.5">
+                               <span className="text-[10px] uppercase tracking-widest font-bold text-amber-200">Imagem do item (opcional)</span>
+                               <input
+                                 type="url"
+                                 value={sysDraft.imageUrl || ""}
+                                 onChange={event => setSysDraft({ ...sysDraft, imageUrl: event.target.value })}
+                                 placeholder="https://exemplo.com/arte-do-item.png"
+                                 maxLength={2048}
+                                 className="rounded-md border border-white/10 bg-[#111] p-2 text-sm text-foreground outline-none focus:border-accent/60"
+                               />
+                               <span className="text-[10px] leading-relaxed text-muted-foreground">Cole uma URL pública HTTPS da imagem. Ela será mostrada na loja e na mochila. Deixe vazio para usar os ícones tradicionais.</span>
+                             </label>
+                             {itemImageUrl(sysDraft.imageUrl) && <div className="flex items-center gap-3">
+                               <ItemArtwork name={sysDraft.name || "Prévia do item"} imageUrl={sysDraft.imageUrl} expandable className="size-20" />
+                               <span className="text-xs text-amber-200">Prévia — clique para ampliar</span>
+                             </div>}
+                             {sysDraft.imageUrl?.trim() && !itemImageUrl(sysDraft.imageUrl) && <p className="text-xs text-red-300">Informe uma URL HTTPS válida ou deixe o campo vazio.</p>}
+                           </div>
+                           <label className="col-span-2 flex flex-col gap-1.5">
+                             <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+                               Regras e Descrição
                             </span>
                             <textarea
                               value={sysDraft.detail}

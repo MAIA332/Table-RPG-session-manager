@@ -1,8 +1,9 @@
+import { createClientId } from "@/lib/client-id"
 /** Identificador operacional, NÃO é um token de autorização. O servidor valida o GM. */
 let instanceCounter = 0
 export function createCombatInstanceId(): string {
   if (typeof globalThis.crypto?.randomUUID === "function")
-    return globalThis.crypto.randomUUID()
+    return createClientId()
   if (typeof globalThis.crypto?.getRandomValues === "function") {
     const values = new Uint32Array(4)
     globalThis.crypto.getRandomValues(values)

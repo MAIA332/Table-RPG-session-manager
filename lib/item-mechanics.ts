@@ -1,3 +1,4 @@
+import { createClientId } from "@/lib/client-id"
 export type ItemResource = "hp" | "mp" | "ip"
 export interface ItemAction {
   id: string
@@ -125,7 +126,7 @@ export function sumItemBonus(bonuses: ItemBonus[], targets: string[]): number {
 }
 export function blankItemAction(): ItemAction {
   return {
-    id: `action-${globalThis.crypto.randomUUID()}`,
+    id: `action-${createClientId()}`,
     name: "Nova habilidade",
     kind: "utility",
     attackDice: "",

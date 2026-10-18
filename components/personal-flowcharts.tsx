@@ -5,6 +5,7 @@ import { ArrowRight, Check, ChevronDown, GitBranch, Link2, Loader2, Minus, Plus,
 import { Button } from "@/components/ui/button"
 import { apiFetch } from "@/lib/client"
 import type { FlowchartNode, PersonalFlowchart } from "@/lib/types"
+import { createClientId } from "@/lib/client-id"
 
 const CANVAS_WIDTH = 2400
 const CANVAS_HEIGHT = 1600
@@ -176,7 +177,7 @@ export function PersonalFlowcharts({ campaignId }: { campaignId: string }) {
       ? (viewport.clientHeight / 2 - currentView.y) / currentView.zoom - NODE_HEIGHT / 2
       : 80
     const node: FlowchartNode = {
-      id: crypto.randomUUID(),
+      id: createClientId(),
       text: "Novo acontecimento",
       x: Math.max(16, Math.min(CANVAS_WIDTH - NODE_WIDTH - 16, x ?? defaultX)),
       y: Math.max(16, Math.min(CANVAS_HEIGHT - NODE_HEIGHT - 16, y ?? defaultY)),
@@ -211,7 +212,7 @@ export function PersonalFlowcharts({ campaignId }: { campaignId: string }) {
     if (!current || !copied) return
     const node: FlowchartNode = {
       ...copied,
-      id: crypto.randomUUID(),
+      id: createClientId(),
       x: Math.min(CANVAS_WIDTH - NODE_WIDTH, copied.x + 32),
       y: Math.min(CANVAS_HEIGHT - NODE_HEIGHT, copied.y + 32),
     }
@@ -266,7 +267,7 @@ export function PersonalFlowcharts({ campaignId }: { campaignId: string }) {
       return
     }
     const exists = chart.edges.some((edge) => edge.from === connectingFrom && edge.to === nodeId)
-    if (!exists) persist({ ...chart, edges: [...chart.edges, { id: crypto.randomUUID(), from: connectingFrom, to: nodeId }] })
+    if (!exists) persist({ ...chart, edges: [...chart.edges, { id: createClientId(), from: connectingFrom, to: nodeId }] })
     setConnectingFrom(null)
   }
 

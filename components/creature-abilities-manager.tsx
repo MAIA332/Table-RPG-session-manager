@@ -10,6 +10,7 @@ import {
 } from "@/lib/combat-model"
 import type { CombatCreature } from "@/lib/combat-types"
 import type { useCombat } from "@/lib/use-combat"
+import { createClientId } from "@/lib/client-id"
 export function CreatureAbilitiesManager({
   creature,
   controller,
@@ -40,7 +41,7 @@ export function CreatureAbilitiesManager({
   const btn =
     "rounded-lg border border-amber-300/30 px-4 py-2 font-semibold text-amber-100 disabled:opacity-40"
   const addQte = (legacy?: string) => {
-    const id = crypto.randomUUID(),
+    const id = createClientId(),
       qte = newAbility("qte", id)
     if (qte.kind !== "qte") return
     setAbilities([
