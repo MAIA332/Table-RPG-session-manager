@@ -1909,7 +1909,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           if (cardRevealTimer.current) clearTimeout(cardRevealTimer.current)
           cardRevealTimer.current = setTimeout(() => setCardReveal(null), 3500)
         }
-        if (event.type === "class-books:played") {
+        // Publicação, atribuição, revogação e conjuração podem alterar
+        // recursos ou modificadores dos personagens; reconciliar em ambos.
+        {
           void apiFetch<{ characters: Character[] }>(`/api/campaigns/${data.campaign.id}`)
             .then(result => {
               if (!Array.isArray(result.characters)) return
@@ -5322,7 +5324,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     <div className="flex flex-col gap-6">
                       {myCharacters.map((c) => (
                         <div key={c.id}>
-                          <CharacterBookShelf campaignId={data.campaign.id} character={c} isGm={isGm} refreshToken={booksRevision} />
+                          <CharacterBookShelf campaignId={data.campaign.id} character={c} isGm={isGm} refreshToken={booksRevision} onCharacterUpdated={applyOptimistic} />
                         <CharacterSheet
                           key={c.id}
                           spotlightActive={
@@ -5376,7 +5378,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     <div className="flex flex-col gap-6">
                       {otherCharacters.map((c) => (
                         <div key={c.id}>
-                          {isGm && <CharacterBookShelf campaignId={data.campaign.id} character={c} isGm refreshToken={booksRevision} />}
+                          {isGm && <CharacterBookShelf campaignId={data.campaign.id} character={c} isGm refreshToken={booksRevision} onCharacterUpdated={applyOptimistic} />}
                         <CharacterSheet
                           key={c.id}
                           spotlightActive={

@@ -1,10 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { BookOpen, Hammer, Layers3, Plus, Save, Trash2, Sparkles, LockKeyhole, WandSparkles, X, Check, Loader2 } from "lucide-react"
 import type { ClassBook, ClassBookEntry, ClassBookProgress, BookKind, CampaignClassBooks, ClassBookDeckView, ClassBookActivity } from "@/lib/class-books"
 import { characterClassIds } from "@/lib/class-books"
+import { PRESET_CHECKS } from "@/lib/combat-checks"
+import { ClassTimerProgress } from "./class-timer-progress"
 
 const id = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
 const field = "w-full rounded-lg border border-white/15 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-amber-500/60"
@@ -21,9 +23,13 @@ interface BooksResponse {
   classes: ClassData[]
   progress: ClassBookProgress
   characterProgress?: CampaignClassBooks["progress"]
+  characterClasses?: Record<string, string[]>
+  characterClassLevels?: Record<string, Record<string, number>>
   deckView?: Record<string, ClassBookDeckView>
   activity?: ClassBookActivity[]
   revision: number
+  serverNow?: number
+  character?: { id: string; name: string; resources?: unknown; customModifiers?: unknown }
 }
 
 async function call(campaignId: string, payload?: Record<string, unknown>, characterId?: string): Promise<BooksResponse & { success?: boolean }> {
@@ -36,12 +42,22 @@ async function call(campaignId: string, payload?: Record<string, unknown>, chara
   return data
 }
 
+const checkTargets = [
+  { value: "all", label: "Todos os testes" },
+  { value: "mig", label: "Vigor (MIG)" },
+  { value: "dex", label: "Destreza (DEX)" },
+  { value: "ins", label: "Intuição (INS)" },
+  { value: "wlp", label: "Vontade (WLP)" },
+  ...PRESET_CHECKS.map(check => ({ value: check.name, label: `Apenas: ${check.name}` })),
+]
+const bonusTargetName = (target: string) => checkTargets.find(c => c.value === target)?.label || target
+
 function blankEntry(): ClassBookEntry {
-  return { id: id("card"), name: "Nova criação", description: "", published: false, tier: 1, rarity: "Comum", materials: [], tags: [] }
+  return { id: id("card"), name: "Nova criação", description: "", published: false, tier: 1, requiredClassLevel: 1, rarity: "Comum", materials: [], tags: [], checkBonuses: [] }
 }
 
 function blankBook(classId: string, kind: BookKind): ClassBook {
-  return { id: id("book"), classId, kind, name: kind === "spellbook" ? "Novo Grimório" : "Livro de Projetos", description: "", unlockMode: "grant", playMode: kind === "spellbook" ? "deck" : "gallery", handLimit: 7, entries: [], updatedAt: Date.now() }
+  return { id: id("book"), classId, kind, name: kind === "spellbook" ? "Novo Grimório" : "Livro de Projetos", description: "", unlockMode: "all", playMode: kind === "spellbook" ? "deck" : "gallery", cooldownSeconds: kind === "spellbook" ? 60 : null, handLimit: 7, entries: [], updatedAt: Date.now() }
 }
 
 function BookCard({ entry, kind, onClick, selected = false, disabled = false }: {
@@ -72,7 +88,7 @@ function BookCard({ entry, kind, onClick, selected = false, disabled = false }: 
       {entry.effects && <p className="mt-2 line-clamp-2 border-t border-white/20 pt-1 italic text-amber-200">{entry.effects}</p>}
       {entry.materials && entry.materials.length > 0 && <p className="mt-1 line-clamp-2 text-amber-300">{entry.materials.map(m => `${m.amount}× ${m.name}`).join(" · ")}</p>}
     </div>
-    <div className="flex justify-between bg-black/50 px-2 py-1 text-[9px] text-white/60"><span>Nível {entry.tier ?? 1}</span><span>{entry.cost ? `${entry.cost.amount} ${entry.cost.resource.toUpperCase()}` : "Sem custo"}</span></div>
+    <div className="flex justify-between bg-black/50 px-2 py-1 text-[9px] text-white/60"><span>Classe Nv. {entry.requiredClassLevel ?? 1} · Carta Nv. {entry.tier ?? 1}</span><span>{entry.cost ? `${entry.cost.amount} ${entry.cost.resource.toUpperCase()}` : "Sem custo"}</span></div>
     <div className="pointer-events-none absolute -inset-12 -translate-x-full rotate-12 bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
   </motion.button>
 }
@@ -89,6 +105,18 @@ export function ClassBooksWorkbench({ campaignId, characters, refreshToken = 0 }
   const update = (patch: Partial<ClassBook>) => setDraft(prev => prev ? { ...prev, ...patch } : prev)
   const editEntry = (entryId: string, patch: Partial<ClassBookEntry>) => setDraft(prev => prev ? { ...prev, entries: prev.entries.map(e => e.id === entryId ? { ...e, ...patch } : e) } : prev)
   const entry = draft?.entries.find(e => e.id === selectedEntry)
+  const selectedCharacter = characters.find(c => c.id === characterId)
+  const selectedClassLevel = (book: ClassBook) =>
+    data?.characterClassLevels?.[characterId]?.[book.classId] ?? 0
+  const getAssigned = (book: ClassBook, card: ClassBookEntry) => {
+    if (!selectedCharacter || !card.published) return false
+    const progress = data?.characterProgress?.[characterId]
+    if ((progress?.denied?.[book.id] || []).includes(card.id)) return false
+    if ((progress?.granted?.[book.id] || []).includes(card.id)) return true
+    const ids = data?.characterClasses?.[characterId] || []
+    const subclasses = progress?.subclassIds || []
+    return book.unlockMode === "all" && [...ids, ...subclasses].includes(book.classId)
+  }
   const mutate = async (payload: Record<string, unknown>) => {
     setSaving(true); setError("")
     try { await call(campaignId, payload); await reload(); return true }
@@ -98,6 +126,18 @@ export function ClassBooksWorkbench({ campaignId, characters, refreshToken = 0 }
   const save = async () => {
     if (!data || !draft) return
     if (await mutate({ action: "save-book", revision: data.revision, book: draft })) setDraft(null)
+  }
+  const publishEntry = async (published: boolean) => {
+    if (!data || !draft || !entry) return
+    const next = { ...draft, entries: draft.entries.map(card => card.id === entry.id ? { ...card, published } : card) }
+    if (await mutate({ action: "save-book", revision: data.revision, book: next })) {
+      setDraft(next)
+      setSelectedEntry(entry.id)
+    }
+  }
+  const assignAll = async (bookId: string, granting: boolean) => {
+    if (!characterId) return
+    await mutate({ action: granting ? "grant-all" : "revoke-all", characterId, bookId })
   }
   return <div className="space-y-4 rounded-2xl border border-violet-500/25 bg-violet-950/10 p-4 text-white">
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -121,11 +161,23 @@ export function ClassBooksWorkbench({ campaignId, characters, refreshToken = 0 }
           <label className="text-xs">Classe / Subclasse<select className={field} value={draft.classId} onChange={e => update({ classId: e.target.value })}>
             {data.classes.map(c => <option key={c.id} value={c.id}>{c.parentClassId ? "↳ " : ""}{c.name}</option>)}</select></label>
           <label className="text-xs">Acesso às cartas<select className={field} value={draft.unlockMode} onChange={e => update({ unlockMode: e.target.value as ClassBook["unlockMode"] })}>
-            <option value="grant">Mestre libera uma por uma</option><option value="all">Todas as cartas publicadas</option></select></label>
+            <option value="all">Automático: cartas publicadas entram no deck da classe</option><option value="grant">Manual: cada carta precisa ser atribuída pelo Mestre</option></select>
+            <span className="mt-1 block text-[11px] text-amber-200">{draft.unlockMode === "grant"
+              ? "Modo manual: PUBLICAR não libera a carta. Escolha um personagem em Atribuir e revogar cartas, abaixo."
+              : "Modo automático: ao publicar, a carta fica disponível no baralho de quem possui esta classe. Revogações individuais continuam valendo."}</span></label>
           {draft.kind === "spellbook" && <>
             <label className="text-xs">Modo do grimório<select className={field} value={draft.playMode || "deck"} onChange={e => update({ playMode: e.target.value as "deck" | "gallery" })}><option value="deck">Deck — comprar, usar, descartar</option><option value="gallery">Grimório — todas as cartas visíveis</option></select></label>
             <label className="text-xs">Máximo de cartas na mão<input className={field} type="number" min={1} max={20} value={draft.handLimit ?? 7} onChange={e => update({ handLimit: Number(e.target.value) })} /></label>
-            <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={draft.allowPlayerReset === true} onChange={e => update({ allowPlayerReset: e.target.checked })} /> Jogador pode embaralhar/reiniciar o deck</label>
+            <div className="space-y-2 rounded-lg border border-amber-500/25 bg-amber-950/10 p-3 text-xs md:col-span-2">
+              <p className="font-bold text-amber-200">Recarga do grimório</p>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={draft.cooldownSeconds != null} onChange={e => update({ cooldownSeconds: e.target.checked ? 60 : null })} /> Ativar cooldown quando o ciclo de cartas acabar</label>
+              {draft.cooldownSeconds != null && <label className="flex flex-wrap items-center gap-2">Tempo de recarga (minutos)
+                <input className={`${field} w-24`} type="number" min={1} max={120} step={1} value={draft.cooldownSeconds / 60} onChange={e => update({ cooldownSeconds: Number(e.target.value) * 60 })} />
+                <span className="text-zinc-400">1 a 120 min; o jogador reinicia após o término.</span>
+              </label>}
+              {draft.cooldownSeconds == null && <label className="flex items-center gap-2"><input type="checkbox" checked={draft.allowPlayerReset === true} onChange={e => update({ allowPlayerReset: e.target.checked })} /> Permitir reinício manual pelo jogador (modo sem cooldown)</label>}
+              <p className="text-zinc-400">A recarga começa após jogar a última carta da mão quando o monte também estiver vazio. O servidor bloqueia o reinício antecipado, inclusive para o Mestre.</p>
+            </div>
           </>}
           <label className="text-xs">URL da capa<input className={field} value={draft.coverUrl || ""} onChange={e => update({ coverUrl: e.target.value })} /></label>
           <label className="text-xs md:col-span-2">Descrição<textarea className={field} rows={2} value={draft.description} onChange={e => update({ description: e.target.value })} /></label>
@@ -140,7 +192,8 @@ export function ClassBooksWorkbench({ campaignId, characters, refreshToken = 0 }
             <label className="text-xs">Imagem (URL)<input className={field} value={entry.imageUrl || ""} onChange={e => editEntry(entry.id, { imageUrl: e.target.value })} /></label>
             <label className="text-xs">Tipo / Escola<input className={field} value={entry.kind || ""} onChange={e => editEntry(entry.id, { kind: e.target.value })} /></label>
             <label className="text-xs">Raridade<input className={field} value={entry.rarity || ""} onChange={e => editEntry(entry.id, { rarity: e.target.value })} /></label>
-            <label className="text-xs">Nível<input type="number" min={1} max={30} className={field} value={entry.tier ?? 1} onChange={e => editEntry(entry.id, { tier: Number(e.target.value) })} /></label>
+            <label className="text-xs">Nível da carta<input type="number" min={1} max={30} className={field} value={entry.tier ?? 1} onChange={e => editEntry(entry.id, { tier: Number(e.target.value) })} /></label>
+             <label className="text-xs">Nível da classe vinculada (exato)<input aria-label="Nível exigido da classe" type="number" min={1} max={30} step={1} className={field} value={entry.requiredClassLevel ?? 1} onChange={e => editEntry(entry.id, { requiredClassLevel: Number(e.target.value) })} /><span className="mt-1 block text-[11px] text-amber-200">Somente personagens com este nível exato na classe do grimório veem e usam a carta.</span></label>
             {draft.kind === "spellbook" && <label className="text-xs">Cópias no deck<input type="number" min={1} max={4} className={field} value={entry.copies ?? 1} onChange={e => editEntry(entry.id, { copies: Number(e.target.value) })} /></label>}
             <label className="text-xs">Custo<select className={field} value={entry.cost?.resource || "none"} onChange={e => editEntry(entry.id, { cost: e.target.value === "none" ? undefined : { resource: e.target.value as "mp" | "hp", amount: entry.cost?.amount ?? 0 } })}><option value="none">Sem custo</option><option value="mp">PM</option><option value="hp">PV</option></select></label>
             {entry.cost && <label className="text-xs">Quantidade de custo<input className={field} type="number" min={0} value={entry.cost.amount} onChange={e => editEntry(entry.id, { cost: { ...entry.cost!, amount: Number(e.target.value) } })} /></label>}
@@ -155,7 +208,37 @@ export function ClassBooksWorkbench({ campaignId, characters, refreshToken = 0 }
                 <button className={ghost} onClick={() => editEntry(entry.id, { materials: [...(entry.materials || []), { name: "", amount: 1 }] })}>+ Material</button>
               </div>
             </>}
-            <label className="flex items-center gap-2 text-xs sm:col-span-2"><input type="checkbox" checked={entry.published} onChange={e => editEntry(entry.id, { published: e.target.checked })} /> Publicada (rascunhos nunca aparecem para jogadores)</label>
+            {draft.kind === "spellbook" && <div className="sm:col-span-2 space-y-3 rounded-xl border border-violet-400/25 bg-violet-950/10 p-3">
+              <div className="flex items-center justify-between gap-2"><div><p className="text-xs font-bold text-violet-200">Bônus automáticos nas rolagens</p><p className="text-[11px] text-zinc-400">Ativados após conjurar e descontar PV/PM. Bônus temporários expiram sozinhos; repetir a carta renova a duração sem acumular.</p></div>
+                <button type="button" className={ghost} disabled={(entry.checkBonuses?.length ?? 0) >= 12} onClick={() => editEntry(entry.id, { checkBonuses: [...(entry.checkBonuses || []), { target: "all", value: 1 }] })}><Plus size={13} className="inline" /> Bônus</button></div>
+              {(entry.checkBonuses || []).map((bonus, index) => <div className="flex flex-wrap items-center gap-2" key={`${index}-${bonus.target}`}>
+                <select className={`${field} min-w-[190px] flex-1`} aria-label={`Alvo do bônus ${index + 1}`} value={bonus.target} onChange={e => editEntry(entry.id, { checkBonuses: (entry.checkBonuses || []).map((b, i) => i === index ? { ...b, target: e.target.value } : b) })}>
+                  {checkTargets.map(target => <option key={target.value} value={target.value}>{target.label}</option>)}
+                </select>
+                <label className="flex items-center gap-1 text-xs">+ <input className={`${field} w-20`} aria-label={`Valor do bônus ${index + 1}`} type="number" min={1} max={50} step={1} value={bonus.value} onChange={e => editEntry(entry.id, { checkBonuses: (entry.checkBonuses || []).map((b, i) => i === index ? { ...b, value: Number(e.target.value) } : b) })} /></label>
+                <button type="button" className="rounded border border-red-500/30 px-2 py-2 text-red-300" aria-label="Remover bônus" onClick={() => editEntry(entry.id, { checkBonuses: (entry.checkBonuses || []).filter((_, i) => i !== index) })}><Trash2 size={14}/></button>
+              </div>)}
+              <div className="rounded-lg border border-violet-500/20 p-2 text-xs">
+                <label className="flex flex-wrap items-center gap-2">Duração dos bônus
+                  <select className={`${field} w-44`} value={entry.bonusDurationSeconds == null ? "unlimited" : "timed"} onChange={e => editEntry(entry.id, { bonusDurationSeconds: e.target.value === "timed" ? 60 : null })}>
+                    <option value="unlimited">Ilimitado</option><option value="timed">Temporário</option>
+                  </select>
+                </label>
+                {entry.bonusDurationSeconds != null && <label className="mt-2 flex items-center gap-2">Segundos
+                  <input type="number" className={`${field} w-24`} min={10} max={600} step={1} value={entry.bonusDurationSeconds} onChange={e => editEntry(entry.id, { bonusDurationSeconds: Number(e.target.value) })} />
+                  <span className="text-zinc-400">10 segundos a 10 minutos</span>
+                </label>}
+              </div>
+              {!!entry.checkBonuses?.length && <p className="text-[11px] text-amber-200">{entry.checkBonuses.map(b => `+${b.value} ${bonusTargetName(b.target)}`).join(" · ")}</p>}
+            </div>}
+            <div className="sm:col-span-2 flex flex-wrap items-center gap-3 rounded-xl border border-white/15 bg-black/30 p-3">
+              <span className={`rounded px-2 py-1 text-xs font-bold ${entry.published ? "bg-emerald-900/50 text-emerald-200" : "bg-amber-950 text-amber-200"}`}>{entry.published ? "PUBLICADA" : "RASCUNHO"}</span>
+              <button type="button" disabled={saving || entry.published} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-40" onClick={() => void publishEntry(true)}>Publicar carta agora</button>
+              <button type="button" disabled={saving || !entry.published} className={ghost} onClick={() => void publishEntry(false)}>Voltar para rascunho</button>
+              <p className="w-full text-[11px] text-zinc-400">{draft.unlockMode === "grant"
+                ? "Publicar apenas prepara a carta: selecione o viajante em Atribuir e revogar cartas, abaixo, e clique Atribuir."
+                : "Publicar libera a carta automaticamente para personagens da classe, salvo se houver uma revogação individual."} Rascunhos nunca podem ser conjurados.</p>
+            </div>
           </div>
         </div>}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/15 pt-3">
@@ -175,25 +258,50 @@ export function ClassBooksWorkbench({ campaignId, characters, refreshToken = 0 }
             <button className={ghost} disabled={saving} onClick={() => void mutate({ action: "resolve-craft", activityId: a.id, status: "rejected" })}>Recusar</button></div>
         })}
       </div>
-      <div className="space-y-2 border-t border-white/10 pt-3">
-        <h4 className="flex items-center gap-2 text-xs font-bold text-violet-200"><LockKeyhole size={14} /> Conceder cartas a personagens</h4>
-        <select className={field} value={characterId} onChange={e => setCharacterId(e.target.value)}><option value="">Selecione um personagem</option>{characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-        {characterId && data.books.filter(book => book.unlockMode === "grant").map(book => <div key={book.id} className="rounded-lg border border-white/10 p-2"><p className="mb-2 text-xs font-bold">{book.name}</p>
-          <div className="flex flex-wrap gap-2">{book.entries.filter(e => e.published).map(entry => {
-            const granted = (data.characterProgress?.[characterId]?.granted?.[book.id] || []).includes(entry.id)
-            return <button key={entry.id} disabled={saving} className={`${ghost} ${granted ? "border-emerald-400/70 text-emerald-200" : ""}`} onClick={() => void mutate({ action: granted ? "revoke" : "grant", characterId, bookId: book.id, entryId: entry.id })}>{granted ? <Check size={13} className="inline" /> : <Plus size={13} className="inline" />} {entry.name}</button>
-          })}</div>
-        </div>)}
-      </div>
+       <div className="space-y-3 border-t border-white/10 pt-4">
+         <h4 className="flex items-center gap-2 text-sm font-bold text-violet-200"><LockKeyhole size={16} /> Atribuir e revogar cartas dos jogadores</h4>
+         <p className="text-xs text-zinc-400">Selecione qualquer viajante da campanha. A atribuição fica salva no MongoDB e pode ser revertida imediatamente. Publicação e atribuição são controles independentes.</p>
+         <select className={field} aria-label="Personagem para atribuir cartas" value={characterId} onChange={e => setCharacterId(e.target.value)}>
+           <option value="">Selecione um personagem</option>{characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+         </select>
+         {characterId && data.books.map(book => {
+           const published = book.entries.filter(card => card.published)
+           const assigned = published.filter(card => getAssigned(book, card)).length
+           return <section key={book.id} className="rounded-xl border border-white/15 bg-black/30 p-3">
+             <div className="flex flex-wrap items-center justify-between gap-2">
+               <div><p className="text-sm font-bold text-amber-200">{book.name}</p>
+                 <p className="text-[11px] text-zinc-400">{data.classes.find(c => c.id === book.classId)?.name || book.classId} · {book.unlockMode === "all" ? "Liberação automática da classe, com revogação individual" : "Liberação manual"} · {assigned}/{published.length} acessíveis</p>
+               </div>
+               <div className="flex gap-2"><button type="button" disabled={saving || !published.length} className={ghost} onClick={() => void assignAll(book.id, true)}>Atribuir todas</button>
+                 <button type="button" disabled={saving || !published.length} className={ghost} onClick={() => void assignAll(book.id, false)}>Revogar todas</button></div>
+             </div>
+             {!book.entries.length && <p className="mt-3 text-xs text-zinc-500">Nenhuma carta cadastrada.</p>}
+             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{book.entries.map(card => {
+               const granted = getAssigned(book, card)
+               return <div key={card.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 p-2">
+                 <div className="min-w-0"><p className="truncate text-xs font-semibold" title={card.name}>{card.name}</p>
+                   <span className={`text-[10px] ${!card.published ? "text-zinc-500" : granted ? "text-emerald-300" : "text-amber-300"}`}>{!card.published ? "Rascunho — não atribuível" : granted ? "Atribuída" : "Não atribuída"}</span>
+                    {card.published && <p className="text-[10px] text-zinc-400">Exige Nv. {card.requiredClassLevel ?? 1} de {data.classes.find(c => c.id === book.classId)?.name || "classe"} · personagem Nv. {selectedClassLevel(book)}{selectedClassLevel(book) !== (card.requiredClassLevel ?? 1) ? " · bloqueada por nível" : ""}</p>}</div>
+                 <button type="button" disabled={saving || !card.published} className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-bold disabled:opacity-40 ${granted ? "border-red-400/40 text-red-200 hover:bg-red-900/30" : "border-emerald-400/40 text-emerald-200 hover:bg-emerald-900/30"}`}
+                   onClick={() => void mutate({ action: granted ? "revoke" : "grant", characterId, bookId: book.id, entryId: card.id })}>
+                   {granted ? "Revogar" : "Atribuir"}
+                 </button>
+               </div>
+             })}</div>
+           </section>
+         })}
+         {characterId && data.books.length === 0 && <p className="text-xs text-zinc-400">Crie um grimório antes de atribuir cartas.</p>}
+       </div>
     </>}
   </div>
 }
 
-export function CharacterBookShelf({ campaignId, character, isGm = false, refreshToken = 0 }: {
+export function CharacterBookShelf({ campaignId, character, isGm = false, refreshToken = 0, onCharacterUpdated }: {
   campaignId: string
   character: { id: string; name: string; classes?: unknown; ownerId?: string }
   isGm?: boolean
   refreshToken?: number
+  onCharacterUpdated?: (character: any) => void
 }) {
   const [data, setData] = useState<BooksResponse | null>(null)
   const [open, setOpen] = useState(false)
@@ -202,27 +310,58 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [lastPlay, setLastPlay] = useState<string | null>(null)
+  const [clock, setClock] = useState(0)
+  useEffect(() => {
+    setClock(Date.now())
+    const interval = window.setInterval(() => setClock(Date.now()), 500)
+    return () => window.clearInterval(interval)
+  }, [])
+  // Mesma chave idempotente ao repetir uma tentativa após falha de rede.
+  const pendingCastIds = useRef<Record<string, string>>({})
   const load = useCallback(async () => {
     const response = await call(campaignId, undefined, character.id)
     setData(response)
   }, [campaignId, character.id])
-  useEffect(() => { void load().catch(() => undefined) }, [load, refreshToken])
+  // Se a classe evoluir enquanto o grimório está aberto, consulte novamente a API.
+  const characterLevelSignature = JSON.stringify(character.classes ?? [])
+  useEffect(() => { void load().catch(error => setError(error instanceof Error ? error.message : "Falha ao atualizar cartas.")) }, [load, refreshToken, characterLevelSignature])
+  // Reabrir o grimório sempre consulta as permissões mais recentes.
+  useEffect(() => { if (open) void load().catch(error => setError(error instanceof Error ? error.message : "Falha ao atualizar cartas.")) }, [open, load])
   const books = useMemo(() => data?.books || [], [data])
   const activeBook = books.find(b => b.id === bookId) || books[0]
   const progress = data?.progress
   const activeDeck = activeBook ? data?.deckView?.[activeBook.id] : undefined
   const isDeck = activeBook?.kind === "spellbook" && activeBook.playMode !== "gallery"
+  const accessibleCopies = activeBook?.entries.reduce((total, card) => total + (card.copies ?? 1), 0) ?? 0
+  const drawCount = activeDeck?.drawCount ?? accessibleCopies
+  const eligibleCards = activeBook?.entries.length ?? 0
+  const eligibleClassLevel = activeBook ? data?.characterClassLevels?.[character.id]?.[activeBook.classId] : undefined
+  const noAccessibleCards = isDeck && accessibleCopies === 0
+  const hasCooldown = activeBook?.cooldownSeconds != null
+  const cooldownEndsAt = activeDeck?.cooldownUntil || 0
+  const cooldownRunning = hasCooldown && clock > 0 && cooldownEndsAt > clock
+  const cycleExhausted = isDeck && drawCount === 0 && (activeDeck?.hand.length ?? 0) === 0
+  const canRestart = !hasCooldown
+    ? (isGm || activeBook?.allowPlayerReset === true)
+    : Boolean(cycleExhausted && cooldownEndsAt > 0 && !cooldownRunning)
   const visibleCards = activeBook ? (isDeck
     ? (activeDeck?.hand || []).map(entryId => activeBook.entries.find(e => e.id === entryId)).filter((e): e is ClassBookEntry => !!e)
     : activeBook.entries) : []
   const subclasses = data?.classes.filter(c => c.parentClassId && characterClassIds(character).includes(c.parentClassId)) || []
   const useEntry = async (entry: ClassBookEntry) => {
-    if (!activeBook) return
+    if (!activeBook || busy) return
     setBusy(true); setError("")
+    const actionKey = `${character.id}:${activeBook.id}:${entry.id}`
+    const requestId = pendingCastIds.current[actionKey] || id("play")
+    pendingCastIds.current[actionKey] = requestId
     try {
-      await call(campaignId, { action: "use-entry", bookId: activeBook.id, entryId: entry.id, characterId: character.id, requestId: id("play") })
+      const result = await call(campaignId, { action: "use-entry", bookId: activeBook.id, entryId: entry.id, characterId: character.id, requestId })
+      delete pendingCastIds.current[actionKey]
+      if (result.character) onCharacterUpdated?.(result.character)
       setLastPlay(entry.id)
-      await load()
+      // Uma falha de GET após conjurar não deve levar a novo débito.
+      try { await load() }
+      catch { setError("Carta utilizada com sucesso, mas a biblioteca não pôde ser atualizada. Reabra o grimório para conferir.") }
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível utilizar a carta.") }
     finally { setBusy(false) }
   }
@@ -236,7 +375,7 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
       <motion.div initial={{ y: 35, scale: .94 }} animate={{ y: 0, scale: 1 }} exit={{ scale: .96, opacity: 0 }} onClick={e => e.stopPropagation()} className="relative max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-2xl border border-amber-700/30 bg-[#0b0b14] p-5 text-white shadow-[0_0_80px_rgba(107,73,194,.19)]">
         <button type="button" onClick={() => setOpen(false)} className="absolute right-4 top-4 rounded-lg bg-white/10 p-2"><X size={18} /></button>
         <h2 className="flex items-center gap-3 pr-10 font-serif text-2xl font-bold text-amber-200"><BookOpen size={26} /> Biblioteca de {character.name}</h2>
-        <p className="mb-5 mt-1 text-xs text-zinc-400">As cartas conhecidas são liberadas pelo mestre. Magias consomem o recurso configurado; projetos são solicitações de fabricação.</p>
+        <p className="mb-5 mt-1 text-xs text-zinc-400">Somente cartas publicadas e liberadas podem ser usadas. Magias descontam o recurso configurado e ativam os bônus programados; projetos são solicitações de fabricação.</p>
         {subclasses.length > 0 && <div className="mb-5 rounded-xl border border-violet-500/25 bg-violet-950/20 p-3"><p className="mb-2 text-xs font-bold text-violet-200">Escolher subclasse</p>
           <div className="flex flex-wrap gap-2">{subclasses.map(sub => <button key={sub.id} disabled={busy} className={`${ghost} ${progress?.subclassIds.includes(sub.id) ? "border-amber-400 text-amber-300" : ""}`} onClick={async () => { setBusy(true); try { await call(campaignId, { action: "select-subclass", characterId: character.id, subclassId: sub.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Erro na especialização") } finally { setBusy(false) } }}>{sub.name} {progress?.subclassIds.includes(sub.id) && "✓"}</button>)}</div>
         </div>}
@@ -244,13 +383,21 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
         {activeBook ? <>
           <p className="mb-3 text-sm text-zinc-300">{activeBook.description}</p>
           {isDeck && <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-indigo-500/30 bg-indigo-950/20 px-4 py-3">
-            <div className="text-xs text-indigo-200"><Layers3 className="mr-2 inline" size={16} /> <strong>{activeDeck?.drawCount ?? activeBook.entries.reduce((sum,e) => sum + (e.copies ?? 1),0)}</strong> no deck · <strong>{activeDeck?.hand.length ?? 0}</strong> na mão · <strong>{activeDeck?.discardPile.length ?? 0}</strong> no descarte</div>
-            <button disabled={busy || (activeDeck?.hand.length ?? 0) >= (activeBook.handLimit ?? 7)} className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold disabled:opacity-50" onClick={async () => { setBusy(true); setError(""); try { await call(campaignId, { action: "draw", characterId: character.id, bookId: activeBook.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Não foi possível comprar carta.") } finally { setBusy(false) } }}><Sparkles size={14} className="mr-1 inline" /> Comprar carta</button>
-            {(isGm || activeBook.allowPlayerReset === true) && <button disabled={busy} className={ghost} onClick={async () => { if (!window.confirm("Reunir a mão e descarte, e embaralhar o deck novamente?")) return; setBusy(true); try { await call(campaignId, { action: "reset-deck", characterId: character.id, bookId: activeBook.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Erro ao embaralhar") } finally { setBusy(false) } }}>Embaralhar / Reiniciar</button>}
+            <div className="text-xs text-indigo-200"><Layers3 className="mr-2 inline" size={16} /> <strong>{eligibleCards}</strong> carta(s) do seu nível{eligibleClassLevel ? ` (${eligibleClassLevel})` : ""} · <strong>{drawCount}</strong> no deck · <strong>{activeDeck?.hand.length ?? 0}</strong> na mão · <strong>{activeDeck?.discardPile.length ?? 0}</strong> no descarte</div>
+            <button disabled={busy || noAccessibleCards || drawCount === 0 || (activeDeck?.hand.length ?? 0) >= (activeBook.handLimit ?? 7)} className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold disabled:opacity-50" onClick={async () => { setBusy(true); setError(""); try { await call(campaignId, { action: "draw", characterId: character.id, bookId: activeBook.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Não foi possível comprar carta.") } finally { setBusy(false) } }}><Sparkles size={14} className="mr-1 inline" /> Comprar carta</button>
+            {(isGm || activeBook.allowPlayerReset === true || hasCooldown) && <button disabled={busy || !canRestart} className={ghost} onClick={async () => { if (!window.confirm("Reunir a mão e descarte, e embaralhar o deck novamente?")) return; setBusy(true); try { await call(campaignId, { action: "reset-deck", characterId: character.id, bookId: activeBook.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Erro ao embaralhar") } finally { setBusy(false) } }}>{hasCooldown ? "Reiniciar após recarga" : "Embaralhar / Reiniciar"}</button>}
+            {cooldownRunning && activeDeck?.cooldownStartedAt && <div className="w-full"><ClassTimerProgress label="Recarga do grimório" startedAt={activeDeck.cooldownStartedAt} endsAt={cooldownEndsAt} /></div>}
+            {hasCooldown && cycleExhausted && !cooldownRunning && cooldownEndsAt > 0 && <p className="w-full text-xs text-emerald-300">Recarga concluída. Você já pode reiniciar o baralho.</p>}
           </div>}
-          {visibleCards.length === 0 ? <div className="rounded-xl border border-dashed border-white/20 p-10 text-center text-zinc-400"><BookOpen size={36} className="mx-auto mb-2" /> {isDeck ? "Sua mão está vazia. Compre uma carta para começar." : "Este livro ainda não possui cartas liberadas."}</div> : <div className="flex flex-wrap justify-center gap-5 py-3">
+          {noAccessibleCards && <div role="status" className="mb-3 rounded-lg border border-amber-500/40 bg-amber-950/25 p-3 text-xs text-amber-200">
+            {activeBook.unlockMode === "grant"
+              ? "Este grimório usa atribuição manual. Apesar de haver cartas publicadas, o Mestre precisa selecionar este personagem em ‘Atribuir e revogar cartas’ e atribuí-las para entrarem no deck."
+              : "Não há cartas deste nível da classe publicadas e liberadas para o personagem. Confira o nível exigido, a classe vinculada, a publicação e a atribuição pelo Mestre."}
+          </div>}
+          {isDeck && accessibleCopies > 0 && drawCount === 0 && (activeDeck?.hand.length ?? 0) === 0 && <p role="status" className="mb-3 rounded-lg border border-amber-500/40 bg-amber-950/25 p-3 text-xs text-amber-200">Todas as cartas disponíveis já foram compradas. {hasCooldown ? "Aguarde a recarga do grimório para reiniciar." : activeDeck?.discardPile.length ? "Peça ao mestre para embaralhar o descarte." : "Confira as cartas em uso e o estado do grimório."}</p>}
+          {visibleCards.length === 0 ? <div className="rounded-xl border border-dashed border-white/20 p-10 text-center text-zinc-400"><BookOpen size={36} className="mx-auto mb-2" /> {noAccessibleCards ? "Nenhuma carta liberada para sua ficha." : isDeck ? "Sua mão está vazia. Compre uma carta para começar." : "Este livro ainda não possui cartas liberadas."}</div> : <div className="flex flex-wrap justify-center gap-5 py-3">
             {visibleCards.map((entry, index) => <motion.div key={`${entry.id}-${index}`} initial={{ opacity: 0, y: 55, rotate: -9 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ type: "spring", stiffness: 170, damping: 18 }} className="space-y-3"><BookCard entry={entry} kind={activeBook.kind} selected={selected === entry.id} onClick={() => setSelected(entry.id)} />
-              {selected === entry.id && <button disabled={busy} className="w-[214px] rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-2 text-xs font-bold disabled:opacity-50" onClick={() => void useEntry(entry)}>{busy ? "Processando..." : activeBook.kind === "spellbook" ? "Conjurar magia" : "Solicitar fabricação"}</button>}</motion.div>)}
+              {selected === entry.id && <div className="w-[214px] space-y-2">{entry.checkBonuses?.length ? <div className="rounded border border-emerald-400/30 bg-emerald-950/20 p-2 text-[11px] text-emerald-200">Ao conjurar ({entry.bonusDurationSeconds == null ? "ilimitado" : `${entry.bonusDurationSeconds}s`}): {entry.checkBonuses.map(b => `+${b.value} ${bonusTargetName(b.target)}`).join(" · ")}</div> : null}<button disabled={busy} className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-2 text-xs font-bold disabled:opacity-50" onClick={() => void useEntry(entry)}>{busy ? "Processando..." : activeBook.kind === "spellbook" ? "Conjurar magia" : "Solicitar fabricação"}</button></div>}</motion.div>)}
           </div>}
           <AnimatePresence>{lastPlay && <motion.div key={lastPlay} initial={{ scale: .7, opacity: 0, filter: "blur(12px)" }} animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }} exit={{ opacity: 0 }} className="mx-auto mt-4 flex max-w-sm items-center justify-center gap-2 rounded-xl border border-amber-400/50 bg-amber-500/10 p-3 text-center text-amber-200"><Sparkles className="animate-pulse" /> {activeBook.kind === "spellbook" ? "Magia conjurada!" : "Pedido de fabricação registrado!"}</motion.div>}</AnimatePresence>
         </> : <p className="text-xs text-zinc-400">Nenhum livro associado às classes desse personagem.</p>}

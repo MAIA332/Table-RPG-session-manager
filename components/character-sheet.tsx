@@ -19,6 +19,8 @@ import { apiFetch } from "@/lib/client"
 import { baseGameClasses, getCampaignClassCatalog } from "@/lib/class-catalog"
 import { canPlayerUpgradeClass, playerVisibleClassCatalog, type CustomClassVisibility } from "@/lib/class-visibility"
 import { CharacterBookShelf } from "./class-books"
+import { ClassTimerProgress } from "./class-timer-progress"
+import { activeClassBookModifiers, isExpiredClassBookModifier } from "@/lib/class-books"
 import { createClientId } from "@/lib/client-id"
 import { InventoryEquipment, WornEquipmentSummary } from "./inventory-equipment"
 import {
@@ -427,7 +429,7 @@ function CombinedChecksPanel({
  * hardcoded nem desconta PM/materiais via estado local. O novo livro é
  * configurado pelo mestre e validado no servidor.
  */
-function BlueprintApp({ character, isGm }: { character: Character; isGm: boolean }) {
+function BlueprintApp({ character, isGm, onCharacterUpdated }: { character: Character; isGm: boolean; onCharacterUpdated?: (updated: Character) => void }) {
   return <div className="space-y-4">
     <div className="rounded-xl border border-amber-600/30 bg-amber-950/15 p-4">
       <h3 className="font-bold text-amber-200">Almanaque de Projetos Magitech</h3>
@@ -437,7 +439,7 @@ function BlueprintApp({ character, isGm }: { character: Character; isGm: boolean
         Nenhum material ou recurso é consumido sem confirmação do servidor.
       </p>
     </div>
-    <CharacterBookShelf campaignId={character.campaignId} character={character} isGm={isGm} />
+    <CharacterBookShelf campaignId={character.campaignId} character={character} isGm={isGm} onCharacterUpdated={onCharacterUpdated} />
   </div>
 }
 
@@ -1478,7 +1480,13 @@ export function CharacterSheet({
   )
   // --- INICIO SOLUÇÃO PERSISTENCIA LAÇOS ---
   // Extrai e separa os Laços escondidos dentro de customModifiers para que o Backend consiga persistir os dados nativamente
-  const allMods = (character as any).customModifiers || []
+  const allMods: any[] = (character as any).customModifiers || []
+  const [modifierClock, setModifierClock] = useState(0)
+  const timedModifierKey = allMods
+    .filter((mod: any) => mod.type === "class_book_effect" && typeof mod.expiresAt === "number")
+    .map((mod: any) => `${mod.id}:${mod.expiresAt}`)
+    .join("|")
+  const activeMods = activeClassBookModifiers(allMods, modifierClock || 0)
   const bondsFromMods: Bond[] = allMods
     .filter((m: any) => m.type === "bond")
     .map((m: any) => ({
@@ -1495,7 +1503,7 @@ export function CharacterSheet({
     ...oldBonds.filter((ob) => !bondsFromMods.some((bm) => bm.id === ob.id)),
   ]
 
-  const displayModifiers = allMods.filter(
+  const displayModifiers = activeMods.filter(
     (m: any) =>
       m.type !== "bond" &&
       !isFreeSkillRecord(m) &&
@@ -1540,6 +1548,38 @@ export function CharacterSheet({
   const resourceCharacterRef = useRef<Character>(character)
   const resourceWriteQueueRef = useRef<Promise<unknown>>(Promise.resolve())
   const resourceWriteCountRef = useRef(0)
+  const expiryRequestRef = useRef(false)
+  const expiryRetryRef = useRef(0)
+
+  useEffect(() => {
+    if (!timedModifierKey) return
+    setModifierClock(Date.now())
+    const timer = window.setInterval(() => setModifierClock(Date.now()), 500)
+    return () => window.clearInterval(timer)
+  }, [timedModifierKey, character.id])
+
+  useEffect(() => {
+    if (!modifierClock || !allMods.some(mod => isExpiredClassBookModifier(mod, modifierClock))) return
+    if (expiryRequestRef.current || Date.now() < expiryRetryRef.current ||
+        itemCommitRef.current || resourceWriteCountRef.current > 0) return
+    expiryRequestRef.current = true
+    expiryRetryRef.current = Date.now() + 5000
+    void apiFetch<{ character?: Character }>(
+      `/api/campaigns/${encodeURIComponent(character.campaignId)}/class-books`,
+      { method: "POST", body: JSON.stringify({ action: "expire-effects", characterId: character.id }) },
+    ).then(result => {
+      if (result.character && resourceWriteCountRef.current === 0) {
+        onOptimistic({ ...resourceCharacterRef.current,
+          customModifiers: (result.character as any).customModifiers,
+          updatedAt: result.character.updatedAt,
+        })
+      }
+    }).catch(() => { expiryRetryRef.current = Date.now() + 7000 })
+      .finally(() => { expiryRequestRef.current = false })
+  // Executa no vencimento, sem confiar num temporizador de aba ativa.
+  }, [modifierClock, timedModifierKey, character.campaignId, character.id])
+
+
   const [expandedContentMounted, setExpandedContentMounted] =
     useState(defaultExpanded)
   const [expansionVisible, setExpansionVisible] = useState(defaultExpanded)
@@ -2301,7 +2341,7 @@ export function CharacterSheet({
         ATTRIBUTE_META[attr].label,
       ])
       const mods = (character as any).customModifiers || []
-      mods.forEach((m: any) => {
+      activeClassBookModifiers(mods, Date.now()).forEach((m: any) => {
         if (m.target === "all" || m.target === attr) {
           modTotal += m.value
         }
@@ -2349,7 +2389,7 @@ export function CharacterSheet({
         ...check.attrs,
       ])
       const mods = (character as any).customModifiers || []
-      mods.forEach((m: any) => {
+      activeClassBookModifiers(mods, Date.now()).forEach((m: any) => {
         if (
           m.target === "all" ||
           check.attrs.includes(m.target) ||
@@ -3208,7 +3248,7 @@ export function CharacterSheet({
                         </div>
                       )}
                       {viewingItem.type === "app-blueprints" && (
-                        <BlueprintApp character={character} isGm={isGm} />
+                        <BlueprintApp character={character} isGm={isGm} onCharacterUpdated={onOptimistic} />
                       )}
                     </div>
 
@@ -4512,6 +4552,7 @@ export function CharacterSheet({
                               </div>
                               <div className="flex gap-2 items-center shrink-0">
                                 {!isGm &&
+                                  mod.type !== "class_book_effect" &&
                                   ((displayResources as any).lp || 0) > 0 &&
                                   editable && (
                                     <Button
@@ -4542,7 +4583,7 @@ export function CharacterSheet({
                                   )}
                                 {isGm && (
                                   <>
-                                    <Button
+                                    {mod.type !== "class_book_effect" && <Button
                                       size="sm"
                                       variant="ghost"
                                       className="h-8 w-8 p-0 text-muted-foreground hover:text-white"
@@ -4552,7 +4593,7 @@ export function CharacterSheet({
                                       }}
                                     >
                                       <Pencil className="size-4" />
-                                    </Button>
+                                    </Button>}
                                     <Button
                                       size="sm"
                                       variant="ghost"
@@ -4575,6 +4616,11 @@ export function CharacterSheet({
                                 )}
                               </div>
                             </div>
+                          )}
+                          {mod.type === "class_book_effect" && (
+                            typeof mod.expiresAt === "number" && typeof mod.startedAt === "number"
+                              ? <ClassTimerProgress label="Bônus mágico ativo" startedAt={mod.startedAt} endsAt={mod.expiresAt} compact />
+                              : <p className="mt-2 text-[11px] text-violet-300">Duração ilimitada</p>
                           )}
                         </div>
                       ))}
