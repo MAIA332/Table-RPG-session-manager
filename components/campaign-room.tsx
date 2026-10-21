@@ -19,6 +19,7 @@ import Image from "next/image"
 
 import { apiFetch } from "@/lib/client"
 import { useRealtime } from "@/lib/use-realtime"
+import type { CustomCheck } from "@/lib/custom-checks"
 import { CharacterCreator } from "@/components/character-creator"
 import { CharacterBookShelf, ClassCardReveal } from "./class-books"
 import { createClientId } from "@/lib/client-id"
@@ -847,6 +848,20 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [customEquipment, setCustomEquipment] = useState<any[]>([])
   const [customClasses, setCustomClasses] = useState<any[]>([])
   const [booksRevision, setBooksRevision] = useState(0)
+  const [customChecks, setCustomChecks] = useState<CustomCheck[]>([])
+  const [customChecksRevision, setCustomChecksRevision] = useState(0)
+  const checksRequestVersion = useRef(0)
+  const refreshCustomChecks = useCallback(async () => {
+    const currentRequest = ++checksRequestVersion.current
+    const response = await apiFetch<{ checks: CustomCheck[]; revision: number }>(
+      `/api/campaigns/${encodeURIComponent(data.campaign.id)}/custom-checks`,
+      { cache: "no-store" },
+    )
+    if (currentRequest !== checksRequestVersion.current) return
+    setCustomChecks(Array.isArray(response.checks) ? response.checks : [])
+    setCustomChecksRevision(Number(response.revision) || 0)
+  }, [data.campaign.id])
+  useEffect(() => { void refreshCustomChecks().catch(console.error) }, [refreshCustomChecks])
   const [cardReveal, setCardReveal] = useState<{ cardName: string; cardImage?: string | null; cardEffects?: string; casterName: string } | null>(null)
   const cardRevealTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (cardRevealTimer.current) clearTimeout(cardRevealTimer.current) }, [])
@@ -1897,6 +1912,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const seenCombatRolls = useRef(new Set<string>())
   const handleEvent = useCallback(
     (event: any) => {
+      if (event.type === "custom-checks:updated") {
+        void refreshCustomChecks().catch(console.error)
+        return
+      }
       if (event.type === "class-books:updated" || event.type === "class-books:played") {
         setBooksRevision(current => current + 1)
         if (event.type === "class-books:played" && event.action === "cast") {
@@ -2495,7 +2514,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         }
       })
     },
-    [data.campaign.id, data.me.id, data.role, refreshGallery, refreshSounds, refreshMaps, combatController.refresh, refreshOwnedInventory],
+    [data.campaign.id, data.me.id, data.role, refreshGallery, refreshSounds, refreshMaps, combatController.refresh, refreshOwnedInventory, refreshCustomChecks],
   )
 
   useEffect(() => {
@@ -2523,7 +2542,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     if (realtimeStatus !== "live") return
     void refreshGallery().catch(console.error)
     void refreshSounds().catch(console.error)
-  }, [data.campaign.id, realtimeStatus, refreshGallery, refreshSounds])
+    void refreshCustomChecks().catch(console.error)
+  }, [data.campaign.id, realtimeStatus, refreshGallery, refreshSounds, refreshCustomChecks])
 
   const applyOptimistic = useCallback(
     (c: Character) =>
@@ -3944,6 +3964,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             <GmPanel
               campaignId={data.campaign.id}
               booksRevision={booksRevision}
+              customChecks={customChecks}
+              customChecksRevision={customChecksRevision}
+              onRefreshCustomChecks={refreshCustomChecks}
               isOpen={showGmPanel}
               onClose={() => setShowGmPanel(false)}
               characters={characters}
@@ -4278,6 +4301,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           activeHazards={activeHazards}
                           customClasses={customClasses}
                           booksRevision={booksRevision}
+                          customChecks={customChecks}
                           customEquipment={customEquipment}
                           onRoll={(
                             attr: string,
@@ -5341,6 +5365,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           isOwned={true}
                           customClasses={customClasses}
                           booksRevision={booksRevision}
+                          customChecks={customChecks}
                           campaignMembers={data.members}
                           campaignCharacters={characters}
                           customEquipment={customEquipment}
@@ -5398,6 +5423,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           customEquipment={customEquipment}
                           customClasses={customClasses}
                           booksRevision={booksRevision}
+                          customChecks={customChecks}
                           onOptimistic={applyOptimistic}
                           onRoll={(
                             attr: string,

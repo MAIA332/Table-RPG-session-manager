@@ -8,6 +8,8 @@ import {
 } from "@/lib/inventory-weight"
 import { CustomItemWeightEditor } from "./item-weight-field"
 import { PRESET_CHECKS } from "@/lib/combat-checks"
+import type { CustomCheck } from "@/lib/custom-checks"
+import { dieLabel } from "@/lib/custom-checks"
 import { CreatureVitals } from "./creature-vitals"
 
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react"
@@ -359,12 +361,23 @@ function CombinedChecksPanel({
   onRoll,
   rollingAttr,
   disabled,
-}: any) {
+  customChecks = [],
+  onCustomRoll,
+}: {
+  character: Character
+  onRoll: (check: (typeof PRESET_CHECKS)[number]) => void
+  onCustomRoll: (check: CustomCheck) => void
+  rollingAttr: string | null
+  disabled: boolean
+  customChecks?: CustomCheck[]
+}) {
   const [search, setSearch] = useState("")
+  const normalizedSearch = search.trim().toLocaleLowerCase()
   const filtered = PRESET_CHECKS.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.desc.toLowerCase().includes(search.toLowerCase()),
+    (c) => c.name.toLocaleLowerCase().includes(normalizedSearch) || c.desc.toLocaleLowerCase().includes(normalizedSearch),
+  )
+  const customFiltered = customChecks.filter(
+    (c) => c.name.toLocaleLowerCase().includes(normalizedSearch) || c.description.toLocaleLowerCase().includes(normalizedSearch),
   )
 
   return (
@@ -380,7 +393,19 @@ function CombinedChecksPanel({
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto custom-scrollbar-sepia pr-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[420px] overflow-y-auto custom-scrollbar-sepia pr-2">
+        {customFiltered.length > 0 && <div className="col-span-full flex items-center gap-2 border-b border-accent/20 pb-2 text-[10px] font-black uppercase tracking-[0.16em] text-accent"><Dices className="size-4" /> Testes especiais do Mestre <span className="ml-auto font-normal text-muted-foreground">{customFiltered.length} disponível(is)</span></div>}
+        {customFiltered.map(check => (
+          <Button key={check.id} type="button" disabled={disabled || rollingAttr === `custom:${check.id}`} variant="outline"
+            className="h-auto min-h-[105px] flex-col items-start justify-start gap-3 rounded-xl border-accent/25 bg-accent/[0.055] p-4 text-left hover:border-accent/60 hover:bg-accent/10" onClick={() => onCustomRoll(check)}>
+            <span className="flex w-full items-center justify-between gap-2"><span className="font-bold text-foreground">{check.name}</span><span className="rounded-full bg-accent/15 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-accent">Especial</span></span>
+            <span className="flex flex-wrap gap-1">{check.dice.map((die, index) => (
+              <span key={index} className="rounded-md border border-accent/25 bg-background/80 px-2 py-1 text-[11px] font-mono font-bold text-accent">{die.kind === "attribute" ? `${dieLabel(die)} (${character.attributes[die.attribute] || "d6"})` : dieLabel(die)}</span>
+            ))}</span>
+            {check.description && <span className="text-[11px] font-normal leading-relaxed text-muted-foreground">{check.description}</span>}
+          </Button>
+        ))}
+        {customFiltered.length > 0 && <div className="col-span-full mt-1 border-b border-border/50 pb-2 text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">Testes tradicionais</div>}
         {filtered.map((check) => (
           <Button
             key={check.id}
@@ -402,7 +427,7 @@ function CombinedChecksPanel({
                     >
                       {attr}{" "}
                       <span className="opacity-50">
-                        ({character.attributes[attr]})
+                        ({character.attributes[attr as AttributeKey]})
                       </span>
                     </span>
                   ))}
@@ -414,7 +439,7 @@ function CombinedChecksPanel({
             </div>
           </Button>
         ))}
-        {filtered.length === 0 && (
+        {filtered.length === 0 && customFiltered.length === 0 && (
           <div className="text-sm text-muted-foreground italic text-center col-span-2 py-8">
             Nenhum teste encontrado com esse nome.
           </div>
@@ -1460,6 +1485,7 @@ export function CharacterSheet({
   campaignCharacters = [],
   customClasses = [],
   booksRevision = 0,
+  customChecks = [],
   activeHazards = [],
   customEquipment = [],
   storeFolders = [],
@@ -2493,6 +2519,35 @@ export function CharacterSheet({
         })
 
       if (activeBond) setActiveBond(null) // Consome o laço
+      setRollingAttr(null)
+    }, 800)
+  }
+
+  function handleCustomRoll(check: CustomCheck) {
+    if (rollingAttr || !editable) return
+    // Cada dado é resolvido individualmente; atributos usam o dado atual da ficha.
+    // Evita a limitação de apenas 2 atributos dos testes tradicionais.
+    const dieSizes = check.dice.map(die => die.kind === "fixed"
+      ? die.sides
+      : Number.parseInt(String(character.attributes[die.attribute] || "d6").replace("d", ""), 10))
+    if (dieSizes.length < 1 || dieSizes.length > 10 ||
+        dieSizes.some(sides => !Number.isSafeInteger(sides) || sides < 2 || sides > 1000)) return
+    setRollingAttr(`custom:${check.id}`)
+    window.setTimeout(() => {
+      const attributes = [...new Set(check.dice.filter((die): die is Extract<CustomCheck["dice"][number], {kind:"attribute"}> => die.kind === "attribute").map(die => die.attribute))]
+      let modifier = sumItemBonus(activeItemBonuses, [check.name, ...attributes])
+      activeClassBookModifiers((character as any).customModifiers || [], Date.now()).forEach((mod: any) => {
+        if (mod.target === "all" || mod.target === check.name || attributes.includes(mod.target)) modifier += mod.value
+      })
+      if (activeBond) modifier += activeBond.value
+      const rolls = dieSizes.map(sides => Math.floor(Math.random() * sides) + 1)
+      const total = rolls.reduce((sum, value) => sum + value, 0) + modifier
+      const diceLabels = check.dice.map((die, index) => die.kind === "fixed" ? `d${die.sides}` : String(character.attributes[die.attribute] || "d6"))
+      onRoll?.(`Teste: ${check.name} [${diceLabels.join(" + ")}]`, total, {
+        breakdown: rolls.map((roll, i) => `${diceLabels[i]}: ${roll}`).join(" + "),
+        modifier: modifier || undefined,
+      })
+      if (activeBond) setActiveBond(null)
       setRollingAttr(null)
     }, 800)
   }
@@ -4481,6 +4536,8 @@ export function CharacterSheet({
                   <CombinedChecksPanel
                     character={character}
                     onRoll={handleCombinedRoll}
+                    onCustomRoll={handleCustomRoll}
+                    customChecks={customChecks}
                     rollingAttr={rollingAttr}
                     disabled={!editable}
                   />

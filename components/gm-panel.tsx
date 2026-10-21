@@ -1,6 +1,8 @@
 "use client"
 import { normalizeStoreFolders } from "@/lib/store-folders"
 import { ClassBooksWorkbench } from "./class-books"
+import { CustomChecksWorkbench } from "./custom-checks-workbench"
+import type { CustomCheck } from "@/lib/custom-checks"
 import { getCampaignClassCatalog } from "@/lib/class-catalog"
 import { isClassPublished, type CustomClassVisibility } from "@/lib/class-visibility"
 import { CLASSES } from "@/lib/game-data"
@@ -79,6 +81,9 @@ export interface Member {
 interface GmPanelProps {
   campaignId: string
   booksRevision?: number
+  customChecks: CustomCheck[]
+  customChecksRevision: number
+  onRefreshCustomChecks: () => Promise<void>
   isOpen: boolean
   onClose: () => void
   characters: Character[]
@@ -635,6 +640,9 @@ function createBonusDraft(): GameSkillBonus {
 export function GmPanel({
   campaignId,
   booksRevision = 0,
+  customChecks,
+  customChecksRevision,
+  onRefreshCustomChecks,
   isOpen,
   onClose,
   characters,
@@ -662,7 +670,7 @@ export function GmPanel({
   onStopHazard,
 }: GmPanelProps) {
   const [gmPanelTab, setGmPanelTab] = useState<
-    "catalog" | "custom" | "zenits" | "classes" | "hazards" | "store-config"
+    "catalog" | "custom" | "zenits" | "classes" | "hazards" | "store-config" | "checks"
   >("catalog")
   const [zenitAmount, setZenitAmount] = useState<number | "">("")
   const [selectedLoot, setSelectedLoot] = useState<string | null>(null)
@@ -1280,6 +1288,7 @@ export function GmPanel({
     { id: "catalog", label: "Catálogo", icon: Package },
     { id: "custom", label: "Forjar item", icon: Sword },
     { id: "classes", label: "Classes", icon: GraduationCap },
+    { id: "checks", label: "Testes", icon: Dices },
     { id: "zenits", label: "Zenits", icon: Coins },
     { id: "hazards", label: "Ameaças", icon: Zap },
     { id: "store-config", label: "Loja & Pastas", icon: FolderOpen },
@@ -1554,7 +1563,10 @@ export function GmPanel({
 
             <div className="flex min-h-0 flex-1 flex-col gap-7 overflow-y-auto px-4 py-6 custom-scrollbar-sepia sm:px-8 sm:py-7">
               <div className="flex flex-col gap-6">
-                {gmPanelTab !== "store-config" && (
+                {gmPanelTab === "checks" && (
+                  <CustomChecksWorkbench campaignId={campaignId} checks={customChecks} revision={customChecksRevision} onRefresh={onRefreshCustomChecks} />
+                )}
+                {gmPanelTab !== "store-config" && gmPanelTab !== "checks" && (
                   <div className="flex flex-col gap-3">
                     {gmPanelTab !== "hazards" && gmPanelTab !== "catalog" && (
                       <h5 className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-2">
