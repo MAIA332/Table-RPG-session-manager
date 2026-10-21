@@ -20,14 +20,26 @@ import {
   normalizePortraitFrame,
 } from "@/lib/portrait-frames"
 import type { Character } from "@/lib/types"
+
 class RequestError extends Error {
-  constructor(
-    message: string,
-    public status = 400,
-  ) {
+  constructor(message: string, public status = 400) {
     super(message)
   }
 }
+
+/**
+ * Pontos de Lore pertencem à ficha, mas só podem mudar nas ações transacionais
+ * da Biblioteca de Mecânicas: adjust-lore, learn-card e upgrade-lore-modifier.
+ * Outras alterações da ficha não podem restaurar saldos antigos nem zerá-los.
+ * Também suporta personagens criados antes do campo `resources.lp` existir.
+ */
+function persistedLore(character: Character): number {
+  const lp = (character.resources as Character["resources"] & { lp?: unknown }).lp
+  return typeof lp === "number" && Number.isSafeInteger(lp) && lp >= 0
+    ? lp
+    : 0
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -35,10 +47,12 @@ export async function PATCH(
   const user = await getCurrentUser()
   if (!user)
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+
   const { id } = await params
   const body = await request.json().catch(() => null)
   if (!body || typeof body !== "object" || Array.isArray(body))
     return NextResponse.json({ error: "Dados inválidos." }, { status: 400 })
+
   try {
     const updated = await transactStore((db) => {
       const current = db.characters.get(id)
@@ -52,9 +66,14 @@ export async function PATCH(
         current.ownerId !== user.id
       )
         throw new RequestError("Apenas o dono pode alterar o retrato.", 403)
+
+      // Capturar o LP autoritativo DENTRO da transação, não a partir do payload.
+      // Isso impede que um PATCH com uma ficha antiga reverta um Aprendizado.
+      const authoritativeLp = persistedLore(current)
       const next = structuredClone(current) as Character & {
         customModifiers?: any[]
       }
+
       if (body.avatarUrl !== undefined) {
         const avatar = String(body.avatarUrl).trim()
         if (
@@ -68,6 +87,7 @@ export async function PATCH(
           throw new RequestError("Imagem de retrato inválida ou muito grande.")
         next.avatarUrl = avatar
       }
+
       if (body.resources !== undefined) {
         if (
           !body.resources ||
@@ -76,7 +96,11 @@ export async function PATCH(
         )
           throw new RequestError("Recursos inválidos.")
         for (const [key, value] of Object.entries(body.resources)) {
-          if (key === "ip" || (key === "xp" && role !== "gm")) continue
+          // LP é sempre ignorado aqui, inclusive para GM. Um objeto de
+          // recursos antigo pode incluir `lp`, mas não pode sobrescrevê-lo.
+          // O mestre usa a ação `adjust-lore` na rota class-books.
+          if (key === "lp" || key === "ip" || (key === "xp" && role !== "gm"))
+            continue
           if (!(key in current.resources)) continue
           if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
             throw new RequestError("Recursos devem ser números não negativos.")
@@ -97,6 +121,7 @@ export async function PATCH(
           ;(next.resources as any)[key] = value
         }
       }
+
       for (const key of [
         "skills",
         "attributes",
@@ -114,6 +139,7 @@ export async function PATCH(
             throw new RequestError(`Campo ${key} inválido.`)
           ;(next as any)[key] = value
         }
+
       if (
         !next.attributes ||
         !["dex", "ins", "mig", "wlp"].every((key) =>
@@ -121,6 +147,7 @@ export async function PATCH(
         )
       )
         throw new RequestError("Dados de atributos inválidos.")
+
       if (body.equipment !== undefined) {
         if (
           !Array.isArray(body.equipment) ||
@@ -155,21 +182,34 @@ export async function PATCH(
       for (const key of ["origin", "identity", "theme"] as const)
         if (body[key] !== undefined)
           next[key] = String(body[key]).trim().slice(0, 20000)
+
       next.portraitFrame = normalizePortraitFrame(
         body.portraitFrame ?? current.portraitFrame,
       )
       next.portraitCrop = normalizePortraitCrop(
         body.portraitCrop ?? current.portraitCrop,
       )
+
       const catalog = campaignItemCatalog(db, current.campaignId)
       assertInventoryChange(current, next, catalog)
-      const result = normalizeResources(
+      const normalized = normalizeResources(
         { ...next, updatedAt: Math.max(Date.now(), current.updatedAt + 1) },
         catalog,
       )
+      // A normalização calcula recursos e capacidade, mas não pode apagar LP.
+      // O único valor válido é o que existia no armazenamento no início
+      // DESTA transação (inclusive quando o personagem ainda não tinha LP).
+      const result: Character = {
+        ...normalized,
+        resources: {
+          ...normalized.resources,
+          lp: authoritativeLp,
+        } as Character["resources"],
+      }
       db.characters.set(id, result)
       return { value: result, changed: true }
     })
+
     publish(updated.campaignId, {
       type: "character:updated",
       character: updated,
@@ -178,8 +218,7 @@ export async function PATCH(
   } catch (error) {
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "Não foi possível salvar.",
+        error: error instanceof Error ? error.message : "Não foi possível salvar.",
       },
       {
         status:
@@ -192,6 +231,7 @@ export async function PATCH(
     )
   }
 }
+
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },

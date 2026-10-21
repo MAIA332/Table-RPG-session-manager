@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { BookOpen, Hammer, Layers3, Plus, Save, Trash2, Sparkles, LockKeyhole, WandSparkles, X, Check, Loader2 } from "lucide-react"
+import { createPortal } from "react-dom"
+import { BookOpen, Hammer, Layers3, Plus, Save, Trash2, Sparkles, LockKeyhole, WandSparkles, X, Check, Loader2, GraduationCap, ArrowLeft, ChevronRight, RefreshCw, Eye, BookMarked } from "lucide-react"
 import type { ClassBook, ClassBookEntry, ClassBookProgress, BookKind, CampaignClassBooks, ClassBookDeckView, ClassBookActivity } from "@/lib/class-books"
+import type { BookLevelSummary } from "@/lib/class-books-learning"
 import { characterClassIds } from "@/lib/class-books"
 import { PRESET_CHECKS } from "@/lib/combat-checks"
 import { ClassTimerProgress } from "./class-timer-progress"
@@ -29,6 +31,12 @@ interface BooksResponse {
   activity?: ClassBookActivity[]
   revision: number
   serverNow?: number
+  /** Valores computados no servidor a partir do livro completo; nenhum dado secreto de carta. */
+  levelSummary?: Record<string, BookLevelSummary[]>
+  /** LP disponível, sempre lido da ficha persistida no servidor. */
+  lorePoints?: number
+  /** Identificador revelado somente DEPOIS do débito e desbloqueio persistidos. */
+  learnedEntryId?: string
   character?: { id: string; name: string; resources?: unknown; customModifiers?: unknown }
 }
 
@@ -60,14 +68,55 @@ function blankBook(classId: string, kind: BookKind): ClassBook {
   return { id: id("book"), classId, kind, name: kind === "spellbook" ? "Novo Grimório" : "Livro de Projetos", description: "", unlockMode: "all", playMode: kind === "spellbook" ? "deck" : "gallery", cooldownSeconds: kind === "spellbook" ? 60 : null, handLimit: 7, entries: [], updatedAt: Date.now() }
 }
 
-function BookCard({ entry, kind, onClick, selected = false, disabled = false }: {
+function BookCard({ entry, kind, onClick, selected = false, disabled = false, player = false }: {
   entry: ClassBookEntry
   kind: BookKind
   onClick?: () => void
   selected?: boolean
   disabled?: boolean
+  player?: boolean
 }) {
   const blueprints = kind === "blueprints"
+  if (player) return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={selected}
+      whileHover={{ y: -4 }}
+      whileTap={{ scale: .985 }}
+      transition={{ duration: .18 }}
+      className={`group relative flex min-h-[385px] w-full min-w-0 flex-col overflow-hidden rounded-[22px] border text-left text-card-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${selected ? "border-accent ring-2 ring-accent/30 bg-card" : "border-border/80 bg-card hover:border-accent/50 hover:shadow-lg"} ${disabled ? "opacity-60" : ""}`}
+    >
+      <div className="h-1.5 shrink-0 bg-accent" />
+      <div className="flex min-h-[92px] items-start justify-between gap-3 px-5 pb-3 pt-5">
+        <div className="min-w-0 flex-1">
+          <p className="mb-1 text-[10px] font-black uppercase tracking-[.22em] text-accent">{entry.kind || (blueprints ? "Projeto" : "Arcana")}</p>
+          <h3 className="line-clamp-2 text-xl font-black uppercase leading-[1.05] tracking-tight text-foreground sm:text-[22px]">{entry.name}</h3>
+        </div>
+        <div className="flex size-11 shrink-0 flex-col items-center justify-center rounded-xl border border-accent/35 bg-accent/10 text-accent">
+          <span className="text-[8px] font-black uppercase tracking-wide">Nível</span>
+          <span className="text-xl font-black leading-5">{entry.requiredClassLevel ?? 1}</span>
+        </div>
+      </div>
+      <div className="relative mx-3 flex h-[185px] shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-foreground/[0.035]">
+        {entry.imageUrl ? <img src={entry.imageUrl} alt={`Ilustração de ${entry.name}`} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.045]" /> : <div className="relative flex size-full items-center justify-center overflow-hidden">
+          <div aria-hidden="true" className="absolute -left-10 -top-14 size-44 rounded-full border-[30px] border-accent/10" />
+          <div aria-hidden="true" className="absolute -bottom-16 -right-12 size-48 rounded-full border-[28px] border-foreground/5" />
+          <div className="flex size-24 items-center justify-center rounded-full border border-accent/25 bg-accent/10 text-accent"><span className="font-serif text-7xl font-black leading-none">{blueprints ? "⚒" : "✦"}</span></div>
+        </div>}
+        <span className="absolute bottom-3 left-3 rounded-full border border-border/70 bg-background/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground backdrop-blur-md">{entry.rarity || "Comum"}</span>
+        {selected && <span className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg"><Check size={17}/></span>}
+      </div>
+      <div className="flex flex-1 flex-col gap-3 px-5 pb-4 pt-4">
+        <p className="line-clamp-2 text-[12px] leading-relaxed text-muted-foreground">{entry.description || "Uma criação ainda sem descrição."}</p>
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/70 pt-3">
+          <span className="text-xs font-semibold text-foreground">{entry.cost ? `${entry.cost.amount} ${entry.cost.resource.toUpperCase()}` : "Sem custo"}</span>
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-accent">{selected ? "Selecionada" : "Ver carta"}<ChevronRight size={14}/></span>
+        </div>
+      </div>
+    </motion.button>
+  )
   return <motion.button type="button" layout whileHover={{ y: -7, rotateY: 3, scale: 1.025 }} whileTap={{ scale: 0.98 }}
     onClick={onClick} disabled={disabled}
     className={`group relative isolate flex h-[304px] w-[214px] shrink-0 flex-col overflow-hidden rounded-[17px] border-[5px] text-left shadow-2xl transition-all ${selected ? "border-yellow-300 ring-2 ring-yellow-400/50" : blueprints ? "border-amber-950 bg-amber-950" : "border-indigo-950 bg-indigo-950"} ${disabled ? "opacity-60" : ""}`}
@@ -161,10 +210,15 @@ export function ClassBooksWorkbench({ campaignId, characters, refreshToken = 0 }
           <label className="text-xs">Classe / Subclasse<select className={field} value={draft.classId} onChange={e => update({ classId: e.target.value })}>
             {data.classes.map(c => <option key={c.id} value={c.id}>{c.parentClassId ? "↳ " : ""}{c.name}</option>)}</select></label>
           <label className="text-xs">Acesso às cartas<select className={field} value={draft.unlockMode} onChange={e => update({ unlockMode: e.target.value as ClassBook["unlockMode"] })}>
-            <option value="all">Automático: cartas publicadas entram no deck da classe</option><option value="grant">Manual: cada carta precisa ser atribuída pelo Mestre</option></select>
+            <option value="all">Automático — todas as cartas publicadas são liberadas</option>
+            <option value="grant">Manual — cada carta é atribuída pelo Mestre</option>
+            {draft.kind === "spellbook" && <option value="learn">Aprendizado — gastar 1 LP para descobrir uma carta aleatória</option>}
+          </select>
             <span className="mt-1 block text-[11px] text-amber-200">{draft.unlockMode === "grant"
-              ? "Modo manual: PUBLICAR não libera a carta. Escolha um personagem em Atribuir e revogar cartas, abaixo."
-              : "Modo automático: ao publicar, a carta fica disponível no baralho de quem possui esta classe. Revogações individuais continuam valendo."}</span></label>
+              ? "Modo manual: publicar não libera a carta. O Mestre escolhe quais personagens a recebem."
+              : draft.unlockMode === "learn"
+                ? "O jogador gasta 1 LP para aprender uma carta publicada, ainda desconhecida e de nível permitido. Não vê as cartas bloqueadas. Atribuições do Mestre continuam válidas."
+                : "Modo automático: cartas publicadas e de nível permitido entram no baralho da classe. Revogações individuais continuam valendo."}</span></label>
           {draft.kind === "spellbook" && <>
             <label className="text-xs">Modo do grimório<select className={field} value={draft.playMode || "deck"} onChange={e => update({ playMode: e.target.value as "deck" | "gallery" })}><option value="deck">Deck — comprar, usar, descartar</option><option value="gallery">Grimório — todas as cartas visíveis</option></select></label>
             <label className="text-xs">Máximo de cartas na mão<input className={field} type="number" min={1} max={20} value={draft.handLimit ?? 7} onChange={e => update({ handLimit: Number(e.target.value) })} /></label>
@@ -193,7 +247,7 @@ export function ClassBooksWorkbench({ campaignId, characters, refreshToken = 0 }
             <label className="text-xs">Tipo / Escola<input className={field} value={entry.kind || ""} onChange={e => editEntry(entry.id, { kind: e.target.value })} /></label>
             <label className="text-xs">Raridade<input className={field} value={entry.rarity || ""} onChange={e => editEntry(entry.id, { rarity: e.target.value })} /></label>
             <label className="text-xs">Nível da carta<input type="number" min={1} max={30} className={field} value={entry.tier ?? 1} onChange={e => editEntry(entry.id, { tier: Number(e.target.value) })} /></label>
-             <label className="text-xs">Nível da classe vinculada (exato)<input aria-label="Nível exigido da classe" type="number" min={1} max={30} step={1} className={field} value={entry.requiredClassLevel ?? 1} onChange={e => editEntry(entry.id, { requiredClassLevel: Number(e.target.value) })} /><span className="mt-1 block text-[11px] text-amber-200">Somente personagens com este nível exato na classe do grimório veem e usam a carta.</span></label>
+             <label className="text-xs">Nível mínimo da classe vinculada<input aria-label="Nível exigido da classe" type="number" min={1} max={30} step={1} className={field} value={entry.requiredClassLevel ?? 1} onChange={e => editEntry(entry.id, { requiredClassLevel: Number(e.target.value) })} /><span className="mt-1 block text-[11px] text-amber-200">A partir deste nível da classe, a carta pode ser vista e utilizada, desde que tenha sido liberada.</span></label>
             {draft.kind === "spellbook" && <label className="text-xs">Cópias no deck<input type="number" min={1} max={4} className={field} value={entry.copies ?? 1} onChange={e => editEntry(entry.id, { copies: Number(e.target.value) })} /></label>}
             <label className="text-xs">Custo<select className={field} value={entry.cost?.resource || "none"} onChange={e => editEntry(entry.id, { cost: e.target.value === "none" ? undefined : { resource: e.target.value as "mp" | "hp", amount: entry.cost?.amount ?? 0 } })}><option value="none">Sem custo</option><option value="mp">PM</option><option value="hp">PV</option></select></label>
             {entry.cost && <label className="text-xs">Quantidade de custo<input className={field} type="number" min={0} value={entry.cost.amount} onChange={e => editEntry(entry.id, { cost: { ...entry.cost!, amount: Number(e.target.value) } })} /></label>}
@@ -236,8 +290,10 @@ export function ClassBooksWorkbench({ campaignId, characters, refreshToken = 0 }
               <button type="button" disabled={saving || entry.published} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-40" onClick={() => void publishEntry(true)}>Publicar carta agora</button>
               <button type="button" disabled={saving || !entry.published} className={ghost} onClick={() => void publishEntry(false)}>Voltar para rascunho</button>
               <p className="w-full text-[11px] text-zinc-400">{draft.unlockMode === "grant"
-                ? "Publicar apenas prepara a carta: selecione o viajante em Atribuir e revogar cartas, abaixo, e clique Atribuir."
-                : "Publicar libera a carta automaticamente para personagens da classe, salvo se houver uma revogação individual."} Rascunhos nunca podem ser conjurados.</p>
+                ? "Publicar prepara a carta, mas somente o Mestre poderá atribuí-la."
+                : draft.unlockMode === "learn"
+                  ? "Publicar coloca a carta no conjunto de descobertas possíveis. O jogador não a vê até aprender gastando 1 LP; o Mestre também pode atribuí-la."
+                  : "Publicar libera automaticamente a carta para personagens da classe que atingiram o nível mínimo."} Rascunhos nunca podem ser conjurados.</p>
             </div>
           </div>
         </div>}
@@ -270,7 +326,7 @@ export function ClassBooksWorkbench({ campaignId, characters, refreshToken = 0 }
            return <section key={book.id} className="rounded-xl border border-white/15 bg-black/30 p-3">
              <div className="flex flex-wrap items-center justify-between gap-2">
                <div><p className="text-sm font-bold text-amber-200">{book.name}</p>
-                 <p className="text-[11px] text-zinc-400">{data.classes.find(c => c.id === book.classId)?.name || book.classId} · {book.unlockMode === "all" ? "Liberação automática da classe, com revogação individual" : "Liberação manual"} · {assigned}/{published.length} acessíveis</p>
+                 <p className="text-[11px] text-zinc-400">{data.classes.find(c => c.id === book.classId)?.name || book.classId} · {book.unlockMode === "all" ? "Liberação automática da classe" : book.unlockMode === "learn" ? "Aprendizado (1 LP por carta)" : "Liberação manual"} · {assigned}/{published.length} acessíveis</p>
                </div>
                <div className="flex gap-2"><button type="button" disabled={saving || !published.length} className={ghost} onClick={() => void assignAll(book.id, true)}>Atribuir todas</button>
                  <button type="button" disabled={saving || !published.length} className={ghost} onClick={() => void assignAll(book.id, false)}>Revogar todas</button></div>
@@ -281,7 +337,7 @@ export function ClassBooksWorkbench({ campaignId, characters, refreshToken = 0 }
                return <div key={card.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 p-2">
                  <div className="min-w-0"><p className="truncate text-xs font-semibold" title={card.name}>{card.name}</p>
                    <span className={`text-[10px] ${!card.published ? "text-zinc-500" : granted ? "text-emerald-300" : "text-amber-300"}`}>{!card.published ? "Rascunho — não atribuível" : granted ? "Atribuída" : "Não atribuída"}</span>
-                    {card.published && <p className="text-[10px] text-zinc-400">Exige Nv. {card.requiredClassLevel ?? 1} de {data.classes.find(c => c.id === book.classId)?.name || "classe"} · personagem Nv. {selectedClassLevel(book)}{selectedClassLevel(book) !== (card.requiredClassLevel ?? 1) ? " · bloqueada por nível" : ""}</p>}</div>
+                    {card.published && <p className="text-[10px] text-zinc-400">Exige Nv. {card.requiredClassLevel ?? 1} de {data.classes.find(c => c.id === book.classId)?.name || "classe"} · personagem Nv. {selectedClassLevel(book)}{selectedClassLevel(book) < (card.requiredClassLevel ?? 1) ? " · bloqueada por nível" : ""}</p>}</div>
                  <button type="button" disabled={saving || !card.published} className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-bold disabled:opacity-40 ${granted ? "border-red-400/40 text-red-200 hover:bg-red-900/30" : "border-emerald-400/40 text-emerald-200 hover:bg-emerald-900/30"}`}
                    onClick={() => void mutate({ action: granted ? "revoke" : "grant", characterId, bookId: book.id, entryId: card.id })}>
                    {granted ? "Revogar" : "Atribuir"}
@@ -305,11 +361,17 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
 }) {
   const [data, setData] = useState<BooksResponse | null>(null)
   const [open, setOpen] = useState(false)
+  const triggerButtonRef = useRef<HTMLButtonElement | null>(null)
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null)
+  const modalRef = useRef<HTMLDivElement | null>(null)
   const [bookId, setBookId] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [lastPlay, setLastPlay] = useState<string | null>(null)
+  const [newlyLearned, setNewlyLearned] = useState<{ bookId: string; entryId: string } | null>(null)
+  // Reutiliza o mesmo id na retransmissão se houver falha de rede.
+  const pendingLearningIds = useRef<Record<string, string>>({})
   const [clock, setClock] = useState(0)
   useEffect(() => {
     setClock(Date.now())
@@ -336,6 +398,11 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
   const drawCount = activeDeck?.drawCount ?? accessibleCopies
   const eligibleCards = activeBook?.entries.length ?? 0
   const eligibleClassLevel = activeBook ? data?.characterClassLevels?.[character.id]?.[activeBook.classId] : undefined
+  const levelSummary = activeBook ? (data?.levelSummary?.[activeBook.id] ?? []) : []
+  const availableToLearn = levelSummary.reduce((total, group) => total + group.available, 0)
+  const lorePoints = data?.lorePoints
+  const learnedCard = newlyLearned && activeBook?.id === newlyLearned.bookId
+    ? activeBook.entries.find(card => card.id === newlyLearned.entryId) : undefined
   const noAccessibleCards = isDeck && accessibleCopies === 0
   const hasCooldown = activeBook?.cooldownSeconds != null
   const cooldownEndsAt = activeDeck?.cooldownUntil || 0
@@ -347,6 +414,41 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
   const visibleCards = activeBook ? (isDeck
     ? (activeDeck?.hand || []).map(entryId => activeBook.entries.find(e => e.id === entryId)).filter((e): e is ClassBookEntry => !!e)
     : activeBook.entries) : []
+  const selectedCard = visibleCards.find(entry => entry.id === selected)
+  // O portal impede que transformações/overflow da ficha e da sala recortem o grimório.
+  // O travamento de rolagem é removido ao fechar ou desmontar o componente.
+  useEffect(() => {
+    if (!open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    closeButtonRef.current?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        setOpen(false)
+        return
+      }
+      if (event.key !== "Tab" || !modalRef.current) return
+      const items = [...modalRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )].filter(element => element.getClientRects().length > 0)
+      if (!items.length) return
+      const first = items[0], last = items[items.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener("keydown", onKeyDown)
+      triggerButtonRef.current?.focus()
+    }
+  }, [open])
   const subclasses = data?.classes.filter(c => c.parentClassId && characterClassIds(character).includes(c.parentClassId)) || []
   const useEntry = async (entry: ClassBookEntry) => {
     if (!activeBook || busy) return
@@ -365,46 +467,226 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível utilizar a carta.") }
     finally { setBusy(false) }
   }
+  const learnCard = async () => {
+    if (!activeBook || activeBook.kind !== "spellbook" || activeBook.unlockMode !== "learn" || busy ||
+        !Number.isSafeInteger(lorePoints) || (lorePoints ?? 0) < 1 || availableToLearn < 1) return
+    if (!window.confirm("Gastar 1 Ponto de Lore (LP) para aprender uma carta aleatória deste grimório?")) return
+    setBusy(true); setError("")
+    const bookKey = activeBook.id
+    const requestId = pendingLearningIds.current[bookKey] || id("learn")
+    pendingLearningIds.current[bookKey] = requestId
+    try {
+      const result = await call(campaignId, {
+        action: "learn-card", characterId: character.id, bookId: bookKey, requestId,
+      })
+      // O resultado somente é confirmado após débito de LP + liberação no servidor.
+      delete pendingLearningIds.current[bookKey]
+      if (result.character) onCharacterUpdated?.(result.character)
+      if (result.learnedEntryId) setNewlyLearned({ bookId: bookKey, entryId: result.learnedEntryId })
+      try { await load() }
+      catch { setError("Aprendizado confirmado, mas a lista não foi atualizada. Reabra o grimório.") }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível aprender uma carta.")
+    } finally { setBusy(false) }
+  }
   if (!books.length && !subclasses.length) return null
   return <>
-    <button type="button" className="mb-2 flex items-center gap-2 rounded-lg border border-violet-400/30 bg-violet-950/30 px-3 py-2 text-xs font-semibold text-violet-100 shadow-lg transition hover:scale-[1.01] hover:bg-violet-900/30" onClick={() => { setOpen(true); setBookId(books[0]?.id || null) }}>
-      <BookOpen size={17} className="text-amber-300" /> {books.some(b => b.kind === "spellbook") ? "Abrir Grimório" : "Abrir Livro de Projetos"}
-      {books.length > 1 && <span className="rounded-full bg-white/10 px-2">{books.length} livros</span>}
+    <button type="button" ref={triggerButtonRef}
+      className="mb-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-accent/35 bg-accent/10 px-4 py-2.5 text-xs font-bold text-accent shadow-sm transition hover:border-accent/70 hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      onClick={() => { setOpen(true); setBookId(books[0]?.id || null) }}>
+      <BookOpen size={18} /> {books.some(b => b.kind === "spellbook") ? "Abrir Grimório" : "Abrir Livro de Projetos"}
+      <ChevronRight size={16} className="ml-1" />
+      {books.length > 1 && <span className="rounded-full border border-accent/25 px-2 py-0.5 text-[10px]">{books.length} livros</span>}
     </button>
-    <AnimatePresence>{open && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[880] flex items-center justify-center overflow-auto bg-black/90 p-4 backdrop-blur-md" onClick={() => setOpen(false)}>
-      <motion.div initial={{ y: 35, scale: .94 }} animate={{ y: 0, scale: 1 }} exit={{ scale: .96, opacity: 0 }} onClick={e => e.stopPropagation()} className="relative max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-2xl border border-amber-700/30 bg-[#0b0b14] p-5 text-white shadow-[0_0_80px_rgba(107,73,194,.19)]">
-        <button type="button" onClick={() => setOpen(false)} className="absolute right-4 top-4 rounded-lg bg-white/10 p-2"><X size={18} /></button>
-        <h2 className="flex items-center gap-3 pr-10 font-serif text-2xl font-bold text-amber-200"><BookOpen size={26} /> Biblioteca de {character.name}</h2>
-        <p className="mb-5 mt-1 text-xs text-zinc-400">Somente cartas publicadas e liberadas podem ser usadas. Magias descontam o recurso configurado e ativam os bônus programados; projetos são solicitações de fabricação.</p>
-        {subclasses.length > 0 && <div className="mb-5 rounded-xl border border-violet-500/25 bg-violet-950/20 p-3"><p className="mb-2 text-xs font-bold text-violet-200">Escolher subclasse</p>
-          <div className="flex flex-wrap gap-2">{subclasses.map(sub => <button key={sub.id} disabled={busy} className={`${ghost} ${progress?.subclassIds.includes(sub.id) ? "border-amber-400 text-amber-300" : ""}`} onClick={async () => { setBusy(true); try { await call(campaignId, { action: "select-subclass", characterId: character.id, subclassId: sub.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Erro na especialização") } finally { setBusy(false) } }}>{sub.name} {progress?.subclassIds.includes(sub.id) && "✓"}</button>)}</div>
-        </div>}
-        <div className="mb-4 flex flex-wrap gap-2">{books.map(book => <button key={book.id} onClick={() => { setBookId(book.id); setSelected(null); setLastPlay(null) }} className={`${ghost} ${activeBook?.id === book.id ? "border-amber-400 text-amber-200" : ""}`}>{book.kind === "spellbook" ? <WandSparkles size={13} className="mr-1 inline" /> : <Hammer size={13} className="mr-1 inline" />}{book.name}</button>)}</div>
-        {activeBook ? <>
-          <p className="mb-3 text-sm text-zinc-300">{activeBook.description}</p>
-          {isDeck && <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-indigo-500/30 bg-indigo-950/20 px-4 py-3">
-            <div className="text-xs text-indigo-200"><Layers3 className="mr-2 inline" size={16} /> <strong>{eligibleCards}</strong> carta(s) do seu nível{eligibleClassLevel ? ` (${eligibleClassLevel})` : ""} · <strong>{drawCount}</strong> no deck · <strong>{activeDeck?.hand.length ?? 0}</strong> na mão · <strong>{activeDeck?.discardPile.length ?? 0}</strong> no descarte</div>
-            <button disabled={busy || noAccessibleCards || drawCount === 0 || (activeDeck?.hand.length ?? 0) >= (activeBook.handLimit ?? 7)} className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold disabled:opacity-50" onClick={async () => { setBusy(true); setError(""); try { await call(campaignId, { action: "draw", characterId: character.id, bookId: activeBook.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Não foi possível comprar carta.") } finally { setBusy(false) } }}><Sparkles size={14} className="mr-1 inline" /> Comprar carta</button>
-            {(isGm || activeBook.allowPlayerReset === true || hasCooldown) && <button disabled={busy || !canRestart} className={ghost} onClick={async () => { if (!window.confirm("Reunir a mão e descarte, e embaralhar o deck novamente?")) return; setBusy(true); try { await call(campaignId, { action: "reset-deck", characterId: character.id, bookId: activeBook.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Erro ao embaralhar") } finally { setBusy(false) } }}>{hasCooldown ? "Reiniciar após recarga" : "Embaralhar / Reiniciar"}</button>}
-            {cooldownRunning && activeDeck?.cooldownStartedAt && <div className="w-full"><ClassTimerProgress label="Recarga do grimório" startedAt={activeDeck.cooldownStartedAt} endsAt={cooldownEndsAt} /></div>}
-            {hasCooldown && cycleExhausted && !cooldownRunning && cooldownEndsAt > 0 && <p className="w-full text-xs text-emerald-300">Recarga concluída. Você já pode reiniciar o baralho.</p>}
-          </div>}
-          {noAccessibleCards && <div role="status" className="mb-3 rounded-lg border border-amber-500/40 bg-amber-950/25 p-3 text-xs text-amber-200">
-            {activeBook.unlockMode === "grant"
-              ? "Este grimório usa atribuição manual. Apesar de haver cartas publicadas, o Mestre precisa selecionar este personagem em ‘Atribuir e revogar cartas’ e atribuí-las para entrarem no deck."
-              : "Não há cartas deste nível da classe publicadas e liberadas para o personagem. Confira o nível exigido, a classe vinculada, a publicação e a atribuição pelo Mestre."}
-          </div>}
-          {isDeck && accessibleCopies > 0 && drawCount === 0 && (activeDeck?.hand.length ?? 0) === 0 && <p role="status" className="mb-3 rounded-lg border border-amber-500/40 bg-amber-950/25 p-3 text-xs text-amber-200">Todas as cartas disponíveis já foram compradas. {hasCooldown ? "Aguarde a recarga do grimório para reiniciar." : activeDeck?.discardPile.length ? "Peça ao mestre para embaralhar o descarte." : "Confira as cartas em uso e o estado do grimório."}</p>}
-          {visibleCards.length === 0 ? <div className="rounded-xl border border-dashed border-white/20 p-10 text-center text-zinc-400"><BookOpen size={36} className="mx-auto mb-2" /> {noAccessibleCards ? "Nenhuma carta liberada para sua ficha." : isDeck ? "Sua mão está vazia. Compre uma carta para começar." : "Este livro ainda não possui cartas liberadas."}</div> : <div className="flex flex-wrap justify-center gap-5 py-3">
-            {visibleCards.map((entry, index) => <motion.div key={`${entry.id}-${index}`} initial={{ opacity: 0, y: 55, rotate: -9 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ type: "spring", stiffness: 170, damping: 18 }} className="space-y-3"><BookCard entry={entry} kind={activeBook.kind} selected={selected === entry.id} onClick={() => setSelected(entry.id)} />
-              {selected === entry.id && <div className="w-[214px] space-y-2">{entry.checkBonuses?.length ? <div className="rounded border border-emerald-400/30 bg-emerald-950/20 p-2 text-[11px] text-emerald-200">Ao conjurar ({entry.bonusDurationSeconds == null ? "ilimitado" : `${entry.bonusDurationSeconds}s`}): {entry.checkBonuses.map(b => `+${b.value} ${bonusTargetName(b.target)}`).join(" · ")}</div> : null}<button disabled={busy} className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-2 text-xs font-bold disabled:opacity-50" onClick={() => void useEntry(entry)}>{busy ? "Processando..." : activeBook.kind === "spellbook" ? "Conjurar magia" : "Solicitar fabricação"}</button></div>}</motion.div>)}
-          </div>}
-          <AnimatePresence>{lastPlay && <motion.div key={lastPlay} initial={{ scale: .7, opacity: 0, filter: "blur(12px)" }} animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }} exit={{ opacity: 0 }} className="mx-auto mt-4 flex max-w-sm items-center justify-center gap-2 rounded-xl border border-amber-400/50 bg-amber-500/10 p-3 text-center text-amber-200"><Sparkles className="animate-pulse" /> {activeBook.kind === "spellbook" ? "Magia conjurada!" : "Pedido de fabricação registrado!"}</motion.div>}</AnimatePresence>
-        </> : <p className="text-xs text-zinc-400">Nenhum livro associado às classes desse personagem.</p>}
-        {(data?.activity || []).filter(a => a.action === "craft-request").slice(-5).reverse().map(a => <p key={a.id} className="mt-2 text-xs text-amber-300">Projeto {activeBook?.entries.find(e => e.id === a.entryId)?.name || a.entryId}: {a.status === "approved" ? "aprovado pelo mestre" : a.status === "rejected" ? "recusado" : "aguardando aprovação"}</p>)}
-        {error && <p role="alert" className="mt-3 rounded-lg border border-red-500/40 bg-red-950/30 p-3 text-xs text-red-200">{error}</p>}
-      </motion.div>
-    </motion.div>}</AnimatePresence>
+    {typeof document !== "undefined" && createPortal(
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Grimório de ${character.name}`}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: .2 }}
+            className="fixed inset-0 z-[2000] isolate flex h-[100dvh] w-screen flex-col overflow-hidden bg-background text-foreground"
+          >
+            {/* CABEÇALHO INDEPENDENTE DA SESSÃO: sempre acessível. */}
+            <header className="relative z-30 shrink-0 border-b border-border/80 bg-background shadow-sm">
+              <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-accent" />
+              <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-4">
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground sm:size-12"><BookMarked size={23}/></div>
+                  <div className="min-w-0">
+                    <span className="block text-[9px] font-black uppercase tracking-[.24em] text-accent">Acervo pessoal / {character.name}</span>
+                    <span className="block truncate text-lg font-black uppercase leading-tight tracking-tight sm:text-2xl">O Grimório</span>
+                  </div>
+                </div>
+                <button type="button" ref={closeButtonRef} onClick={() => setOpen(false)}
+                  aria-label="Fechar grimório e voltar à sessão"
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-foreground/[0.045] px-3 text-xs font-bold text-foreground transition hover:border-accent/60 hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:px-5">
+                  <ArrowLeft size={16} /> <span className="hidden sm:inline">Voltar à sessão</span> <X size={16} className="sm:hidden" />
+                </button>
+              </div>
+            </header>
+
+            <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain custom-scrollbar-sepia">
+              <div className="mx-auto w-full max-w-[1500px] space-y-6 px-4 pb-12 pt-5 sm:px-8 sm:pt-8 lg:space-y-8">
+                {/* Seleção de volumes sempre acima do conteúdo de cada grimório. */}
+                {books.length > 0 && <nav aria-label="Seus grimórios" className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar-sepia">
+                  {books.map(book => <button type="button" key={book.id}
+                    aria-pressed={activeBook?.id === book.id}
+                    onClick={() => { setBookId(book.id); setSelected(null); setLastPlay(null); setNewlyLearned(null) }}
+                    className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${activeBook?.id === book.id ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card text-muted-foreground hover:border-accent/40 hover:text-foreground"}`}>
+                    {book.kind === "spellbook" ? <WandSparkles size={15}/> : <Hammer size={15}/>} {book.name}
+                  </button>)}
+                </nav>}
+                {subclasses.length > 0 && <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+                  <p className="text-xs font-bold text-muted-foreground">Especialização</p>
+                  <div className="flex flex-wrap gap-2">{subclasses.map(sub => <button type="button" key={sub.id} disabled={busy}
+                    className={`rounded-full border px-3 py-2 text-xs font-bold transition ${progress?.subclassIds.includes(sub.id) ? "border-accent bg-accent/10 text-accent" : "border-border bg-background text-foreground hover:border-accent/40"}`}
+                    onClick={async () => { setBusy(true); try { await call(campaignId, { action: "select-subclass", characterId: character.id, subclassId: sub.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Erro na especialização") } finally { setBusy(false) } }}>
+                    {sub.name} {progress?.subclassIds.includes(sub.id) && <Check size={13} className="ml-1 inline" />}
+                  </button>)}</div>
+                </div>}
+
+                {activeBook ? <>
+                  {/* Editorial hero com cor dinâmica do tema, sem paleta fixa. */}
+                  <section className="relative isolate overflow-hidden rounded-[26px] border border-border/80 bg-card px-5 py-7 sm:px-9 sm:py-10 lg:px-12">
+                    <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-20 size-72 rounded-full border-[48px] border-accent/10 sm:size-[440px] sm:border-[72px]" />
+                    <div aria-hidden="true" className="pointer-events-none absolute bottom-0 left-0 h-1 w-1/3 bg-accent" />
+                    <div className="relative flex flex-wrap items-end justify-between gap-6">
+                      <div className="max-w-[800px] min-w-0">
+                        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.22em] text-accent">
+                          <span className="size-1.5 rounded-full bg-accent" /> {activeBook.kind === "spellbook" ? "Coleção de Arcanas" : "Coleção de Projetos"}
+                        </div>
+                        <h1 className="break-words text-4xl font-black uppercase leading-[.95] tracking-[-.045em] text-foreground sm:text-5xl lg:text-[68px]">{activeBook.name}</h1>
+                        <p className="mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground">{activeBook.description || "Descubra, organize e utilize as cartas do seu acervo."}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {typeof eligibleClassLevel === "number" && <span className="rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-xs font-bold text-accent">Classe · Nv. {eligibleClassLevel}</span>}
+                        {activeBook.kind === "spellbook" && <span className="rounded-full border border-border bg-background px-4 py-2 text-xs font-bold text-foreground">{activeBook.playMode === "gallery" ? "Galeria" : "Deck de magias"}</span>}
+                      </div>
+                    </div>
+                  </section>
+
+                  <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+                    <section className="min-w-0 space-y-5" aria-label="Cartas do grimório">
+                      {/* Barra de ações compacta em vez da antiga faixa de texto. */}
+                      {isDeck && <div className="rounded-[22px] border border-border bg-card p-4 sm:p-5">
+                        <div className="mb-4 grid grid-cols-3 gap-2 sm:gap-4">
+                          {[
+                            { label: "No monte", amount: drawCount },
+                            { label: "Na mão", amount: activeDeck?.hand.length ?? 0 },
+                            { label: "Descartadas", amount: activeDeck?.discardPile.length ?? 0 },
+                          ].map(stat => <div key={stat.label} className="min-w-0 rounded-xl bg-foreground/[0.035] px-3 py-3 text-center">
+                            <p className="text-2xl font-black tabular-nums text-foreground sm:text-3xl">{stat.amount}</p>
+                            <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{stat.label}</p>
+                          </div>)}
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><Layers3 size={15} className="text-accent" /> {eligibleCards} cartas liberadas</span>
+                          <div className="flex flex-wrap gap-2">
+                            <button type="button" disabled={busy || noAccessibleCards || drawCount === 0 || (activeDeck?.hand.length ?? 0) >= (activeBook.handLimit ?? 7)}
+                              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-accent px-4 py-2 text-xs font-black text-accent-foreground transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40"
+                              onClick={async () => { setBusy(true); setError(""); try { await call(campaignId, { action: "draw", characterId: character.id, bookId: activeBook.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Não foi possível comprar carta.") } finally { setBusy(false) } }}>
+                              <Sparkles size={16}/> Comprar carta <ChevronRight size={15}/>
+                            </button>
+                            {(isGm || activeBook.allowPlayerReset === true || hasCooldown) && <button type="button" disabled={busy || !canRestart}
+                              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-bold text-foreground hover:border-accent/40 disabled:opacity-40"
+                              onClick={async () => { if (!window.confirm("Reunir a mão e descarte, e embaralhar o deck novamente?")) return; setBusy(true); try { await call(campaignId, { action: "reset-deck", characterId: character.id, bookId: activeBook.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Erro ao embaralhar") } finally { setBusy(false) } }}>
+                              <RefreshCw size={14}/> {hasCooldown ? "Reiniciar após recarga" : "Embaralhar / Reiniciar"}
+                            </button>}
+                          </div>
+                        </div>
+                        {cooldownRunning && activeDeck?.cooldownStartedAt && <div className="mt-4"><ClassTimerProgress label="Recarga do grimório" startedAt={activeDeck.cooldownStartedAt} endsAt={cooldownEndsAt} /></div>}
+                        {hasCooldown && cycleExhausted && !cooldownRunning && cooldownEndsAt > 0 && <p className="mt-3 text-xs font-semibold text-emerald-500">Recarga concluída. Você já pode reiniciar o baralho.</p>}
+                      </div>}
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                        <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-accent">Sua coleção</p><h2 className="mt-1 text-2xl font-black uppercase tracking-tight text-foreground">{isDeck ? "Cartas na mão" : "Cartas disponíveis"}<span className="ml-2 text-lg text-muted-foreground">/ {visibleCards.length}</span></h2></div>
+                        {isDeck && <span className="rounded-full border border-border bg-card px-3 py-2 text-[11px] text-muted-foreground">Toque para selecionar</span>}
+                      </div>
+                      {noAccessibleCards && <p role="status" className="rounded-xl border border-accent/30 bg-accent/10 p-4 text-xs leading-relaxed text-foreground">
+                        {activeBook.unlockMode === "grant" ? "Este grimório usa atribuição manual. O Mestre precisa atribuir cartas publicadas a este personagem." : activeBook.unlockMode === "learn" ? "Você ainda não possui magias liberadas. Use Aprendizado para descobrir uma carta gastando 1 LP, quando houver cartas elegíveis." : "Não há cartas publicadas e liberadas até o nível da sua classe. Confira a publicação e a liberação pelo Mestre."}
+                      </p>}
+                      {isDeck && accessibleCopies > 0 && cycleExhausted && <p role="status" className="rounded-xl border border-border bg-card p-4 text-xs leading-relaxed text-muted-foreground">Todas as cartas disponíveis já foram compradas. {hasCooldown ? "Aguarde a recarga para reiniciar." : activeDeck?.discardPile.length ? "Peça ao Mestre para embaralhar o descarte." : "Confira o estado do grimório."}</p>}
+                      {visibleCards.length === 0 ? <div className="flex min-h-[250px] flex-col items-center justify-center gap-3 rounded-[22px] border border-dashed border-border bg-card/60 px-5 py-10 text-center">
+                        <div className="flex size-16 items-center justify-center rounded-2xl bg-accent/10 text-accent"><BookOpen size={30}/></div>
+                        <h3 className="text-lg font-black uppercase text-foreground">{noAccessibleCards ? "Ainda não há cartas liberadas" : isDeck ? "Sua mão está vazia" : "Nenhuma carta disponível"}</h3>
+                        <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">{noAccessibleCards ? "Aprenda novas cartas ou aguarde a liberação do Mestre." : isDeck ? "Compre uma carta do monte para começar a conjurar." : "Quando houver cartas liberadas, elas aparecerão aqui."}</p>
+                      </div> : <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3">
+                        {visibleCards.map((entry, index) => <motion.div key={`${entry.id}-${index}`}
+                          initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .23, delay: Math.min(index, 7) * .035 }}>
+                          <BookCard player entry={entry} kind={activeBook.kind} selected={selected === entry.id} onClick={() => setSelected(selected === entry.id ? null : entry.id)}/>
+                        </motion.div>)}
+                      </div>}
+
+                      <AnimatePresence>{lastPlay && <motion.div key={lastPlay} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-center justify-center gap-2 rounded-xl border border-accent/30 bg-accent/10 p-4 text-center text-sm font-bold text-accent"><Sparkles size={18}/> {activeBook.kind === "spellbook" ? "Magia conjurada!" : "Pedido de fabricação registrado!"}</motion.div>}</AnimatePresence>
+                      {(data?.activity || []).filter(a => a.action === "craft-request").slice(-5).reverse().map(a => <p key={a.id} className="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">Projeto {activeBook.entries.find(e => e.id === a.entryId)?.name || "solicitado"}: {a.status === "approved" ? "aprovado pelo Mestre" : a.status === "rejected" ? "recusado" : "aguardando aprovação"}</p>)}
+                    </section>
+
+                    {/* Informação secundária sempre separada das cartas jogáveis. */}
+                    <aside className="order-first min-w-0 space-y-4 xl:order-last" aria-label="Informações do grimório">
+                      {activeBook.kind === "spellbook" && <section className="overflow-hidden rounded-[22px] border border-border bg-card p-5">
+                        <div className="mb-4 flex items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-sm font-black uppercase text-foreground"><Layers3 size={17} className="text-accent" /> Cartas por nível</h2><span className="rounded-full bg-accent/10 px-2.5 py-1 text-[10px] font-black text-accent">{eligibleClassLevel ?? 0} / 30</span></div>
+                        <p className="mb-4 text-xs leading-relaxed text-muted-foreground">Veja quantas cartas existem. As que você ainda não conhece permanecem secretas.</p>
+                        {data?.levelSummary ? (levelSummary.length ? <div className="space-y-2">
+                          {levelSummary.map(group => <div key={group.level} className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${group.level <= (eligibleClassLevel ?? 0) ? "border-accent/20 bg-accent/[0.045]" : "border-border bg-background opacity-70"}`}>
+                            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-xs font-black text-foreground">{group.level}</div>
+                            <div className="min-w-0 flex-1"><p className="text-xs font-bold text-foreground">Nível {group.level}</p><p className="text-[11px] text-muted-foreground">{group.unlocked} descoberta(s)</p></div>
+                            <div className="flex items-center gap-1.5">{group.level > (eligibleClassLevel ?? 0) && <LockKeyhole size={13} className="text-muted-foreground"/>}<span className="text-lg font-black tabular-nums text-foreground">{group.total}</span><span className="text-[10px] text-muted-foreground">total</span></div>
+                          </div>)}
+                        </div> : <p className="text-xs text-muted-foreground">Nenhuma carta publicada neste grimório.</p>) : <p className="text-xs text-muted-foreground">Resumo aguardando dados do servidor.</p>}
+                      </section>}
+
+                      {activeBook.kind === "spellbook" && activeBook.unlockMode === "learn" && <section className="rounded-[22px] border border-accent/35 bg-accent/[0.055] p-5" aria-label="Aprendizado de cartas">
+                        <div className="mb-3 inline-flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground"><GraduationCap size={22}/></div>
+                        <h2 className="text-2xl font-black uppercase tracking-tight text-foreground">Aprendizado</h2>
+                        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Desbloqueie uma carta aleatória publicada do seu nível ou inferior usando um Ponto de Lore.</p>
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <div className="rounded-xl border border-accent/20 bg-background/70 px-3 py-3"><p className="text-2xl font-black tabular-nums text-foreground">{lorePoints ?? "—"}</p><p className="text-[10px] font-semibold text-muted-foreground">Lore disponível</p></div>
+                          <div className="rounded-xl border border-accent/20 bg-background/70 px-3 py-3"><p className="text-2xl font-black tabular-nums text-foreground">{data?.levelSummary ? availableToLearn : "—"}</p><p className="text-[10px] font-semibold text-muted-foreground">Por descobrir</p></div>
+                        </div>
+                        <button type="button" disabled={busy || !data?.levelSummary || !Number.isSafeInteger(lorePoints) || (lorePoints ?? 0) < 1 || availableToLearn === 0}
+                          onClick={() => void learnCard()}
+                          className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-3 text-xs font-black text-accent-foreground transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40">
+                          {busy ? <Loader2 size={16} className="animate-spin"/> : <Sparkles size={16}/>} Aprender carta · 1 LP
+                        </button>
+                        {data?.levelSummary && availableToLearn === 0 && <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Você já descobriu as cartas disponíveis ou precisa alcançar novos níveis.</p>}
+                        {newlyLearned?.bookId === activeBook.id && <div role="status" aria-live="polite" className="mt-4 flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-foreground"><Check size={16} className="shrink-0 text-emerald-500"/><span><strong>Nova carta aprendida!</strong> {learnedCard ? learnedCard.name : "Consulte a coleção para vê-la."}</span></div>}
+                      </section>}
+                      <div className="rounded-[22px] border border-border bg-foreground/[0.025] p-5">
+                        <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-accent"><Eye size={16}/> Regras do acervo</p>
+                        <p className="text-xs leading-relaxed text-muted-foreground">As cartas são liberadas de acordo com seu nível de classe e permissões. Conjurar uma magia aplica os efeitos configurados pelo Mestre.</p>
+                      </div>
+                    </aside>
+                  </div>
+                </> : <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">Nenhum livro associado às classes deste personagem.</div>}
+                {error && <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-xs text-destructive">{error}</p>}
+              </div>
+            </main>
+
+            {/* A ação selecionada é fixa, nunca empurra ou corta os cartões. */}
+            {selectedCard && activeBook && <div className="relative z-20 shrink-0 border-t border-border bg-background/95 px-4 py-3 shadow-[0_-8px_26px_rgba(0,0,0,.08)] backdrop-blur-xl sm:px-8">
+              <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <span className="text-[9px] font-black uppercase tracking-[.2em] text-accent">Carta selecionada</span>
+                  <p className="truncate text-sm font-black text-foreground sm:text-lg">{selectedCard.name}</p>
+                  <p className="line-clamp-2 text-[11px] text-muted-foreground">{selectedCard.effects || selectedCard.description}</p>
+                  {!!selectedCard.checkBonuses?.length && <p className="mt-1 line-clamp-1 text-[11px] text-accent">Ao conjurar ({selectedCard.bonusDurationSeconds == null ? "ilimitado" : `${selectedCard.bonusDurationSeconds}s`}): {selectedCard.checkBonuses.map(b => `+${b.value} ${bonusTargetName(b.target)}`).join(" · ")}</p>}
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button type="button" onClick={() => setSelected(null)} className="flex min-h-11 items-center justify-center rounded-full border border-border px-4 text-xs font-bold text-muted-foreground hover:text-foreground">Cancelar</button>
+                  <button type="button" disabled={busy} onClick={() => void useEntry(selectedCard)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-accent px-5 py-2 text-xs font-black text-accent-foreground hover:brightness-110 disabled:opacity-40">
+                    {busy ? <Loader2 size={16} className="animate-spin"/> : <WandSparkles size={16}/>} {activeBook.kind === "spellbook" ? "Conjurar magia" : "Solicitar fabricação"}
+                  </button>
+                </div>
+              </div>
+            </div>}
+          </motion.div>
+        )}
+      </AnimatePresence>, document.body,
+    )}
   </>
 }
 
@@ -415,10 +697,10 @@ export function ClassCardReveal({ value }: { value: {
   cardEffects?: string
   casterName: string
 } | null }) {
-  return <AnimatePresence>
+  return typeof document !== "undefined" ? createPortal(<AnimatePresence>
     {value && <motion.div key={`${value.casterName}:${value.cardName}`} aria-live="polite"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="pointer-events-none fixed inset-0 z-[950] flex items-center justify-center bg-black/65 p-4 backdrop-blur-[3px]">
+      className="pointer-events-none fixed inset-0 z-[2200] flex items-center justify-center bg-black/65 p-4 backdrop-blur-[3px]">
       <motion.div initial={{ y: 170, scale: .4, rotateY: -120, opacity: 0 }}
         animate={{ y: 0, scale: 1, rotateY: 0, opacity: 1 }}
         exit={{ scale: 1.2, opacity: 0 }} transition={{ type: "spring", damping: 16, stiffness: 115 }}
@@ -432,5 +714,5 @@ export function ClassCardReveal({ value }: { value: {
         {value.cardEffects && <p className="relative line-clamp-3 px-4 py-3 text-xs italic text-zinc-200">{value.cardEffects}</p>}
       </motion.div>
     </motion.div>}
-  </AnimatePresence>
+  </AnimatePresence>, document.body) : null
 }

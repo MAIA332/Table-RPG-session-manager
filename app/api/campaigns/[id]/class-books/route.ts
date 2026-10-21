@@ -26,8 +26,18 @@ import {
 import { getMemberRole, publish, store, transactStore } from "@/lib/store"
 import type { Character, RealtimeEvent } from "@/lib/types"
 import { randomInt } from "node:crypto"
+import { prepareClassBookLearning, summarizeClassBookLevels } from "@/lib/class-books-learning"
 
 type RouteContext = { params: Promise<{ id: string }> }
+
+/** Resultado uniforme de todos os caminhos (incluindo retornos idempotentes). */
+type ClassBookMutationResult = {
+  activity: CampaignClassBooks["activity"][number] | null
+  learnedEntryId: string | null
+  revision: number
+  duplicate: boolean
+  changed: boolean
+}
 
 /**
  * A ficha persiste customModifiers, mesmo em versões antigas de lib/types.ts
@@ -178,7 +188,22 @@ export async function GET(request: Request, context: RouteContext) {
       [character.id]: Object.fromEntries(definitions.map(def => [def.id, characterBookClassLevel(character, def.id, progress, definitions)])),
     } } : {}),
     classes: gm ? allClasses(id) : playerVisibleClassCatalog(allClasses(id), customDefinitions(id)),
-    progress: { subclassIds: progress.subclassIds, granted: progress.granted },
+    // O progresso privado pode conter IDs de cartas ainda acima do nível.
+    // O jogador recebe apenas concessões que já constam dos livros filtrados.
+    progress: { subclassIds: progress.subclassIds, granted: character
+      ? Object.fromEntries(books.map(book => [book.id,
+          (progress.granted[book.id] ?? []).filter(entryId => book.entries.some(entry => entry.id === entryId)),
+        ]))
+      : progress.granted },
+    // Calculado sobre os livros COMPLETOS, antes do filtro de cartas autorizadas.
+    // Apenas os totais numéricos chegam ao cliente; cartas desconhecidas não são expostas.
+    ...(character ? {
+      levelSummary: Object.fromEntries(books.filter(book => book.kind === "spellbook").map(book => {
+        const original = data.books.find(item => item.id === book.id)!
+        return [book.id, summarizeClassBookLevels(original, progress, ids.includes(book.classId), levelFor(original))]
+      })),
+      lorePoints: (character.resources as Character["resources"] & { lp?: number }).lp ?? 0,
+    } : {}),
     // Mesmo antes da primeira compra, mostre o total correto de cartas acessíveis.
     // Para decks antigos, calcule a reconciliação sem escrever durante o GET.
     deckView: Object.fromEntries(character ? books.flatMap((book) => {
@@ -231,9 +256,10 @@ export async function POST(request: Request, context: RouteContext) {
   const entryId = body.entryId
 
   try {
-    const result = await transactStore((draft) => {
+    const result = await transactStore((draft): { value: ClassBookMutationResult; changed: boolean } => {
       const data: CampaignClassBooks = structuredClone(draft.classBooks.get(id) ?? emptyClassBooks())
       let activity: CampaignClassBooks["activity"][number] | null = null
+      let learnedEntryId: string | null = null
       let changed = false
 
       if (action === "save-book") {
@@ -344,6 +370,118 @@ export async function POST(request: Request, context: RouteContext) {
             draft.characters.set(character.id, updatedCharacterWithModifiers(character, modifiers))
         }
         changed = true
+      } else if (action === "learn-card") {
+        // Sorteio, permissão, débito de LP e concessão da carta ocorrem na MESMA
+        // transação do armazenamento: requisições concorrentes não podem gastar
+        // o mesmo ponto duas vezes.
+        if (!validId(characterId) || !validId(bookId) ||
+            typeof body.requestId !== "string" || !/^[a-zA-Z0-9_-]{1,120}$/.test(body.requestId))
+          throw new Error("Dados inválidos para o Aprendizado.")
+        const character = draft.characters.get(characterId)
+        if (!character || character.campaignId !== id || (!gm && character.ownerId !== user.id))
+          throw new Error("Personagem não autorizado.")
+        const progress = data.progress[characterId] ?? { subclassIds: [], granted: {} }
+        // Conferir o recibo ANTES de verificar LP ou novas cartas candidatas.
+        // Um cliente que perdeu a resposta pode enviar o MESMO requestId sem pagar de novo.
+        const receipt = progress.learningReceipts?.[body.requestId]
+        if (receipt) {
+          if (receipt.bookId !== bookId)
+            throw new Error("Identificador de Aprendizado já utilizado em outro grimório.")
+          return {
+            value: { activity: null, learnedEntryId: receipt.entryId,
+              revision: data.revision, duplicate: true, changed: false },
+            changed: false,
+          }
+        }
+        const book = data.books.find(item => item.id === bookId)
+        if (!book || book.kind !== "spellbook" || book.unlockMode !== "learn")
+          throw new Error("Grimório indisponível para Aprendizado.")
+        const hasClass = ownsBookClass(book, character, progress)
+        const level = bookLevel(book, character, progress, id)
+        const prepared = prepareClassBookLearning({
+          book, progress, hasClassAccess: hasClass, classLevel: level,
+          lorePoints: (character.resources as Character["resources"] & { lp?: number }).lp ?? 0,
+        })
+        learnedEntryId = prepared.entryId
+        const next: ClassBookProgress = {
+          ...prepared.nextProgress,
+          learningReceipts: {
+            ...(progress.learningReceipts ?? {}),
+            [body.requestId]: { bookId, entryId: prepared.entryId },
+          },
+        }
+        // Adiciona a carta recém-aprendida ao baralho sem reiniciar mão/descarte.
+        // currentDeck reconcilia cópias e sorteia o monte somente se o pool mudou.
+        if (book.playMode !== "gallery") {
+          next.deck = {
+            ...(progress.deck ?? {}),
+            [bookId]: currentDeck(book, next, hasClass, level, progress.deck?.[bookId]),
+          }
+        }
+        data.progress[characterId] = next
+        draft.characters.set(characterId, updatedCharacterWithModifiers(
+          character, readCharacterModifiers(character),
+          { ...character.resources, lp: prepared.nextLorePoints } as Character["resources"],
+        ))
+        changed = true
+      } else if (action === "adjust-lore") {
+        // O mestre atribui/remaneja Lore no armazenamento, não por PATCH parcial.
+        // A ficha só é atualizada no cliente após o servidor confirmar a mudança.
+        if (!gm) throw new Error("Somente o mestre pode atribuir Pontos de Lore.")
+        if (!validId(characterId) || (body.delta !== 1 && body.delta !== -1))
+          throw new Error("Ajuste de Lore inválido.")
+        const character = draft.characters.get(characterId)
+        if (!character || character.campaignId !== id)
+          throw new Error("Personagem não autorizado.")
+        const current = (character.resources as Character["resources"] & { lp?: number }).lp ?? 0
+        if (!Number.isSafeInteger(current) || current < 0 || current > 10000)
+          throw new Error("Saldo de Lore inválido na ficha.")
+        const nextLore = current + body.delta
+        if (nextLore < 0 || nextLore > 10000)
+          throw new Error("O saldo de Lore deve ficar entre 0 e 10000.")
+        draft.characters.set(characterId, updatedCharacterWithModifiers(
+          character, readCharacterModifiers(character),
+          { ...character.resources, lp: nextLore } as Character["resources"],
+        ))
+        changed = true
+      } else if (action === "upgrade-lore-modifier") {
+        // Lore e modificador são alterados juntos; um erro nunca concede bônus grátis.
+        if (!validId(characterId) || !validId(body.modifierId) ||
+            typeof body.requestId !== "string" || !/^[a-zA-Z0-9_-]{1,120}$/.test(body.requestId))
+          throw new Error("Dados inválidos para melhoria com Lore.")
+        const character = draft.characters.get(characterId)
+        if (!character || character.campaignId !== id || (!gm && character.ownerId !== user.id))
+          throw new Error("Personagem não autorizado.")
+        type LoreProgress = ClassBookProgress & { loreUpgradeReceipts?: Record<string, string> }
+        const progress: LoreProgress = data.progress[characterId] ?? { subclassIds: [], granted: {} }
+        const previouslyUpgraded = progress.loreUpgradeReceipts?.[body.requestId]
+        if (previouslyUpgraded) {
+          if (previouslyUpgraded !== body.modifierId)
+            throw new Error("Identificador de melhoria já utilizado para outro modificador.")
+          return { value: { activity: null, learnedEntryId: null,
+            revision: data.revision, duplicate: true, changed: false }, changed: false }
+        }
+        const current = (character.resources as Character["resources"] & { lp?: number }).lp ?? 0
+        if (!Number.isSafeInteger(current) || current < 1)
+          throw new Error("Pontos de Lore insuficientes.")
+        const modifiers = readCharacterModifiers(character)
+        const target = modifiers.find(mod => mod.id === body.modifierId)
+        if (!target || target.type === "class_book_effect" || target.type === "bond" ||
+            target.target === "sheet_defense_hidden" ||
+            target.id?.startsWith("free_skill:") ||
+            typeof target.value !== "number" || !Number.isSafeInteger(target.value) || target.value >= 1000)
+          throw new Error("Este modificador não pode ser melhorado com Lore.")
+        const updatedMods = modifiers.map(mod => mod.id === body.modifierId
+          ? { ...mod, value: mod.value! + 1 } : mod)
+        draft.characters.set(characterId, updatedCharacterWithModifiers(
+          character, updatedMods, { ...character.resources, lp: current - 1 } as Character["resources"],
+        ))
+        data.progress[characterId] = {
+          ...progress,
+          loreUpgradeReceipts: { ...(progress.loreUpgradeReceipts ?? {}),
+            [body.requestId]: body.modifierId },
+        } as ClassBookProgress
+        changed = true
       } else if (action === "select-subclass") {
         if (!validId(characterId) || !validId(body.subclassId)) throw new Error("Especialização inválida.")
         const character = draft.characters.get(characterId)
@@ -433,14 +571,14 @@ export async function POST(request: Request, context: RouteContext) {
         if (existing) {
           if (existing.characterId !== characterId || existing.bookId !== bookId || existing.entryId !== entryId)
             throw new Error("Identificador de conjuração já utilizado por outra ação.")
-          return { value: { activity: existing, revision: data.revision, duplicate: true, changed: false }, changed: false }
+          return { value: { activity: existing, learnedEntryId: null, revision: data.revision, duplicate: true, changed: false }, changed: false }
         }
         const level = book ? bookLevel(book, character, progress, id) : 0
         if (!book || !canAccessBook(book, progress, ownsBookClass(book, character, progress), level))
           throw new Error("Livro indisponível para o nível atual da classe.")
         const entry = permittedBook(book, progress, ownsBookClass(book, character, progress), level)
           .entries.find((item) => item.id === entryId)
-        if (!entry) throw new Error("Carta indisponível: verifique a publicação, atribuição e o nível EXATO exigido da classe.")
+        if (!entry) throw new Error("Carta indisponível: verifique a publicação, atribuição e o nível mínimo exigido da classe.")
         if (book.kind === "spellbook" && book.playMode !== "gallery") {
           const deck = progress.deck?.[bookId]
           if (!deck || !deck.hand.includes(entryId)) throw new Error("A carta precisa estar na sua mão para ser conjurada.")
@@ -504,9 +642,17 @@ export async function POST(request: Request, context: RouteContext) {
         data.revision += 1
         draft.classBooks.set(id, data)
       }
-      return { value: { activity, revision: data.revision, duplicate: false, changed }, changed }
+      return { value: { activity, learnedEntryId, revision: data.revision, duplicate: false, changed }, changed }
     })
     if (result.changed) publish(id, { type: "class-books:updated" } as RealtimeEvent)
+    // O grimório altera recursos da ficha em transação própria. Notifique
+    // outras abas/jogadores da alteração confirmada, não só da revisão do livro.
+    if (result.changed && validId(characterId) &&
+        ["learn-card", "adjust-lore", "upgrade-lore-modifier"].includes(String(action))) {
+      const updatedCharacter = store.characters.get(characterId)
+      if (updatedCharacter)
+        publish(id, { type: "character:updated", character: updatedCharacter } as RealtimeEvent)
+    }
     if (result.activity && !result.duplicate && result.activity.action === "cast") {
       const latestBook = store.classBooks.get(id)?.books.find(book => book.id === result.activity?.bookId)
       const latestEntry = latestBook?.entries.find(entry => entry.id === result.activity?.entryId)
@@ -524,7 +670,7 @@ export async function POST(request: Request, context: RouteContext) {
       } as unknown as RealtimeEvent)
     }
     return NextResponse.json({ success: true, ...result,
-      ...(action === "expire-effects" && validId(characterId)
+      ...(["expire-effects", "learn-card", "adjust-lore", "upgrade-lore-modifier"].includes(String(action)) && validId(characterId)
         ? { character: store.characters.get(characterId) } : {}),
       ...(result.activity && result.activity.action === "cast"
         ? { character: store.characters.get(result.activity.characterId) } : {}),

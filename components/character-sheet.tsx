@@ -1474,10 +1474,15 @@ export function CharacterSheet({
   expanded,
   onExpandedChange,
 }: any) {
-  const character = useMemo(
-    () => applyInventoryRules(rawCharacter, customEquipment),
-    [rawCharacter, customEquipment],
-  )
+  const character = useMemo(() => {
+    const normalized = applyInventoryRules(rawCharacter, customEquipment)
+    // Pontos de Lore são um recurso persistido; não podem desaparecer quando
+    // a normalização de peso/inventário recalcula os recursos da ficha.
+    const lp = rawCharacter?.resources?.lp
+    return typeof lp === "number" && Number.isSafeInteger(lp) && lp >= 0
+      ? { ...normalized, resources: { ...normalized.resources, lp } }
+      : normalized
+  }, [rawCharacter, customEquipment])
   // --- INICIO SOLUÇÃO PERSISTENCIA LAÇOS ---
   // Extrai e separa os Laços escondidos dentro de customModifiers para que o Backend consiga persistir os dados nativamente
   const allMods: any[] = (character as any).customModifiers || []
@@ -1548,6 +1553,9 @@ export function CharacterSheet({
   const resourceCharacterRef = useRef<Character>(character)
   const resourceWriteQueueRef = useRef<Promise<unknown>>(Promise.resolve())
   const resourceWriteCountRef = useRef(0)
+  const [loreBusy, setLoreBusy] = useState(false)
+  const loreBusyRef = useRef(false)
+  const loreUpgradeRequestIds = useRef<Record<string, string>>({})
   const expiryRequestRef = useRef(false)
   const expiryRetryRef = useRef(0)
 
@@ -1963,7 +1971,8 @@ export function CharacterSheet({
       (!editable && !isGm) ||
       pending ||
       itemCommitRef.current ||
-      resourceWriteCountRef.current > 0
+      resourceWriteCountRef.current > 0 ||
+      loreBusyRef.current
     ) {
       throw new Error("Aguarde o salvamento em andamento da ficha.")
     }
@@ -1998,16 +2007,81 @@ export function CharacterSheet({
     }
   }
 
+  /** O saldo de LP é alterado na mesma transação que alimenta o Grimório. */
+  async function adjustLore(delta: 1 | -1) {
+    if (!isGm || loreBusyRef.current || itemCommitRef.current ||
+        resourceWriteCountRef.current > 0 || pending) return
+    loreBusyRef.current = true
+    setLoreBusy(true)
+    try {
+      const result = await apiFetch<{ character?: Character }>(
+        `/api/campaigns/${encodeURIComponent(character.campaignId)}/class-books`,
+        { method: "POST", body: JSON.stringify({
+          action: "adjust-lore", characterId: character.id, delta,
+        }) },
+      )
+      if (!result.character) throw new Error("Servidor não confirmou o novo saldo de Lore.")
+      const updated = result.character
+      resourceDraftRef.current = updated.resources
+      resourceConfirmedRef.current = updated.resources
+      resourceCharacterRef.current = updated
+      setDisplayResources(updated.resources)
+      onOptimistic(updated)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Não foi possível salvar os Pontos de Lore.")
+    } finally {
+      loreBusyRef.current = false
+      setLoreBusy(false)
+    }
+  }
+
+  /** Debita 1 LP e melhora a condição na mesma operação no servidor. */
+  async function upgradeModifierWithLore(modifierId: string) {
+    if (!editable || isGm || loreBusyRef.current || itemCommitRef.current ||
+        resourceWriteCountRef.current > 0 || pending) return
+    loreBusyRef.current = true
+    setLoreBusy(true)
+    const requestId = loreUpgradeRequestIds.current[modifierId] ?? `lore_${createClientId()}`
+    loreUpgradeRequestIds.current[modifierId] = requestId
+    try {
+      const result = await apiFetch<{ character?: Character }>(
+        `/api/campaigns/${encodeURIComponent(character.campaignId)}/class-books`,
+        { method: "POST", body: JSON.stringify({
+          action: "upgrade-lore-modifier", characterId: character.id,
+          modifierId, requestId,
+        }) },
+      )
+      if (!result.character) throw new Error("Servidor não confirmou a melhoria com Lore.")
+      delete loreUpgradeRequestIds.current[modifierId]
+      const updated = result.character
+      resourceDraftRef.current = updated.resources
+      resourceConfirmedRef.current = updated.resources
+      resourceCharacterRef.current = updated
+      setDisplayResources(updated.resources)
+      onOptimistic(updated)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Não foi possível utilizar Lore.")
+    } finally {
+      loreBusyRef.current = false
+      setLoreBusy(false)
+    }
+  }
+
   function patchResource(key: string, delta: number) {
+    if (key === "lp") {
+      // Lore possui persistência autorizada dedicada; nunca usar PATCH parcial.
+      if (isGm && (delta === -1 || delta === 1)) void adjustLore(delta)
+      return
+    }
     if (key === "ip") {
       alert("IP representa kg livres e é recalculado pelo peso dos itens.")
       return
     }
-    if (itemCommitRef.current) return
+    if (itemCommitRef.current || loreBusyRef.current) return
     const res = resourceDraftRef.current as any
     const next = { ...res }
 
-    if (key === "xp" || key === "fp" || key === "lp" || key.startsWith("max")) {
+    if (key === "xp" || key === "fp" || key.startsWith("max")) {
       next[key] = Math.max(0, (res[key] || 0) + delta)
     } else {
       const maxKey =
@@ -4193,7 +4267,8 @@ export function CharacterSheet({
                         <div className="flex items-center gap-1.5 shrink-0">
                           {isGm && (
                             <button
-                              onClick={() => patchResource("lp", -1)}
+                              disabled={loreBusy || pending}
+                              onClick={() => void adjustLore(-1)}
                               className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-primary hover:bg-primary/10 transition-colors"
                             >
                               <Minus className="size-3 text-primary" />
@@ -4204,7 +4279,8 @@ export function CharacterSheet({
                           </span>
                           {isGm && (
                             <button
-                              onClick={() => patchResource("lp", 1)}
+                              disabled={loreBusy || pending}
+                              onClick={() => void adjustLore(1)}
                               className="flex size-5 items-center justify-center rounded border border-border/60 bg-background hover:border-primary hover:bg-primary/10 transition-colors"
                             >
                               <Plus className="size-3 text-primary" />
@@ -4559,21 +4635,10 @@ export function CharacterSheet({
                                       size="sm"
                                       variant="outline"
                                       className="h-8 border-purple-500/50 text-purple-400 hover:bg-purple-500/20"
+                                      disabled={loreBusy || pending}
                                       onClick={() => {
-                                        if (
-                                          confirm(
-                                            `Gastar 1 Ponto de Lore (LP) para melhorar a condição "${mod.name}" em +1?`,
-                                          )
-                                        ) {
-                                          patchResource("lp", -1)
-                                          const newMods = (
-                                            character as any
-                                          ).customModifiers.map((m: any) =>
-                                            m.id === mod.id
-                                              ? { ...m, value: m.value + 1 }
-                                              : m,
-                                          )
-                                          updateModifiers(newMods)
+                                        if (confirm(`Gastar 1 Ponto de Lore (LP) para melhorar a condição "${mod.name}" em +1?`)) {
+                                          void upgradeModifierWithLore(mod.id)
                                         }
                                       }}
                                     >

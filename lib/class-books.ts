@@ -1,7 +1,7 @@
 /** Schema v1 dos livros de classe. Conteúdo sempre criado pelo mestre. */
 export type BookKind = "spellbook" | "blueprints"
 export type BookResource = "mp" | "hp" | "ip"
-export type BookUnlockMode = "all" | "grant"
+export type BookUnlockMode = "all" | "grant" | "learn"
 
 export interface ClassBookEntry {
   id: string
@@ -11,7 +11,7 @@ export interface ClassBookEntry {
   kind?: string
   rarity?: string
   tier?: number
-  /** Nível EXATO da classe do grimório necessário para visualizar e conjurar. Legado: 1. */
+  /** Nível MÍNIMO da classe do grimório necessário para visualizar e conjurar. Legado: 1. */
   requiredClassLevel?: number
   tags?: string[]
   cost?: { resource: BookResource; amount: number }
@@ -60,6 +60,8 @@ export interface ClassBookProgress {
   /** Revogações individuais prevalecem inclusive sobre livros em modo automático. */
   denied?: Record<string, string[]>
   deck?: Record<string, ClassBookDeck>
+  /** Recibos persistidos para impedir duplo débito de Lore ao repetir o requestId. */
+  learningReceipts?: Record<string, { bookId: string; entryId: string }>
 }
 
 export interface ClassBookDeckView {
@@ -151,7 +153,7 @@ export function characterBookClassLevel(
   return direct || levelFor(parent)
 }
 
-/** O nível é EXATO, não uma regra de nível mínimo (<=). */
+/** Acesso cumulativo: nível 2 vê cartas de nível mínimo 1 e 2. */
 export function isCardAccessible(
   book: ClassBook,
   entry: ClassBookEntry,
@@ -159,7 +161,7 @@ export function isCardAccessible(
   hasClassAccess = true,
   classLevel = 0,
 ): boolean {
-  if (book.kind === "spellbook" && (!Number.isSafeInteger(classLevel) || classLevel < 1 || (entry.requiredClassLevel ?? 1) !== classLevel)) return false
+  if (book.kind === "spellbook" && (!Number.isSafeInteger(classLevel) || classLevel < 1 || (entry.requiredClassLevel ?? 1) > classLevel)) return false
   if (!entry.published) return false
   if ((progress.denied?.[book.id] ?? []).includes(entry.id)) return false
   return (
@@ -312,7 +314,8 @@ export function validateBook(value: unknown): ClassBook {
   const kind = raw.kind
   if (kind !== "spellbook" && kind !== "blueprints") throw new Error("Mecânica inválida.")
   const unlockMode = raw.unlockMode
-  if (unlockMode !== "all" && unlockMode !== "grant") throw new Error("Modo de liberação inválido.")
+  if (unlockMode !== "all" && unlockMode !== "grant" && unlockMode !== "learn") throw new Error("Modo de liberação inválido.")
+  if (kind !== "spellbook" && unlockMode === "learn") throw new Error("Aprendizado está disponível apenas para grimórios de magia.")
   const entries = raw.entries
   if (!Array.isArray(entries) || entries.length > 250) throw new Error("Limite de 250 cartas/projetos por livro.")
   const ids = new Set<string>()
