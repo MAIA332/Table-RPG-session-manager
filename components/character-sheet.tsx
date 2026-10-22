@@ -29,6 +29,7 @@ import {
   equippedItemBonuses,
   isItemState,
   sumItemBonus,
+  sumItemRollBonus,
   wornDefenseBonuses,
   itemResolvedStats,
   isItemActionRuntimeMarker,
@@ -2549,10 +2550,9 @@ export function CharacterSheet({
       const result = Math.floor(Math.random() * sides) + 1
       const attrLabel = ATTRIBUTE_META[attr].label
 
-      let modTotal = sumItemBonus(activeItemBonuses, [
-        attr,
-        ATTRIBUTE_META[attr].label,
-      ])
+      const bonusTargets = [attr, ATTRIBUTE_META[attr].label]
+      const itemBonus = sumItemRollBonus(activeItemBonuses, bonusTargets)
+      let modTotal = itemBonus
       const mods = (character as any).customModifiers || []
       activeClassBookModifiers(mods, Date.now()).forEach((m: any) => {
         if (m.target === "all" || m.target === attr) {
@@ -2572,7 +2572,15 @@ export function CharacterSheet({
         onRoll(
           detailStr,
           finalResult,
-          modTotal !== 0 ? { modifier: modTotal } : undefined,
+          {
+            modifier: modTotal || undefined,
+            rollContext: {
+              characterId: character.id,
+              baseResult: finalResult - itemBonus,
+              modifierWithoutItems: modTotal - itemBonus,
+              targets: bonusTargets,
+            },
+          },
         )
 
       if (activeBond) setActiveBond(null) // Consome o laço invocado
@@ -2597,10 +2605,9 @@ export function CharacterSheet({
         diceLabels.push(dieLabel)
       })
 
-      let modTotal = sumItemBonus(activeItemBonuses, [
-        check.name,
-        ...check.attrs,
-      ])
+      const bonusTargets = [check.id, check.name, ...check.attrs]
+      const itemBonus = sumItemRollBonus(activeItemBonuses, bonusTargets)
+      let modTotal = itemBonus
       const mods = (character as any).customModifiers || []
       activeClassBookModifiers(mods, Date.now()).forEach((m: any) => {
         if (
@@ -2629,6 +2636,12 @@ export function CharacterSheet({
         onRoll(logDetail, finalResult, {
           breakdown: details.join(" + "),
           modifier: modTotal || undefined,
+          rollContext: {
+            characterId: character.id,
+            baseResult: finalResult - itemBonus,
+            modifierWithoutItems: modTotal - itemBonus,
+            targets: bonusTargets,
+          },
         })
 
       if (activeBond) setActiveBond(null) // Consome o laço
@@ -2648,7 +2661,9 @@ export function CharacterSheet({
     setRollingAttr(`custom:${check.id}`)
     window.setTimeout(() => {
       const attributes = [...new Set(check.dice.filter((die): die is Extract<CustomCheck["dice"][number], {kind:"attribute"}> => die.kind === "attribute").map(die => die.attribute))]
-      let modifier = sumItemBonus(activeItemBonuses, [check.name, ...attributes])
+      const bonusTargets = [check.id, check.name, ...attributes]
+      const itemBonus = sumItemRollBonus(activeItemBonuses, bonusTargets)
+      let modifier = itemBonus
       activeClassBookModifiers((character as any).customModifiers || [], Date.now()).forEach((mod: any) => {
         if (mod.target === "all" || mod.target === check.name || attributes.includes(mod.target)) modifier += mod.value
       })
@@ -2659,6 +2674,12 @@ export function CharacterSheet({
       onRoll?.(`Teste: ${check.name} [${diceLabels.join(" + ")}]`, total, {
         breakdown: rolls.map((roll, i) => `${diceLabels[i]}: ${roll}`).join(" + "),
         modifier: modifier || undefined,
+        rollContext: {
+          characterId: character.id,
+          baseResult: total - itemBonus,
+          modifierWithoutItems: modifier - itemBonus,
+          targets: bonusTargets,
+        },
       })
       if (activeBond) setActiveBond(null)
       setRollingAttr(null)

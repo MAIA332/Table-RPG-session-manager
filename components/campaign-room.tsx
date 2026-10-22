@@ -2709,7 +2709,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     characterOrCreatureName: string,
     attrName: string,
     result: number | string,
-    details?: DiceRollDetails,
+    details?: DiceRollDetails & { rollContext?: { characterId: string; baseResult: number; modifierWithoutItems: number; targets: string[] } },
   ) {
     return apiFetch(`/api/campaigns/${data.campaign.id}/roll`, {
       method: "POST",
@@ -2721,6 +2721,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         result,
         breakdown: details?.breakdown,
         modifier: details?.modifier,
+        ...(details?.rollContext ? { rollContext: details.rollContext } : {}),
       }),
     }).catch((error) => {
       console.error(error)
@@ -5824,3 +5825,4 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     </div>
   )
 }
+  

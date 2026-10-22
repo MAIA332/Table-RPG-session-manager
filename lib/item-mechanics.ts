@@ -245,11 +245,35 @@ export function rollItemDice(expression: string, attributes: Record<string, stri
   const values = parsed.dice.map(sides => Math.floor(random() * sides) + 1)
   return { ...parsed, values, modifier: parsed.modifier + bonus, total: values.reduce((a, b) => a + b, 0) + parsed.modifier + bonus }
 }
+/** Bônus estruturados prevalecem; array vazio não apaga o bônus textual legado. */
 export function itemBonusEntries(item: any): ItemBonus[] {
   if (isMiscItem(item)) return []
-  if (Array.isArray(item.passiveBonuses)) return item.passiveBonuses.filter((b: any) => typeof b.target === "string" && b.target.trim() && Number.isFinite(b.value))
-  // Compatibilidade com "+6 Fôlego +3 Resistência +2 Força Bruta".
-  return [...String(item.bonus || "").matchAll(/([+-]\s*\d+)\s+([^+\-;\n]+)/g)].map(match => ({ value: Number(match[1].replace(/\s/g, "")), target: match[2].replace(/[,\s]+$/, "").trim() })).filter(b => b.target)
+  const structured = Array.isArray(item?.passiveBonuses)
+    ? item.passiveBonuses.flatMap((bonus: any) => {
+        const target = typeof bonus?.target === "string" ? bonus.target.trim() : ""
+        const raw = bonus?.value
+        const value = typeof raw === "number" || (typeof raw === "string" && /^[+-]?\d+$/.test(raw.trim())) ? Number(raw) : NaN
+        return target && Number.isSafeInteger(value) && Math.abs(value) <= 100000 ? [{ target, value }] : []
+      }) as ItemBonus[]
+    : []
+  // Ex.: "+2 Fôlego +3 Resistência", "+2 em Iniciativa" ou linhas separadas.
+  // Fichas antigas também guardavam o bônus como [BÔNUS: +2 Fôlego] no detalhe.
+  // Textos soltos não viram modificadores sem um número explícito.
+  const detail = String(item?.detail ?? "")
+  const tagged = [...detail.matchAll(/\[(?:BÔNUS|BONUS)\s*:\s*([^\]]+)\]/gi)]
+    .map(match => match[1]).join("; ")
+  const source = String(item?.bonus || tagged)
+  const legacy: ItemBonus[] = [...source.matchAll(/([+-]\s*\d+)\s+(?:em\s+)?([^+\-;\n]+)/gi)]
+    .map(match => ({
+      value: Number(match[1].replace(/\s/g, "")),
+      target: match[2].replace(/[,\s/]+$/, "").trim(),
+    }))
+    .filter(bonus => bonus.target && Number.isSafeInteger(bonus.value) && Math.abs(bonus.value) <= 100000)
+  if (!structured.length) return legacy
+  // Configuração estruturada tem prioridade por alvo, mas não exclui outros
+  // alvos cadastrados no texto legado. Nunca duplica o mesmo alvo.
+  const present = new Set(structured.map(b => normalizeItemTarget(b.target)))
+  return [...structured, ...legacy.filter(b => !present.has(normalizeItemTarget(b.target)))]
 }
 export function equippedItemBonuses(character: any, catalog: any[]): ItemBonus[] {
   return [...new Set<string>(character.equipment || [])].flatMap(id => {
@@ -262,6 +286,37 @@ export function sumItemBonus(bonuses: ItemBonus[], targets: string[]): number {
   const accepted = new Set(targets.map(normalizeItemTarget))
   return bonuses.reduce((sum, bonus) => sum + (accepted.has(normalizeItemTarget(bonus.target)) ? bonus.value : 0), 0)
 }
+/** Identificadores canônicos de rolagem (IDs, nomes e atributos) para bônus de itens. */
+const ATTRIBUTE_ROLL_ALIASES: Record<string, string[]> = {
+  dex: ["dex", "destreza"],
+  ins: ["ins", "intuicao"],
+  mig: ["mig", "vigor"],
+  wlp: ["wlp", "vontade"],
+}
+
+export function itemRollBonusTargets(targets: readonly string[]): string[] {
+  const expanded = new Set<string>()
+  for (const target of targets) {
+    const normalized = normalizeItemTarget(String(target)).replace(/\s+/g, " ")
+    if (!normalized) continue
+    expanded.add(normalized)
+    for (const aliases of Object.values(ATTRIBUTE_ROLL_ALIASES)) {
+      if (aliases.includes(normalized)) aliases.forEach(alias => expanded.add(alias))
+    }
+  }
+  return [...expanded]
+}
+
+/** Soma cada entrada uma única vez, incluindo bônus universais de testes. */
+export function sumItemRollBonus(bonuses: readonly ItemBonus[], targets: readonly string[]): number {
+  const accepted = new Set(itemRollBonusTargets(targets))
+  const universal = new Set(["all", "todos", "todos os testes", "qualquer teste", "testes", "pericias", "todas as pericias"])
+  return bonuses.reduce((total, bonus) => {
+    const target = normalizeItemTarget(bonus.target).replace(/\s+/g, " ")
+    return total + (accepted.has(target) || universal.has(target) ? bonus.value : 0)
+  }, 0)
+}
+
 export function blankItemAction(): ItemAction {
   return { id: `action-${createClientId()}`, name: "Nova habilidade", kind: "utility", attackDice: "", damageDice: "", cost: 0, costResource: "mp", restoreAmount: 0, restoreResource: "hp", consume: false, requirement: "", effect: "" }
 }
