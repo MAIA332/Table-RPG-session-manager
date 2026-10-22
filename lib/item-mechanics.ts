@@ -14,7 +14,107 @@ export interface ItemAction {
   consume: boolean
   requirement: string
   effect: string
+  /** Template opcional. Ausente = habilidade original. */
+  template?: "attribute-inverter"
+  inversion?: {
+    operation: "swap" | "copy"
+    source: ItemStatKey
+    target: ItemStatKey
+    /** null = permanece até desativação manual. */
+    durationSeconds: number | null
+  }
+  /** Ausente / zero = sem cooldown. */
+  cooldownSeconds?: number
 }
+
+export type ItemStatKey = "dex" | "ins" | "mig" | "wlp" | "defense" | "magicDefense"
+export type ItemInversionModifier = {
+  id: string
+  name: string
+  type: "item_attribute_inversion"
+  target: string
+  value: number
+  itemId: string
+  actionId: string
+  active: boolean
+  operation: "swap" | "copy"
+  source: ItemStatKey
+  destination: ItemStatKey
+  sourceValue: string | number
+  destinationValue: string | number
+  expiresAt?: number
+}
+export const ITEM_INVERSION_PREFIX = "item_attribute_inversion:"
+export const ITEM_COOLDOWN_PREFIX = "item_action_cooldown:"
+export const ITEM_REQUEST_PREFIX = "item_action_request:"
+
+const ITEM_ATTRIBUTE_KEYS = ["dex", "ins", "mig", "wlp"] as const
+export const isItemStatKey = (value: unknown): value is ItemStatKey =>
+  typeof value === "string" && ([...ITEM_ATTRIBUTE_KEYS, "defense", "magicDefense"] as string[]).includes(value)
+export const isItemInversionModifier = (mod: any): mod is ItemInversionModifier =>
+  mod?.type === "item_attribute_inversion" && typeof mod?.id === "string" && mod.id.startsWith(ITEM_INVERSION_PREFIX)
+export const isItemActionRuntimeMarker = (mod: any): boolean =>
+  isItemInversionModifier(mod) || mod?.type === "item_action_cooldown" || mod?.type === "item_action_request"
+export const isActiveItemInversion = (mod: any, now = Date.now()): mod is ItemInversionModifier =>
+  isItemInversionModifier(mod) && mod.active === true && (typeof mod.expiresAt !== "number" || mod.expiresAt > now)
+
+/** Dano de um equipamento: legado numérico ou fórmula com dados. */
+export function itemDamageDefinition(value: unknown): { kind: "none" | "fixed" | "dice"; label: string; fixed?: number; dice?: string } {
+  const source = String(value ?? "").trim()
+  if (!source) return { kind: "none", label: "" }
+  if (/^\d{1,6}$/.test(source)) {
+    const fixed = Number(source)
+    if (fixed > 100000) throw new Error("Dano fixo máximo: 100000.")
+    return { kind: "fixed", fixed, label: String(fixed) }
+  }
+  const parsed = parseItemDice(source)
+  if (!parsed.dice.length) throw new Error("Informe um valor fixo ou dados válidos (ex.: 2d4+d8).")
+  if (parsed.dice.length > 30 || parsed.dice.some(sides => ![4, 6, 8, 10, 12, 20].includes(sides)))
+    throw new Error("O dano admite até 30 dados d4, d6, d8, d10, d12 ou d20.")
+  return { kind: "dice", dice: source, label: parsed.label }
+}
+
+/** Sobreposição reversível: não altera atributos originais nem defesas manuais salvas. */
+export function itemResolvedStats(character: any, catalog: any[], now = Date.now()) {
+  const attrs = { ...(character?.attributes || {}) } as Record<string, string>
+  const modifiers = Array.isArray(character?.customModifiers) ? character.customModifiers : []
+  const readManual = (id: string, die: string) => {
+    const saved = modifiers.find((m: any) => m.id === id)?.value
+    const fallback = Number(String(die || "d6").replace(/^d/i, "")) || 6
+    return Number.isSafeInteger(saved) && saved >= 0 ? saved : fallback
+  }
+  const itemBonus = wornDefenseBonuses(character, catalog)
+  const stats: Record<ItemStatKey, string | number> = {
+    dex: attrs.dex || "d6", ins: attrs.ins || "d6", mig: attrs.mig || "d6", wlp: attrs.wlp || "d6",
+    defense: readManual("sheet_defense:physical", attrs.dex) + itemBonus.physical,
+    magicDefense: readManual("sheet_defense:magical", attrs.ins) + itemBonus.magical,
+  }
+  for (const mod of modifiers) {
+    if (!isActiveItemInversion(mod, now)) continue
+    if (!Array.isArray(character?.equipment) || !character.equipment.includes(mod.itemId)) continue
+    if (!isItemStatKey(mod.source) || !isItemStatKey(mod.destination)) continue
+    if (mod.operation === "swap") {
+      stats[mod.source] = mod.destinationValue
+      stats[mod.destination] = mod.sourceValue
+    } else {
+      stats[mod.destination] = mod.sourceValue
+    }
+  }
+  return {
+    attributes: { dex: String(stats.dex), ins: String(stats.ins), mig: String(stats.mig), wlp: String(stats.wlp) },
+    defense: Number(stats.defense), magicDefense: Number(stats.magicDefense),
+  }
+}
+
+export function itemCooldownRemaining(character: any, itemId: string, actionId: string, now = Date.now()): number {
+  const marker = (character?.customModifiers || []).find((mod: any) => mod.id === `${ITEM_COOLDOWN_PREFIX}${itemId}:${actionId}`)
+  return Math.max(0, Number(marker?.expiresAt || 0) - now)
+}
+
+export function itemInversionState(character: any, itemId: string, actionId: string, now = Date.now()): ItemInversionModifier | undefined {
+  return (character?.customModifiers || []).find((mod: any) => mod.id === `${ITEM_INVERSION_PREFIX}${itemId}:${actionId}` && isActiveItemInversion(mod, now))
+}
+
 export interface ItemBonus { target: string; value: number }
 export const ITEM_EQUIPPED_PREFIX = "item_equipped:"
 /** Itens de categoria Diversos não conferem efeitos mecânicos. */
@@ -176,6 +276,18 @@ export function validateItemAction(action: ItemAction, attributes = { dex: "d6",
   if (!["attack", "utility", "heal"].includes(action.kind)) throw new Error("Tipo de habilidade inválido.")
   if (!["hp", "mp", "ip"].includes(action.costResource) || !["hp", "mp", "ip"].includes(action.restoreResource)) throw new Error("Recurso inválido.")
   if (![action.cost, action.restoreAmount].every(n => Number.isSafeInteger(n) && n >= 0 && n <= 10000)) throw new Error("Custo e recuperação devem ser inteiros entre 0 e 10000.")
+  if (action.cooldownSeconds != null && (!Number.isSafeInteger(action.cooldownSeconds) || action.cooldownSeconds < 0 || action.cooldownSeconds > 86400))
+    throw new Error("Cooldown deve ser de 0 a 86400 segundos.")
+  if (action.template != null && action.template !== "attribute-inverter") throw new Error("Template inválido.")
+  if (action.template === "attribute-inverter") {
+    const cfg = action.inversion
+    if (!cfg || !["swap", "copy"].includes(cfg.operation) || !isItemStatKey(cfg.source) || !isItemStatKey(cfg.target) || cfg.source === cfg.target)
+      throw new Error("Configure dois atributos diferentes para o Inversor.")
+    const isDice = (key: ItemStatKey) => ITEM_ATTRIBUTE_KEYS.some(value => value === key)
+    if (isDice(cfg.source) !== isDice(cfg.target)) throw new Error("Não é permitido misturar dados e defesas numéricas.")
+    if (cfg.durationSeconds !== null && (!Number.isSafeInteger(cfg.durationSeconds) || cfg.durationSeconds < 1 || cfg.durationSeconds > 86400))
+      throw new Error("Duração deve ser de 1 a 86400 segundos, ou até desativar.")
+  }
   if (action.kind === "attack" && !action.attackDice?.trim() && !action.damageDice?.trim()) throw new Error("Ataques precisam especificar dados de acerto e/ou dano.")
   if (action.attackDice?.trim()) parseItemDice(action.attackDice, attributes)
   if (action.damageDice?.trim()) parseItemDice(action.damageDice, attributes)

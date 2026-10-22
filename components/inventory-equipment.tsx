@@ -1,11 +1,13 @@
 "use client"
 
-import { useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
+import { apiFetch } from "@/lib/client"
+import { createClientId } from "@/lib/client-id"
 import { motion, useReducedMotion } from "framer-motion"
 import { Dices, Sparkles, Trash2, Plus, Zap, Shield, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ItemArtwork } from "./item-artwork"
-import { ITEM_EQUIPPED_PREFIX, blankItemAction, buildItemUseUpdates, equippedItemBonuses, getItemActions, hasItemBonuses, itemBonusEntries, parseItemDice, rollItemDice, sumItemBonus, validateItemAction, EQUIPMENT_LIMITS, wearableKind, wearItemUpdates, wornCounts, consumeInventoryItemUpdates, isConsumableItem, isMiscItem, type ItemAction } from "@/lib/item-mechanics"
+import { ITEM_EQUIPPED_PREFIX, blankItemAction, equippedItemBonuses, getItemActions, hasItemBonuses, itemBonusEntries, parseItemDice, rollItemDice, sumItemBonus, itemCooldownRemaining, itemInversionState, itemDamageDefinition, validateItemAction, EQUIPMENT_LIMITS, wearableKind, wearItemUpdates, wornCounts, consumeInventoryItemUpdates, isConsumableItem, isMiscItem, type ItemAction, type ItemStatKey } from "@/lib/item-mechanics"
 import { OVERWEIGHT_MODIFIER_ID } from "@/lib/character"
 
 type Props = {
@@ -15,6 +17,7 @@ type Props = {
     isGm: boolean
     busy: boolean
     onCommit: (updates: any) => Promise<any>
+    onServerCharacter: (updated: any) => void
     onRoll?: (label: string, result: number | string, details?: { breakdown?: string; modifier?: number }) => unknown
     renderDetail?: (text: string) => ReactNode
     onRemove: (index: number) => void
@@ -22,9 +25,16 @@ type Props = {
     onTransfer?: (index: number, itemName: string, recipientCharacterId: string) => Promise<void>
 }
 
-export function InventoryEquipment({ character, catalog, editable, isGm, busy, onCommit, onRoll, onRemove, onTransfer, transferTargets = [], renderDetail }: Props) {
+export function InventoryEquipment({ character, catalog, editable, isGm, busy, onCommit, onServerCharacter, onRoll, onRemove, onTransfer, transferTargets = [], renderDetail }: Props) {
     const reducedMotion = useReducedMotion()
     const lock = useRef(false)
+    const retryIds = useRef<Record<string, string>>({})
+    const [clock, setClock] = useState(0)
+    useEffect(() => {
+        setClock(Date.now())
+        const timer = window.setInterval(() => setClock(Date.now()), 1000)
+        return () => window.clearInterval(timer)
+    }, [])
     const [activeKey, setActiveKey] = useState<string | null>(null)
     const [result, setResult] = useState<{ item: string; name: string; lines: string[]; stamp: number } | null>(null)
     const [error, setError] = useState<string | null>(null)
@@ -66,38 +76,51 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
         finally { lock.current = false; setActiveKey(null) }
     }
 
-    async function useItem(item: any, index: number, action: ItemAction, key: string) {
+    async function useItem(item: any, index: number, action: ItemAction, key: string, mode: "use" | "deactivate" = "use") {
         if (!editable || busy || lock.current) return
-        if (action.requirement && !requirements[key]) return
-        const shouldConsume = isConsumableItem(item) || action.consume
+        if (mode === "use" && action.requirement && !requirements[key]) return
+        const shouldConsume = mode === "use" && (isConsumableItem(item) || action.consume)
         if (shouldConsume && !window.confirm(`Consumir 1 unidade de "${item.name}" ao usar "${action.name}"? Esta ação não pode ser desfeita.`)) return
         lock.current = true; setActiveKey(key); setError(null); setResult(null)
+        const retryKey = `${key}:${mode}`
+        const requestId = retryIds.current[retryKey] || createClientId()
+        retryIds.current[retryKey] = requestId
         try {
-            validateItemAction(action, character.attributes)
-            const updates = buildItemUseUpdates(character, item.id, index, { ...action, consume: shouldConsume })
-            const dexPenalty = Number((character.customModifiers || []).find((modifier: any) => modifier.id === OVERWEIGHT_MODIFIER_ID)?.value) || 0
-            const modifierFor = (expression: string | undefined, labels: string[]) => sumItemBonus(bonuses, labels) + (expression && /\bdex\b/i.test(expression) ? dexPenalty : 0)
-            // Gera a rolagem uma vez. Só publica resultados após confirmar custos e consumo.
-            const rolls = [
-                ...(action.attackDice?.trim() ? [{ kind: "Acerto", roll: rollItemDice(action.attackDice, character.attributes, modifierFor(action.attackDice, ["Acerto", "Ataque", ...(action.attackDice.match(/\b(dex|ins|mig|wlp)\b/gi) || [])])) }] : []),
-                ...(action.damageDice?.trim() ? [{ kind: "Dano", roll: rollItemDice(action.damageDice, character.attributes, modifierFor(action.damageDice, ["Dano", ...(action.damageDice.match(/\b(dex|ins|mig|wlp)\b/gi) || [])])) }] : [])
-            ]
-            if (Object.keys(updates).length) {
-                const updated = await onCommit(updates)
-                if (Object.entries(updates.resources || {}).some(([resource, value]) => updated.resources?.[resource] !== value) ||
-                    (updates.equipment && JSON.stringify(updated.equipment) !== JSON.stringify(updates.equipment))) throw new Error("A API não confirmou o custo ou consumo. Confira a ficha antes de repetir o uso.")
+            const response = await apiFetch<{
+                character: any; duplicate: boolean; deactivated: boolean;
+                rolls: { kind: string; label: string; values: number[]; modifier: number; total: number }[];
+            }>(`/api/campaigns/${encodeURIComponent(character.campaignId)}/item-actions`, {
+                method: "POST",
+                body: JSON.stringify({ characterId: character.id, itemId: item.id, actionId: action.id, requestId, mode }),
+            })
+            delete retryIds.current[retryKey]
+            onServerCharacter(response.character)
+            if (response.duplicate) {
+                setResult({ item: item.name, name: action.name, lines: ["Ação já processada no servidor. Nenhum custo foi repetido."], stamp: Date.now() })
+                return
             }
-            // Custos, requisitos e efeitos permanecem no cartão; o resultado mostra só os dados.
-            const lines = rolls.map(({ kind, roll }) => `${kind}: ${roll.values.join(" + ") || "Dano fixo"}`)
-            if (!rolls.length) lines.push("Habilidade utilizada.")
+            const rolls = response.rolls || []
+            const lines = mode === "deactivate" ? ["Inversor desativado. Atributos originais restaurados."]
+                : rolls.length ? rolls.map(({ kind, values, modifier }) => `${kind}: ${values.join(" + ") || "0"}${modifier ? ` ${modifier > 0 ? "+" : ""}${modifier}` : ""}`)
+                : ["Habilidade ativada."]
             setResult({ item: item.name, name: action.name, lines, stamp: Date.now() })
             setRequirements(current => ({ ...current, [key]: false }))
-            try {
-                for (const { kind, roll } of rolls) if (await onRoll?.(`ITEM_ROLL:${item.name} • ${action.name} • ${kind} [${roll.label}]`, roll.total, { breakdown: roll.values.join(" + ") || "0", modifier: roll.modifier || undefined }) === false) throw new Error("Falha no registro da sessão")
-                if (!rolls.length && await onRoll?.(`ITEM_USE:${item.name} • ${action.name}`, "Habilidade utilizada.") === false) throw new Error("Falha no registro da sessão")
-            } catch { setError("Item utilizado, mas não foi possível publicar o registro na sessão. Não repita o uso para reenviar.") }
-        } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível usar o item.") }
-        finally { lock.current = false; setActiveKey(null) }
+            if (mode === "use") {
+                try {
+                    for (const roll of rolls) {
+                        if (await onRoll?.(`ITEM_ROLL:${item.name} • ${action.name} • ${roll.kind} [${roll.label}]`, roll.total, {
+                            breakdown: roll.values.join(" + ") || "0", modifier: roll.modifier || undefined,
+                        }) === false) throw new Error("Falha de transmissão")
+                    }
+                    if (!rolls.length && await onRoll?.(`ITEM_USE:${item.name} • ${action.name}`, "Habilidade utilizada.") === false)
+                        throw new Error("Falha de transmissão")
+                } catch {
+                    setError("Habilidade confirmada, mas a transmissão do registro falhou. Não repita a ativação.")
+                }
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Não foi possível usar o item. Tente novamente com a mesma solicitação.")
+        } finally { lock.current = false; setActiveKey(null) }
     }
 
     async function consumeItem(item: any, index: number, key: string) {
@@ -275,15 +298,22 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
                             let validation = ""
                             try { validateItemAction(action, character.attributes) } catch (err) { validation = err instanceof Error ? err.message : "Ação inválida." }
                             const insufficient = character.resources[action.costResource] < action.cost
+                            const remaining = itemCooldownRemaining(character, item.id, action.id, clock || Date.now())
+                            const inversion = itemInversionState(character, item.id, action.id, clock || Date.now())
                             const diceLabel = (expression: string) => { try { return parseItemDice(expression, character.attributes).label } catch { return expression } }
                             return <div key={key} className="space-y-2 rounded-lg border border-border/40 bg-background/40 p-3">
                                 <p className="text-sm font-bold text-foreground">{action.name}</p>
-                                <div className="flex flex-wrap gap-2 text-[11px] text-primary">{action.attackDice && <span>Acerto: {diceLabel(action.attackDice)}</span>}{action.damageDice && <span>Dano: {diceLabel(action.damageDice)}</span>}<span>{action.cost ? `${action.cost} ${action.costResource.toUpperCase()}` : "Sem custo de recurso"}</span>{action.consume && <span className="text-amber-300">Consome 1 unidade</span>}</div>
+                                <div className="flex flex-wrap gap-2 text-[11px] text-primary">{action.attackDice && <span>Acerto: {diceLabel(action.attackDice)}</span>}{action.damageDice && <span>Dano: {diceLabel(action.damageDice)}</span>}<span>{action.cost ? `${action.cost} ${action.costResource.toUpperCase()}` : "Sem custo de recurso"}</span>{action.consume && <span className="text-amber-300">Consome 1 unidade</span>}{action.cooldownSeconds ? <span>Recarga: {action.cooldownSeconds}s</span> : null}</div>
+                                {action.template === "attribute-inverter" && action.inversion && <p className="text-xs text-cyan-200">{action.inversion.operation === "swap" ? "Trocar" : "Copiar"}: {action.inversion.source.toUpperCase()} → {action.inversion.target.toUpperCase()} · {action.inversion.durationSeconds === null ? "Até desativar" : `${action.inversion.durationSeconds}s`}{inversion && <span className="ml-2 font-bold text-emerald-300">ATIVO</span>}</p>}
+                                {remaining > 0 && <p className="text-xs text-amber-300">Recarga restante: {Math.ceil(remaining / 1000)}s</p>}
                                 {action.kind === "heal" && <p className="text-xs text-emerald-300">Recupera até {action.restoreAmount} {action.restoreResource.toUpperCase()}.</p>}
                                 {action.effect && <p className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{action.effect}</p>}
                                 {action.requirement && <label className="flex items-start gap-2 text-xs text-amber-200"><input type="checkbox" checked={!!requirements[key]} disabled={!editable || busy || !!activeKey} onChange={event => setRequirements(current => ({ ...current, [key]: event.target.checked }))} className="mt-0.5" /> Confirmo: {action.requirement}</label>}
                                 {validation && <p className="text-xs text-amber-300">O Mestre precisa configurar esta ação: {validation}</p>}
-                                <Button size="sm" disabled={!editable || busy || !!activeKey || !!validation || insufficient || (!!action.requirement && !requirements[key])} onClick={() => useItem(item, index, action, key)} className="gap-2 text-xs"><Dices className="size-3.5" />{activeKey === key ? "Usando..." : insufficient ? "Recurso insuficiente" : action.kind === "attack" ? "Rolar dados" : "Usar habilidade"}</Button>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button size="sm" disabled={!editable || busy || !!activeKey || !!validation || insufficient || remaining > 0 || !!inversion || (!!action.requirement && !requirements[key])} onClick={() => void useItem(item, index, action, key)} className="gap-2 text-xs"><Dices className="size-3.5" />{activeKey === key ? "Usando..." : inversion ? "Efeito ativo" : remaining > 0 ? `Recarga ${Math.ceil(remaining / 1000)}s` : insufficient ? "Recurso insuficiente" : action.kind === "attack" ? "Rolar dados" : "Usar habilidade"}</Button>
+                                    {inversion && <Button size="sm" type="button" variant="outline" disabled={!editable || busy || !!activeKey} onClick={() => void useItem(item, index, action, key, "deactivate")}>Desativar efeito</Button>}
+                                </div>
                             </div>
                         })}
                     </div>}
@@ -324,12 +354,24 @@ export function ItemActionsEditor({ actions, onChange }: { actions: ItemAction[]
     const update = (index: number, patch: Partial<ItemAction>) => onChange(actions.map((action, i) => i === index ? { ...action, ...patch } : action))
     return <section className="space-y-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
         <h4 className="flex items-center gap-2 text-sm font-bold text-cyan-200"><Zap className="size-4" /> Habilidades ativas</h4>
-        <p className="text-xs leading-relaxed text-muted-foreground">Informe os dados explicitamente: d12, 2d6+3 ou DEX+INS. Efeitos e requisitos são narrativos; custo, recuperação e consumo são automáticos.</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">Configure o tipo de habilidade, os dados, os custos e uma recarga opcional. O template Inversor aplica alterações reais e reversíveis na ficha.</p>
         {actions.map((action, index) => <div key={action.id} className="grid grid-cols-1 gap-3 rounded-lg border border-border/40 p-3 sm:grid-cols-2">
             <label className="text-xs">Nome<input className={input} value={action.name} onChange={e => update(index, { name: e.target.value })} /></label>
+            <label className="text-xs">Template<select className={input} value={action.template || "none"} onChange={e => update(index, e.target.value === "attribute-inverter" ? {
+                template: "attribute-inverter", kind: "utility", inversion: action.inversion || { operation: "copy", source: "wlp", target: "mig", durationSeconds: 80 },
+            } : { template: undefined, inversion: undefined })}><option value="none">Habilidade tradicional</option><option value="attribute-inverter">Inversor de atributo</option></select></label>
             <label className="text-xs">Tipo<select className={input} value={action.kind} onChange={e => update(index, { kind: e.target.value as ItemAction["kind"] })}><option value="utility">Utilidade / efeito narrativo</option><option value="attack">Ataque</option><option value="heal">Recuperação</option></select></label>
             <label className="text-xs">Dados de acerto (opcional)<input className={input} value={action.attackDice} placeholder="DEX+INS ou d20+2" onChange={e => update(index, { attackDice: e.target.value })} /></label>
             <label className="text-xs">Dados de dano (opcional)<input className={input} value={action.damageDice} placeholder="d12 ou 2d6+3" onChange={e => update(index, { damageDice: e.target.value })} /></label>
+            {action.template === "attribute-inverter" && action.inversion && <div className="sm:col-span-2 grid grid-cols-1 gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3 sm:grid-cols-2">
+                <label className="text-xs">Operação<select className={input} value={action.inversion.operation} onChange={e => update(index, { inversion: { ...action.inversion!, operation: e.target.value as "swap" | "copy" } })}><option value="copy">Copiar origem para destino</option><option value="swap">Trocar os dois valores</option></select></label>
+                <label className="text-xs">Origem<select className={input} value={action.inversion.source} onChange={e => update(index, { inversion: { ...action.inversion!, source: e.target.value as ItemStatKey } })}>{["dex", "ins", "mig", "wlp", "defense", "magicDefense"].map(key => <option key={key} value={key}>{key === "defense" ? "DEF" : key === "magicDefense" ? "DEF Mágica" : key.toUpperCase()}</option>)}</select></label>
+                <label className="text-xs">Destino<select className={input} value={action.inversion.target} onChange={e => update(index, { inversion: { ...action.inversion!, target: e.target.value as ItemStatKey } })}>{["dex", "ins", "mig", "wlp", "defense", "magicDefense"].map(key => <option key={key} value={key}>{key === "defense" ? "DEF" : key === "magicDefense" ? "DEF Mágica" : key.toUpperCase()}</option>)}</select></label>
+                <label className="text-xs">Duração<select className={input} value={action.inversion.durationSeconds === null ? "infinite" : "timed"} onChange={e => update(index, { inversion: { ...action.inversion!, durationSeconds: e.target.value === "infinite" ? null : 80 } })}><option value="timed">Temporário</option><option value="infinite">Até desativar</option></select></label>
+                {action.inversion.durationSeconds !== null && <label className="text-xs sm:col-span-2">Duração (segundos, até 86400)<input type="number" min={1} max={86400} className={input} value={action.inversion.durationSeconds} onChange={e => update(index, { inversion: { ...action.inversion!, durationSeconds: Number(e.target.value) } })} /></label>}
+                <p className="sm:col-span-2 text-[11px] text-muted-foreground">Atributos de dados só podem ser combinados entre si; DEF e DEF Mágica também. A ficha original não é alterada.</p>
+            </div>}
+            <label className="text-xs">Cooldown (segundos, 0 = nenhum)<input type="number" min={0} max={86400} step={1} className={input} value={action.cooldownSeconds ?? 0} onChange={e => update(index, { cooldownSeconds: Number(e.target.value) })} /></label>
             <label className="text-xs">Custo<input type="number" min="0" step="1" className={input} value={action.cost} onChange={e => update(index, { cost: Number(e.target.value) })} /></label>
             <label className="text-xs">Recurso gasto<select className={input} value={action.costResource} onChange={e => update(index, { costResource: e.target.value as ItemAction["costResource"] })}>{["hp", "mp", "ip"].map(value => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select></label>
             {action.kind === "heal" && <><label className="text-xs">Quantidade recuperada<input type="number" min="0" step="1" className={input} value={action.restoreAmount} onChange={e => update(index, { restoreAmount: Number(e.target.value) })} /></label><label className="text-xs">Recurso recuperado<select className={input} value={action.restoreResource} onChange={e => update(index, { restoreResource: e.target.value as ItemAction["restoreResource"] })}>{["hp", "mp", "ip"].map(value => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select></label></>}
@@ -342,5 +384,51 @@ export function ItemActionsEditor({ actions, onChange }: { actions: ItemAction[]
         { ...blankItemAction(), name: "Pressão abissal", requirement: "Estou prendendo a respiração (Fôlego do Afogado).", effect: "Manipula a pressão do ar/água para imobilizar inimigos. O Mestre define o teste, a duração e o risco de asfixia/desmaio." },
         { ...blankItemAction(), name: "Jato de água fervente", kind: "attack", damageDice: "d12", requirement: "Estou prendendo a respiração (Fôlego do Afogado).", effect: "Dispara água fervente. O Mestre determina o acerto e o efeito sobre a armadura. Uso prolongado traz risco de sangramento, asfixia e desmaio." }
         ])}>Adicionar exemplo: Prismarina</Button></div>
+    </section>
+}
+
+
+/** Vitrine de dano da mochila: não exige equipar, mostra cópias agrupadas. */
+export function ItemDamageShelf({ character, catalog, editable, onRoll }: {
+    character: any; catalog: any[]; editable: boolean;
+    onRoll?: (label: string, result: number | string, details?: { breakdown?: string; modifier?: number }) => unknown;
+}) {
+    const [rolling, setRolling] = useState<string | null>(null)
+    const [last, setLast] = useState<{ id: string; total: number; detail: string } | null>(null)
+    const counts = new Map<string, number>()
+    for (const id of character.equipment || []) counts.set(id, (counts.get(id) || 0) + 1)
+    const rows = [...counts.entries()].flatMap(([id, count]) => {
+        const item = catalog.find((entry: any) => entry.id === id)
+        if (!item || isMiscItem(item)) return []
+        try {
+            const damage = itemDamageDefinition(item.damage)
+            return damage.kind === "none" ? [] : [{ item, count, damage }]
+        } catch { return [] }
+    })
+    if (!rows.length) return null
+    const dice = rows.filter(row => row.damage.kind === "dice")
+    const fixed = rows.filter(row => row.damage.kind === "fixed")
+    function roll(item: any, expression: string) {
+        if (!editable || rolling) return
+        setRolling(item.id)
+        try {
+            const outcome = rollItemDice(expression, character.attributes,
+                sumItemBonus(equippedItemBonuses(character, catalog), ["Dano"]))
+            const detail = outcome.values.join(" + ") + (outcome.modifier ? ` ${outcome.modifier > 0 ? "+" : ""}${outcome.modifier}` : "")
+            setLast({ id: item.id, total: outcome.total, detail })
+            void Promise.resolve(onRoll?.(`ITEM_DAMAGE:${item.name} [${outcome.label}]`, outcome.total, {
+                breakdown: outcome.values.join(" + "), modifier: outcome.modifier || undefined,
+            })).catch(() => undefined)
+        } finally { setRolling(null) }
+    }
+    return <section className="mt-4 rounded-xl border border-accent/30 bg-card/50 p-4" aria-label="Danos dos equipamentos">
+        <div className="flex items-center justify-between gap-2"><h5 className="flex items-center gap-2 font-serif text-base font-bold text-accent"><Dices className="size-5" /> Arsenal de Dano</h5><span className="text-[10px] uppercase tracking-widest text-muted-foreground">Sua mochila</span></div>
+        {!!dice.length && <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">{dice.map(({ item, count, damage }) =>
+            <div key={item.id} className="rounded-lg border border-accent/25 bg-accent/[0.04] p-3">
+                <div className="flex items-start justify-between gap-2"><p className="min-w-0 truncate text-xs font-bold text-foreground" title={item.name}>{item.name}</p>{count > 1 && <span className="text-[10px] text-muted-foreground">×{count}</span>}</div>
+                <div className="mt-3 flex items-center justify-between gap-2"><span className="font-mono text-xl font-bold text-accent">{damage.label}</span><Button size="sm" type="button" variant="outline" className="gap-1 text-xs" disabled={!editable || rolling !== null} onClick={() => roll(item, damage.dice!)}><Dices className="size-3.5" /> Rolar</Button></div>
+                {last?.id === item.id && <p role="status" className="mt-2 border-t border-accent/20 pt-2 text-xs text-muted-foreground">{last?.detail} = <strong className="text-accent">{last?.total}</strong></p>}
+            </div>)}</div>}
+        {!!fixed.length && <div className="mt-4 rounded-lg border border-border/50 bg-background/40 p-3"><p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Danos fixos · referência rápida</p><div className="flex flex-wrap gap-2">{fixed.map(({ item, count, damage }) => <span key={item.id} className="rounded-md border border-border/60 bg-card px-3 py-2 text-xs"><strong className="text-foreground">{item.name}</strong> <span className="font-mono font-bold text-accent">{damage.fixed}</span>{count > 1 ? <span className="text-muted-foreground"> ×{count}</span> : null}</span>)}</div></div>}
     </section>
 }

@@ -48,7 +48,7 @@ import { weightFields, type ItemWeight } from "@/lib/inventory-weight"
 import { ItemActionsEditor } from "./inventory-equipment"
 import { ItemArtwork } from "./item-artwork"
 import { itemImageUrl, validateItemImageUrl } from "@/lib/item-image"
-import { getItemActions, validateItemAction } from "@/lib/item-mechanics"
+import { getItemActions, itemDamageDefinition, validateItemAction } from "@/lib/item-mechanics"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
 import {
@@ -1182,6 +1182,7 @@ export function GmPanel({
   }
 
   const [savingEquipment, setSavingEquipment] = useState(false)
+  const [damageMode, setDamageMode] = useState<"fixed" | "dice">("fixed")
 
   async function handleSaveSystemItem() {
     if (savingEquipment) return
@@ -1192,6 +1193,7 @@ export function GmPanel({
     const actions = isMisc ? [] : Array.isArray(sysDraft.actions) ? sysDraft.actions : []
     try {
       actions.forEach((action: any) => validateItemAction(action))
+      if (!isMisc) itemDamageDefinition(sysDraft.damage)
     } catch (error) {
       return alert(
         error instanceof Error ? error.message : "Revise as ações do item.",
@@ -1243,6 +1245,7 @@ export function GmPanel({
     setSavingEquipment(true)
     try {
       await onCreateEquipment(newEq)
+      setDamageMode("fixed")
       setSysDraft({
         name: "",
         category: "weapon",
@@ -1785,7 +1788,7 @@ export function GmPanel({
                                         )}
                                         {String(selectedCatalogItem.id).startsWith("custom-eq-") && (
                                           <div className="flex gap-2 border-t border-border/70 pt-3">
-                                            <button type="button" onClick={() => { setSysDraft({ ...selectedCatalogItem, actions: getItemActions(selectedCatalogItem) }); setCreationMode("system"); setGmPanelTab("custom") }}
+                                            <button type="button" onClick={() => { setDamageMode(/(?:^|[+\-])\s*\d*d/i.test(String(selectedCatalogItem.damage || "")) ? "dice" : "fixed"); setSysDraft({ ...selectedCatalogItem, actions: getItemActions(selectedCatalogItem) }); setCreationMode("system"); setGmPanelTab("custom") }}
                                               className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 text-xs font-bold text-accent transition-colors hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
                                               <Pencil className="size-3.5" /> Editar item
                                             </button>
@@ -2025,18 +2028,13 @@ export function GmPanel({
                                 placeholder="Tipo (Fogo, Leve)"
                                 className="bg-background/80 border border-border/80 rounded p-2 text-xs outline-none"
                               />
-                              <input
-                                type="text"
-                                value={sysDraft.damage}
-                                onChange={(e) =>
-                                  setSysDraft({
-                                    ...sysDraft,
-                                    damage: e.target.value,
-                                  })
-                                }
-                                placeholder="Dano (Ex: 10, d10)"
-                                className="bg-background/80 border border-border/80 rounded p-2 text-xs outline-none font-mono"
-                              />
+                              <div className="col-span-3 space-y-3 rounded-lg border border-accent/25 bg-accent/[0.04] p-3">
+                                <div className="flex items-center justify-between gap-2"><p className="text-xs font-bold text-accent">Dano do equipamento</p><span className="text-[10px] text-muted-foreground">Exibido na ficha do jogador</span></div>
+                                <div className="flex flex-wrap gap-2">{(["fixed", "dice"] as const).map(mode => <button key={mode} type="button" onClick={() => { setDamageMode(mode); setSysDraft({ ...sysDraft, damage: mode === "fixed" ? "0" : "d6" }) }} className={`rounded-md border px-3 py-2 text-xs font-bold ${damageMode === mode ? "border-accent bg-accent/15 text-accent" : "border-border text-muted-foreground"}`}>{mode === "fixed" ? "Dano fixo" : "Dados de dano"}</button>)}</div>
+                                <input type={damageMode === "fixed" ? "number" : "text"} min={damageMode === "fixed" ? 0 : undefined} max={damageMode === "fixed" ? 100000 : undefined} value={sysDraft.damage} onChange={e => setSysDraft({ ...sysDraft, damage: e.target.value })} placeholder={damageMode === "fixed" ? "Ex.: 10" : "Ex.: 2d4+d8+3"} className="w-full rounded-md border border-border/70 bg-background px-3 py-2 font-mono text-sm outline-none focus:border-accent" />
+                                {damageMode === "dice" && <div className="flex flex-wrap gap-1.5">{[4, 6, 8, 10, 12, 20].map(sides => <button type="button" key={sides} onClick={() => setSysDraft({ ...sysDraft, damage: String(sysDraft.damage || "").trim() ? `${sysDraft.damage}+d${sides}` : `d${sides}` })} className="rounded border border-accent/25 bg-background px-2 py-1 font-mono text-[11px] text-accent hover:bg-accent/10">+ d{sides}</button>)}</div>}
+                                <p className="text-[11px] text-muted-foreground">{damageMode === "fixed" ? "O valor aparecerá como referência de dano fixo." : "Combine até 30 dados d4/d6/d8/d10/d12/d20; ex.: 2d20, 3d12 ou d4+d8."}</p>
+                              </div>
                               <input
                                 type="text"
                                 value={sysDraft.bonus}

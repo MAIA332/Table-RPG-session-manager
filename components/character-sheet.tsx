@@ -24,12 +24,16 @@ import { CharacterBookShelf } from "./class-books"
 import { ClassTimerProgress } from "./class-timer-progress"
 import { activeClassBookModifiers, isExpiredClassBookModifier } from "@/lib/class-books"
 import { createClientId } from "@/lib/client-id"
-import { InventoryEquipment, WornEquipmentSummary } from "./inventory-equipment"
+import { InventoryEquipment, ItemDamageShelf, WornEquipmentSummary } from "./inventory-equipment"
 import {
   equippedItemBonuses,
   isItemState,
   sumItemBonus,
   wornDefenseBonuses,
+  itemResolvedStats,
+  isItemActionRuntimeMarker,
+  isActiveItemInversion,
+  getItemActions,
 } from "@/lib/item-mechanics"
 import { ResourceBar } from "@/components/resource-bar"
 import { Button } from "@/components/ui/button"
@@ -75,6 +79,7 @@ import {
   Minus,
   Plus,
   Dices,
+  Timer,
   Package,
   TrendingUp,
   X,
@@ -1312,6 +1317,8 @@ function ManualDefenseFields({
   const baseMagicDefense = savedMagicDefense ?? defenseBaseValue(character.attributes.ins)
   const initialDefense = baseDefense + itemDefense.physical
   const initialMagicDefense = baseMagicDefense + itemDefense.magical
+  const transformed = itemResolvedStats(character, catalog)
+  const inversionActive = transformed.defense !== initialDefense || transformed.magicDefense !== initialMagicDefense
   const [draft, setDraft] = useState({
     defense: String(initialDefense),
     magicDefense: String(initialMagicDefense),
@@ -1333,7 +1340,7 @@ function ManualDefenseFields({
   const needsSave =
     dirty || savedDefense === undefined || savedMagicDefense === undefined
   async function save() {
-    if (!editable || busy || saveLock.current || !needsSave) return
+    if (!editable || busy || inversionActive || saveLock.current || !needsSave) return
     if (!draft.defense.trim() || !draft.magicDefense.trim()) {
       setError("Preencha os dois campos antes de salvar.")
       return
@@ -1415,8 +1422,8 @@ function ManualDefenseFields({
               inputMode="numeric"
               min={0}
               step={1}
-              value={draft[field.key]}
-              readOnly={!editable}
+              value={inversionActive ? String(field.key === "defense" ? transformed.defense : transformed.magicDefense) : draft[field.key]}
+              readOnly={!editable || inversionActive}
               disabled={saving || (editable && busy)}
               aria-label={field.label}
               onChange={(event) => {
@@ -1435,6 +1442,7 @@ function ManualDefenseFields({
               }}
               className="w-full rounded-md border border-primary/25 bg-background px-3 py-2 text-center font-mono text-2xl font-bold text-primary outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
             />
+            {inversionActive && <span className="rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-center text-xs font-bold text-accent">Inversor ativo · desative na mochila para editar a base</span>}
             <span className="text-[10px] text-muted-foreground">
               {field.key === "defense"
                 ? `Base ${baseDefense} ${itemDefense.physical >= 0 ? "+" : ""}${itemDefense.physical} de itens em uso`
@@ -1458,13 +1466,13 @@ function ManualDefenseFields({
             <span role="status" className="text-[11px] text-muted-foreground">
               {saving
                 ? "Salvando..."
-                : "Salve para manter estes valores na ficha."}
+                : inversionActive ? "Desative o Inversor para editar as defesas." : "Salve para manter estes valores na ficha."}
             </span>
           )}
           <Button
             type="button"
             size="sm"
-            disabled={busy || saving || !needsSave}
+            disabled={busy || saving || inversionActive || !needsSave}
             onClick={() => void save()}
             className="ml-auto gap-1.5 text-xs"
           >
@@ -1472,6 +1480,108 @@ function ManualDefenseFields({
           </Button>
         </div>
       )}
+    </section>
+  )
+}
+
+/**
+ * Efeitos ativos de equipamentos (não cooldowns): cada habilidade temporária
+ * ocupa sua própria barra, baseada no horário persistido no servidor.
+ * A ficha não escreve modificadores nem reinicia a contagem ao ser remontada.
+ */
+function TimedItemAbilityBars({
+  character,
+  catalog,
+  now,
+}: {
+  character: Character
+  catalog: any[]
+  now: number
+}) {
+  const savedModifiers = (character as Character & { customModifiers?: unknown }).customModifiers
+  const modifiers: unknown[] = Array.isArray(savedModifiers) ? savedModifiers : []
+  const equipped = new Set(character.equipment || [])
+  const statName: Record<string, string> = {
+    dex: "DEX", ins: "INS", mig: "MIG", wlp: "WLP",
+    defense: "DEF", magicDefense: "DEF Mágica",
+  }
+  const timers = modifiers.flatMap((mod) => {
+    // Apenas habilidades temporárias ATIVAS; a recarga não é duração de efeito.
+    if (!isActiveItemInversion(mod, now) ||
+        typeof mod.expiresAt !== "number" || !Number.isFinite(mod.expiresAt) ||
+        !equipped.has(mod.itemId)) return []
+
+    const remainingMs = Math.max(0, mod.expiresAt - now)
+    if (remainingMs <= 0) return []
+
+    const item = catalog.find((entry) => entry?.id === mod.itemId)
+    const action = item ? getItemActions(item).find((entry) => entry.id === mod.actionId) : undefined
+    const durationSeconds = action?.inversion?.durationSeconds
+    // Fichas antigas continuam exibindo o tempo restante quando a ação mudou.
+    const durationMs = typeof durationSeconds === "number" && Number.isFinite(durationSeconds) && durationSeconds > 0
+      ? durationSeconds * 1000
+      : remainingMs
+    const savedName = typeof mod.name === "string" ? mod.name : ""
+    const separator = savedName.indexOf(": ")
+    const itemName = separator > -1 ? savedName.slice(0, separator) : String(item?.name || "Item")
+    const abilityName = separator > -1 ? savedName.slice(separator + 2) : String(action?.name || "Habilidade temporária")
+    const relation = mod.operation === "swap"
+      ? `${statName[mod.source] || mod.source} ↔ ${statName[mod.destination] || mod.destination}`
+      : `${statName[mod.destination] || mod.destination} ← ${statName[mod.source] || mod.source}`
+    return [{
+      id: mod.id, itemName, abilityName, relation, remainingMs,
+      percent: Math.max(0, Math.min(100, (remainingMs / durationMs) * 100)),
+    }]
+  })
+
+  if (!timers.length) return null
+
+  return (
+    <section className="mt-3 space-y-2" aria-label="Habilidades temporárias de itens ativas">
+      {timers.map((timer) => {
+        const totalSeconds = Math.ceil(timer.remainingMs / 1000)
+        const hours = Math.floor(totalSeconds / 3600)
+        const minutes = Math.floor((totalSeconds % 3600) / 60)
+        const seconds = totalSeconds % 60
+        const remaining = hours > 0
+          ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+          : `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+        const description = `${timer.itemName} · ${timer.abilityName} · ${timer.relation}`
+        return (
+          <div
+            key={timer.id}
+            title={description}
+            className="rounded-md border border-border/35 bg-card/30 px-3 py-2"
+          >
+            <div className="flex min-w-0 items-center gap-2 text-[10px] leading-tight">
+              <Timer className="size-3 shrink-0 text-primary/75" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-foreground/85">
+                <span className="font-bold">{timer.itemName}</span>
+                <span className="text-muted-foreground"> · {timer.abilityName}</span>
+              </span>
+              <span className="hidden shrink-0 text-muted-foreground sm:inline">{timer.relation}</span>
+              <span className="shrink-0 font-mono font-semibold tabular-nums text-primary" aria-label={`${remaining} restantes`}>
+                {remaining}
+              </span>
+            </div>
+            <div className="mt-0.5 truncate text-[9px] text-muted-foreground sm:hidden">{timer.relation}</div>
+            <div
+              role="progressbar"
+              aria-label={description}
+              aria-valuetext={`${remaining} restantes`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(timer.percent)}
+              className="mt-1.5 h-[3px] w-full overflow-hidden rounded-full bg-primary/10"
+            >
+              <div
+                className="h-full rounded-full bg-primary/75 transition-[width] duration-500 ease-linear motion-reduce:transition-none"
+                style={{ width: `${timer.percent}%` }}
+              />
+            </div>
+          </div>
+        )
+      })}
     </section>
   )
 }
@@ -1514,7 +1624,7 @@ export function CharacterSheet({
   const allMods: any[] = (character as any).customModifiers || []
   const [modifierClock, setModifierClock] = useState(0)
   const timedModifierKey = allMods
-    .filter((mod: any) => mod.type === "class_book_effect" && typeof mod.expiresAt === "number")
+    .filter((mod: any) => ["class_book_effect", "item_attribute_inversion"].includes(mod.type) && typeof mod.expiresAt === "number")
     .map((mod: any) => `${mod.id}:${mod.expiresAt}`)
     .join("|")
   const activeMods = activeClassBookModifiers(allMods, modifierClock || 0)
@@ -1539,7 +1649,8 @@ export function CharacterSheet({
       m.type !== "bond" &&
       !isFreeSkillRecord(m) &&
       !isItemState(m) &&
-      !isManualDefenseRecord(m),
+      !isManualDefenseRecord(m) &&
+      !isItemActionRuntimeMarker(m),
   )
   // --- FIM SOLUÇÃO PERSISTENCIA LAÇOS ---
 
@@ -1762,6 +1873,8 @@ export function CharacterSheet({
     ),
   ]
   const activeItemBonuses = equippedItemBonuses(character, itemCatalog)
+  const resolvedItemStats = itemResolvedStats(character, itemCatalog, modifierClock || Date.now())
+  const effectiveAttributes = resolvedItemStats.attributes
   const itemCommitRef = useRef(false)
   const currentZenit = character.zenit || 0
   const skillsObj = character.skills || {}
@@ -2478,7 +2591,7 @@ export function CharacterSheet({
       const dieSizes: number[] = []
       const diceLabels: string[] = []
       check.attrs.forEach((a: string) => {
-        const dieLabel = character.attributes[a as AttributeKey] || "d6"
+        const dieLabel = effectiveAttributes[a as AttributeKey] || "d6"
         const dieSize = parseInt(dieLabel.replace("d", ""))
         dieSizes.push(dieSize)
         diceLabels.push(dieLabel)
@@ -2529,7 +2642,7 @@ export function CharacterSheet({
     // Evita a limitação de apenas 2 atributos dos testes tradicionais.
     const dieSizes = check.dice.map(die => die.kind === "fixed"
       ? die.sides
-      : Number.parseInt(String(character.attributes[die.attribute] || "d6").replace("d", ""), 10))
+      : Number.parseInt(String(effectiveAttributes[die.attribute] || "d6").replace("d", ""), 10))
     if (dieSizes.length < 1 || dieSizes.length > 10 ||
         dieSizes.some(sides => !Number.isSafeInteger(sides) || sides < 2 || sides > 1000)) return
     setRollingAttr(`custom:${check.id}`)
@@ -2542,7 +2655,7 @@ export function CharacterSheet({
       if (activeBond) modifier += activeBond.value
       const rolls = dieSizes.map(sides => Math.floor(Math.random() * sides) + 1)
       const total = rolls.reduce((sum, value) => sum + value, 0) + modifier
-      const diceLabels = check.dice.map((die, index) => die.kind === "fixed" ? `d${die.sides}` : String(character.attributes[die.attribute] || "d6"))
+      const diceLabels = check.dice.map((die, index) => die.kind === "fixed" ? `d${die.sides}` : String(effectiveAttributes[die.attribute] || "d6"))
       onRoll?.(`Teste: ${check.name} [${diceLabels.join(" + ")}]`, total, {
         breakdown: rolls.map((roll, i) => `${diceLabels[i]}: ${roll}`).join(" + "),
         modifier: modifier || undefined,
@@ -3149,6 +3262,13 @@ export function CharacterSheet({
                           isGm={isGm}
                           busy={pending}
                           onCommit={commitItemUpdate}
+                          onServerCharacter={(updated) => {
+                            resourceDraftRef.current = updated.resources
+                            resourceConfirmedRef.current = updated.resources
+                            resourceCharacterRef.current = updated
+                            setDisplayResources(updated.resources)
+                            onOptimistic(updated)
+                          }}
                           onRoll={onRoll}
                           onRemove={removeEquipmentItem}
                           transferTargets={transferTargets}
@@ -4141,7 +4261,7 @@ export function CharacterSheet({
                             <button
                               disabled={!editable || isRolling}
                               onClick={() =>
-                                rollDice(k, character.attributes[k])
+                                rollDice(k, effectiveAttributes[k])
                               }
                               className={`attribute-roll-button h-20 w-full rounded-sm border text-center shadow-inner ${isRolling ? "is-rolling border-primary bg-primary/20" : editable ? "border-border/60 bg-card/40 hover:border-primary/60 hover:bg-card" : "cursor-default border-border/60 bg-card/40"}`}
                             >
@@ -4153,8 +4273,9 @@ export function CharacterSheet({
                                     {ATTRIBUTE_META[k].short}
                                   </p>
                                   <p className="font-serif text-xl font-black text-primary drop-shadow-sm sm:text-2xl">
-                                    {character.attributes[k]}
+                                    {effectiveAttributes[k]}
                                   </p>
+                                  {effectiveAttributes[k] !== character.attributes[k] && <p className="text-[9px] text-accent">Base {character.attributes[k]}</p>}
                                 </>
                               )}
                             </button>
@@ -4176,6 +4297,13 @@ export function CharacterSheet({
                       })}
                     </div>
 
+                    <TimedItemAbilityBars
+                      character={character}
+                      catalog={itemCatalog}
+                      now={modifierClock || Date.now()}
+                    />
+
+                    <ItemDamageShelf character={character} catalog={itemCatalog} editable={editable || isGm} onRoll={onRoll} />
                     <ManualDefenseFields
                       key={character.id}
                       character={character}
@@ -4534,7 +4662,7 @@ export function CharacterSheet({
 
                 {sheetTab === "checks" && (
                   <CombinedChecksPanel
-                    character={character}
+                    character={{ ...character, attributes: effectiveAttributes as Character["attributes"] }}
                     onRoll={handleCombinedRoll}
                     onCustomRoll={handleCustomRoll}
                     customChecks={customChecks}
