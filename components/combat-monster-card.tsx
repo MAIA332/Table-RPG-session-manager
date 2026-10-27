@@ -1,5 +1,7 @@
 "use client"
-import { QTE_CHECKS } from "@/lib/combat-checks"
+import { useState } from "react"
+import { PRESET_CHECKS, QTE_CHECKS } from "@/lib/combat-checks"
+import type { CustomCheck } from "@/lib/custom-checks"
 import type { MonsterAttribute } from "@/lib/monster-dice"
 import { getEquipment } from "@/lib/game-data"
 import type { Attack, Ability } from "@/lib/combat-model"
@@ -17,6 +19,9 @@ export function CombatMonsterCard({
   onRemove,
   onVital,
   onAttributeRoll,
+  onCheckRoll,
+  onCustomCheckRoll,
+  customChecks = [],
 }: {
   creature: CombatCreature
   isGm: boolean
@@ -29,6 +34,9 @@ export function CombatMonsterCard({
   onConfigure: () => void
   onRemove: () => void
   onAttributeRoll?: (attribute: MonsterAttribute) => void
+  onCheckRoll?: (checkId: string) => void
+  onCustomCheckRoll?: (check: CustomCheck) => void
+  customChecks?: CustomCheck[]
   onVital: (
     resource: "currentHp" | "currentMp",
     change: number | "full",
@@ -94,7 +102,9 @@ export function CombatMonsterCard({
         pending={pending}
         onChange={onVital}
       />
-      <CreatureSheetDetails creature={creature} onAttributeRoll={onAttributeRoll} rollPending={pending} />
+      <CreatureSheetDetails creature={creature} onAttributeRoll={onAttributeRoll}
+        onCheckRoll={onCheckRoll} onCustomCheckRoll={onCustomCheckRoll}
+        customChecks={customChecks} rollPending={pending} />
       {!canAct && creature.currentHp > 0 && (
         <p className="mb-3 rounded-lg bg-amber-300/5 p-3 text-xs text-amber-200">
           Para atacar, inicie o combate e assuma o Holofote. Aguarde qualquer
@@ -276,9 +286,12 @@ export function CreatureAbilityDetails({ ability }: { ability: Ability }) {
   )
 }
 
-export function CreatureSheetDetails({ creature, onAttributeRoll, rollPending = false }: {
+export function CreatureSheetDetails({ creature, onAttributeRoll, onCheckRoll, onCustomCheckRoll, customChecks = [], rollPending = false }: {
   creature: CombatCreature
   onAttributeRoll?: (attribute: MonsterAttribute) => void
+  onCheckRoll?: (checkId: string) => void
+  onCustomCheckRoll?: (check: CustomCheck) => void
+  customChecks?: CustomCheck[]
   rollPending?: boolean
 }) {
   const elements: Record<string, string> = { physical: "Físico", air: "Ar", bolt: "Raio", dark: "Trevas", earth: "Terra", fire: "Fogo", ice: "Gelo", light: "Luz", poison: "Veneno" }
@@ -311,6 +324,8 @@ export function CreatureSheetDetails({ creature, onAttributeRoll, rollPending = 
           <div className="col-span-2 rounded-lg bg-white/5 p-2"><dt className="text-xs text-zinc-400">Defesa Mágica</dt><dd className="font-bold">{creature.mdef}</dd></div>
         </dl>
       </div>
+      {onCheckRoll && <CreatureChecksPanel creature={creature} disabled={rollPending}
+        onRoll={onCheckRoll} customChecks={customChecks} onCustomRoll={onCustomCheckRoll} />}
       <div>
         <h4 className="mb-2 text-xs font-bold uppercase text-amber-100">Afinidades</h4>
         <dl className="grid grid-cols-2 gap-2">
@@ -326,5 +341,87 @@ export function CreatureSheetDetails({ creature, onAttributeRoll, rollPending = 
         <ul className="list-inside list-disc space-y-2 whitespace-pre-wrap break-words text-zinc-300">{creature.spells.map((spell, index) => <li key={index}>{spell}</li>)}</ul>
       </div>}
     </section>
+  )
+}
+
+/** Espelha testes tradicionais e especiais mostrados na ficha de personagem. */
+function CreatureChecksPanel({ creature, disabled, onRoll, customChecks, onCustomRoll }: {
+  creature: CombatCreature
+  disabled: boolean
+  onRoll: (checkId: string) => void
+  customChecks: CustomCheck[]
+  onCustomRoll?: (check: CustomCheck) => void
+}) {
+  const [search, setSearch] = useState("")
+  const query = search.trim().toLocaleLowerCase("pt-BR")
+  const checks = PRESET_CHECKS.filter(check =>
+    check.name.toLocaleLowerCase("pt-BR").includes(query) ||
+    check.desc.toLocaleLowerCase("pt-BR").includes(query),
+  )
+  const specials = customChecks.filter(check =>
+    check.name.toLocaleLowerCase("pt-BR").includes(query) ||
+    (check.description || "").toLocaleLowerCase("pt-BR").includes(query),
+  )
+
+  return (
+    <details className="rounded-xl border border-amber-400/25 bg-amber-300/5 p-3">
+      <summary className="cursor-pointer select-none text-xs font-bold uppercase tracking-wider text-amber-200">
+        Testes e perícias da criatura ({PRESET_CHECKS.length + customChecks.length})
+      </summary>
+      <label className="mt-3 block text-xs text-zinc-300">
+        Procurar teste
+        <input type="search" value={search} onChange={event => setSearch(event.target.value)}
+          placeholder="Ex.: Reflexos, percepção..."
+          className="mt-1 w-full rounded-md border border-white/20 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-400" />
+      </label>
+      <div className="mt-3 grid max-h-72 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+        {specials.length > 0 && <h5 className="col-span-full border-b border-amber-400/25 pb-2 text-[10px] font-bold uppercase tracking-widest text-amber-300">
+          Testes especiais do Mestre · {specials.length} disponível(is)
+        </h5>}
+        {specials.map(check => (
+          <button type="button" key={`custom:${check.id}`}
+            disabled={disabled || !onCustomRoll}
+            onClick={() => onCustomRoll?.(check)}
+            className="min-h-24 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-left transition hover:border-amber-300 hover:bg-amber-400/20 disabled:opacity-40"
+            title={check.description || check.name}
+            aria-label={`Rolar teste especial ${check.name} de ${creature.name}`}
+          >
+            <span className="flex items-center justify-between gap-2 text-xs font-bold text-amber-100">
+              <span>{check.name}</span>
+              <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[9px] uppercase text-amber-300">Especial</span>
+            </span>
+            <span className="mt-2 flex flex-wrap gap-1">
+              {check.dice.map((die, index) => (
+                <span key={index} className="rounded border border-amber-400/20 bg-black/40 px-2 py-1 text-[10px] font-semibold text-amber-200">
+                  {die.kind === "attribute"
+                    ? `${die.attribute.toUpperCase()} (${creature.attributes[die.attribute] || "d6"})`
+                    : `d${die.sides}`}
+                </span>
+              ))}
+            </span>
+            {check.description && <span className="mt-2 block whitespace-normal text-[11px] leading-relaxed text-zinc-400">
+              {check.description}
+            </span>}
+          </button>
+        ))}
+        {specials.length > 0 && checks.length > 0 && <h5 className="col-span-full mt-1 border-b border-white/10 pb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+          Testes tradicionais
+        </h5>}
+        {checks.map(check => (
+          <button type="button" key={check.id} disabled={disabled}
+            onClick={() => onRoll(check.id)}
+            className="rounded-lg border border-white/15 bg-zinc-900/80 p-2 text-left transition hover:border-amber-400 hover:bg-amber-400/10 disabled:opacity-40"
+            title={check.desc}
+            aria-label={`Rolar ${check.name} de ${creature.name}`}
+          >
+            <span className="block text-xs font-semibold text-amber-100">🎲 {check.name}</span>
+            <span className="mt-1 block text-[10px] uppercase text-zinc-400">
+              {check.attrs.map(attr => creature.attributes[attr as keyof typeof creature.attributes] || "d6").join(" + ")}
+            </span>
+          </button>
+        ))}
+        {!checks.length && !specials.length && <p className="col-span-full py-3 text-center text-xs text-zinc-400">Nenhum teste encontrado.</p>}
+      </div>
+    </details>
   )
 }

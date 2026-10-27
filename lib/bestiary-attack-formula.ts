@@ -1,7 +1,7 @@
 /**
- * Regras específicas do Bestiário do Mestre.
- * Não modifica os requisitos de distribuição de dados dos personagens jogadores.
- * Fórmulas são arrays, não sets: MIG+MIG usa dois dados de MIG.
+ * Regras exclusivas do Bestiário do Mestre.
+ * Não altera o requisito de dois atributos para ataques dos jogadores.
+ * As fórmulas são arrays: MIG + MIG representa dois dados separados.
  */
 import { validateCombat, type Attack, type Ability } from "./combat-model"
 
@@ -9,7 +9,7 @@ export const BESTIARY_ATTRIBUTES = ["dex", "ins", "mig", "wlp"] as const
 export type BestiaryAttribute = (typeof BESTIARY_ATTRIBUTES)[number]
 export const BESTIARY_DICE = ["d4", "d6", "d8", "d10", "d12", "d20"] as const
 export type BestiaryDie = (typeof BESTIARY_DICE)[number]
-export const MAX_BESTIARY_ATTACK_ATTRIBUTES = 4
+export const MAX_BESTIARY_ATTACK_ATTRIBUTES = 10
 
 export function validateBestiaryDice(attributes: unknown): string | null {
   if (!attributes || typeof attributes !== "object" || Array.isArray(attributes)) {
@@ -26,7 +26,7 @@ export function validateBestiaryDice(attributes: unknown): string | null {
 
 export function validateBestiaryFormula(attributes: unknown): string | null {
   if (!Array.isArray(attributes) || attributes.length < 1 || attributes.length > MAX_BESTIARY_ATTACK_ATTRIBUTES) {
-    return "A fórmula de acerto deve ter entre 1 e 4 atributos."
+    return `A fórmula de acerto deve ter entre 1 e ${MAX_BESTIARY_ATTACK_ATTRIBUTES} atributos.`
   }
   for (const attribute of attributes) {
     if (!BESTIARY_ATTRIBUTES.some(item => item === attribute)) {
@@ -37,11 +37,10 @@ export function validateBestiaryFormula(attributes: unknown): string | null {
 }
 
 /**
- * O validador legado do projeto foi escrito para ataques de dois atributos.
- * Primeiro validamos a fórmula original de 1 a 4 elementos e depois validamos
- * os demais campos (dano, tipo, habilidades, alvo etc.) com a regra anterior.
- * A fórmula ORIGINAL é persistida e usada para a rolagem; a versão de dois
- * atributos existe apenas para reutilizar as regras legadas de validação.
+ * O validador legado cobre ataques de dois atributos.
+ * Validamos primeiro a fórmula REAL de 1 a 10 e, apenas para a checagem
+ * dos demais campos legados, construímos uma cópia temporária com 2 dados.
+ * A fórmula original NÃO é alterada, reduzida ou persistida parcialmente.
  */
 export function validateBestiaryCombat(attacks: Attack[], abilities: Ability[]): string | null {
   for (let index = 0; index < attacks.length; index += 1) {
@@ -54,7 +53,6 @@ export function validateBestiaryCombat(attacks: Attack[], abilities: Ability[]):
       : [attack.attributes[0], attack.attributes[0]]
     return { ...attack, attributes: attributes as Attack["attributes"] }
   })
-  // Habilidades de ataque também podem ter fórmulas de 1 a 4 dados.
   for (const ability of abilities) {
     if (ability.kind !== "attack") continue
     const issue = validateBestiaryFormula(ability.attack?.attributes)
@@ -75,5 +73,7 @@ export function validateBestiaryCombat(attacks: Attack[], abilities: Ability[]):
 }
 
 export function formatBestiaryFormula(attributes: readonly string[], dice?: Partial<Record<BestiaryAttribute, string>>): string {
-  return attributes.map(key => dice?.[key as BestiaryAttribute] ? `${key.toUpperCase()} (${dice[key as BestiaryAttribute]})` : key.toUpperCase()).join(" + ")
+  return attributes.map(key => dice?.[key as BestiaryAttribute]
+    ? `${key.toUpperCase()} (${dice[key as BestiaryAttribute]})`
+    : key.toUpperCase()).join(" + ")
 }

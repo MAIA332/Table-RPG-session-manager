@@ -353,7 +353,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                         <label className="flex flex-col gap-2 text-sm">Anotações de magias antigas (uma por linha)<textarea className="rounded bg-zinc-900 p-3" rows={3} value={spellsText} onChange={e => setSpellsText(e.target.value)} /></label>
                         <p className="text-xs text-muted-foreground">As anotações são preservadas. Cadastre abaixo as habilidades que deseja automatizar. Alterações no bestiário valem para as próximas invocações.</p>
                       </div>
-                      <div className="col-span-2"><AbilityEditor value={abilities} onChange={setAbilities} /></div>
+                      <div className="col-span-2"><AbilityEditor value={abilities} onChange={setAbilities} creatureDice={draft.attributes} /></div>
 
                     </div>
 
@@ -415,7 +415,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                       <div className="bg-black/30 border border-white/5 rounded-lg p-4">
                         <p className="text-xs font-bold text-primary uppercase tracking-widest mb-3">Habilidades / Passivas</p>
                         <ul className="space-y-2 list-disc list-inside text-sm text-muted-foreground ml-3">
-                          {hoveredCreature.abilities?.map((ability: Ability) => <li key={ability.id}>{ability.name} — {ability.kind === "passive" ? `${ability.trigger}: ${ability.effect}` : ability.kind === "attack" ? `${ability.attack.damage} ${ability.attack.type}` : `QTE ${ability.seconds}s · dificuldade ${ability.difficulty}`}</li>)}
+                          {hoveredCreature.abilities?.map((ability: Ability) => <li key={ability.id}>{ability.name} — {ability.kind === "passive" ? `${ability.trigger}: ${ability.effect}` : ability.kind === "attack" ? `${formatBestiaryFormula(ability.attack.attributes, hoveredCreature.attributes)} · ${ability.attack.damage} ${ability.attack.type}` : `QTE ${ability.seconds}s · dificuldade ${ability.difficulty}`}</li>)}
                           {hoveredCreature.spells?.map((spell, idx) => (
                             <li key={idx} className="leading-relaxed">{spell}</li>
                           ))}

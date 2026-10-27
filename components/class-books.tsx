@@ -68,6 +68,54 @@ function blankBook(classId: string, kind: BookKind): ClassBook {
   return { id: id("book"), classId, kind, name: kind === "spellbook" ? "Novo Grimório" : "Livro de Projetos", description: "", unlockMode: "all", playMode: kind === "spellbook" ? "deck" : "gallery", cooldownSeconds: kind === "spellbook" ? 60 : null, handLimit: 7, entries: [], updatedAt: Date.now() }
 }
 
+/** Exibe todos os campos descritivos sem truncar o texto ou limitar linhas. */
+function BookCardText({ entry, compact = false }: { entry: ClassBookEntry; compact?: boolean }) {
+  const sectionLabel = compact ? "text-amber-300" : "text-accent"
+  const contentColor = compact ? "text-zinc-100" : "text-muted-foreground"
+  const wrapText = "whitespace-pre-wrap break-words [overflow-wrap:anywhere]"
+  const textSections: { label: string; value?: string }[] = [
+    { label: "Efeitos / Regras", value: entry.effects },
+    { label: "Resultado da criação", value: entry.result },
+    { label: "Tempo de construção", value: entry.craftingTime },
+  ]
+
+  return (
+    <div className={`min-w-0 space-y-2 ${compact ? "text-[10px] leading-relaxed" : "text-[12px] leading-relaxed"}`}>
+      <p className={`${wrapText} ${contentColor}`}>
+        {entry.description || "Uma criação ainda sem descrição."}
+      </p>
+      {textSections.filter(section => section.value?.trim()).map(section => (
+        <div key={section.label} className="min-w-0 border-t border-current/10 pt-2">
+          <p className={`mb-0.5 text-[10px] font-bold uppercase tracking-wide ${sectionLabel}`}>{section.label}</p>
+          <p className={`${wrapText} ${contentColor}`}>{section.value}</p>
+        </div>
+      ))}
+      {!!entry.materials?.length && (
+        <div className="min-w-0 border-t border-current/10 pt-2">
+          <p className={`mb-0.5 text-[10px] font-bold uppercase tracking-wide ${sectionLabel}`}>Materiais</p>
+          <p className={`${wrapText} ${contentColor}`}>{entry.materials.map(m => `${m.amount}× ${m.name}`).join(" · ")}</p>
+        </div>
+      )}
+      {!!entry.tags?.length && (
+        <div className="min-w-0 border-t border-current/10 pt-2">
+          <p className={`mb-0.5 text-[10px] font-bold uppercase tracking-wide ${sectionLabel}`}>Tags</p>
+          <p className={`${wrapText} ${contentColor}`}>{entry.tags.join(" · ")}</p>
+        </div>
+      )}
+      {!!entry.checkBonuses?.length && (
+        <div className="min-w-0 border-t border-current/10 pt-2">
+          <p className={`mb-0.5 text-[10px] font-bold uppercase tracking-wide ${sectionLabel}`}>
+            Bônus ao utilizar ({entry.bonusDurationSeconds == null ? "até desativar" : `${entry.bonusDurationSeconds}s`})
+          </p>
+          <p className={`${wrapText} ${contentColor}`}>
+            {entry.checkBonuses.map(b => `+${b.value} ${bonusTargetName(b.target)}`).join(" · ")}
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function BookCard({ entry, kind, onClick, selected = false, disabled = false, player = false }: {
   entry: ClassBookEntry
   kind: BookKind
@@ -92,7 +140,7 @@ function BookCard({ entry, kind, onClick, selected = false, disabled = false, pl
       <div className="flex min-h-[92px] items-start justify-between gap-3 px-5 pb-3 pt-5">
         <div className="min-w-0 flex-1">
           <p className="mb-1 text-[10px] font-black uppercase tracking-[.22em] text-accent">{entry.kind || (blueprints ? "Projeto" : "Arcana")}</p>
-          <h3 className="line-clamp-2 text-xl font-black uppercase leading-[1.05] tracking-tight text-foreground sm:text-[22px]">{entry.name}</h3>
+          <h3 className="break-words [overflow-wrap:anywhere] text-xl font-black uppercase leading-[1.05] tracking-tight text-foreground sm:text-[22px]">{entry.name}</h3>
         </div>
         <div className="flex size-11 shrink-0 flex-col items-center justify-center rounded-xl border border-accent/35 bg-accent/10 text-accent">
           <span className="text-[8px] font-black uppercase tracking-wide">Nível</span>
@@ -108,8 +156,8 @@ function BookCard({ entry, kind, onClick, selected = false, disabled = false, pl
         <span className="absolute bottom-3 left-3 rounded-full border border-border/70 bg-background/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground backdrop-blur-md">{entry.rarity || "Comum"}</span>
         {selected && <span className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg"><Check size={17}/></span>}
       </div>
-      <div className="flex flex-1 flex-col gap-3 px-5 pb-4 pt-4">
-        <p className="line-clamp-2 text-[12px] leading-relaxed text-muted-foreground">{entry.description || "Uma criação ainda sem descrição."}</p>
+      <div className="flex min-w-0 flex-1 flex-col gap-3 px-5 pb-4 pt-4">
+        <BookCardText entry={entry} />
         <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/70 pt-3">
           <span className="text-xs font-semibold text-foreground">{entry.cost ? `${entry.cost.amount} ${entry.cost.resource.toUpperCase()}` : "Sem custo"}</span>
           <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-accent">{selected ? "Selecionada" : "Ver carta"}<ChevronRight size={14}/></span>
@@ -119,23 +167,21 @@ function BookCard({ entry, kind, onClick, selected = false, disabled = false, pl
   )
   return <motion.button type="button" layout whileHover={{ y: -7, rotateY: 3, scale: 1.025 }} whileTap={{ scale: 0.98 }}
     onClick={onClick} disabled={disabled}
-    className={`group relative isolate flex h-[304px] w-[214px] shrink-0 flex-col overflow-hidden rounded-[17px] border-[5px] text-left shadow-2xl transition-all ${selected ? "border-yellow-300 ring-2 ring-yellow-400/50" : blueprints ? "border-amber-950 bg-amber-950" : "border-indigo-950 bg-indigo-950"} ${disabled ? "opacity-60" : ""}`}
+    className={`group relative isolate flex min-h-[304px] w-[214px] shrink-0 flex-col overflow-hidden rounded-[17px] border-[5px] text-left shadow-2xl transition-all ${selected ? "border-yellow-300 ring-2 ring-yellow-400/50" : blueprints ? "border-amber-950 bg-amber-950" : "border-indigo-950 bg-indigo-950"} ${disabled ? "opacity-60" : ""}`}
     style={{ background: blueprints ? "linear-gradient(140deg,#31251b,#090909 75%)" : "linear-gradient(145deg,#2f245e,#100f22 65%,#050508)" }}>
     <div className="flex justify-between items-center gap-2 bg-black/45 px-2 py-1.5 text-[11px] font-bold text-white">
-      <span className="line-clamp-1">{entry.name}</span>
+      <span className="min-w-0 break-words [overflow-wrap:anywhere]">{entry.name}</span>
       <span className="rounded-full border border-white/20 px-1.5 text-[9px]">{entry.cost?.amount ?? (entry.tier ?? 1)}</span>
     </div>
-    <div className="relative h-32 border-y-2 border-white/20 bg-gradient-to-br from-indigo-700/30 via-zinc-900 to-amber-900/30">
+    <div className="relative h-32 shrink-0 border-y-2 border-white/20 bg-gradient-to-br from-indigo-700/30 via-zinc-900 to-amber-900/30">
       {entry.imageUrl ? <img src={entry.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" /> : <div className="flex h-full items-center justify-center text-white/30">{blueprints ? <Hammer size={58} /> : <WandSparkles size={58} />}</div>}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/40" />
     </div>
     <div className="flex justify-between border-b border-white/15 bg-black/30 px-2 py-1 text-[10px] text-white/80">
       <span>{entry.kind || (blueprints ? "Projeto" : "Feitiço")}</span><span>{entry.rarity || "Comum"}</span>
     </div>
-    <div className="flex-1 overflow-hidden px-2 py-2 text-[10px] leading-relaxed text-zinc-100">
-      <p className="line-clamp-5 whitespace-pre-wrap">{entry.description || "Os detalhes desta criação ainda não foram escritos."}</p>
-      {entry.effects && <p className="mt-2 line-clamp-2 border-t border-white/20 pt-1 italic text-amber-200">{entry.effects}</p>}
-      {entry.materials && entry.materials.length > 0 && <p className="mt-1 line-clamp-2 text-amber-300">{entry.materials.map(m => `${m.amount}× ${m.name}`).join(" · ")}</p>}
+    <div className="min-w-0 flex-1 px-2 py-2 text-[10px] leading-relaxed text-zinc-100">
+      <BookCardText entry={entry} compact />
     </div>
     <div className="flex justify-between bg-black/50 px-2 py-1 text-[9px] text-white/60"><span>Classe Nv. {entry.requiredClassLevel ?? 1} · Carta Nv. {entry.tier ?? 1}</span><span>{entry.cost ? `${entry.cost.amount} ${entry.cost.resource.toUpperCase()}` : "Sem custo"}</span></div>
     <div className="pointer-events-none absolute -inset-12 -translate-x-full rotate-12 bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
@@ -671,9 +717,10 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
               <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <span className="text-[9px] font-black uppercase tracking-[.2em] text-accent">Carta selecionada</span>
-                  <p className="truncate text-sm font-black text-foreground sm:text-lg">{selectedCard.name}</p>
-                  <p className="line-clamp-2 text-[11px] text-muted-foreground">{selectedCard.effects || selectedCard.description}</p>
-                  {!!selectedCard.checkBonuses?.length && <p className="mt-1 line-clamp-1 text-[11px] text-accent">Ao conjurar ({selectedCard.bonusDurationSeconds == null ? "ilimitado" : `${selectedCard.bonusDurationSeconds}s`}): {selectedCard.checkBonuses.map(b => `+${b.value} ${bonusTargetName(b.target)}`).join(" · ")}</p>}
+                  <p className="break-words [overflow-wrap:anywhere] text-sm font-black text-foreground sm:text-lg">{selectedCard.name}</p>
+                  <div className="mt-2 max-h-[min(30dvh,240px)] overflow-y-auto overscroll-contain pr-2 custom-scrollbar-sepia" aria-label="Descrição completa da carta selecionada">
+                    <BookCardText entry={selectedCard} />
+                  </div>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <button type="button" onClick={() => setSelected(null)} className="flex min-h-11 items-center justify-center rounded-full border border-border px-4 text-xs font-bold text-muted-foreground hover:text-foreground">Cancelar</button>
@@ -704,14 +751,14 @@ export function ClassCardReveal({ value }: { value: {
       <motion.div initial={{ y: 170, scale: .4, rotateY: -120, opacity: 0 }}
         animate={{ y: 0, scale: 1, rotateY: 0, opacity: 1 }}
         exit={{ scale: 1.2, opacity: 0 }} transition={{ type: "spring", damping: 16, stiffness: 115 }}
-        className="relative w-[min(80vw,360px)] overflow-hidden rounded-2xl border-[6px] border-indigo-400/80 bg-[#18132f] p-2 text-center shadow-[0_0_90px_rgba(138,92,246,.65)]">
+        className="relative max-h-[90dvh] w-[min(80vw,360px)] overflow-y-auto rounded-2xl border-[6px] border-indigo-400/80 bg-[#18132f] p-2 text-center shadow-[0_0_90px_rgba(138,92,246,.65)]">
         <div className="absolute inset-0 animate-pulse bg-gradient-to-tr from-violet-700/20 via-transparent to-amber-400/20" />
         <p className="relative p-2 text-xs font-bold uppercase tracking-widest text-violet-200">{value.casterName} conjurou</p>
         <h3 className="relative pb-2 font-serif text-xl font-black text-amber-200">{value.cardName}</h3>
         <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-violet-800 via-indigo-950 to-black">
           {value.cardImage ? <img src={value.cardImage} alt="" className="h-full w-full object-cover" /> : <WandSparkles className="animate-pulse text-violet-200" size={90} />}
         </div>
-        {value.cardEffects && <p className="relative line-clamp-3 px-4 py-3 text-xs italic text-zinc-200">{value.cardEffects}</p>}
+        {value.cardEffects && <p className="relative max-h-[40dvh] overflow-y-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-4 py-3 text-xs italic text-zinc-200">{value.cardEffects}</p>}
       </motion.div>
     </motion.div>}
   </AnimatePresence>, document.body) : null

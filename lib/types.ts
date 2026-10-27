@@ -137,6 +137,7 @@ export interface Character {
   resources: CharacterResources
   createdAt: number
   updatedAt: number
+  bonds?: any
 }
 export interface ItemTransfer {
   donorRetainsItem?: boolean

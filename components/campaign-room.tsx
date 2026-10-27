@@ -22,10 +22,12 @@ import { useRealtime } from "@/lib/use-realtime"
 import type { CustomCheck } from "@/lib/custom-checks"
 import { CharacterCreator } from "@/components/character-creator"
 import { CharacterBookShelf, ClassCardReveal } from "./class-books"
+import { isTrainingActive } from "@/lib/training-model"
 import { createClientId } from "@/lib/client-id"
 import { createCombatInstanceId } from "@/lib/combat-instance-id"
 import type { MonsterDiceState } from "@/lib/monster-dice"
 import { upsertArchivedNPC, upsertNurseryNPC, linkSpawnedCharacter } from "@/lib/npc-nursery"
+import { captureArchivedCharacter, buildArchivedNpcPatch, missingRestoredFields } from "@/lib/npc-archive-snapshot"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
 import {
@@ -2729,6 +2731,38 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     })
   }
 
+  /** NPCs do Mestre em combate usam o mesmo sigilo das criaturas do bestiário. */
+  function handleCombatSheetRoll(
+    character: Character,
+    attribute: string,
+    result: number | string,
+    details?: DiceRollDetails,
+  ) {
+    if (isTrainingActive((character as any).training)) {
+      setCombatUiError(`${character.name} está treinando e não pode fazer rolagens até a conclusão.`)
+      return
+    }
+    if (isGm && combatController.combat?.enabled && isMasterOwnedCharacter(character)) {
+      const numericResult = typeof result === "number" ? result : Number(result)
+      if (!Number.isFinite(numericResult)) {
+        setCombatUiError("Não foi possível registrar esta rolagem privada do NPC: resultado inválido.")
+        return
+      }
+      // Não chamar a rota coletiva /roll: ela enviaria o resultado até mesmo
+      // para jogadores quando a preferência estiver configurada como privada.
+      void runCombat({
+        type: "gm-npc-roll",
+        characterId: character.id,
+        label: attribute,
+        result: numericResult,
+        dice: attribute.match(/\bd\d{1,4}\b/gi) || [],
+        breakdown: details?.breakdown || undefined,
+      })
+      return
+    }
+    void handleBroadcastRoll(character.name, attribute, result, details)
+  }
+
   function handleRaiseHand() {
     if (isGm || handRaiseCooldown) return
     const noticeId = `${data.me.id}-${Date.now()}`
@@ -2782,11 +2816,30 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         skills: character.skills || {},
         attributes: character.attributes,
         equipment: character.equipment || [],
+        // Snapshot integral, incluindo recursos atuais, itens personalizados,
+        // itens equipados/guardados, condições, efeitos e estados de uso.
+        archivedSnapshot: captureArchivedCharacter(character),
+        archivedAt: Date.now(),
       }
 
       // Segurança: só exclui a ficha ativa DEPOIS de confirmar o salvamento
       // do NPC no estado persistido da campanha (MongoDB).
-      await commitCustomNPCs(previous => upsertArchivedNPC(previous, draft))
+      await commitCustomNPCs(previous => {
+        const updated = upsertArchivedNPC(previous, draft)
+        // Preserva o snapshot mesmo se o normalizador legado do Berçário
+        // conhecer somente os campos antigos de NPCDraft.
+        let snapshotAttached = false
+        const next = updated.map(entry => {
+          const sameNpc = entry.id === draft.id ||
+            entry.sourceCharacterId === character.id ||
+            entry.linkedCharacterIds?.includes(character.id)
+          if (!sameNpc) return entry
+          snapshotAttached = true
+          return { ...entry, archivedSnapshot: draft.archivedSnapshot, archivedAt: draft.archivedAt }
+        })
+        if (!snapshotAttached) throw new Error("Não foi possível associar o snapshot ao NPC. A ficha ativa foi preservada.")
+        return next
+      })
       try {
         await apiFetch(`/api/characters/${character.id}`, { method: "DELETE" })
       } catch (deleteError) {
@@ -2902,16 +2955,31 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   }
 
   async function handleSaveCustomNPC(npc: NPCDraft) {
-    await commitCustomNPCs(current => upsertNurseryNPC(current, npc))
+    await commitCustomNPCs(current => {
+      const previous = current.find(entry => entry.id === npc.id)
+      return upsertNurseryNPC(current, npc).map(entry => entry.id === npc.id ? {
+        ...entry,
+        archivedSnapshot: npc.archivedSnapshot ?? previous?.archivedSnapshot,
+        archivedAt: npc.archivedAt ?? previous?.archivedAt,
+        sourceCharacterId: npc.sourceCharacterId ?? previous?.sourceCharacterId,
+        linkedCharacterIds: npc.linkedCharacterIds ?? previous?.linkedCharacterIds,
+      } : entry)
+    })
   }
 
   async function spawnNPC(draft: NPCDraft) {
     try {
+      if (draft.archivedSnapshot?.campaignId && draft.archivedSnapshot.campaignId !== data.campaign.id) {
+        throw new Error("O snapshot deste NPC pertence a outra campanha.")
+      }
+      const restorePatch = buildArchivedNpcPatch(draft)
+      const maxIp = draft.archivedSnapshot?.resources?.maxIp ?? BASE_MAX_IP
       assertInventoryFits(
         {
           equipment: draft.equipment,
-          resources: { maxIp: BASE_MAX_IP },
+          resources: { maxIp },
           attributes: draft.attributes,
+          customItems: draft.archivedSnapshot?.customItems ?? [],
         },
         customEquipment,
       )
@@ -2932,18 +3000,71 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       })
       // A ficha ativa tem seu próprio ID. Guardar a ligação permite arquivá-la
       // mais tarde no MESMO registro da origem, sem criar um NPC duplicado.
-      if (response.character?.id) {
+      const spawnedId = response.character?.id
+      if (!spawnedId) throw new Error("A API não retornou o ID do NPC criado.")
+
+      let restorationError: string | null = null
+      if (restorePatch) {
         try {
-          await commitCustomNPCs(current => linkSpawnedCharacter(current, draft.id, response.character.id))
-        } catch (linkError) {
-          alert(`NPC invocado, mas não foi possível salvar o vínculo com o Berçário: ${linkError instanceof Error ? linkError.message : "erro"}. Não invoque novamente sem verificar a sala.`)
+          // POST legados criam recursos e efeitos com valores iniciais.
+          // O PATCH restaura o estado persistido completo antes de concluir.
+          const restored = await apiFetch<{ character: Character }>(
+            `/api/characters/${encodeURIComponent(spawnedId)}`,
+            { method: "PATCH", body: JSON.stringify(restorePatch) },
+          )
+          if (!restored.character) throw new Error("A API não confirmou a ficha restaurada.")
+          const missing = missingRestoredFields(draft, restored.character, restorePatch)
+          if (missing.length) {
+            throw new Error(`A API não preservou: ${missing.join(", ")}`)
+          }
+        } catch (error) {
+          restorationError = error instanceof Error ? error.message : "Erro desconhecido na restauração."
         }
+      }
+
+      try {
+        await commitCustomNPCs(current => {
+          const linked = linkSpawnedCharacter(current, draft.id, spawnedId)
+          return linked.map(entry => entry.id === draft.id ? {
+            ...entry,
+            archivedSnapshot: entry.archivedSnapshot ?? draft.archivedSnapshot,
+            archivedAt: entry.archivedAt ?? draft.archivedAt,
+          } : entry)
+        })
+      } catch (linkError) {
+        throw new Error(`A ficha ${spawnedId} foi criada, mas o vínculo com o Berçário não foi salvo: ${linkError instanceof Error ? linkError.message : "erro"}. Não invoque novamente antes de verificar a sala.`)
+      }
+
+      if (restorationError) {
+        throw new Error(`NPC ${spawnedId} criado, mas a restauração NÃO foi concluída: ${restorationError}. O registro permaneceu no Berçário; confira a ficha ativa antes de tentar novamente.`)
       }
       setShowNursery(false)
     } catch (err) {
       console.error(err)
       throw err
     }
+  }
+
+  /** Repara uma invocação já criada sem gerar outra ficha/ID. */
+  async function repairSpawnedNPC(draft: NPCDraft, characterId: string) {
+    if (!isGm) throw new Error("Apenas o Mestre pode restaurar NPCs.")
+    if (!draft.linkedCharacterIds?.includes(characterId)) {
+      throw new Error("Esta ficha não está vinculada ao NPC arquivado.")
+    }
+    const active = characters.find(entry => entry.id === characterId)
+    if (!active || active.campaignId !== data.campaign.id) {
+      throw new Error("A ficha indicada não está ativa nesta campanha.")
+    }
+    const patch = buildArchivedNpcPatch(draft)
+    if (!patch) throw new Error("Este NPC não possui um snapshot integral para restaurar.")
+    const response = await apiFetch<{ character: Character }>(
+      `/api/characters/${encodeURIComponent(characterId)}`,
+      { method: "PATCH", body: JSON.stringify(patch) },
+    )
+    if (!response.character) throw new Error("A API não confirmou a ficha restaurada.")
+    const missing = missingRestoredFields(draft, response.character, patch)
+    if (missing.length) throw new Error(`A API ainda não preservou: ${missing.join(", ")}`)
+    applyOptimistic(response.character)
   }
 
   const saveNpcLoots = (loots: DroppedLoot[]) => {
@@ -3498,8 +3619,21 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   const myCharacters = characters.filter((c) => c.ownerId === data.me.id)
   const otherCharacters = characters.filter((c) => c.ownerId !== data.me.id)
+  // NPCs/fichas pertencentes a membros com papel de Mestre (incluindo o dono
+  // da campanha) são sempre recolhidos na visão dos jogadores.
+  const gmOwnerIds = new Set([
+    data.campaign.ownerId,
+    ...data.members.filter(member => member.role === "gm").map(member => member.userId),
+  ])
+  const isMasterOwnedCharacter = (character: Character) => gmOwnerIds.has(character.ownerId)
+  const canExpandCharacter = (character: Character) => isGm || !isMasterOwnedCharacter(character)
   const isCombatActive =
     (isGm && activeCreatures.length > 0) || combatController.combat?.enabled
+  const combatDiceState = combatController.combat as (typeof combatController.combat & MonsterDiceState)
+  const recentCreatureRolls = [
+    ...(combatDiceState?.monsterAttributeRolls || []),
+    ...(combatDiceState?.monsterCheckRolls || []),
+  ].sort((a, b) => b.at - a.at).slice(0, 10)
 
   async function resolveItemTransfer(
     transferId: string,
@@ -3576,10 +3710,14 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             <DeathCheckOverlay controller={combatController} viewerId={data.me.id} isGm={isGm} campaignId={data.campaign.id} characters={characters} />
             <CampaignCombat
               controller={combatController}
+              campaignId={data.campaign.id}
               viewerId={data.me.id}
               isGm={isGm}
               characters={characters}
               members={data.members}
+              customChecks={customChecks}
+              booksRevision={booksRevision}
+              onCharacterUpdated={applyOptimistic}
               actionRequest={combatActionRequest}
               onAbilitiesSaved={async () => {
                 const result = await apiFetch<{
@@ -3742,6 +3880,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               onClose={() => setShowNursery(false)}
               customNPCs={customNPCs}
               onSpawn={spawnNPC}
+              onRepair={repairSpawnedNPC}
               onDelete={handleDeleteCustomNPC}
               customClasses={customClasses}
               campaignCharacters={characters}
@@ -4291,7 +4430,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                             combatController.combat?.spotlight
                               .activePlayerId === c.ownerId
                           }
-                          expanded={true}
+                          expanded={canExpandCharacter(c)}
+                          canExpand={canExpandCharacter(c)}
+                          showCompactDefenses={isMasterOwnedCharacter(c)}
                           character={c}
                           editable={isGm || c.ownerId === data.me.id}
                           isGm={isGm}
@@ -4308,7 +4449,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                             attr: string,
                             res: number | string,
                             details?: DiceRollDetails,
-                          ) => handleBroadcastRoll(c.name, attr, res, details)}
+                          ) => handleCombatSheetRoll(c, attr, res, details)}
                           onKill={isGm ? handleKillNPC : undefined}
                           shouldOpenInventory={inventoryToOpen === c.id}
                           onClearInventoryRequest={() =>
@@ -5068,6 +5209,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           <CombatMonsterCard
                             key={creature.instanceId}
                             creature={creature}
+                            customChecks={customChecks}
                             isGm={isGm}
                             pending={combatController.pending}
                             canAct={canGmAct}
@@ -5115,6 +5257,20 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                               instanceId: creature.instanceId,
                               attribute,
                             })}
+                            onCheckRoll={(checkId) => void runCombat({
+                              type: "monster-check-roll",
+                              instanceId: creature.instanceId,
+                              checkId,
+                            })}
+                            onCustomCheckRoll={(customCheck) => void runCombat({
+                              type: "monster-custom-check-roll",
+                              instanceId: creature.instanceId,
+                              customCheck: {
+                                id: customCheck.id,
+                                name: customCheck.name,
+                                dice: customCheck.dice,
+                              },
+                            })}
                             onVital={(resource, change) => {
                               const max =
                                 resource === "currentHp"
@@ -5137,6 +5293,23 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                         ),
                       )}
                     </div>
+                    {recentCreatureRolls.length > 0 && (
+                      <section className="mt-4 rounded-xl border border-amber-400/20 bg-black/30 p-3">
+                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-amber-300">
+                          Testes das criaturas
+                        </h3>
+                        <ul className="mt-2 max-h-44 space-y-2 overflow-y-auto text-xs">
+                          {recentCreatureRolls.map(roll => (
+                            <li key={roll.id} className="rounded-md border border-white/10 px-2 py-1.5 text-zinc-300">
+                              <span className="font-semibold text-amber-100">{roll.creatureName}</span>
+                              {"checkName" in roll ? ` · ${roll.checkName}` : ` · ${roll.attribute.toUpperCase()}`}
+                              {`: ${roll.result}`}
+                              {isGm && !roll.shared ? " · Privada" : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    )}
                   </div>
 
                   {/* PAINEL DO GRUPO (Com 1-Clique para Jogadores) */}
@@ -5230,6 +5403,18 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                               >
                                 Abrir ficha
                               </button>
+                            )}
+                            {(isGm || isMe) && (
+                              <div className="relative z-20 mt-2 w-full min-w-0 pointer-events-auto"
+                                onClick={(event) => event.stopPropagation()}>
+                                <CharacterBookShelf
+                                  campaignId={data.campaign.id}
+                                  character={char}
+                                  isGm={isGm}
+                                  refreshToken={booksRevision}
+                                  onCharacterUpdated={applyOptimistic}
+                                />
+                              </div>
                             )}
                             {isMyTurn && isMe && !qtePending && (
                               <div className="mt-4 pt-4 border-t border-amber-500/20 w-full relative z-20 pointer-events-auto">
@@ -5361,6 +5546,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           }
                           character={c}
                           editable={true}
+                          canExpand={canExpandCharacter(c)}
+                          showCompactDefenses={isMasterOwnedCharacter(c)}
                           activeHazards={activeHazards}
                           isGm={isGm}
                           isOwned={true}
@@ -5375,7 +5562,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                             attr: string,
                             res: number | string,
                             details?: DiceRollDetails,
-                          ) => handleBroadcastRoll(c.name, attr, res, details)}
+                          ) => handleCombatSheetRoll(c, attr, res, details)}
                           onKill={isGm ? handleKillNPC : undefined}
                           shouldOpenInventory={inventoryToOpen === c.id}
                           onClearInventoryRequest={() =>
@@ -5416,6 +5603,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           }
                           character={c}
                           editable={isGm}
+                          canExpand={canExpandCharacter(c)}
+                          showCompactDefenses={isMasterOwnedCharacter(c)}
                           activeHazards={activeHazards}
                           isGm={isGm}
                           isOwned={false}
@@ -5430,7 +5619,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                             attr: string,
                             res: number | string,
                             details?: DiceRollDetails,
-                          ) => handleBroadcastRoll(c.name, attr, res, details)}
+                          ) => handleCombatSheetRoll(c, attr, res, details)}
                           onKill={isGm ? handleKillNPC : undefined}
                           shouldOpenInventory={inventoryToOpen === c.id}
                           onClearInventoryRequest={() =>

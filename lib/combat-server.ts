@@ -14,7 +14,11 @@ import {
 } from "./combat-model"
 import { answerQte, createQte, expireQte, qteComplete } from "./qte-model"
 import { resolveBestiaryAttack } from "./monster-attack-resolver"
+import { isTrainingActive, trainingFatiguePenalty } from "./training-model"
 import { isMonsterAttribute, type MonsterDiceState } from "./monster-dice"
+import { PRESET_CHECKS } from "./combat-checks"
+import { parseMonsterCustomCheck, resolveMonsterCustomDice, rollMonsterCustomDice } from "./monster-custom-check"
+import { visibleMonsterCheckRolls } from "./monster-checks"
 import { validateBestiaryCombat, validateBestiaryDice } from "./bestiary-attack-formula"
 import {
   characterDefense,
@@ -32,6 +36,21 @@ import type {
 } from "./combat-types"
 import type { Character, RealtimeEvent } from "./types"
 type Database = Parameters<Parameters<typeof transactStore>[0]>[0]
+
+/** Evita aplicar a condição Cansado duas vezes, mesmo se o resolvedor lê customModifiers. */
+function characterRollWithFatigue(...args: Parameters<typeof characterRoll>): ReturnType<typeof characterRoll> {
+  const original = args[0] as Character
+  const existingModifiers = (original as Character & { customModifiers?: unknown }).customModifiers
+  const filtered = {
+    ...original,
+    customModifiers: (Array.isArray(existingModifiers) ? existingModifiers : [])
+      .filter((mod: any) => mod?.type !== "training_fatigue"),
+  } as Character
+  const result = characterRoll(...([filtered, ...args.slice(1)] as Parameters<typeof characterRoll>))
+  const penalty = (args[1] as readonly string[]).includes("dex")
+    ? trainingFatiguePenalty((original as any).training) : 0
+  return penalty ? { ...result, total: result.total - penalty, modifier: result.modifier - penalty } : result
+}
 export class CombatError extends Error {
   constructor(
     message: string,
@@ -243,7 +262,7 @@ function snapshot(
 ): CombatSnapshot {
   const { role } = authorize(db, campaignId, userId)
   const gm = role === "gm"
-  const { receipts, monsterAttributeRolls, ...publicState } = s as CombatSession & MonsterDiceState
+  const { receipts, monsterAttributeRolls, monsterCheckRolls, ...publicState } = s as CombatSession & MonsterDiceState
   const characters = [...db.characters.values()]
     .filter((c) => c.campaignId === campaignId)
     .map((c) => ({
@@ -266,6 +285,8 @@ function snapshot(
       monsterAttributeRolls: gm
         ? (monsterAttributeRolls || [])
         : (monsterAttributeRolls || []).filter(entry => entry.shared),
+      // Não exponha testes privados por meio do spread de publicState.
+      monsterCheckRolls: visibleMonsterCheckRolls(monsterCheckRolls || [], gm),
       shareMonsterRolls: publicState.shareMonsterRolls === true,
     },
     spotlight: {
@@ -406,7 +427,7 @@ export async function getCombat(campaignId: string, userId: string): Promise<Com
   schedule(campaignId, result.session)
   return result.view
 }
-function validateAttack(value: unknown): Attack {
+function validateAttack(value: unknown, origin: "player" | "creature" = "player"): Attack {
   requireTrue(value && typeof value === "object", "Ataque inválido")
   const a = value as Attack
   text(a.name, "Nome do ataque")
@@ -417,7 +438,11 @@ function validateAttack(value: unknown): Attack {
     a.targetDefense === "physical" || a.targetDefense === "magical",
     "Defesa alvo inválida",
   )
-  const error = validateBestiaryCombat([a], [])
+  // O limite ampliado pertence EXCLUSIVAMENTE ao Bestiário. Os ataques
+  // distribuídos aos personagens continuam com os dois atributos tradicionais.
+  const error = origin === "creature"
+    ? validateBestiaryCombat([a], [])
+    : validateCombat([a], [])
   requireTrue(!error, error || "")
   if (a.description !== undefined)
     requireTrue(
@@ -454,7 +479,12 @@ function validateCreature(value: unknown): CombatCreature {
   requireTrue(!diceError, diceError || "Dados inválidos")
   c.currentHp = integer(c.currentHp ?? c.maxHp, "HP", 0, c.maxHp)
   c.currentMp = integer(c.currentMp ?? c.maxMp, "MP", 0, c.maxMp)
-  c.basicAttacksV2 = legacyAttacks(c).map(validateAttack)
+  // Preferir a fórmula V2 original, sem conversão pelo formato legado que
+  // poderia reduzir um golpe de 10 dados aos dois primeiros atributos.
+  const creatureAttacks = Array.isArray(c.basicAttacksV2) && c.basicAttacksV2.length
+    ? c.basicAttacksV2
+    : legacyAttacks(c)
+  c.basicAttacksV2 = creatureAttacks.map(attack => validateAttack(attack, "creature"))
   requireTrue(c.basicAttacksV2.length <= 30, "Máximo de 30 ataques")
   if (c.abilities !== undefined) {
     requireTrue(
@@ -478,7 +508,7 @@ function validateCreature(value: unknown): CombatCreature {
         )
         integer(a.cost.amount, "Custo")
       }
-      if (a.kind === "attack") validateAttack(a.attack)
+      if (a.kind === "attack") validateAttack(a.attack, "creature")
       if (a.kind === "qte") checkDefinition(a.checkId)
     }
     const error = validateBestiaryCombat(
@@ -568,6 +598,9 @@ export async function commandCombat(
       "set-attacks",
       "monster-attack",
       "monster-attribute-roll",
+      "monster-check-roll",
+      "monster-custom-check-roll",
+      "gm-npc-roll",
       "set-monster-roll-visibility",
       "start-qte",
       "close-qte",
@@ -593,7 +626,7 @@ export async function commandCombat(
     ) {
       throw new CombatError("Aguarde o QTE terminar antes de trocar o Holofote")
     }
-    if (s.pendingAttack && !["answer-attack", "end", "monster-attribute-roll", "set-monster-roll-visibility"].includes(command.type)) {
+    if (s.pendingAttack && !["answer-attack", "end", "monster-attribute-roll", "monster-check-roll", "monster-custom-check-roll", "gm-npc-roll", "set-monster-roll-visibility"].includes(command.type)) {
       throw new CombatError("Aguarde o jogador resolver o ataque pendente", 409)
     }
     switch (command.type) {
@@ -619,6 +652,92 @@ export async function commandCombat(
             shared: state.shareMonsterRolls === true },
         ]
         // NÃO usar addLog/publish(dice:roll): ambas as vias são públicas.
+        break
+      }
+      case "monster-check-roll": {
+        // Testes iguais aos tradicionais do jogador: definição e dados são
+        // obtidos do catálogo do servidor; o cliente envia apenas o ID.
+        const creature = getCreature()
+        const checkId = text(command.checkId, "Teste", 100)
+        const check = PRESET_CHECKS.find(entry => entry.id === checkId)
+        requireTrue(check, "Teste de perícia não encontrado", 404)
+        requireTrue(check.attrs.length > 0 && check.attrs.length <= 10,
+          "Quantidade de dados inválida")
+        const dice = check.attrs.map(attribute => {
+          requireTrue(isMonsterAttribute(attribute), "Atributo do teste inválido")
+          const die = String(creature.attributes[attribute as keyof CombatCreature["attributes"]])
+          requireTrue(/^d(4|6|8|10|12|20)$/.test(die), "Dado da criatura inválido")
+          return die
+        })
+        const rolls = dice.map(die => randomInt(1, Number(die.slice(1)) + 1))
+        s.monsterCheckRolls = [
+          ...(s.monsterCheckRolls || []).slice(-39),
+          {
+            id: randomUUID(), instanceId: creature.instanceId,
+            creatureName: creature.name, checkId: check.id, checkName: check.name,
+            dice, rolls, result: rolls.reduce((total, face) => total + face, 0),
+            at: Date.now(),
+            // A decisão é registrada no instante do lançamento.
+            // Trocar a preferência depois não expõe dados antigos.
+            shared: (s as CombatSession & MonsterDiceState).shareMonsterRolls === true,
+          },
+        ]
+        // NÃO usar addLog nem publicar dice:roll: ambos chegam a espectadores.
+        break
+      }
+      case "monster-custom-check-roll": {
+        // Só o Mestre pode escolher um teste personalizado. A definição
+        // enviada é validada integralmente, inclusive tipo, atributos e
+        // quantidade (1..10) de dados; as faces são geradas pelo servidor.
+        const creature = getCreature()
+        let check: ReturnType<typeof parseMonsterCustomCheck>
+        let dice: string[]
+        let rolled: ReturnType<typeof rollMonsterCustomDice>
+        try {
+          check = parseMonsterCustomCheck(command.customCheck)
+          dice = resolveMonsterCustomDice(check, creature.attributes)
+          rolled = rollMonsterCustomDice(dice, sides => randomInt(1, sides + 1))
+        } catch (error) {
+          throw new CombatError(error instanceof Error ? error.message : "Teste personalizado inválido")
+        }
+        s.monsterCheckRolls = [
+          ...(s.monsterCheckRolls || []).slice(-39),
+          {
+            id: randomUUID(), instanceId: creature.instanceId,
+            creatureName: creature.name, checkId: `custom:${check.id}`,
+            checkName: check.name, dice, rolls: rolled.rolls,
+            result: rolled.result, at: Date.now(),
+            shared: (s as CombatSession & MonsterDiceState).shareMonsterRolls === true,
+          },
+        ]
+        // Não publicar um evento público; o snapshot filtra por 'shared'.
+        break
+      }
+      case "gm-npc-roll": {
+        // A ficha de personagem ainda calcula seus testes no cliente.
+        // Recebemos o resultado APENAS do Mestre e o armazenamos no canal
+        // privado de rolagens, sem publicá-lo na rota coletiva /roll.
+        requireTrue(s.enabled, "Combate não iniciado")
+        const npc = character(db, campaignId, text(command.characterId, "NPC"))
+        requireTrue(getMemberRole(campaign, npc.ownerId) === "gm",
+          "Somente NPCs controlados pelo Mestre usam a rolagem privada", 403)
+        const checkName = text(command.label, "Nome do teste", 200)
+        requireTrue(typeof command.result === "number" && Number.isFinite(command.result)
+          && Math.abs(command.result) <= 100000, "Resultado inválido")
+        const dice = Array.isArray(command.dice) && command.dice.length <= 10 &&
+          command.dice.every(die => typeof die === "string" && /^d\d{1,4}$/.test(die))
+          ? (command.dice as string[]) : []
+        const breakdown = command.breakdown === undefined
+          ? undefined : text(command.breakdown, "Detalhes da rolagem", 500)
+        s.monsterCheckRolls = [
+          ...(s.monsterCheckRolls || []).slice(-39),
+          {
+            id: randomUUID(), instanceId: npc.id,
+            creatureName: npc.name, checkId: `npc:${npc.id}`, checkName,
+            dice, rolls: [], breakdown, result: command.result,
+            at: Date.now(), shared: (s as CombatSession & MonsterDiceState).shareMonsterRolls === true,
+          },
+        ]
         break
       }
       case "spawn": {
@@ -764,7 +883,7 @@ export async function commandCombat(
           Array.isArray(command.attacks) && command.attacks.length <= 30,
           "Ataques inválidos",
         )
-        s.playerAttacks[id] = command.attacks.map(validateAttack)
+        s.playerAttacks[id] = command.attacks.map(validateAttack as any)
         break
       }
       case "request": {
@@ -868,6 +987,8 @@ export async function commandCombat(
           "Resolva o QTE antes de atacar",
         )
         const c = aliveCharacter(text(command.characterId, "Personagem"))
+        requireTrue(!isTrainingActive((c as any).training),
+          "O personagem está treinando e não pode realizar rolagens.", 409)
         requireTrue(
           c.id === s.actorCharacterId && c.ownerId === userId,
           "Ator inválido",
@@ -882,7 +1003,7 @@ export async function commandCombat(
           equipment = Array.isArray(raw.customEquipment)
             ? raw.customEquipment
             : []
-        const rolled = characterRoll(
+        const rolled = characterRollWithFatigue(
           c,
           attack.attributes,
           attack.name,
@@ -939,8 +1060,8 @@ export async function commandCombat(
           attack = ability.attack
           cost = ability.cost
         } else {
-          attack =
-            legacyAttacks(c)[integer(command.attackIndex, "Ataque", 0, 29)]
+          const availableAttacks = c.basicAttacksV2?.length ? c.basicAttacksV2 : legacyAttacks(c)
+          attack = availableAttacks[integer(command.attackIndex, "Ataque", 0, 29)]
           requireTrue(attack, "Ataque não encontrado")
         }
         const target = aliveCharacter(text(command.characterId, "Alvo"))
@@ -1005,10 +1126,12 @@ export async function commandCombat(
         requireTrue(Date.now() >= attack.at + 4400, "Aguarde a rolagem de acerto terminar", 409)
         let avoided = false
         if (command.choice === "react") {
+          requireTrue(!isTrainingActive((target as any).training),
+            "O personagem está treinando e não pode rolar Reflexos.", 409)
           addLog(s, `${target.name} decidiu reagir a ${attack.attackName}.`, target.id)
           const check = checkDefinition("c23")
           const raw = db.campaignState.get(campaignId) || {}
-          const rolled = characterRoll(target, check.attrs, check.name,
+          const rolled = characterRollWithFatigue(target, check.attrs, check.name,
             Array.isArray(raw.customEquipment) ? raw.customEquipment : [],
             db.users.get(target.ownerId)?.name || "", check.id)
           avoided = rolled.total >= attack.total
@@ -1067,6 +1190,8 @@ export async function commandCombat(
           campaignId,
           text(command.characterId, "Personagem"),
         )
+        requireTrue(!isTrainingActive((c as any).training),
+          "O personagem está treinando e não pode realizar o teste de reação.", 409)
         requireTrue(
           c.ownerId === userId && q.targets.includes(c.id),
           "Este QTE não é seu",
@@ -1075,7 +1200,7 @@ export async function commandCombat(
         if (!q.outcomes[c.id]) {
           const check = checkDefinition(q.ability.checkId),
             raw = db.campaignState.get(campaignId) || {}
-          const rolled = characterRoll(
+          const rolled = characterRollWithFatigue(
             c,
             check.attrs,
             check.name,

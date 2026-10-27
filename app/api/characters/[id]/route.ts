@@ -1,253 +1,147 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import {
-  deleteCharacterFromStore,
-  getMemberRole,
-  publish,
-  saveToDisk,
-  store,
-  transactStore,
-} from "@/lib/store"
+import { deleteCharacterFromStore, getMemberRole, publish, saveToDisk, store, transactStore } from "@/lib/store"
 import { normalizeResources } from "@/lib/character"
-import {
-  assertInventoryChange,
-  InventoryCapacityError,
-  itemWeightGrams,
-} from "@/lib/inventory-weight"
+import { assertInventoryChange, InventoryCapacityError, itemWeightGrams } from "@/lib/inventory-weight"
 import { campaignItemCatalog } from "@/lib/inventory-server"
-import {
-  normalizePortraitCrop,
-  normalizePortraitFrame,
-} from "@/lib/portrait-frames"
+import { normalizePortraitCrop, normalizePortraitFrame } from "@/lib/portrait-frames"
+import { fatigueModifier, isTrainingActive, normalizeTraining, type TrainingState } from "@/lib/training-model"
 import type { Character } from "@/lib/types"
 
 class RequestError extends Error {
-  constructor(message: string, public status = 400) {
-    super(message)
-  }
+  constructor(message: string, public status = 400) { super(message) }
 }
+type TrainedCharacter = Character & { training?: TrainingState; customModifiers?: any[] }
 
-/**
- * Pontos de Lore pertencem à ficha, mas só podem mudar nas ações transacionais
- * da Biblioteca de Mecânicas: adjust-lore, learn-card e upgrade-lore-modifier.
- * Outras alterações da ficha não podem restaurar saldos antigos nem zerá-los.
- * Também suporta personagens criados antes do campo `resources.lp` existir.
- */
+/** Lore e treinamento são estados protegidos de alterações genéricas da ficha. */
 function persistedLore(character: Character): number {
   const lp = (character.resources as Character["resources"] & { lp?: unknown }).lp
-  return typeof lp === "number" && Number.isSafeInteger(lp) && lp >= 0
-    ? lp
-    : 0
+  return typeof lp === "number" && Number.isSafeInteger(lp) && lp >= 0 ? lp : 0
 }
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser()
-  if (!user)
-    return NextResponse.json({ error: "Não autenticado." }, { status: 401 })
-
+  if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   const { id } = await params
   const body = await request.json().catch(() => null)
   if (!body || typeof body !== "object" || Array.isArray(body))
     return NextResponse.json({ error: "Dados inválidos." }, { status: 400 })
 
   try {
-    const updated = await transactStore((db) => {
-      const current = db.characters.get(id)
+    const updated = await transactStore(db => {
+      const current = db.characters.get(id) as TrainedCharacter | undefined
       if (!current) throw new RequestError("Personagem não encontrado.", 404)
       const campaign = db.campaigns.get(current.campaignId)
       const role = campaign && getMemberRole(campaign, user.id)
       if (!role || (current.ownerId !== user.id && role !== "gm"))
         throw new RequestError("Sem permissão para editar.", 403)
-      if (
-        (body.avatarUrl !== undefined || body.portraitCrop !== undefined) &&
-        current.ownerId !== user.id
-      )
+      if ((body.avatarUrl !== undefined || body.portraitCrop !== undefined) && current.ownerId !== user.id)
         throw new RequestError("Apenas o dono pode alterar o retrato.", 403)
 
-      // Capturar o LP autoritativo DENTRO da transação, não a partir do payload.
-      // Isso impede que um PATCH com uma ficha antiga reverta um Aprendizado.
+      // Nunca aceitar training do cliente neste PATCH: há uma API transacional própria.
+      if (body.training !== undefined) throw new RequestError("Use a API de treinamento.", 403)
+      const training = normalizeTraining(current.training)
+      const now = Date.now()
+      if (isTrainingActive(training, now) && body.attributes !== undefined)
+        throw new RequestError("Atributos não podem ser modificados durante o treinamento.", 409)
+
       const authoritativeLp = persistedLore(current)
-      const next = structuredClone(current) as Character & {
-        customModifiers?: any[]
-      }
+      const next = structuredClone(current) as TrainedCharacter
 
       if (body.avatarUrl !== undefined) {
         const avatar = String(body.avatarUrl).trim()
-        if (
-          avatar.length > 3500000 ||
-          !(
-            avatar.startsWith("/") ||
-            /^https?:\/\//i.test(avatar) ||
-            /^data:image\/(png|jpe?g|webp|gif|avif);base64,/i.test(avatar)
-          )
-        )
+        if (avatar.length > 3500000 || !(avatar.startsWith("/") || /^https?:\/\//i.test(avatar) || /^data:image\/(png|jpe?g|webp|gif|avif);base64,/i.test(avatar)))
           throw new RequestError("Imagem de retrato inválida ou muito grande.")
         next.avatarUrl = avatar
       }
 
       if (body.resources !== undefined) {
-        if (
-          !body.resources ||
-          typeof body.resources !== "object" ||
-          Array.isArray(body.resources)
-        )
+        if (!body.resources || typeof body.resources !== "object" || Array.isArray(body.resources))
           throw new RequestError("Recursos inválidos.")
         for (const [key, value] of Object.entries(body.resources)) {
-          // LP é sempre ignorado aqui, inclusive para GM. Um objeto de
-          // recursos antigo pode incluir `lp`, mas não pode sobrescrevê-lo.
-          // O mestre usa a ação `adjust-lore` na rota class-books.
-          if (key === "lp" || key === "ip" || (key === "xp" && role !== "gm"))
-            continue
+          if (key === "lp" || key === "ip" || (key === "xp" && role !== "gm")) continue
           if (!(key in current.resources)) continue
           if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
             throw new RequestError("Recursos devem ser números não negativos.")
-          if (
-            key === "maxIp" &&
-            role !== "gm" &&
-            value !== current.resources.maxIp
-          )
-            throw new RequestError(
-              "Apenas o Mestre pode alterar a capacidade da mochila.",
-              403,
-            )
-          if (
-            key === "maxIp" &&
-            Math.abs(value * 1000 - Math.round(value * 1000)) > 0.000001
-          )
+          if (key === "maxIp" && role !== "gm" && value !== current.resources.maxIp)
+            throw new RequestError("Apenas o Mestre pode alterar a capacidade da mochila.", 403)
+          if (key === "maxIp" && Math.abs(value * 1000 - Math.round(value * 1000)) > .000001)
             throw new RequestError("Capacidade deve ter precisão de 1 grama.")
           ;(next.resources as any)[key] = value
         }
       }
 
-      for (const key of [
-        "skills",
-        "attributes",
-        "classes",
-        "customModifiers",
-      ] as const)
-        if (body[key] !== undefined) {
-          const value = body[key]
-          if (
-            !value ||
-            typeof value !== "object" ||
-            (["classes", "customModifiers"].includes(key) &&
-              !Array.isArray(value))
-          )
-            throw new RequestError(`Campo ${key} inválido.`)
-          ;(next as any)[key] = value
-        }
-
-      if (
-        !next.attributes ||
-        !["dex", "ins", "mig", "wlp"].every((key) =>
-          /^d(6|8|10|12)$/.test((next.attributes as any)[key]),
-        )
-      )
+      for (const key of ["skills", "attributes", "classes", "customModifiers"] as const) {
+        if (body[key] === undefined) continue
+        const value = body[key]
+        if (!value || typeof value !== "object" || (["classes", "customModifiers"].includes(key) && !Array.isArray(value)))
+          throw new RequestError(`Campo ${key} inválido.`)
+        ;(next as any)[key] = value
+      }
+      if (!next.attributes || !["dex", "ins", "mig", "wlp"].every(key => /^d(6|8|10|12|14|16|18|20)$/.test((next.attributes as any)[key])))
         throw new RequestError("Dados de atributos inválidos.")
 
       if (body.equipment !== undefined) {
-        if (
-          !Array.isArray(body.equipment) ||
-          body.equipment.some((id: unknown) => typeof id !== "string")
-        )
+        if (!Array.isArray(body.equipment) || body.equipment.some((value: unknown) => typeof value !== "string"))
           throw new RequestError("Equipamentos inválidos.")
         next.equipment = body.equipment
       }
       if (body.customItems !== undefined) {
-        if (!Array.isArray(body.customItems))
-          throw new RequestError("Itens personalizados inválidos.")
+        if (!Array.isArray(body.customItems)) throw new RequestError("Itens personalizados inválidos.")
         for (const item of body.customItems) {
-          if (
-            !item ||
-            typeof item.id !== "string" ||
-            typeof item.name !== "string"
-          )
+          if (!item || typeof item.id !== "string" || typeof item.name !== "string")
             throw new RequestError("Item personalizado inválido.")
           itemWeightGrams(item)
         }
         next.customItems = body.customItems
       }
       if (body.zenit !== undefined) {
-        if (
-          typeof body.zenit !== "number" ||
-          !Number.isFinite(body.zenit) ||
-          body.zenit < 0
-        )
+        if (typeof body.zenit !== "number" || !Number.isFinite(body.zenit) || body.zenit < 0)
           throw new RequestError("Zenit inválido.")
         next.zenit = body.zenit
       }
       for (const key of ["origin", "identity", "theme"] as const)
-        if (body[key] !== undefined)
-          next[key] = String(body[key]).trim().slice(0, 20000)
+        if (body[key] !== undefined) next[key] = String(body[key]).trim().slice(0, 20000)
 
-      next.portraitFrame = normalizePortraitFrame(
-        body.portraitFrame ?? current.portraitFrame,
-      )
-      next.portraitCrop = normalizePortraitCrop(
-        body.portraitCrop ?? current.portraitCrop,
-      )
+      next.portraitFrame = normalizePortraitFrame(body.portraitFrame ?? current.portraitFrame)
+      next.portraitCrop = normalizePortraitCrop(body.portraitCrop ?? current.portraitCrop)
+
+      // Um PATCH de modificadores antigo não pode apagar a condição controlada pelo servidor.
+      const original = Array.isArray(next.customModifiers) ? next.customModifiers : []
+      const retained = original.filter((entry: any) => entry?.id !== "training_fatigue" && entry?.type !== "training_fatigue")
+      const fatigue = fatigueModifier(training, now)
+      next.customModifiers = fatigue ? [...retained, fatigue] : retained
+      next.training = training
 
       const catalog = campaignItemCatalog(db, current.campaignId)
       assertInventoryChange(current, next, catalog)
-      const normalized = normalizeResources(
-        { ...next, updatedAt: Math.max(Date.now(), current.updatedAt + 1) },
-        catalog,
-      )
-      // A normalização calcula recursos e capacidade, mas não pode apagar LP.
-      // O único valor válido é o que existia no armazenamento no início
-      // DESTA transação (inclusive quando o personagem ainda não tinha LP).
-      const result: Character = {
+      const normalized = normalizeResources({ ...next, updatedAt: Math.max(now, current.updatedAt + 1) }, catalog)
+      const result = {
         ...normalized,
-        resources: {
-          ...normalized.resources,
-          lp: authoritativeLp,
-        } as Character["resources"],
-      }
+        training,
+        resources: { ...normalized.resources, lp: authoritativeLp } as Character["resources"],
+      } as TrainedCharacter
       db.characters.set(id, result)
       return { value: result, changed: true }
-    })
+    }) as TrainedCharacter
 
-    publish(updated.campaignId, {
-      type: "character:updated",
-      character: updated,
-    })
+    publish(updated.campaignId, { type: "character:updated", character: updated })
     return NextResponse.json({ character: updated })
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Não foi possível salvar.",
-      },
-      {
-        status:
-          error instanceof InventoryCapacityError
-            ? 409
-            : error instanceof RequestError
-              ? error.status
-              : 400,
-      },
-    )
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Não foi possível salvar." }, {
+      status: error instanceof InventoryCapacityError ? 409 : error instanceof RequestError ? error.status : 400,
+    })
   }
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser()
-  if (!user)
-    return NextResponse.json({ error: "Não autenticado." }, { status: 401 })
-  const { id } = await params,
-    character = store.characters.get(id)
-  if (!character)
-    return NextResponse.json(
-      { error: "Personagem não encontrado." },
-      { status: 404 },
-    )
-  const campaign = store.campaigns.get(character.campaignId),
-    role = campaign && getMemberRole(campaign, user.id)
+  if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+  const { id } = await params
+  const character = store.characters.get(id)
+  if (!character) return NextResponse.json({ error: "Personagem não encontrado." }, { status: 404 })
+  const campaign = store.campaigns.get(character.campaignId)
+  const role = campaign && getMemberRole(campaign, user.id)
   if (character.ownerId !== user.id && role !== "gm")
     return NextResponse.json({ error: "Sem permissão." }, { status: 403 })
   deleteCharacterFromStore(id)

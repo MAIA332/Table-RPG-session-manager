@@ -22,6 +22,8 @@ import { baseGameClasses, getCampaignClassCatalog } from "@/lib/class-catalog"
 import { canPlayerUpgradeClass, playerVisibleClassCatalog, type CustomClassVisibility } from "@/lib/class-visibility"
 import { CharacterBookShelf } from "./class-books"
 import { ClassTimerProgress } from "./class-timer-progress"
+import { CharacterTraining, TrainingCompactBar } from "./character-training"
+import { isTrainingActive, trainingFatiguePenalty } from "@/lib/training-model"
 import { activeClassBookModifiers, isExpiredClassBookModifier } from "@/lib/class-books"
 import { createClientId } from "@/lib/client-id"
 import { InventoryEquipment, ItemDamageShelf, WornEquipmentSummary } from "./inventory-equipment"
@@ -177,6 +179,9 @@ export interface NPCDraft {
   equipment: string[]
   sourceCharacterId?: string
   linkedCharacterIds?: string[]
+  /** Cópia completa da ficha no instante do arquivamento; preservada ao editar o NPC. */
+  archivedSnapshot?: Character
+  archivedAt?: number
 }
 
 const ATTR_KEYS: AttributeKey[] = ["dex", "ins", "mig", "wlp"]
@@ -1294,6 +1299,30 @@ function buildManualDefenseUpdates(
   }
 }
 
+/** Usa o mesmo cálculo para a ficha aberta e o resumo recolhido do NPC. */
+function getDisplayedDefenses(
+  character: any,
+  catalog: any[],
+  transformed = itemResolvedStats(character, catalog),
+) {
+  const itemDefense = wornDefenseBonuses(character, catalog)
+  const modifiers = Array.isArray(character.customModifiers) ? character.customModifiers : []
+  const savedDefense = readManualDefense(modifiers, MANUAL_DEFENSE_IDS.defense)
+  const savedMagicDefense = readManualDefense(modifiers, MANUAL_DEFENSE_IDS.magicDefense)
+  const baseDefense = savedDefense ?? defenseBaseValue(character.attributes.dex)
+  const baseMagicDefense = savedMagicDefense ?? defenseBaseValue(character.attributes.ins)
+  const initialDefense = baseDefense + itemDefense.physical
+  const initialMagicDefense = baseMagicDefense + itemDefense.magical
+  const inversionActive = transformed.defense !== initialDefense || transformed.magicDefense !== initialMagicDefense
+  return {
+    itemDefense, modifiers, savedDefense, savedMagicDefense,
+    baseDefense, baseMagicDefense, initialDefense, initialMagicDefense,
+    transformed, inversionActive,
+    defense: inversionActive ? transformed.defense : initialDefense,
+    magicDefense: inversionActive ? transformed.magicDefense : initialMagicDefense,
+  }
+}
+
 function ManualDefenseFields({
   character,
   catalog,
@@ -1307,19 +1336,11 @@ function ManualDefenseFields({
   busy: boolean
   onSave: (updates: any) => Promise<any>
 }) {
-  const itemDefense = wornDefenseBonuses(character, catalog)
-  const modifiers = character.customModifiers || []
-  const savedDefense = readManualDefense(modifiers, MANUAL_DEFENSE_IDS.defense)
-  const savedMagicDefense = readManualDefense(
-    modifiers,
-    MANUAL_DEFENSE_IDS.magicDefense,
-  )
-  const baseDefense = savedDefense ?? defenseBaseValue(character.attributes.dex)
-  const baseMagicDefense = savedMagicDefense ?? defenseBaseValue(character.attributes.ins)
-  const initialDefense = baseDefense + itemDefense.physical
-  const initialMagicDefense = baseMagicDefense + itemDefense.magical
-  const transformed = itemResolvedStats(character, catalog)
-  const inversionActive = transformed.defense !== initialDefense || transformed.magicDefense !== initialMagicDefense
+  const {
+    itemDefense, modifiers, savedDefense, savedMagicDefense,
+    baseDefense, baseMagicDefense, initialDefense, initialMagicDefense,
+    transformed, inversionActive,
+  } = getDisplayedDefenses(character, catalog)
   const [draft, setDraft] = useState({
     defense: String(initialDefense),
     magicDefense: String(initialMagicDefense),
@@ -1610,6 +1631,8 @@ export function CharacterSheet({
   defaultExpanded = false,
   expanded,
   onExpandedChange,
+  canExpand = true,
+  showCompactDefenses = false,
 }: any) {
   const character = useMemo(() => {
     const normalized = applyInventoryRules(rawCharacter, customEquipment)
@@ -1625,7 +1648,7 @@ export function CharacterSheet({
   const allMods: any[] = (character as any).customModifiers || []
   const [modifierClock, setModifierClock] = useState(0)
   const timedModifierKey = allMods
-    .filter((mod: any) => ["class_book_effect", "item_attribute_inversion"].includes(mod.type) && typeof mod.expiresAt === "number")
+    .filter((mod: any) => ["class_book_effect", "item_attribute_inversion", "training_fatigue"].includes(mod.type) && typeof mod.expiresAt === "number")
     .map((mod: any) => `${mod.id}:${mod.expiresAt}`)
     .join("|")
   const activeMods = activeClassBookModifiers(allMods, modifierClock || 0)
@@ -1648,6 +1671,7 @@ export function CharacterSheet({
   const displayModifiers = activeMods.filter(
     (m: any) =>
       m.type !== "bond" &&
+      !(m.type === "training_fatigue" && m.expiresAt <= (modifierClock || Date.now())) &&
       !isFreeSkillRecord(m) &&
       !isItemState(m) &&
       !isManualDefenseRecord(m) &&
@@ -1661,7 +1685,9 @@ export function CharacterSheet({
     character.resources,
   )
   const [internalExpanded, setInternalExpanded] = useState(false)
-  const isExpanded = typeof expanded === "boolean" ? expanded : internalExpanded
+  // Bloqueio também no componente: mesmo um expanded=true externo não abre NPCs
+  // do mestre na sessão dos jogadores.
+  const isExpanded = canExpand && (typeof expanded === "boolean" ? expanded : internalExpanded)
 
   const [rollingAttr, setRollingAttr] = useState<string | null>(null)
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null)
@@ -1762,6 +1788,7 @@ export function CharacterSheet({
   const [classSearch, setClassSearch] = useState("")
 
   function changeExpanded(next: boolean) {
+    if (!canExpand) return
     if (typeof expanded !== "boolean") setInternalExpanded(next)
     onExpandedChange?.(next)
   }
@@ -1858,12 +1885,13 @@ export function CharacterSheet({
   }, [character])
 
   useEffect(() => {
-    if (shouldOpenInventory) {
+    if (!shouldOpenInventory) return
+    if (canExpand) {
       setShowInventory(true)
       changeExpanded(true)
-      if (onClearInventoryRequest) onClearInventoryRequest()
     }
-  }, [shouldOpenInventory, onClearInventoryRequest])
+    onClearInventoryRequest?.()
+  }, [shouldOpenInventory, onClearInventoryRequest, canExpand])
 
   const totalXp = displayResources?.xp || 0
   const { charLevel, currentLevelXp, xpRequired } = getLevelInfo(totalXp)
@@ -1875,7 +1903,13 @@ export function CharacterSheet({
   ]
   const activeItemBonuses = equippedItemBonuses(character, itemCatalog)
   const resolvedItemStats = itemResolvedStats(character, itemCatalog, modifierClock || Date.now())
+  const compactDefenses = showCompactDefenses
+    ? getDisplayedDefenses(character, itemCatalog, resolvedItemStats)
+    : null
   const effectiveAttributes = resolvedItemStats.attributes
+  // Bloqueio e redutor derivados dos horários oficiais, nunca de um contador local.
+  const trainingLocked = isTrainingActive((character as any).training, modifierClock || Date.now())
+  const trainingDexPenalty = trainingFatiguePenalty((character as any).training, modifierClock || Date.now())
   const itemCommitRef = useRef(false)
   const currentZenit = character.zenit || 0
   const skillsObj = character.skills || {}
@@ -2036,7 +2070,10 @@ export function CharacterSheet({
     }
   }
 
-  const spentAttrPoints = currentAttrPoints - 8
+  // Melhorias concedidas pelo treinamento não gastam os pontos ganhos por nível.
+  const trainingUpgrades = Object.values((character as any).training?.upgrades || {})
+    .reduce((total: number, count: any) => total + (Number.isSafeInteger(count) && count > 0 ? count : 0), 0)
+  const spentAttrPoints = currentAttrPoints - 8 - trainingUpgrades
   // --- A CADA 3 LEVELS GANHA PONTO (Mudança do divisor de 10 para 3) ---
   const earnedAttrPoints = Math.floor((charLevel - 5) / 3)
   const unspentAttrPoints = earnedAttrPoints - spentAttrPoints
@@ -2543,7 +2580,7 @@ export function CharacterSheet({
   }
 
   function rollDice(attr: AttributeKey, dieString: string) {
-    if (rollingAttr || !editable) return
+    if (rollingAttr || !editable || trainingLocked) return
     setRollingAttr(attr)
     setTimeout(() => {
       const sides = parseInt(dieString.replace("d", ""))
@@ -2555,10 +2592,12 @@ export function CharacterSheet({
       let modTotal = itemBonus
       const mods = (character as any).customModifiers || []
       activeClassBookModifiers(mods, Date.now()).forEach((m: any) => {
+        if (m.type === "training_fatigue") return // Aplicado uma única vez abaixo.
         if (m.target === "all" || m.target === attr) {
           modTotal += m.value
         }
       })
+      if (attr === "dex") modTotal -= trainingDexPenalty
 
       // Aplica bônus de Laço se estiver ativado
       if (activeBond) {
@@ -2592,7 +2631,7 @@ export function CharacterSheet({
   }
 
   function handleCombinedRoll(check: any) {
-    if (rollingAttr || !editable) return
+    if (rollingAttr || !editable || trainingLocked) return
     setRollingAttr(check.id)
 
     setTimeout(() => {
@@ -2610,6 +2649,7 @@ export function CharacterSheet({
       let modTotal = itemBonus
       const mods = (character as any).customModifiers || []
       activeClassBookModifiers(mods, Date.now()).forEach((m: any) => {
+        if (m.type === "training_fatigue") return
         if (
           m.target === "all" ||
           check.attrs.includes(m.target) ||
@@ -2618,6 +2658,7 @@ export function CharacterSheet({
           modTotal += m.value
         }
       })
+      if (check.attrs.includes("dex")) modTotal -= trainingDexPenalty
 
       // Aplica bônus de Laço se estiver ativado
       if (activeBond) {
@@ -2650,7 +2691,7 @@ export function CharacterSheet({
   }
 
   function handleCustomRoll(check: CustomCheck) {
-    if (rollingAttr || !editable) return
+    if (rollingAttr || !editable || trainingLocked) return
     // Cada dado é resolvido individualmente; atributos usam o dado atual da ficha.
     // Evita a limitação de apenas 2 atributos dos testes tradicionais.
     const dieSizes = check.dice.map(die => die.kind === "fixed"
@@ -2665,8 +2706,10 @@ export function CharacterSheet({
       const itemBonus = sumItemRollBonus(activeItemBonuses, bonusTargets)
       let modifier = itemBonus
       activeClassBookModifiers((character as any).customModifiers || [], Date.now()).forEach((mod: any) => {
+        if (mod.type === "training_fatigue") return
         if (mod.target === "all" || mod.target === check.name || attributes.includes(mod.target)) modifier += mod.value
       })
+      if (attributes.includes("dex")) modifier -= trainingDexPenalty
       if (activeBond) modifier += activeBond.value
       const rolls = dieSizes.map(sides => Math.floor(Math.random() * sides) + 1)
       const total = rolls.reduce((sum, value) => sum + value, 0) + modifier
@@ -3901,7 +3944,7 @@ export function CharacterSheet({
               alt={`Retrato de ${character.name}`}
               frame={character.portraitFrame}
               crop={character.portraitCrop}
-              className={`${spotlightActive ? "rounded-full ring-2 ring-amber-300 shadow-[0_0_24px_rgba(252,211,77,0.65)] motion-safe:animate-pulse" : ""} ${isExpanded ? "size-[88px] sm:size-[104px]" : "size-[72px] sm:size-[80px]"} cursor-pointer transition-[width,height] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)]`}
+              className={`${spotlightActive ? "rounded-full ring-2 ring-amber-300 shadow-[0_0_24px_rgba(252,211,77,0.65)] motion-safe:animate-pulse" : ""} ${isExpanded ? "size-[88px] sm:size-[104px]" : "size-[72px] sm:size-[80px]"} ${isOwned || canExpand ? "cursor-pointer" : "cursor-default"} transition-[width,height] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)]`}
               sizes="104px"
               role={isOwned ? "button" : undefined}
               tabIndex={isOwned ? 0 : undefined}
@@ -3909,7 +3952,7 @@ export function CharacterSheet({
               onClick={(event) => {
                 event.stopPropagation()
                 if (isOwned) setShowPortraitEditor(true)
-                else changeExpanded(!isExpanded)
+                else if (canExpand) changeExpanded(!isExpanded)
               }}
               onKeyDown={(event) => {
                 if (isOwned && (event.key === "Enter" || event.key === " ")) {
@@ -3934,8 +3977,8 @@ export function CharacterSheet({
             )}
           </div>
           <div
-            className="flex-1 min-w-0 flex flex-col items-start cursor-pointer"
-            onClick={() => changeExpanded(!isExpanded)}
+            className={`flex-1 min-w-0 flex flex-col items-start ${canExpand ? "cursor-pointer" : "cursor-default"}`}
+            onClick={canExpand ? () => changeExpanded(!isExpanded) : undefined}
           >
             <div className="flex justify-between items-start w-full">
               <h3
@@ -3975,6 +4018,18 @@ export function CharacterSheet({
                     modifiers={displayModifiers as Modifier[]}
                   />
                 </div>
+                {compactDefenses && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2" aria-label="Defesas do NPC do mestre">
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/50 px-2 py-1 text-[11px] font-semibold text-muted-foreground">
+                      <Shield className="size-3.5 text-primary" /> Defesa
+                      <strong className="font-mono text-[13px] tabular-nums text-foreground">{compactDefenses.defense}</strong>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/50 px-2 py-1 text-[11px] font-semibold text-muted-foreground">
+                      <WandSparkles className="size-3.5 text-primary" /> Defesa Mágica
+                      <strong className="font-mono text-[13px] tabular-nums text-foreground">{compactDefenses.magicDefense}</strong>
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
               // VIEW EXPANDIDA
@@ -4068,14 +4123,23 @@ export function CharacterSheet({
                 </button>
               )}
             </div>
-            <button
-              onClick={() => changeExpanded(!isExpanded)}
-              className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-            >
-              <ChevronDown
-                className={`size-5 transition-transform duration-300 ${isExpanded ? "rotate-180 text-primary" : ""}`}
-              />
-            </button>
+            {canExpand ? (
+              <button
+                type="button"
+                aria-label={isExpanded ? "Recolher ficha" : "Expandir ficha"}
+                aria-expanded={isExpanded}
+                onClick={() => changeExpanded(!isExpanded)}
+                className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <ChevronDown
+                  className={`size-5 transition-transform duration-300 ${isExpanded ? "rotate-180 text-primary" : ""}`}
+                />
+              </button>
+            ) : (
+              <span title="Somente o Mestre pode expandir este NPC" aria-label="Ficha completa restrita ao Mestre" className="p-1.5 text-muted-foreground/70">
+                <Lock className="size-4" aria-hidden="true" />
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:flex">
@@ -4103,13 +4167,14 @@ export function CharacterSheet({
         </div>
       </div>
 
+      {!isExpanded && <TrainingCompactBar character={character as any} />}
       <div
         className="rpg-character-expansion"
-        data-open={expansionVisible}
-        aria-hidden={!expansionVisible}
+        data-open={canExpand && expansionVisible}
+        aria-hidden={!canExpand || !expansionVisible}
       >
         <div className="rpg-character-expansion-clip">
-          {(expandedContentMounted || isExpanded) && (
+          {canExpand && (expandedContentMounted || isExpanded) && (
             <div className="relative z-40">
               <div className="pt-4 mt-2 border-t border-white/10">
                 {/* ABAS */}
@@ -4227,6 +4292,13 @@ export function CharacterSheet({
                       </div>
                     </div>
 
+                    <CharacterTraining
+                      character={character as any}
+                      isGm={isGm}
+                      isOwner={isOwned}
+                      onUpdated={onOptimistic}
+                    />
+
                     {/* VISUALIZAÇÃO DE LAÇO ATIVO PREPARADO */}
                     <AnimatePresence>
                       {activeBond && (
@@ -4280,11 +4352,11 @@ export function CharacterSheet({
                         return (
                           <div key={k} className="relative">
                             <button
-                              disabled={!editable || isRolling}
+                              disabled={!editable || isRolling || trainingLocked}
                               onClick={() =>
                                 rollDice(k, effectiveAttributes[k])
                               }
-                              className={`attribute-roll-button h-20 w-full rounded-sm border text-center shadow-inner ${isRolling ? "is-rolling border-primary bg-primary/20" : editable ? "border-border/60 bg-card/40 hover:border-primary/60 hover:bg-card" : "cursor-default border-border/60 bg-card/40"}`}
+                              className={`attribute-roll-button h-20 w-full rounded-sm border text-center shadow-inner ${isRolling ? "is-rolling border-primary bg-primary/20" : editable && !trainingLocked ? "border-border/60 bg-card/40 hover:border-primary/60 hover:bg-card" : "cursor-not-allowed border-border/60 bg-card/40 opacity-60"}`}
                             >
                               {isRolling ? (
                                 <Dices className="attribute-rolling-die mx-auto size-7 text-primary" />
@@ -4688,7 +4760,7 @@ export function CharacterSheet({
                     onCustomRoll={handleCustomRoll}
                     customChecks={customChecks}
                     rollingAttr={rollingAttr}
-                    disabled={!editable}
+                    disabled={!editable || trainingLocked}
                   />
                 )}
 
@@ -4835,6 +4907,7 @@ export function CharacterSheet({
                               <div className="flex gap-2 items-center shrink-0">
                                 {!isGm &&
                                   mod.type !== "class_book_effect" &&
+                                  mod.type !== "training_fatigue" &&
                                   ((displayResources as any).lp || 0) > 0 &&
                                   editable && (
                                     <Button
@@ -4854,7 +4927,7 @@ export function CharacterSheet({
                                   )}
                                 {isGm && (
                                   <>
-                                    {mod.type !== "class_book_effect" && <Button
+                                    {mod.type !== "class_book_effect" && mod.type !== "training_fatigue" && <Button
                                       size="sm"
                                       variant="ghost"
                                       className="h-8 w-8 p-0 text-muted-foreground hover:text-white"
@@ -4865,7 +4938,7 @@ export function CharacterSheet({
                                     >
                                       <Pencil className="size-4" />
                                     </Button>}
-                                    <Button
+                                    {mod.type !== "training_fatigue" && <Button
                                       size="sm"
                                       variant="ghost"
                                       className="h-8 w-8 p-0 text-destructive hover:bg-destructive/20 hover:text-destructive"
@@ -4882,7 +4955,7 @@ export function CharacterSheet({
                                       }}
                                     >
                                       <Trash2 className="size-4" />
-                                    </Button>
+                                    </Button>}
                                   </>
                                 )}
                               </div>
@@ -4892,6 +4965,9 @@ export function CharacterSheet({
                             typeof mod.expiresAt === "number" && typeof mod.startedAt === "number"
                               ? <ClassTimerProgress label="Bônus mágico ativo" startedAt={mod.startedAt} endsAt={mod.expiresAt} compact />
                               : <p className="mt-2 text-[11px] text-violet-300">Duração ilimitada</p>
+                          )}
+                          {mod.type === "training_fatigue" && typeof mod.expiresAt === "number" && typeof mod.startedAt === "number" && (
+                            <ClassTimerProgress label="Cansado · recuperação de DEX" startedAt={mod.startedAt} endsAt={mod.expiresAt} compact />
                           )}
                         </div>
                       ))}

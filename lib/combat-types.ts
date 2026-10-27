@@ -1,6 +1,8 @@
 import type { DeathCheck } from "./death-model"
 import type { Attack, Ability, SpotlightState } from "./combat-model"
 import type { QteState } from "./qte-model"
+import type { MonsterCheckRoll } from "./monster-checks"
+
 export type CombatCreature = {
   id: string; instanceId: string; name: string; imageUrl: string
   level: number; species: string; maxHp: number; maxMp: number
@@ -20,7 +22,7 @@ export type CombatLog = {
   id: string; at: number; text: string
   roll?: Extract<import("./types").RealtimeEvent, { type: "dice:roll" }>
   damage?: number; characterId?: string
-  log?:any
+  log?: any
 }
 export type CombatSession = {
   revision: number; updatedAt: number; enabled: boolean
@@ -29,6 +31,8 @@ export type CombatSession = {
   playerAttacks: Record<string, Attack[]>; qte: QteState | null
   deathChecks?: Record<string, DeathCheck>
   pendingAttack?: PendingMonsterAttack | null
+  /** Histórico recente de testes tradicionais de criaturas, visível apenas conforme shared. */
+  monsterCheckRolls?: MonsterCheckRoll[]
   log: CombatLog[]; receipts: string[]
 }
 export type CombatSnapshot = Omit<CombatSession, "receipts"> & {

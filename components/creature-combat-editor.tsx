@@ -9,6 +9,7 @@ import {
   type Cost,
 } from "@/lib/combat-model"
 import { QTE_CHECKS } from "@/lib/combat-checks"
+import { MAX_BESTIARY_ATTACK_ATTRIBUTES } from "@/lib/bestiary-attack-formula"
 import { createClientId } from "@/lib/client-id"
 const input =
   "w-full min-w-0 rounded-lg border border-white/15 bg-zinc-900 p-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -23,10 +24,18 @@ function Field({ title, children }: { title: string; children: ReactNode }) {
 export function AttackEditor({
   value,
   onChange,
+  maxAttributes = 2,
+  creatureDice,
 }: {
   value: Attack
   onChange: (attack: Attack) => void
+  /** Dois por padrão (jogadores); dez apenas para criação de criaturas. */
+  maxAttributes?: number
+  creatureDice?: Partial<Record<Attribute, string>>
 }) {
+  const isBestiary = maxAttributes > 2
+  const count = isBestiary ? value.attributes.length : 2
+  const changeAttributes = (attributes: Attack["attributes"]) => onChange({ ...value, attributes })
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
       <Field title="Nome do ataque">
@@ -36,31 +45,46 @@ export function AttackEditor({
           onChange={(e) => onChange({ ...value, name: e.target.value })}
         />
       </Field>
-      <fieldset className="min-w-0">
+      <fieldset className={isBestiary ? "min-w-0 sm:col-span-2 xl:col-span-4" : "min-w-0"}>
         <legend className="mb-2 text-xs text-zinc-300">
           Fórmula de acerto
         </legend>
-        <div className="flex gap-1 items-center">
-          {[0, 1].map((i) => (
-            <select
-              key={i}
-              aria-label={`Atributo ${i + 1} do acerto`}
-              className={input}
-              value={value.attributes[i]}
-              onChange={(e) => {
-                const attributes = [...value.attributes]
-                attributes[i] = e.target.value as Attribute
-                onChange({ ...value, attributes })
-              }}
-            >
-              {ATTRIBUTES.map((a) => (
-                <option key={a} value={a}>
-                  {a.toUpperCase()}
-                </option>
-              ))}
-            </select>
+        {isBestiary && <p className="mb-2 text-[11px] text-zinc-400">
+          {count} de {maxAttributes} dados · atributos repetidos rolam várias vezes.
+        </p>}
+        <div className={isBestiary ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "flex items-center gap-1"}>
+          {Array.from({ length: count }, (_, i) => (
+            <div key={i} className="flex min-w-0 items-center gap-1">
+              <select
+                aria-label={`Atributo ${i + 1} do acerto`}
+                className={input}
+                value={value.attributes[i] || "mig"}
+                onChange={(e) => {
+                  const attributes = [...value.attributes]
+                  attributes[i] = e.target.value as Attribute
+                  changeAttributes(attributes)
+                }}
+              >
+                {ATTRIBUTES.map((a) => (
+                  <option key={a} value={a}>
+                    {a.toUpperCase()}{creatureDice?.[a] ? ` (${creatureDice[a]})` : ""}
+                  </option>
+                ))}
+              </select>
+              {isBestiary && <button type="button"
+                disabled={count <= 1}
+                onClick={() => changeAttributes(value.attributes.filter((_, index) => index !== i))}
+                aria-label={`Remover dado ${i + 1} da fórmula`}
+                className="shrink-0 rounded-md border border-white/15 px-2 py-2 text-red-300 hover:bg-red-400/10 disabled:opacity-30"
+              >−</button>}
+            </div>
           ))}
         </div>
+        {isBestiary && <button type="button"
+          disabled={count >= maxAttributes}
+          onClick={() => changeAttributes([...value.attributes, value.attributes[value.attributes.length - 1] || "mig"])}
+          className="mt-2 rounded-md border border-amber-400/30 px-3 py-2 text-xs font-bold text-amber-200 transition hover:border-amber-400 hover:bg-amber-400/10 disabled:opacity-40"
+        >+ Adicionar dado ({count}/{maxAttributes})</button>}
       </fieldset>
       <Field title="Alvo do ataque">
         <select
@@ -154,10 +178,12 @@ export function AbilityEditor({
   value,
   onChange,
   focusId,
+  creatureDice,
 }: {
   value: Ability[]
   onChange: (abilities: Ability[]) => void
   focusId?: string
+  creatureDice?: Partial<Record<Attribute, string>>
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
   useEffect(() => {
@@ -244,6 +270,8 @@ export function AbilityEditor({
                   <AttackEditor
                     value={a.attack}
                     onChange={(attack) => patch({ ...a, attack })}
+                    maxAttributes={MAX_BESTIARY_ATTACK_ATTRIBUTES}
+                    creatureDice={creatureDice}
                   />
                   <Field title="Efeito narrativo">
                     <textarea

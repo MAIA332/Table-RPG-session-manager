@@ -7,6 +7,8 @@ import { CreatureResourceControls, CreatureSheetDetails, CreatureAttackDetails, 
 import { MonsterAttackOverlay } from "./monster-attack-overlay"
 import { MonsterAttributeRollOverlay } from "./monster-attribute-roll-overlay"
 import type { MonsterAttribute, MonsterAttributeRoll, MonsterDiceState } from "@/lib/monster-dice"
+import type { MonsterCheckRoll } from "@/lib/monster-checks"
+import { CharacterBookShelf } from "./class-books"
 import { QteOverlay } from "./qte-overlay"
 import { AttackEditor } from "./creature-combat-editor"
 import {
@@ -18,6 +20,7 @@ import {
 } from "@/lib/combat-model"
 import type { useCombat } from "@/lib/use-combat"
 import type { Character } from "@/lib/types"
+import type { CustomCheck } from "@/lib/custom-checks"
 export type CombatActionRequest = {
   id: string
   instanceId: string
@@ -26,10 +29,14 @@ export type CombatActionRequest = {
 }
 type Props = {
   controller: ReturnType<typeof useCombat>
+  campaignId: string
   viewerId: string
   isGm: boolean
   characters: Character[]
   members: Array<{ userId: string; role: string; name: string }>
+  customChecks?: CustomCheck[]
+  booksRevision?: number
+  onCharacterUpdated?: (character: Character) => void
   onAbilitiesSaved?: () => void | Promise<void>
   actionRequest: CombatActionRequest | null
 }
@@ -39,10 +46,14 @@ const select =
   "rounded-md border border-border/60 bg-background/75 p-2.5 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/20"
 export function CampaignCombat({
   controller,
+  campaignId,
   viewerId,
   isGm,
   characters,
   members,
+  customChecks = [],
+  booksRevision = 0,
+  onCharacterUpdated,
   actionRequest,
   onAbilitiesSaved,
 }: Props) {
@@ -63,10 +74,17 @@ export function CampaignCombat({
     [target, setTarget] = useState(""),
     [bondId, setBondId] = useState("")
   const diceView = combat as (typeof combat & MonsterDiceState)
-  const [visibleMonsterRoll, setVisibleMonsterRoll] = useState<MonsterAttributeRoll | null>(null)
+  const monsterRollHistory: Array<MonsterAttributeRoll | MonsterCheckRoll> = [
+    ...(diceView?.monsterAttributeRolls || []),
+    ...(diceView?.monsterCheckRolls || []),
+  ].sort((a, b) => b.at - a.at).slice(0, 20)
+  const [visibleMonsterRoll, setVisibleMonsterRoll] = useState<MonsterAttributeRoll | MonsterCheckRoll | null>(null)
   const seenMonsterRolls = useRef(new Set<string>())
   useEffect(() => {
-    const rolls = diceView?.monsterAttributeRolls || []
+    const rolls: Array<MonsterAttributeRoll | MonsterCheckRoll> = [
+      ...(diceView?.monsterAttributeRolls || []),
+      ...(diceView?.monsterCheckRolls || []),
+    ].sort((a, b) => a.at - b.at)
     // Processa apenas eventos novos, não reapresenta os antigos após refresh.
     for (const roll of rolls) {
       if (seenMonsterRolls.current.has(roll.id)) continue
@@ -74,7 +92,7 @@ export function CampaignCombat({
       if (Math.abs(Date.now() + serverOffset - roll.at) < 7000)
         setVisibleMonsterRoll(roll)
     }
-  }, [diceView?.monsterAttributeRolls, serverOffset])
+  }, [diceView?.monsterAttributeRolls, diceView?.monsterCheckRolls, serverOffset])
   useEffect(() => {
     if (!visibleMonsterRoll) return
     const timer = window.setTimeout(() => setVisibleMonsterRoll((current:any) =>
@@ -617,6 +635,13 @@ export function CampaignCombat({
                 ) : (
                   !isGm && <p>Aguardando o Mestre iniciar o combate.</p>
                 )}
+                {combat.enabled && fullCharacter && (isGm || fullCharacter.ownerId === viewerId) && (
+                  <div className="mt-4">
+                    <CharacterBookShelf campaignId={campaignId} character={fullCharacter}
+                      isGm={isGm} refreshToken={booksRevision}
+                      onCharacterUpdated={onCharacterUpdated} />
+                  </div>
+                )}
                 {bonds.length > 0 && (
                   <label className="mt-3 block text-sm">
                     Laço para a próxima ação ou reação{" "}
@@ -741,7 +766,13 @@ export function CampaignCombat({
                             />
                           )}
                           {isGm && <CreatureSheetDetails creature={creature} rollPending={pending}
-                             onAttributeRoll={(attribute: MonsterAttribute) => void run({ type: "monster-attribute-roll", instanceId: creature.instanceId, attribute })} />}
+                             customChecks={customChecks}
+                             onAttributeRoll={(attribute: MonsterAttribute) => void run({ type: "monster-attribute-roll", instanceId: creature.instanceId, attribute })}
+                             onCheckRoll={(checkId: string) => void run({ type: "monster-check-roll", instanceId: creature.instanceId, checkId })}
+                             onCustomCheckRoll={(customCheck: CustomCheck) => void run({ type: "monster-custom-check-roll",
+                               instanceId: creature.instanceId,
+                               customCheck: { id: customCheck.id, name: customCheck.name, dice: customCheck.dice },
+                             })} />}
                           {isGm && (
                             <div className="space-y-3">
                               <div className="flex flex-wrap gap-3">
@@ -928,6 +959,28 @@ export function CampaignCombat({
                       <li key={entry.id}>{entry.text}</li>
                     ))}
                   </ol>
+                </section>
+                <section className="mt-5 rounded-xl border border-amber-400/20 bg-amber-300/5 p-4">
+                  <h3 className="font-bold text-amber-100">Histórico de testes das criaturas</h3>
+                  {!monsterRollHistory.length ? (
+                    <p className="mt-2 text-xs text-muted-foreground">Nenhuma rolagem disponível para seu nível de acesso.</p>
+                  ) : (
+                    <ol className="custom-scrollbar-sepia mt-3 max-h-60 space-y-2 overflow-y-auto text-sm">
+                      {monsterRollHistory.map(roll => (
+                        <li key={roll.id} className="rounded-lg border border-white/10 bg-black/20 p-2">
+                          <p className="font-semibold">
+                            {roll.creatureName} · {"checkName" in roll ? roll.checkName : roll.attribute.toUpperCase()}: {roll.result}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {"dice" in roll ? roll.dice.join(" + ") : roll.die}
+                            {"rolls" in roll && roll.rolls.length > 0 ? ` · Faces ${roll.rolls.join(" + ")}` : ""}
+                            {"breakdown" in roll && roll.breakdown ? ` · ${roll.breakdown}` : ""}
+                            {isGm && !roll.shared ? " · Privada" : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
                 </section>
               </>
             )}

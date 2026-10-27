@@ -18,23 +18,25 @@ interface NpcNurseryProps {
   onClose: () => void;
   customNPCs: NPCDraft[];
   onSpawn: (npc: NPCDraft) => void | Promise<void>;
+  onRepair?: (npc: NPCDraft, characterId: string) => void | Promise<void>;
   onDelete: (id: string) => void | Promise<void>;
   onCreated: (newNpc: NPCDraft) => void | Promise<void>;
   customClasses?: GameClass[];
   campaignCharacters?: Character[];
 }
 
-export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onCreated, customClasses = [], campaignCharacters = [] }: NpcNurseryProps) {
+export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onRepair, onDelete, onCreated, customClasses = [], campaignCharacters = [] }: NpcNurseryProps) {
   const [expandedNpcId, setExpandedNpcId] = useState<string | null>(null);
   const [editingNpcId, setEditingNpcId] = useState<string | null>(null);
   const [busyNpcId, setBusyNpcId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const editingNpc = customNPCs.find(npc => npc.id === editingNpcId);
 
-  async function runAction(id: string, action: () => void | Promise<void>) {
+  async function runAction(id: string, action: () => void | Promise<void>, successMessage?: string) {
     if (busyNpcId) return;
-    setActionError(null); setBusyNpcId(id);
-    try { await action() }
+    setActionError(null); setActionSuccess(null); setBusyNpcId(id);
+    try { await action(); if (successMessage) setActionSuccess(successMessage) }
     catch (error) { setActionError(error instanceof Error ? error.message : "Não foi possível persistir a alteração.") }
     finally { setBusyNpcId(null) }
   }
@@ -58,6 +60,7 @@ export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onC
             </div>
 
             {actionError && <div role="alert" className="border-b border-red-500/30 bg-red-500/10 px-6 py-3 text-sm text-red-300">{actionError}</div>}
+            {actionSuccess && <div role="status" className="border-b border-emerald-500/30 bg-emerald-500/10 px-6 py-3 text-sm text-emerald-300">{actionSuccess}</div>}
             <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
               <div className="lg:w-1/3 border-r border-border/40 p-6 flex flex-col gap-4 bg-black/20 overflow-y-auto custom-scrollbar-sepia">
                 <h5 className="text-xs font-bold uppercase tracking-widest border-b border-white/10 pb-2 flex items-center gap-2">
@@ -69,6 +72,11 @@ export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onC
 
                   {customNPCs.map(npc => {
                     const isExpanded = expandedNpcId === npc.id;
+                    const snapshot = npc.archivedSnapshot;
+                    const modifiers = (snapshot as Character & { customModifiers?: unknown })?.customModifiers;
+                    const stateCount = Array.isArray(modifiers) ? modifiers.length : 0;
+                    const extraItems = Array.isArray(snapshot?.customItems) ? snapshot.customItems.length : 0;
+                    const activeLinked = campaignCharacters.filter(character => npc.linkedCharacterIds?.includes(character.id));
 
                     return (
                       <div key={npc.id} className={`flex flex-col gap-3 rounded-sm border-l-2 p-4 transition-all duration-300 ${isExpanded ? 'border-destructive bg-black/40 shadow-lg' : 'border-destructive/30 bg-card/20'}`}>
@@ -161,6 +169,20 @@ export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onC
                                   </span>
                                 </div>
 
+                                {/* Conferência do estado capturado, sem alterar o snapshot. */}
+                                {snapshot ? (
+                                  <div className="rounded border border-emerald-500/20 bg-emerald-950/15 p-2.5 text-[10px] leading-relaxed text-emerald-100/85">
+                                    <p className="mb-1 font-bold uppercase tracking-wide text-emerald-300">Ficha integral arquivada</p>
+                                    <p>HP {snapshot.resources.hp}/{snapshot.resources.maxHp} · MP {snapshot.resources.mp}/{snapshot.resources.maxMp} · Zenit {snapshot.zenit ?? 0}</p>
+                                    <p>{npc.equipment?.length ?? 0} itens na mochila · {extraItems} personalizados · {stateCount} registros de condições/efeitos/uso</p>
+                                    <p className="mt-1 text-emerald-200/70">Os itens em uso e guardados, bem como os modificadores, serão restaurados na invocação.</p>
+                                  </div>
+                                ) : (
+                                  <p className="rounded border border-amber-500/20 bg-amber-950/15 p-2 text-[10px] text-amber-200">
+                                    Registro antigo sem snapshot integral: a invocação utiliza apenas os dados que já estavam salvos.
+                                  </p>
+                                )}
+
                               </div>
                             </motion.div>
                           )}
@@ -181,6 +203,21 @@ export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onDelete, onC
                             <Trash2 className="size-4" />
                           </Button>
                         </div>
+                        {!!snapshot && onRepair && activeLinked.map(character => (
+                          <Button
+                            key={character.id}
+                            size="sm"
+                            variant="outline"
+                            disabled={!!busyNpcId}
+                            className="w-full border-amber-500/40 text-amber-300 hover:bg-amber-500/10"
+                            onClick={() => {
+                              if (!window.confirm(`Restaurar ${character.name} (${character.id}) para o estado arquivado? Isso sobrescreve as alterações feitas após a invocação.`)) return;
+                              void runAction(npc.id, () => onRepair?.(npc, character.id), `Ficha ${character.name} restaurada sem criar outro NPC.`);
+                            }}
+                          >
+                            Restaurar ficha existente · {character.name}
+                          </Button>
+                        ))}
                       </div>
                     );
                   })}
