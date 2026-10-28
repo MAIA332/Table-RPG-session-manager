@@ -179,6 +179,7 @@ export function resolveCrisisConditions(
     if (!progression?.enabled || !steps) continue
     condition.stage = steps
     if (progression.mode === "intensity" || progression.mode === "both") {
+      // A variação é ADICIONAL ao efeito de base: -5, -6, -7... (não o substitui).
       if (condition.kind === "modifier") condition.modifier = (condition.modifier || 0) + steps * progression.modifierPerStep
       if (condition.kind === "dot") condition.damage = Math.max(1, (condition.damage || 1) + steps * progression.modifierPerStep)
     }
@@ -208,7 +209,15 @@ export function advanceCrisisProgress(
     const rule = condition.progression
     if (!rule?.enabled || condition.source === "progressive") continue
     const before = previous[condition.applicationId]
-    const accumulatedLoss = (before?.accumulatedLoss || 0) + Math.max(0, (before?.lastHp ?? hp) - hp)
+    // Efeitos automáticos começam a contar exatamente no limite de crise.
+    // Se um golpe atravessa 35% e leva de 40 para 30 HP, os 5 HP abaixo
+    // do limiar também contam, mesmo que não haja snapshot intermediário.
+    // Efeitos manuais começam a contar na HP do momento da aplicação.
+    const initialLoss = condition.source === "automatic"
+      ? Math.max(0, maxHp * config.thresholdPercent / 100 - hp)
+      : 0
+    const accumulatedLoss = (before?.accumulatedLoss ?? initialLoss) +
+      (before ? Math.max(0, before.lastHp - hp) : 0)
     updated[condition.applicationId] = {
       lastHp: hp, accumulatedLoss,
       steps: Math.min(20, Math.floor(accumulatedLoss / rule.hpLossStep)),
@@ -228,6 +237,18 @@ export function crisisRollModifier(conditions: readonly CrisisCondition[], attrs
     )) total += condition.modifier || 0
   }
   return total
+}
+
+/** Resumo do modificador efetivo, incluindo todos os estágios de crise. */
+export function crisisModifierLabel(condition: CrisisCondition): string | null {
+  if (condition.kind === "adrenaline") return "+2 MIG · +1 INS"
+  if (condition.kind === "modifier" && condition.target) {
+    const value = condition.modifier || 0
+    const label = condition.target.startsWith("check:")
+      ? "teste" : condition.target.toUpperCase()
+    return `${value > 0 ? "+" : ""}${value} ${label}`
+  }
+  return null
 }
 
 export const crisisBlocksRoll = (conditions: readonly CrisisCondition[]) => conditions.some(c => c.kind === "paralysis")

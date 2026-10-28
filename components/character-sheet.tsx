@@ -24,7 +24,7 @@ import { CharacterBookShelf } from "./class-books"
 import { ClassTimerProgress } from "./class-timer-progress"
 import { CharacterTraining, TrainingCompactBar } from "./character-training"
 import { isTrainingActive, trainingFatiguePenalty } from "@/lib/training-model"
-import { crisisBlocksRoll, crisisRollModifier, type CrisisEntityStatus } from "@/lib/crisis-model"
+import { crisisBlocksRoll, crisisModifierLabel, crisisRollModifier, type CrisisEntityStatus } from "@/lib/crisis-model"
 import { activeClassBookModifiers, isExpiredClassBookModifier } from "@/lib/class-books"
 import { createClientId } from "@/lib/client-id"
 import { InventoryEquipment, ItemDamageShelf, WornEquipmentSummary } from "./inventory-equipment"
@@ -108,6 +108,7 @@ import {
   Check,
   Swords,
   ChevronDown,
+  ChevronRight,
   Sword,
   Gem,
   Eye,
@@ -1609,6 +1610,219 @@ function TimedItemAbilityBars({
   )
 }
 
+type SheetCrisisCondition = CrisisEntityStatus["conditions"][number]
+
+/** Contagem compacta: somente este chip atualiza a cada segundo. */
+function CompactCrisisCountdown({ endsAt }: { endsAt: number }) {
+  const [now, setNow] = useState(0)
+  useEffect(() => {
+    setNow(Date.now())
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [endsAt])
+  if (!now) return null
+  const seconds = Math.max(0, Math.ceil((endsAt - now) / 1000))
+  return <span className="shrink-0 font-mono text-[9px] tabular-nums text-primary/85">{Math.floor(seconds / 60) > 0 ? `${Math.floor(seconds / 60)}m` : ""}{seconds % 60}s</span>
+}
+
+/** Visualização exclusiva da ficha: não edita condições nem expõe regras do Mestre. */
+function CharacterCrisisDetailsModal({
+  name,
+  conditions,
+  initialId,
+  onClose,
+}: {
+  name: string
+  conditions: SheetCrisisCondition[]
+  initialId: string
+  onClose: () => void
+}) {
+  const [selectedId, setSelectedId] = useState(initialId)
+  const [now, setNow] = useState(0)
+  const closeRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    closeRef.current?.focus()
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", escape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener("keydown", escape)
+    }
+  }, [])
+
+  useEffect(() => {
+    setNow(Date.now())
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const selected = conditions.find(condition => condition.applicationId === selectedId) || conditions[0]
+  if (!selected) return null
+
+  const sourceLabel = selected.source === "manual"
+    ? "Aplicação individual"
+    : selected.source === "progressive" ? "Efeito progressivo" : "Crise automática"
+  const sourceExplanation = selected.source === "manual"
+    ? "Esta condição foi aplicada individualmente e não depende do gatilho automático de crise."
+    : selected.source === "progressive"
+      ? "Esta condição surgiu como consequência de outro efeito progressivo."
+      : "Esta condição é ativada quando a vida atinge o limite de crise definido pelo Mestre."
+  const target = selected.target?.startsWith("check:")
+    ? PRESET_CHECKS.find(check => check.id === selected.target?.slice(6))?.name || "Teste do sistema"
+    : selected.target?.toUpperCase()
+  const modifierLabel = crisisModifierLabel(selected)
+  const stages = Math.max(0, selected.stage || 0)
+  const incremental = selected.progression?.enabled && stages > 0 &&
+    (selected.progression.mode === "intensity" || selected.progression.mode === "both")
+  const extraModifier = incremental ? stages * (selected.progression?.modifierPerStep || 0) : 0
+  const baseModifier = selected.kind === "modifier" ? (selected.modifier || 0) - extraModifier : 0
+  const interval = selected.intervalSeconds || 0
+  const seconds = selected.nextTickAt && now ? Math.max(0, Math.ceil((selected.nextTickAt - now) / 1000)) : null
+  const countdown = seconds === null ? null : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
+  const Icon = selected.kind === "adrenaline" ? Zap
+    : selected.kind === "dot" ? Droplets
+      : selected.kind === "paralysis" ? ShieldOff
+        : selected.kind === "stun" ? Activity : TrendingDown
+
+  const ruleSummary = selected.kind === "adrenaline"
+    ? "Vigor (MIG) recebe +2 e Intuição (INS) recebe +1. Cada bônus é considerado uma vez por rolagem que utilize o respectivo atributo."
+    : selected.kind === "modifier"
+      ? selected.target?.startsWith("check:")
+        ? `O valor ${modifierLabel?.split(" ")[0] || "0"} modifica somente o teste oficial ${target}. Não afeta testes personalizados pelo nome.`
+        : `O modificador é aplicado automaticamente a qualquer rolagem que use ${target || "o atributo escolhido"}, incluindo testes tradicionais, personalizados e ataques. Mesmo com dados repetidos, conta uma vez por rolagem.`
+      : selected.kind === "dot"
+        ? `Perde ${selected.damage || 0} HP a cada ${interval} segundos enquanto esta condição permanecer ativa. O relógio continua correndo fora do combate.`
+        : selected.kind === "paralysis"
+          ? "Impede rolagens de atributos, testes, ataques e reações enquanto a condição estiver ativa."
+          : "Cada rolagem realizada causa 1 HP de dano ao próprio personagem."
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-[11065] flex h-[100dvh] w-screen flex-col overflow-hidden bg-background text-foreground"
+      role="dialog" aria-modal="true" aria-labelledby="character-crisis-dialog-title"
+    >
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <div className="absolute -right-[18%] -top-[50%] h-[90vw] max-h-[800px] w-[90vw] max-w-[800px] rounded-full bg-primary/[.055] blur-[100px]" />
+        <div className="absolute -bottom-[55%] -left-[16%] h-[90vw] max-h-[900px] w-[90vw] max-w-[900px] rounded-full bg-destructive/[.035] blur-[110px]" />
+        <div className="absolute inset-0 opacity-[.025]" style={{ backgroundImage: "linear-gradient(currentColor 1px, transparent 1px),linear-gradient(90deg,currentColor 1px,transparent 1px)", backgroundSize: "52px 52px" }} />
+      </div>
+
+      <header className="relative z-10 shrink-0 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl sm:px-8 lg:px-12">
+        <div className="mx-auto flex max-w-[1260px] items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-primary/30 bg-primary/10 text-primary sm:size-12"><Activity className="size-5" /></span>
+            <div className="min-w-0">
+              <p className="truncate text-[9px] font-bold uppercase tracking-[.23em] text-primary sm:text-[10px]">Morte Mágica <span className="mx-1 text-muted-foreground">/</span> Condições da ficha</p>
+              <h2 id="character-crisis-dialog-title" className="truncate font-serif text-xl font-bold tracking-tight sm:text-2xl">Estado de desgaste</h2>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="hidden rounded-full border border-border bg-card/60 px-3 py-1.5 text-[11px] font-medium text-muted-foreground sm:inline-flex">Somente leitura</span>
+            <button ref={closeRef} type="button" aria-label="Fechar detalhes dos efeitos" onClick={onClose} className="grid size-10 place-items-center rounded-xl border border-border/70 bg-card/70 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"><X className="size-5" /></button>
+          </div>
+        </div>
+      </header>
+
+      <div className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-8 sm:py-9 lg:px-12">
+        <div className="mx-auto max-w-[1260px] space-y-7">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[.2em] text-muted-foreground">Condições em vigor</p>
+              <h3 className="font-serif text-2xl font-bold sm:text-3xl">{name}</h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground sm:text-sm">Consulte o impacto atual de cada condição na sua ficha e as regras que afetam suas ações.</p>
+            </div>
+            <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">{conditions.length} {conditions.length === 1 ? "efeito ativo" : "efeitos ativos"}</span>
+          </div>
+
+          <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(250px,0.8fr)_minmax(0,1.65fr)]">
+            <aside className="min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card/70 shadow-sm lg:sticky lg:top-4">
+              <div className="border-b border-border/50 p-5">
+                <p className="text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Seus efeitos</p>
+                <p className="mt-1.5 text-xs text-muted-foreground">Selecione um efeito para ver os detalhes.</p>
+              </div>
+              <div className="grid max-h-[34dvh] gap-2 overflow-y-auto p-3 sm:grid-cols-2 lg:max-h-[65dvh] lg:grid-cols-1">
+                {conditions.map(effect => {
+                  const active = effect.applicationId === selected.applicationId
+                  return <button key={effect.applicationId} type="button" aria-pressed={active} onClick={() => setSelectedId(effect.applicationId)}
+                    className={`group flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${active ? "border-primary/45 bg-primary/10 shadow-sm" : "border-transparent bg-background/35 hover:border-border hover:bg-muted/40"}`}>
+                    <span className={`grid size-9 shrink-0 place-items-center rounded-lg border ${active ? "border-primary/30 bg-primary/15 text-primary" : "border-border/60 bg-card text-muted-foreground"}`}>
+                      {effect.kind === "dot" ? <Droplets className="size-4" /> : effect.kind === "paralysis" ? <ShieldOff className="size-4" /> : effect.kind === "adrenaline" ? <Zap className="size-4" /> : <Activity className="size-4" />}
+                    </span>
+                    <span className="min-w-0 flex-1"><span className={`block truncate text-xs font-bold sm:text-sm ${active ? "text-primary" : "text-foreground"}`}>{effect.name}</span><span className="mt-0.5 block truncate text-[10px] text-muted-foreground">{crisisModifierLabel(effect) || (effect.kind === "dot" ? `${effect.damage} HP por pulso` : "Condição ativa")}</span></span>
+                    <ChevronRight className={`size-4 shrink-0 transition-transform ${active ? "text-primary" : "text-muted-foreground group-hover:translate-x-0.5"}`} />
+                  </button>
+                })}
+              </div>
+            </aside>
+
+            <section className="min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card/75 shadow-sm" aria-label={`Detalhes de ${selected.name}`}>
+              <div className="relative overflow-hidden border-b border-border/60 bg-gradient-to-r from-primary/[.095] via-card/75 to-transparent p-5 sm:p-8">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <span className="grid size-14 shrink-0 place-items-center rounded-2xl border border-primary/25 bg-primary/10 text-primary"><Icon className="size-7" /></span>
+                    <div className="min-w-0"><p className="mb-1 text-[10px] font-bold uppercase tracking-[.18em] text-primary">{sourceLabel}</p><h4 className="break-words font-serif text-2xl font-bold sm:text-3xl">{selected.name}</h4></div>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide text-emerald-600 dark:text-emerald-300"><span className="size-1.5 rounded-full bg-emerald-500" /> Em vigor</span>
+                </div>
+                <p className="mt-5 max-w-3xl whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{selected.description || "Esta condição altera temporariamente as ações do personagem."}</p>
+              </div>
+
+              <div className="space-y-6 p-5 sm:p-8">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-border/60 bg-background/60 p-4 sm:p-5">
+                    <p className="mb-3 text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">Efeito atual</p>
+                    <p className="break-words font-serif text-2xl font-bold text-primary sm:text-3xl">{modifierLabel || (selected.kind === "dot" ? `-${selected.damage || 0} HP` : selected.kind === "paralysis" ? "Bloqueio de dados" : "1 HP por rolagem")}</p>
+                    <p className="mt-1.5 text-xs text-muted-foreground">{selected.kind === "dot" ? `A cada ${interval} segundos` : selected.kind === "modifier" ? `Alvo: ${target || "Atributo"}` : "Enquanto a condição estiver ativa"}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/60 bg-background/60 p-4 sm:p-5">
+                    <p className="mb-3 text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">Origem e situação</p>
+                    <p className="text-sm font-bold text-foreground">{sourceLabel}{stages ? ` · Estágio ${stages}` : ""}</p>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{sourceExplanation}</p>
+                  </div>
+                </div>
+
+                {selected.kind === "dot" && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/[.05] p-4">
+                  <div className="flex items-center gap-3"><Timer className="size-5 text-primary" /><div><p className="text-xs font-bold">Próximo pulso de dano</p><p className="mt-0.5 text-[11px] text-muted-foreground">A contagem continua durante e fora do combate.</p></div></div>
+                  <strong className="font-mono text-xl tabular-nums text-primary" aria-live="off">{countdown || "Aguardando atualização"}</strong>
+                </div>}
+
+                {selected.progression?.enabled && <div className="rounded-xl border border-primary/20 bg-primary/[.045] p-4 sm:p-5">
+                  <div className="flex items-center gap-2 text-sm font-bold"><TrendingDown className="size-4 text-primary" /> Progressão de desgaste</div>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Cada {selected.progression.hpLossStep} HP perdido após o limite de crise acrescenta um estágio. O efeito progressivo é adicional à condição original.</p>
+                  <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-lg border border-border/70 bg-background/70 px-3 py-2">Estágio <strong>{stages}</strong></span>
+                    {(selected.kind === "modifier" && incremental) && <><span className="rounded-lg border border-border/70 bg-background/70 px-3 py-2">Base <strong>{baseModifier > 0 ? "+" : ""}{baseModifier}</strong></span><span className="rounded-lg border border-border/70 bg-background/70 px-3 py-2">Extra <strong>{extraModifier > 0 ? "+" : ""}{extraModifier}</strong></span></>}
+                  </div>
+                  <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">A cura não reduz os estágios já acumulados enquanto o personagem continuar em crise.</p>
+                </div>}
+
+                <div className="border-t border-border/60 pt-6"><p className="mb-2 flex items-center gap-2 text-sm font-bold"><BookOpenText className="size-4 text-primary" /> Como esta condição funciona</p><p className="text-sm leading-relaxed text-muted-foreground">{ruleSummary}</p></div>
+              </div>
+            </section>
+          </div>
+
+          <section className="grid gap-3 rounded-2xl border border-border/60 bg-card/60 p-5 sm:grid-cols-3 sm:p-6" aria-label="Resumo das regras de desgaste">
+            <div><p className="flex items-center gap-2 text-xs font-bold"><Heart className="size-4 text-primary" /> Gatilho de crise</p><p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">As condições automáticas entram em vigor quando sua vida chega ao percentual definido pelo Mestre.</p></div>
+            <div><p className="flex items-center gap-2 text-xs font-bold"><Dices className="size-4 text-primary" /> Testes e atributos</p><p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Modificadores por atributo afetam todas as rolagens que o utilizam. Efeitos de testes específicos valem apenas para aquele teste.</p></div>
+            <div><p className="flex items-center gap-2 text-xs font-bold"><Info className="size-4 text-primary" /> Controle de efeitos</p><p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Este painel é informativo. A ativação e remoção das condições são controladas pelas regras e pelo Mestre.</p></div>
+          </section>
+        </div>
+      </div>
+
+      <footer className="relative z-10 shrink-0 border-t border-border/60 bg-background/85 px-4 py-3 backdrop-blur-xl sm:px-8">
+        <div className="mx-auto flex max-w-[1260px] items-center justify-between gap-3"><p className="hidden text-[11px] text-muted-foreground sm:block">Visualizando somente as condições de {name}.</p><button type="button" onClick={onClose} className="ml-auto inline-flex h-10 items-center gap-2 rounded-xl border border-primary/30 bg-primary px-5 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90"><Check className="size-4" /> Entendido</button></div>
+      </footer>
+    </motion.div>
+  )
+}
+
 export function CharacterSheet({
   character: rawCharacter,
   editable,
@@ -1698,6 +1912,8 @@ export function CharacterSheet({
   const skillWriteRef = useRef(false)
   const [showInventory, setShowInventory] = useState(false)
   const [showStore, setShowStore] = useState(false)
+  const [showCrisisDetails, setShowCrisisDetails] = useState(false)
+  const [selectedCrisisEffectId, setSelectedCrisisEffectId] = useState("")
   const [showLore, setShowLore] = useState(false)
   const [loreDraft, setLoreDraft] = useState({
     origin: character.origin || "",
@@ -3937,6 +4153,17 @@ export function CharacterSheet({
                 </motion.div>
               )}
             </AnimatePresence>
+            <AnimatePresence>
+              {showCrisisDetails && activeCrisis.length > 0 && (
+                <CharacterCrisisDetailsModal
+                  key={`${character.id}:${selectedCrisisEffectId}`}
+                  name={character.name}
+                  conditions={activeCrisis}
+                  initialId={selectedCrisisEffectId}
+                  onClose={() => setShowCrisisDetails(false)}
+                />
+              )}
+            </AnimatePresence>
           </>,
           document.body,
         )}
@@ -4173,9 +4400,25 @@ export function CharacterSheet({
         </div>
       </div>
 
-      {activeCrisis.length > 0 && <div className="mx-3 mt-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-950/20 p-2 text-xs" aria-label="Efeitos de desgaste ativos">
-        <span className="mr-1 font-bold text-rose-300">Desgaste:</span>
-        {activeCrisis.map(condition => <span key={condition.applicationId} title={condition.description} className="rounded border border-rose-500/30 bg-background/70 px-2 py-1 text-rose-200">{condition.name}{condition.stage ? ` · estágio ${condition.stage}` : ""}{condition.source === "manual" ? " · manual" : ""}{condition.nextTickAt && <span className="ml-1 font-mono text-amber-200">{Math.max(0, Math.ceil((condition.nextTickAt - (modifierClock || Date.now())) / 1000))}s</span>}</span>)}
+      {activeCrisis.length > 0 && <div className="mx-3 mt-2 flex min-w-0 items-center gap-1.5 rounded-lg border border-border/45 bg-card/40 px-2 py-1.5 text-[11px]" aria-label="Efeitos de desgaste ativos">
+        <Activity className="size-3.5 shrink-0 text-primary/80" aria-hidden="true" />
+        <span className="hidden shrink-0 font-semibold text-muted-foreground sm:inline">Desgaste</span>
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-primary/10 font-mono text-[10px] font-bold text-primary" aria-label={`${activeCrisis.length} efeitos ativos`}>{activeCrisis.length}</span>
+        <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {activeCrisis.map(condition => <button key={condition.applicationId} type="button"
+            onClick={event => { event.stopPropagation(); setSelectedCrisisEffectId(condition.applicationId); setShowCrisisDetails(true) }}
+            title={`Ver detalhes de ${condition.name}`}
+            aria-label={`Ver detalhes de ${condition.name}${crisisModifierLabel(condition) ? `, ${crisisModifierLabel(condition)}` : ""}`}
+            className="inline-flex h-6 max-w-[210px] shrink-0 items-center gap-1.5 rounded-md border border-border/55 bg-background/65 px-2 text-[10px] text-foreground/85 transition-all hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+            <span className="size-1.5 shrink-0 rounded-full bg-primary/65" aria-hidden="true" />
+            <span className="truncate font-medium">{condition.name}</span>
+            {crisisModifierLabel(condition) && <span className="shrink-0 font-mono text-[9px] text-muted-foreground">{crisisModifierLabel(condition)}</span>}
+            {condition.nextTickAt && <CompactCrisisCountdown endsAt={condition.nextTickAt} />}
+          </button>)}
+        </div>
+        <button type="button" title="Abrir detalhes de todos os efeitos" aria-label="Abrir detalhes dos efeitos de desgaste"
+          onClick={event => { event.stopPropagation(); setSelectedCrisisEffectId(activeCrisis[0].applicationId); setShowCrisisDetails(true) }}
+          className="grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><ChevronRight className="size-3.5" /></button>
       </div>}
       {!isExpanded && <TrainingCompactBar character={character as any} />}
       <div

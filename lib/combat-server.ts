@@ -948,13 +948,20 @@ export async function commandCombat(
         } catch (error) {
           throw new CombatError(error instanceof Error ? error.message : "Teste personalizado inválido")
         }
+        // Testes personalizados não recebem bônus direcionados a IDs de testes
+        // oficiais, mas precisam receber os modificadores dos atributos usados.
+        // Ex.: MIG -5 em qualquer rolagem que contenha MIG, inclusive aqui.
+        const customAttributes = check.dice
+          .filter(die => die.kind === "attribute")
+          .map(die => die.attribute)
+        const crisisBonus = crisisRollModifier(conditions, customAttributes)
         s.monsterCheckRolls = [
           ...(s.monsterCheckRolls || []).slice(-39),
           {
             id: randomUUID(), instanceId: creature.instanceId,
             creatureName: creature.name, checkId: `custom:${check.id}`,
             checkName: check.name, dice, rolls: rolled.rolls,
-            result: rolled.result, at: Date.now(),
+            result: rolled.result + crisisBonus, at: Date.now(),
             shared: (s as CombatSession & MonsterDiceState).shareMonsterRolls === true,
           },
         ]

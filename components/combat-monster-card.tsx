@@ -6,7 +6,7 @@ import type { MonsterAttribute } from "@/lib/monster-dice"
 import { getEquipment } from "@/lib/game-data"
 import type { Attack, Ability } from "@/lib/combat-model"
 import type { CombatCreature } from "@/lib/combat-types"
-import { crisisBlocksRoll, type CrisisCondition } from "@/lib/crisis-model"
+import { crisisBlocksRoll, crisisModifierLabel, type CrisisCondition } from "@/lib/crisis-model"
 export function CombatMonsterCard({
   creature,
   isGm,
@@ -68,7 +68,7 @@ export function CombatMonsterCard({
           alt={creature.name}
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
         />
-        {crisisConditions.length > 0 && <span className="absolute inset-x-3 bottom-3 flex flex-wrap gap-1">{crisisConditions.map(condition => <span key={condition.applicationId || condition.id} title={condition.description} className="rounded-md border border-rose-400/50 bg-black/85 px-2 py-1 text-xs text-rose-200">{condition.name}</span>)}</span>}
+        {crisisConditions.length > 0 && <span className="absolute inset-x-3 bottom-3 flex flex-wrap gap-1">{crisisConditions.map(condition => <span key={condition.applicationId || condition.id} title={condition.description} className="rounded-md border border-rose-400/50 bg-black/85 px-2 py-1 text-xs text-rose-200">{condition.name}{crisisModifierLabel(condition) ? ` · ${crisisModifierLabel(condition)}` : ""}</span>)}</span>}
       </button>
     )
   return (
@@ -102,7 +102,7 @@ export function CombatMonsterCard({
           ×
         </button>
       </header>
-      {crisisConditions.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label={`Condições de ${creature.name}`}>{crisisConditions.map(condition => <span key={condition.applicationId || condition.id} title={condition.description} className="rounded border border-rose-500/40 bg-rose-950/40 px-2 py-1 text-xs text-rose-200">{condition.name}{condition.stage ? ` · estágio ${condition.stage}` : ""}</span>)}</div>}
+      {crisisConditions.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label={`Condições de ${creature.name}`}>{crisisConditions.map(condition => <span key={condition.applicationId || condition.id} title={condition.description} className="rounded border border-rose-500/40 bg-rose-950/40 px-2 py-1 text-xs text-rose-200">{condition.name}{crisisModifierLabel(condition) ? ` · ${crisisModifierLabel(condition)}` : ""}{condition.stage ? ` · estágio ${condition.stage}` : ""}</span>)}</div>}
       <CreatureResourceControls
         creature={creature}
         pending={pending}
