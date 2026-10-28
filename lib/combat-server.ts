@@ -17,6 +17,12 @@ import { resolveBestiaryAttack } from "./monster-attack-resolver"
 import { isTrainingActive, trainingFatiguePenalty } from "./training-model"
 import { isMonsterAttribute, type MonsterDiceState } from "./monster-dice"
 import { PRESET_CHECKS } from "./combat-checks"
+import {
+  advanceCrisisProgress, resolveCrisisConditions, crisisBlocksRoll, crisisRollModifier, crisisSelfDamageOnRoll,
+  normalizeCrisisConfig, parseCrisisConfig,
+  type CrisisConfig, type CrisisPublicState, type CrisisAppliedCondition,
+  type CrisisProgress, type ResolvedCrisisCondition,
+} from "./crisis-model"
 import { parseMonsterCustomCheck, resolveMonsterCustomDice, rollMonsterCustomDice } from "./monster-custom-check"
 import { visibleMonsterCheckRolls } from "./monster-checks"
 import { validateBestiaryCombat, validateBestiaryDice } from "./bestiary-attack-formula"
@@ -36,6 +42,125 @@ import type {
 } from "./combat-types"
 import type { Character, RealtimeEvent } from "./types"
 type Database = Parameters<Parameters<typeof transactStore>[0]>[0]
+type CrisisSession = CombatSession & {
+  crisisConfig?: CrisisConfig
+  crisisDue?: Record<string, number>
+  crisisProgress?: Record<string, CrisisProgress>
+}
+const officialCheckIds = PRESET_CHECKS.map(check => check.id)
+const crisisConfig = (session: CombatSession) => normalizeCrisisConfig((session as CrisisSession).crisisConfig, officialCheckIds)
+type CrisisCharacter = Character & { crisisManual?: CrisisAppliedCondition[] }
+type CrisisCreature = CombatCreature & { crisisManual?: CrisisAppliedCondition[] }
+function entityProgress(s: CombatSession, kind: "player" | "creature", id: string) {
+  const prefix = `${kind}:${id}:`
+  return Object.fromEntries(Object.entries((s as CrisisSession).crisisProgress || {})
+    .filter(([key]) => key.startsWith(prefix))
+    .map(([key, value]) => [key.slice(prefix.length), value]))
+}
+function crisisForCharacter(session: CombatSession, c: Character): ResolvedCrisisCondition[] {
+  return resolveCrisisConditions(crisisConfig(session), c.resources.hp, c.resources.maxHp,
+    (c as CrisisCharacter).crisisManual || [], entityProgress(session, "player", c.id))
+}
+function crisisForCreature(session: CombatSession, c: CombatCreature): ResolvedCrisisCondition[] {
+  return session.enabled ? resolveCrisisConditions(crisisConfig(session), c.currentHp, c.maxHp,
+    (c as CrisisCreature).crisisManual || [], entityProgress(session, "creature", c.instanceId)) : []
+}
+
+/** Avança efeitos tanto na ficha fora de combate quanto em combatentes vivos. */
+function advanceCrisis(db: Database, campaignId: string, s: CombatSession, now = Date.now(), updatedCharacters = new Set<string>()): boolean {
+  const state = s as CrisisSession
+  const previous = state.crisisDue || {}
+  const next: Record<string, number> = {}
+  const oldProgress = state.crisisProgress || {}
+  const workingProgress = { ...oldProgress }
+  state.crisisProgress = workingProgress
+  let changed = false
+  const sources = [
+    ...[...db.characters.values()].filter(c => c.campaignId === campaignId)
+      .map(c => ({ kind: "player" as const, id: c.id, c })),
+    ...(s.enabled ? s.creatures.map(c => ({ kind: "creature" as const, id: c.instanceId, c })) : []),
+  ]
+  for (const entry of sources) {
+      const c = entry.c
+      const getHp = () => entry.kind === "player" ? (db.characters.get(entry.id)?.resources.hp || 0) : (c as CombatCreature).currentHp
+      const maxHp = entry.kind === "player" ? (c as Character).resources.maxHp : (c as CombatCreature).maxHp
+      const prefix = `${entry.kind}:${entry.id}:`
+      const conditions = () => entry.kind === "player"
+        ? crisisForCharacter(s, db.characters.get(entry.id)!)
+        : crisisForCreature(s, c as CombatCreature)
+      const updateProgress = () => {
+        const previousForEntity = entityProgress(s, entry.kind, entry.id)
+        const updated = advanceCrisisProgress(crisisConfig(s), getHp(), maxHp, conditions(), previousForEntity)
+        for (const key of Object.keys(workingProgress)) if (key.startsWith(prefix)) delete workingProgress[key]
+        for (const [key, stage] of Object.entries(updated)) workingProgress[`${prefix}${key}`] = stage
+      }
+      updateProgress()
+      for (const condition of conditions()) {
+        if (condition.kind !== "dot" || !condition.damage || !condition.intervalSeconds) continue
+        const key = `${prefix}${condition.applicationId}`
+        const interval = condition.intervalSeconds * 1000
+        const due = previous[key] ?? now + interval
+        if (due > now) { next[key] = due; continue }
+        const intervals = Math.floor((now - due) / interval) + 1
+        const damage = Math.min(getHp(), condition.damage * intervals)
+        next[key] = due + intervals * interval
+        if (damage <= 0) continue
+        if (entry.kind === "player") {
+          applyDamage(db, db.characters.get(entry.id)!, damage, s)
+          updatedCharacters.add(entry.id)
+        } else {
+          const creature = c as CombatCreature
+          creature.currentHp = Math.max(0, creature.currentHp - damage)
+        }
+        addLog(s, `${c.name}: ${condition.name} causou ${damage} de dano (${intervals} período(s)).`, entry.kind === "player" ? entry.id : undefined, damage)
+        changed = true
+      }
+      updateProgress()
+      // Estágios que acabaram de surgir precisam ganhar timers imediatamente,
+      // sem esperar a próxima ação de jogador ou do Mestre.
+      const currentEffects = conditions()
+      const activeKeys = new Set(currentEffects.map(effect => `${prefix}${effect.applicationId}`))
+      for (const key of Object.keys(next)) {
+        if (key.startsWith(prefix) && !activeKeys.has(key)) delete next[key]
+      }
+      for (const effect of currentEffects) {
+        if (effect.kind !== "dot" || !effect.intervalSeconds) continue
+        const key = `${prefix}${effect.applicationId}`
+        if (!next[key]) next[key] = now + effect.intervalSeconds * 1000
+      }
+  }
+  if (JSON.stringify(previous) !== JSON.stringify(next)) changed = true
+  if (JSON.stringify(oldProgress) !== JSON.stringify(workingProgress)) changed = true
+  state.crisisDue = next
+  return changed
+}
+
+function crisisPublicState(db: Database, campaignId: string, s: CombatSession): CrisisPublicState {
+  const config = crisisConfig(s)
+  const clocks = (s as CrisisSession).crisisDue || {}
+  const status = (conditions: ResolvedCrisisCondition[], key: string, manual: CrisisAppliedCondition[] = []) => ({
+    crisis: conditions.length > 0,
+    manualApplied: manual.map(effect => ({
+      applicationId: `manual:${effect.id}`, name: effect.definition.name, description: effect.definition.description,
+    })),
+    conditions: conditions.map(condition => ({
+      ...condition,
+      ...(clocks[`${key}:${condition.applicationId}`] ? { nextTickAt: clocks[`${key}:${condition.applicationId}`] } : {}),
+    })),
+  })
+  const players = [...db.characters.values()].filter(c => c.campaignId === campaignId)
+  const creatures = s.enabled ? s.creatures : []
+  return {
+    enabled: config.enabled || players.some(c => !!(c as CrisisCharacter).crisisManual?.length) ||
+      creatures.some(c => !!(c as CrisisCreature).crisisManual?.length),
+    thresholdPercent: config.thresholdPercent,
+    players: Object.fromEntries(players.map(c => [c.id, status(crisisForCharacter(s, c), `player:${c.id}`,
+      (c as CrisisCharacter).crisisManual || [])])),
+    creatures: Object.fromEntries(creatures.map(c =>
+      [c.instanceId, status(crisisForCreature(s, c), `creature:${c.instanceId}`,
+        (c as CrisisCreature).crisisManual || [])])),
+  }
+}
 
 /** Evita aplicar a condição Cansado duas vezes, mesmo se o resolvedor lê customModifiers. */
 function characterRollWithFatigue(...args: Parameters<typeof characterRoll>): ReturnType<typeof characterRoll> {
@@ -50,6 +175,21 @@ function characterRollWithFatigue(...args: Parameters<typeof characterRoll>): Re
   const penalty = (args[1] as readonly string[]).includes("dex")
     ? trainingFatiguePenalty((original as any).training) : 0
   return penalty ? { ...result, total: result.total - penalty, modifier: result.modifier - penalty } : result
+}
+function characterRollWithCrisis(
+  db: Database, session: CombatSession, ...args: Parameters<typeof characterRoll>
+): ReturnType<typeof characterRoll> {
+  const c = args[0]
+  const conditions = crisisForCharacter(session, c)
+  requireTrue(!crisisBlocksRoll(conditions), `${c.name} está com Paralisia e não pode rolar dados.`, 409)
+  const rolled = characterRollWithFatigue(...args)
+  const bonus = crisisRollModifier(conditions, args[1], args[5])
+  const selfDamage = crisisSelfDamageOnRoll(conditions)
+  if (selfDamage) {
+    applyDamage(db, c, selfDamage, session)
+    addLog(session, `${c.name} sofreu ${selfDamage} de dano ao rolar sob Atordoamento.`, c.id, selfDamage)
+  }
+  return { ...rolled, total: rolled.total + bonus, modifier: rolled.modifier + bonus }
 }
 export class CombatError extends Error {
   constructor(
@@ -128,11 +268,14 @@ function addLog(
   ].slice(0, 60)
 }
 function applyDamage(db: Database, c: Character, damage: number, s: CombatSession) {
-  const hp = Math.max(0, Math.min(c.resources.maxHp, c.resources.hp - damage))
+  // Sempre desconta do valor mais recente na transação: Atordoamento pode
+  // causar 1 HP antes do próprio golpe/reação provocar dano adicional.
+  const current = db.characters.get(c.id) || c
+  const hp = Math.max(0, Math.min(current.resources.maxHp, current.resources.hp - damage))
   db.characters.set(c.id, {
-    ...c,
-    resources: { ...c.resources, hp },
-    updatedAt: Math.max(Date.now(), Number(c.updatedAt || 0) + 1),
+    ...current,
+    resources: { ...current.resources, hp },
+    updatedAt: Math.max(Date.now(), Number(current.updatedAt || 0) + 1),
   })
   reconcileDeath(db, db.characters.get(c.id)!, s)
 }
@@ -262,7 +405,7 @@ function snapshot(
 ): CombatSnapshot {
   const { role } = authorize(db, campaignId, userId)
   const gm = role === "gm"
-  const { receipts, monsterAttributeRolls, monsterCheckRolls, ...publicState } = s as CombatSession & MonsterDiceState
+  const { receipts, monsterAttributeRolls, monsterCheckRolls, crisisConfig: privateCrisisConfig, crisisDue, crisisProgress, ...publicState } = s as CrisisSession & MonsterDiceState
   const characters = [...db.characters.values()]
     .filter((c) => c.campaignId === campaignId)
     .map((c) => ({
@@ -280,6 +423,7 @@ function snapshot(
     }))
   return {
     ...publicState,
+    ...{ crisis: crisisPublicState(db, campaignId, s), ...(gm ? { crisisConfig: crisisConfig(s) } : {}) },
     ...{
       // Nunca transmite as rolagens privadas via JSON para os jogadores.
       monsterAttributeRolls: gm
@@ -371,6 +515,12 @@ function signal(campaignId: string, revision: number) {
     revision,
   } as unknown as RealtimeEvent)
 }
+function signalCrisisCharacters(campaignId: string, ids: Set<string>) {
+  for (const id of ids) {
+    const character = store.characters.get(id)
+    if (character?.campaignId === campaignId) publish(campaignId, { type: "character:updated", character })
+  }
+}
 const timersGlobal = globalThis as unknown as {
   __combatTimers?: Map<string, ReturnType<typeof setTimeout>>
 }
@@ -379,21 +529,28 @@ function schedule(campaignId: string, s: CombatSession) {
   const existing = timers.get(campaignId)
   if (existing) clearTimeout(existing)
   timers.delete(campaignId)
-  if (!s.qte || qteComplete(s.qte)) return
+  const qteDeadline = s.qte && !qteComplete(s.qte) ? s.qte.deadline : Infinity
+  const dotDeadlines = Object.values((s as CrisisSession).crisisDue || {})
+  const deadline = Math.min(qteDeadline, ...dotDeadlines)
+  if (!Number.isFinite(deadline)) return
   const timer = setTimeout(
     async () => {
       timers.delete(campaignId)
       try {
+        const updatedIds = new Set<string>()
         const result = await transactStore((db) => {
           const current = db.combatSessions.get(campaignId)
           if (!current || !db.campaigns.has(campaignId))
             return { value: null, changed: false }
-          const changed = expire(db, campaignId, current)
+          const qteChanged = expire(db, campaignId, current)
+          const crisisChanged = advanceCrisis(db, campaignId, current, Date.now(), updatedIds)
+          const changed = qteChanged || crisisChanged
           if (changed) saveRevision(db, campaignId, current)
           return { value: { session: current, changed }, changed }
         })
         if (result) {
           if (result.changed) signal(campaignId, result.session.revision)
+          signalCrisisCharacters(campaignId, updatedIds)
           schedule(campaignId, result.session)
         }
       } catch (error) {
@@ -405,18 +562,21 @@ function schedule(campaignId: string, s: CombatSession) {
         retry.unref?.()
       }
     },
-    Math.max(1, s.qte.deadline - Date.now()),
+    Math.max(1, deadline - Date.now()),
   )
   timer.unref?.()
   timers.set(campaignId, timer)
 }
 export async function getCombat(campaignId: string, userId: string): Promise<CombatSnapshot> {
+  const updatedIds = new Set<string>()
   const result = await transactStore((db) => {
     authorize(db, campaignId, userId)
     const s = db.combatSessions.get(campaignId) || newSession()
     const expired = expire(db, campaignId, s)
     const deathChanged = reconcileCampaignDeaths(db, campaignId, s, userId)
-    const changed = roster(db, campaignId, s) || expired || deathChanged
+    const rosterChanged = roster(db, campaignId, s)
+    const crisisChanged = advanceCrisis(db, campaignId, s, Date.now(), updatedIds)
+    const changed = rosterChanged || expired || deathChanged || crisisChanged
     if (changed) saveRevision(db, campaignId, s)
     return {
       value: { view: snapshot(db, campaignId, s, userId), session: s, changed },
@@ -424,6 +584,7 @@ export async function getCombat(campaignId: string, userId: string): Promise<Com
     }
   })
   if (result.changed) signal(campaignId, result.session.revision)
+  signalCrisisCharacters(campaignId, updatedIds)
   schedule(campaignId, result.session)
   return result.view
 }
@@ -555,6 +716,7 @@ export async function commandCombat(
   const command = input as CombatCommand
   const commandId = text(command.commandId, "ID do comando", 100)
   text(command.type, "Tipo", 40)
+  const updatedIds = new Set<string>()
   const result = await transactStore((db) => {
     const { campaign, role } = authorize(db, campaignId, userId)
     const gm = role === "gm",
@@ -576,7 +738,7 @@ export async function commandCombat(
       if (c.campaignId === campaignId && c.resources.hp > 0 && s.deathChecks?.[c.id]?.active)
         s.deathChecks[c.id].active = false
     }
-    const scoped = ["approve", "cancel", "react", "answer-attack"].includes(command.type)
+    const scoped = ["approve", "cancel", "react", "answer-attack", "crisis-sheet-roll"].includes(command.type)
     if (!scoped)
       requireTrue(
         integer(command.expectedRevision, "Revisão") === s.revision,
@@ -602,6 +764,10 @@ export async function commandCombat(
       "monster-custom-check-roll",
       "gm-npc-roll",
       "set-monster-roll-visibility",
+      "set-crisis-enabled",
+      "set-crisis-config",
+      "apply-crisis-effect",
+      "remove-crisis-effect",
       "start-qte",
       "close-qte",
     ]
@@ -626,10 +792,78 @@ export async function commandCombat(
     ) {
       throw new CombatError("Aguarde o QTE terminar antes de trocar o Holofote")
     }
-    if (s.pendingAttack && !["answer-attack", "end", "monster-attribute-roll", "monster-check-roll", "monster-custom-check-roll", "gm-npc-roll", "set-monster-roll-visibility"].includes(command.type)) {
+    if (s.pendingAttack && !["answer-attack", "end", "monster-attribute-roll", "monster-check-roll", "monster-custom-check-roll", "gm-npc-roll", "crisis-sheet-roll", "set-monster-roll-visibility", "set-crisis-enabled", "set-crisis-config", "apply-crisis-effect", "remove-crisis-effect"].includes(command.type)) {
       throw new CombatError("Aguarde o jogador resolver o ataque pendente", 409)
     }
     switch (command.type) {
+      case "crisis-sheet-roll": {
+        const c = character(db, campaignId, text(command.characterId, "Personagem"))
+        if (s.enabled) requireTrue(s.participantCharacterIds.includes(c.id), "Personagem fora do combate", 403)
+        requireTrue(c.ownerId === userId || (gm && getMemberRole(campaign, c.ownerId) === "gm"), "Você não controla esta ficha", 403)
+        const conditions = crisisForCharacter(s, c)
+        requireTrue(!crisisBlocksRoll(conditions), `${c.name} está com Paralisia.`, 409)
+        if (crisisSelfDamageOnRoll(conditions)) {
+          applyDamage(db, c, 1, s)
+          addLog(s, `${c.name} sofreu 1 de dano ao rolar sob Atordoamento.`, c.id, 1)
+        }
+        break
+      }
+      case "set-crisis-enabled": {
+        requireTrue(typeof command.enabled === "boolean", "Estado do desgaste inválido")
+        ;(s as CrisisSession).crisisConfig = { ...crisisConfig(s), enabled: command.enabled }
+        // Efeitos manuais não são desligados nem reiniciados pelo switch geral.
+        addLog(s, `Desgaste automático ${command.enabled ? "ativado" : "desativado"} pelo Mestre.`)
+        break
+      }
+      case "set-crisis-config": {
+        let config: CrisisConfig
+        try { config = parseCrisisConfig(command.config, officialCheckIds) }
+        catch (error) { throw new CombatError(error instanceof Error ? error.message : "Configuração inválida") }
+        ;(s as CrisisSession).crisisConfig = config
+        ;(s as CrisisSession).crisisDue = {} // Intervalos reiniciam ao editar a regra.
+        ;(s as CrisisSession).crisisProgress = {}
+        addLog(s, "Condições de desgaste atualizadas pelo Mestre.")
+        break
+      }
+      case "apply-crisis-effect":
+      case "remove-crisis-effect": {
+        const subjectType = command.subjectType
+        requireTrue(subjectType === "character" || subjectType === "creature", "Tipo de alvo inválido")
+        const subjectId = text(command.subjectId, "Alvo", 150)
+        const subject = subjectType === "character"
+          ? character(db, campaignId, subjectId) as CrisisCharacter
+          : s.creatures.find(c => c.instanceId === subjectId) as CrisisCreature | undefined
+        requireTrue(subject, "Alvo não encontrado", 404)
+        if (subjectType === "creature") requireTrue(s.enabled, "Criaturas recebem efeitos somente em combate", 409)
+        const currentManual = Array.isArray(subject.crisisManual) ? subject.crisisManual : []
+        if (command.type === "apply-crisis-effect") {
+          const conditionId = text(command.conditionId, "Condição", 70)
+          const definition = crisisConfig(s).conditions.find(c => c.id === conditionId)
+          requireTrue(definition, "Condição não cadastrada", 404)
+          requireTrue(currentManual.length < 30, "Limite de 30 efeitos manuais por alvo", 409)
+          requireTrue(!currentManual.some(item => item.definition.id === definition.id),
+            "Essa condição já foi aplicada manualmente ao alvo.", 409)
+          subject.crisisManual = [...currentManual, {
+            id: randomUUID(), definition: structuredClone(definition), appliedAt: Date.now(),
+          }]
+          addLog(s, `Mestre aplicou ${definition.name} em ${subject.name}.`,
+            subjectType === "character" ? subjectId : undefined)
+        } else {
+          const applicationId = text(command.applicationId, "Efeito aplicado", 140)
+          const index = currentManual.findIndex(item => `manual:${item.id}` === applicationId)
+          requireTrue(index >= 0, "Efeito manual não encontrado no alvo", 404)
+          const conditionName = currentManual[index].definition.name
+          subject.crisisManual = currentManual.filter((_, i) => i !== index)
+          addLog(s, `Mestre removeu ${conditionName} de ${subject.name}.`,
+            subjectType === "character" ? subjectId : undefined)
+        }
+        if (subjectType === "character") {
+          const c = subject as CrisisCharacter
+          db.characters.set(subjectId, { ...c, updatedAt: Math.max(Date.now(), Number(c.updatedAt || 0) + 1) })
+          updatedIds.add(subjectId)
+        }
+        break
+      }
       case "set-monster-roll-visibility": {
         requireTrue(typeof command.enabled === "boolean", "Visibilidade inválida")
         ;(s as CombatSession & MonsterDiceState).shareMonsterRolls = command.enabled
@@ -638,6 +872,8 @@ export async function commandCombat(
       case "monster-attribute-roll": {
         // Não requer Holofote, mas somente GM pode rolar e escolher o atributo.
         const creature = getCreature()
+        const conditions = crisisForCreature(s, creature)
+        requireTrue(!crisisBlocksRoll(conditions), `${creature.name} está com Paralisia.`, 409)
         requireTrue(isMonsterAttribute(command.attribute), "Atributo de criatura inválido")
         const attribute = command.attribute
         const die = String(creature.attributes[attribute])
@@ -648,9 +884,13 @@ export async function commandCombat(
           ...((state.monsterAttributeRolls || []).slice(-39)),
           { id: randomUUID(), instanceId: creature.instanceId,
             creatureName: creature.name, attribute, die,
-            result: randomInt(1, size + 1), at: Date.now(),
+            result: randomInt(1, size + 1) + crisisRollModifier(conditions, [attribute]), at: Date.now(),
             shared: state.shareMonsterRolls === true },
         ]
+        if (crisisSelfDamageOnRoll(conditions)) {
+          creature.currentHp = Math.max(0, creature.currentHp - 1)
+          addLog(s, `${creature.name} sofreu 1 de dano ao rolar sob Atordoamento.`, undefined, 1)
+        }
         // NÃO usar addLog/publish(dice:roll): ambas as vias são públicas.
         break
       }
@@ -658,6 +898,8 @@ export async function commandCombat(
         // Testes iguais aos tradicionais do jogador: definição e dados são
         // obtidos do catálogo do servidor; o cliente envia apenas o ID.
         const creature = getCreature()
+        const conditions = crisisForCreature(s, creature)
+        requireTrue(!crisisBlocksRoll(conditions), `${creature.name} está com Paralisia.`, 409)
         const checkId = text(command.checkId, "Teste", 100)
         const check = PRESET_CHECKS.find(entry => entry.id === checkId)
         requireTrue(check, "Teste de perícia não encontrado", 404)
@@ -675,13 +917,17 @@ export async function commandCombat(
           {
             id: randomUUID(), instanceId: creature.instanceId,
             creatureName: creature.name, checkId: check.id, checkName: check.name,
-            dice, rolls, result: rolls.reduce((total, face) => total + face, 0),
+            dice, rolls, result: rolls.reduce((total, face) => total + face, 0) + crisisRollModifier(conditions, check.attrs, check.id),
             at: Date.now(),
             // A decisão é registrada no instante do lançamento.
             // Trocar a preferência depois não expõe dados antigos.
             shared: (s as CombatSession & MonsterDiceState).shareMonsterRolls === true,
           },
         ]
+        if (crisisSelfDamageOnRoll(conditions)) {
+          creature.currentHp = Math.max(0, creature.currentHp - 1)
+          addLog(s, `${creature.name} sofreu 1 de dano ao rolar sob Atordoamento.`, undefined, 1)
+        }
         // NÃO usar addLog nem publicar dice:roll: ambos chegam a espectadores.
         break
       }
@@ -690,6 +936,8 @@ export async function commandCombat(
         // enviada é validada integralmente, inclusive tipo, atributos e
         // quantidade (1..10) de dados; as faces são geradas pelo servidor.
         const creature = getCreature()
+        const conditions = crisisForCreature(s, creature)
+        requireTrue(!crisisBlocksRoll(conditions), `${creature.name} está com Paralisia.`, 409)
         let check: ReturnType<typeof parseMonsterCustomCheck>
         let dice: string[]
         let rolled: ReturnType<typeof rollMonsterCustomDice>
@@ -710,6 +958,11 @@ export async function commandCombat(
             shared: (s as CombatSession & MonsterDiceState).shareMonsterRolls === true,
           },
         ]
+        // Testes personalizados não recebem bônus direcionados a testes oficiais.
+        if (crisisSelfDamageOnRoll(conditions)) {
+          creature.currentHp = Math.max(0, creature.currentHp - 1)
+          addLog(s, `${creature.name} sofreu 1 de dano ao rolar sob Atordoamento.`, undefined, 1)
+        }
         // Não publicar um evento público; o snapshot filtra por 'shared'.
         break
       }
@@ -719,6 +972,8 @@ export async function commandCombat(
         // privado de rolagens, sem publicá-lo na rota coletiva /roll.
         requireTrue(s.enabled, "Combate não iniciado")
         const npc = character(db, campaignId, text(command.characterId, "NPC"))
+        const conditions = crisisForCharacter(s, npc)
+        requireTrue(!crisisBlocksRoll(conditions), `${npc.name} está com Paralisia.`, 409)
         requireTrue(getMemberRole(campaign, npc.ownerId) === "gm",
           "Somente NPCs controlados pelo Mestre usam a rolagem privada", 403)
         const checkName = text(command.label, "Nome do teste", 200)
@@ -738,6 +993,10 @@ export async function commandCombat(
             at: Date.now(), shared: (s as CombatSession & MonsterDiceState).shareMonsterRolls === true,
           },
         ]
+        if (crisisSelfDamageOnRoll(conditions)) {
+          applyDamage(db, npc, 1, s)
+          addLog(s, `${npc.name} sofreu 1 de dano ao rolar sob Atordoamento.`, npc.id, 1)
+        }
         break
       }
       case "spawn": {
@@ -821,6 +1080,7 @@ export async function commandCombat(
         s.spotlight = initialSpotlight(s.spotlight.players)
         s.actorCharacterId = null
         s.qte = null
+        // Os efeitos em fichas continuam ativos mesmo depois do combate.
         break
       case "save-creature-abilities": {
         const active = getCreature()
@@ -987,6 +1247,7 @@ export async function commandCombat(
           "Resolva o QTE antes de atacar",
         )
         const c = aliveCharacter(text(command.characterId, "Personagem"))
+        requireTrue(!crisisBlocksRoll(crisisForCharacter(s, c)), `${c.name} está com Paralisia.`, 409)
         requireTrue(!isTrainingActive((c as any).training),
           "O personagem está treinando e não pode realizar rolagens.", 409)
         requireTrue(
@@ -1003,7 +1264,7 @@ export async function commandCombat(
           equipment = Array.isArray(raw.customEquipment)
             ? raw.customEquipment
             : []
-        const rolled = characterRollWithFatigue(
+        const rolled = characterRollWithCrisis(db, s,
           c,
           attack.attributes,
           attack.name,
@@ -1048,6 +1309,8 @@ export async function commandCombat(
           "Resolva o QTE antes de atacar",
         )
         const c = getCreature()
+        const conditions = crisisForCreature(s, c)
+        requireTrue(!crisisBlocksRoll(conditions), `${c.name} está com Paralisia.`, 409)
         requireTrue(c.currentHp > 0, "Criatura derrotada")
         let attack: Attack,
           cost = { amount: 0, resource: "token" as "token" | "mp" }
@@ -1072,13 +1335,20 @@ export async function commandCombat(
         spend(s, c, cost)
         const state = db.campaignState.get(campaignId) || {}
         const defenseEquipment = Array.isArray(state.customEquipment) ? state.customEquipment : []
+        const defense = characterDefense(target, attack.targetDefense === "magical", defenseEquipment)
+        const crisisBonus = crisisRollModifier(conditions, attack.attributes)
         const result = resolveBestiaryAttack(
           attack,
           c.attributes,
-          characterDefense(target, attack.targetDefense === "magical", defenseEquipment),
+          defense - crisisBonus,
           target.resources.hp,
           random,
         )
+        const attackTotal = result.total + crisisBonus
+        if (crisisSelfDamageOnRoll(conditions)) {
+          c.currentHp = Math.max(0, c.currentHp - 1)
+          addLog(s, `${c.name} sofreu 1 de dano ao atacar sob Atordoamento.`, undefined, 1)
+        }
         // Defesa contra motores antigos que porventura só rolem dois atributos.
         // Não registra o ataque nem aplica dano se algum dado da fórmula faltar.
         requireTrue(
@@ -1092,20 +1362,20 @@ export async function commandCombat(
         s.log = [{
           ...{ monsterRollShared },
           id: `${attackId}:hit`, at,
-          text: `${c.name} usou ${attack.name} em ${target.name}: acerto ${result.total}, ${result.outcome === "failure" ? "errou" : "aguardando reação"}.`,
+          text: `${c.name} usou ${attack.name} em ${target.name}: acerto ${attackTotal}, ${result.outcome === "failure" ? "errou" : "aguardando reação"}.`,
           characterId: target.id,
           roll: {
             type: "dice:roll" as const, characterId: target.id, characterName: c.name,
             playerName: "Mestre",
             attribute: `Ataque inimigo · ${attack.name} [${attack.attributes.map(a => c.attributes[a]).join(" + ")}]`,
-            result: result.total, breakdown: result.rolls.join(" + "), modifier: 0,
+            result: attackTotal, breakdown: result.rolls.join(" + "), modifier: crisisBonus,
           },
         }, ...s.log].slice(0, 60)
         if (result.outcome !== "failure") {
           s.pendingAttack = {
             ...{ monsterRollShared },
             id: attackId, at, characterId: target.id, creatureName: c.name,
-            attackName: attack.name, total: result.total, rolls: result.rolls,
+            attackName: attack.name, total: attackTotal, rolls: result.rolls,
             dice: attack.attributes.map(a => c.attributes[a]),
             damage: affinityDamage(result.damage, attack.type, (target as any).affinities || {}),
             effect: result.effect,
@@ -1131,7 +1401,7 @@ export async function commandCombat(
           addLog(s, `${target.name} decidiu reagir a ${attack.attackName}.`, target.id)
           const check = checkDefinition("c23")
           const raw = db.campaignState.get(campaignId) || {}
-          const rolled = characterRollWithFatigue(target, check.attrs, check.name,
+          const rolled = characterRollWithCrisis(db, s, target, check.attrs, check.name,
             Array.isArray(raw.customEquipment) ? raw.customEquipment : [],
             db.users.get(target.ownerId)?.name || "", check.id)
           avoided = rolled.total >= attack.total
@@ -1200,7 +1470,7 @@ export async function commandCombat(
         if (!q.outcomes[c.id]) {
           const check = checkDefinition(q.ability.checkId),
             raw = db.campaignState.get(campaignId) || {}
-          const rolled = characterRollWithFatigue(
+          const rolled = characterRollWithCrisis(db, s,
             c,
             check.attrs,
             check.name,
@@ -1249,6 +1519,7 @@ export async function commandCombat(
       default:
         throw new CombatError("Comando de combate desconhecido")
     }
+    advanceCrisis(db, campaignId, s, Date.now(), updatedIds)
     s.receipts = [...s.receipts, receipt].slice(-2000)
     saveRevision(db, campaignId, s)
     return {
@@ -1261,6 +1532,7 @@ export async function commandCombat(
     }
   })
   if (result.changed) signal(campaignId, result.session.revision)
+  signalCrisisCharacters(campaignId, updatedIds)
   schedule(campaignId, result.session)
   return result.view
 }

@@ -5,7 +5,8 @@ import { computeMaxResources, normalizeResources } from "@/lib/character"
 import { campaignItemCatalog } from "@/lib/inventory-server"
 import type { Character } from "@/lib/types"
 import {
-  TRAINING_ATTRIBUTES, TRAINING_OPTIONS, trainingGoal, spendTrainingUpgrade,
+  TRAINING_ATTRIBUTES, TRAINING_OPTIONS, TRAINING_MANUAL_AMOUNTS,
+  trainingGoal, spendTrainingUpgrade, cancelTraining, adjustTrainingPoints,
   fatigueModifier, nextAttributeDie, normalizeTraining, settleTraining,
   type TrainingAttribute, type TrainingHours, type TrainingState,
 } from "@/lib/training-model"
@@ -87,7 +88,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!body || typeof body !== "object" || Array.isArray(body))
       throw new TrainingError("Dados inválidos.")
     const action = String(body.action || "")
-    if (action === "award" || action === "finish") {
+    if (action === "award" || action === "deduct" || action === "finish" || action === "cancel") {
       if (role !== "gm") throw new TrainingError("Ação exclusiva do Mestre.", 403)
     } else if (action === "start" || action === "upgrade") {
       if (role !== "gm" && character.ownerId !== user.id)
@@ -100,11 +101,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const currentCampaign = db.campaigns.get(current.campaignId)
       const currentRole = currentCampaign && getMemberRole(currentCampaign, user.id)
       if (!currentRole) throw new TrainingError("Sem acesso à campanha.", 403)
-      if ((action === "finish" || action === "award") && currentRole !== "gm")
+      if ((action === "finish" || action === "cancel" || action === "award" || action === "deduct") && currentRole !== "gm")
         throw new TrainingError("Ação exclusiva do Mestre.", 403)
       if ((action === "start" || action === "upgrade") && currentRole !== "gm" && current.ownerId !== user.id)
         throw new TrainingError("Somente o dono da ficha ou o Mestre pode executar essa ação.", 403)
       const now = Date.now()
+      // Cancelar é diferente de concluir: não execute settleTraining antes de
+      // retirar a sessão, pois isso concederia pontos/fadiga perto do prazo.
+      if (action === "cancel") {
+        const training = cancelTraining(current.training, now)
+        if (!training) throw new TrainingError("Não há treinamento em andamento para cancelar.", 409)
+        const next = withFatigue(structuredClone(current) as TrainedCharacter, training, now)
+        db.characters.set(id, next)
+        return { value: next, changed: true }
+      }
       const settled = settleTraining(current.training, now)
       let training = settled.state
       const attribute = body.attribute as TrainingAttribute
@@ -126,11 +136,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         } else if (!settled.completed) {
           throw new TrainingError("Nenhum treinamento em andamento.", 409)
         }
-      } else if (action === "award") {
+      } else if (action === "award" || action === "deduct") {
         const amount = Number(body.points)
-        if (!TRAINING_ATTRIBUTES.includes(attribute) || ![0.5, 1, 1.5, 2, 2.5].includes(amount))
+        if (!TRAINING_ATTRIBUTES.includes(attribute) || !TRAINING_MANUAL_AMOUNTS.some(allowed => allowed === amount))
           throw new TrainingError("Informe um atributo e 0,5 / 1 / 1,5 / 2 / 2,5 pontos.")
-        training.points[attribute] = Math.round((training.points[attribute] + amount) * 2) / 2
+        const adjustment = action === "deduct" ? -amount : amount
+        const adjusted = adjustTrainingPoints(training, attribute, adjustment)
+        if (!adjusted) throw new TrainingError("O personagem não possui pontos suficientes nesse atributo para a retirada.", 409)
+        training = adjusted
       } else if (action === "upgrade") {
         if (!TRAINING_ATTRIBUTES.includes(attribute)) throw new TrainingError("Atributo inválido.")
         if (training.active) throw new TrainingError("Conclua o treinamento antes de evoluir.", 409)

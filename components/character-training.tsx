@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { Activity, ArrowRight, Check, Clock3, Dumbbell, LockKeyhole, ShieldAlert, Sparkles, X } from "lucide-react"
+import { Activity, ArrowRight, Check, Clock3, Dumbbell, LockKeyhole, Minus, Plus, ShieldAlert, Sparkles, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { apiFetch } from "@/lib/client"
 import { ClassTimerProgress } from "./class-timer-progress"
 import type { Character } from "@/lib/types"
 import {
-  TRAINING_ATTRIBUTES, TRAINING_OPTIONS,
+  TRAINING_ATTRIBUTES, TRAINING_OPTIONS, TRAINING_MANUAL_AMOUNTS,
   nextAttributeDie, normalizeTraining, trainingGoal, type TrainingAttribute, type TrainingHours, type TrainingState,
 } from "@/lib/training-model"
 
@@ -153,7 +153,7 @@ export function CharacterTraining({ character, isGm, isOwner, onUpdated }: {
     }
   }, [open])
 
-  async function execute(action: "start" | "finish" | "award" | "upgrade", data: Record<string, unknown> = {}) {
+  async function execute(action: "start" | "finish" | "cancel" | "award" | "deduct" | "upgrade", data: Record<string, unknown> = {}) {
     if (busy) return
     setBusy(true)
     setError("")
@@ -284,11 +284,26 @@ export function CharacterTraining({ character, isGm, isOwner, onUpdated }: {
             {Array.from({ length: trainingGoal(state, key) * 2 }, (_, i) => <span key={i} className={`h-2.5 min-w-0 flex-1 rounded-[1px] ${state.points[key] * 2 > i ? "bg-amber-400" : "bg-zinc-800"}`} />)}
           </div>
           {(isOwner || isGm) && state.points[key] >= trainingGoal(state, key) && <Button size="sm" variant="outline" disabled={busy || !nextAttributeDie(character.attributes[key]) || Boolean(active)} onClick={() => void execute("upgrade", { attribute: key })} className="mt-2 h-7 w-full border-emerald-500/40 text-[11px] text-emerald-300">Evoluir {character.attributes[key]} → {nextAttributeDie(character.attributes[key]) || "Máximo"}</Button>}
-          {isGm && <div className="mt-2 flex gap-1"><select aria-label={`Pontos de ${LABELS[key]}`} value={gmAmount} onChange={event => setGmAmount(Number(event.target.value))} className="min-w-0 flex-1 rounded bg-black px-1 py-1 text-[11px] text-amber-200">{[0.5, 1, 1.5, 2, 2.5].map(n => <option key={n} value={n}>+{n.toLocaleString("pt-BR")}</option>)}</select><Button disabled={busy} size="sm" variant="outline" className="h-7 border-amber-500/40 px-2 text-[11px]" onClick={() => void execute("award", { attribute: key, points: gmAmount })}>Atribuir</Button></div>}
+          {isGm && <div className="mt-2 flex flex-wrap gap-1">
+            <select aria-label={`Quantidade de pontos para ajustar em ${LABELS[key]}`} value={gmAmount} onChange={event => setGmAmount(Number(event.target.value))} className="h-7 min-w-[65px] flex-1 rounded border border-amber-500/25 bg-black px-1 py-1 text-[11px] text-amber-200">
+              {TRAINING_MANUAL_AMOUNTS.map(n => <option key={n} value={n}>{n.toLocaleString("pt-BR")} PT</option>)}
+            </select>
+            <Button disabled={busy} size="sm" variant="outline" aria-label={`Adicionar ${gmAmount} pontos de treinamento em ${LABELS[key]}`} className="h-7 gap-1 border-emerald-500/40 px-2 text-[11px] text-emerald-300" onClick={() => void execute("award", { attribute: key, points: gmAmount })}><Plus className="size-3" /> Atribuir</Button>
+            <Button disabled={busy || state.points[key] < gmAmount} size="sm" variant="outline" aria-label={`Retirar ${gmAmount} pontos de treinamento de ${LABELS[key]}`} className="h-7 gap-1 border-rose-500/40 px-2 text-[11px] text-rose-300" onClick={() => void execute("deduct", { attribute: key, points: gmAmount })}><Minus className="size-3" /> Retirar</Button>
+          </div>}
         </div>)}
       </div>
     </div>
-    {active && <div className="mt-3 rounded-md border border-amber-600/30 bg-amber-800/10 p-3"><p className="flex items-center gap-2 text-xs font-semibold text-amber-200"><Clock3 className="size-4" /> Treinando {LABELS[active.attribute]} · {active.hours}h de sessão</p><ClassTimerProgress startedAt={active.startedAt} endsAt={active.endsAt} label="Tempo real restante" />{isGm && <Button disabled={busy} onClick={() => void execute("finish")} size="sm" variant="outline" className="mt-2 border-amber-500/40 text-xs">Concluir treinamento agora</Button>}</div>}
+    {active && <div className="mt-3 rounded-md border border-amber-600/30 bg-amber-800/10 p-3">
+      <p className="flex items-center gap-2 text-xs font-semibold text-amber-200"><Clock3 className="size-4" /> Treinando {LABELS[active.attribute]} · {active.hours}h de sessão</p>
+      <ClassTimerProgress startedAt={active.startedAt} endsAt={active.endsAt} label="Tempo real restante" />
+      {isGm && !completedInBackground && <div className="mt-2 flex flex-wrap gap-2">
+        <Button disabled={busy} onClick={() => void execute("finish")} size="sm" variant="outline" className="border-amber-500/40 text-xs">Concluir treinamento agora</Button>
+        <Button disabled={busy} onClick={() => {
+          if (window.confirm(`Cancelar o treinamento de ${LABELS[active.attribute]}? Nenhum ponto será concedido e o personagem não ficará Cansado.`)) void execute("cancel")
+        }} size="sm" variant="outline" className="border-rose-500/40 text-xs text-rose-300 hover:bg-rose-950/30 hover:text-rose-200"><X className="mr-1 size-3" /> Cancelar sem recompensa</Button>
+      </div>}
+    </div>}
     {state.fatigue && state.fatigue.endsAt > now && <div className="mt-3 rounded-md border border-rose-700/30 bg-rose-950/20 p-3"><p className="text-xs font-bold text-rose-300">Cansado · -{state.fatigue.dexPenalty} em testes com DEX</p><ClassTimerProgress compact startedAt={state.fatigue.startedAt} endsAt={state.fatigue.endsAt} label="Recuperação" /></div>}
     {completedInBackground && <p className="mt-2 text-xs text-amber-300">Treino concluído; sincronizando a recompensa...</p>}
     {error && <p role="alert" className="mt-2 text-xs text-rose-300">{error}</p>}

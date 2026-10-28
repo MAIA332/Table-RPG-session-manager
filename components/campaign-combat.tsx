@@ -9,6 +9,8 @@ import { MonsterAttributeRollOverlay } from "./monster-attribute-roll-overlay"
 import type { MonsterAttribute, MonsterAttributeRoll, MonsterDiceState } from "@/lib/monster-dice"
 import type { MonsterCheckRoll } from "@/lib/monster-checks"
 import { CharacterBookShelf } from "./class-books"
+import { CrisisStatus } from "./crisis-status"
+import type { CrisisPublicState } from "@/lib/crisis-model"
 import { QteOverlay } from "./qte-overlay"
 import { AttackEditor } from "./creature-combat-editor"
 import {
@@ -216,6 +218,7 @@ export function CampaignCombat({
   const creature =
     combat?.creatures.find((c) => c.instanceId === selectedCreature) ||
     combat?.creatures[0]
+  const creatureParalyzed = Boolean(creature && (combat as typeof combat & { crisis?: CrisisPublicState } | null)?.crisis?.creatures?.[creature.instanceId]?.conditions.some(c => c.kind === "paralysis"))
   const pcAttacks = myCharacter
     ? combat?.playerAttacks[myCharacter.id] || []
     : []
@@ -237,6 +240,7 @@ export function CampaignCombat({
     : []
   const canMonsterAct =
     !!combat?.enabled &&
+    !creatureParalyzed &&
     !combat.pendingAttack &&
     combat.spotlight.side === "gm" &&
     (!combat.qte ||
@@ -353,6 +357,13 @@ export function CampaignCombat({
               <p>Carregando combate…</p>
             ) : (
               <>
+                <CrisisStatus
+                  crisis={(combat as typeof combat & { crisis?: CrisisPublicState }).crisis}
+                  names={Object.fromEntries([
+                    ...combat.characters.map(c => [c.id, c.name] as const),
+                    ...combat.creatures.map(c => [c.instanceId, c.name] as const),
+                  ])}
+                />
                 {isGm && (
                   <div className="mb-4 flex flex-wrap gap-3">
                     <button
@@ -765,7 +776,7 @@ export function CampaignCombat({
                               }}
                             />
                           )}
-                          {isGm && <CreatureSheetDetails creature={creature} rollPending={pending}
+                          {isGm && <CreatureSheetDetails creature={creature} rollPending={pending || creatureParalyzed}
                              customChecks={customChecks}
                              onAttributeRoll={(attribute: MonsterAttribute) => void run({ type: "monster-attribute-roll", instanceId: creature.instanceId, attribute })}
                              onCheckRoll={(checkId: string) => void run({ type: "monster-check-roll", instanceId: creature.instanceId, checkId })}

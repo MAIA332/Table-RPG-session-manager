@@ -6,6 +6,7 @@ import type { MonsterAttribute } from "@/lib/monster-dice"
 import { getEquipment } from "@/lib/game-data"
 import type { Attack, Ability } from "@/lib/combat-model"
 import type { CombatCreature } from "@/lib/combat-types"
+import { crisisBlocksRoll, type CrisisCondition } from "@/lib/crisis-model"
 export function CombatMonsterCard({
   creature,
   isGm,
@@ -22,6 +23,7 @@ export function CombatMonsterCard({
   onCheckRoll,
   onCustomCheckRoll,
   customChecks = [],
+  crisisConditions = [],
 }: {
   creature: CombatCreature
   isGm: boolean
@@ -37,6 +39,7 @@ export function CombatMonsterCard({
   onCheckRoll?: (checkId: string) => void
   onCustomCheckRoll?: (check: CustomCheck) => void
   customChecks?: CustomCheck[]
+  crisisConditions?: CrisisCondition[]
   onVital: (
     resource: "currentHp" | "currentMp",
     change: number | "full",
@@ -46,6 +49,7 @@ export function CombatMonsterCard({
     "rounded-lg border border-white/15 px-3 py-2 text-left text-sm font-semibold transition hover:border-amber-300 focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-40"
   const abilities = creature.abilities || [],
     qtes = abilities.filter((a) => a.kind === "qte")
+  const paralyzed = crisisBlocksRoll(crisisConditions)
   if (!isGm)
     return (
       <button
@@ -64,6 +68,7 @@ export function CombatMonsterCard({
           alt={creature.name}
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
         />
+        {crisisConditions.length > 0 && <span className="absolute inset-x-3 bottom-3 flex flex-wrap gap-1">{crisisConditions.map(condition => <span key={condition.applicationId || condition.id} title={condition.description} className="rounded-md border border-rose-400/50 bg-black/85 px-2 py-1 text-xs text-rose-200">{condition.name}</span>)}</span>}
       </button>
     )
   return (
@@ -97,6 +102,7 @@ export function CombatMonsterCard({
           ×
         </button>
       </header>
+      {crisisConditions.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label={`Condições de ${creature.name}`}>{crisisConditions.map(condition => <span key={condition.applicationId || condition.id} title={condition.description} className="rounded border border-rose-500/40 bg-rose-950/40 px-2 py-1 text-xs text-rose-200">{condition.name}{condition.stage ? ` · estágio ${condition.stage}` : ""}</span>)}</div>}
       <CreatureResourceControls
         creature={creature}
         pending={pending}
@@ -104,7 +110,7 @@ export function CombatMonsterCard({
       />
       <CreatureSheetDetails creature={creature} onAttributeRoll={onAttributeRoll}
         onCheckRoll={onCheckRoll} onCustomCheckRoll={onCustomCheckRoll}
-        customChecks={customChecks} rollPending={pending} />
+        customChecks={customChecks} rollPending={pending || paralyzed} />
       {!canAct && creature.currentHp > 0 && (
         <p className="mb-3 rounded-lg bg-amber-300/5 p-3 text-xs text-amber-200">
           Para atacar, inicie o combate e assuma o Holofote. Aguarde qualquer

@@ -4,6 +4,8 @@ export type TrainingAttribute = (typeof TRAINING_ATTRIBUTES)[number]
 /** Meta inicial de cada atributo. A meta cresce após cada evolução POR TREINAMENTO. */
 export const TRAINING_GOAL = 6
 export const TRAINING_GOAL_INCREMENT = 2
+/** Quantidades permitidas para ajustes manuais exclusivos do Mestre. */
+export const TRAINING_MANUAL_AMOUNTS = [0.5, 1, 1.5, 2, 2.5] as const
 export const TRAINING_OPTIONS = {
   12: { points: 0.5, realMinutes: 60, fatigueMinutes: 10, dexPenalty: 1 },
   24: { points: 1, realMinutes: 120, fatigueMinutes: 20, dexPenalty: 2 },
@@ -52,6 +54,31 @@ export function spendTrainingUpgrade(input: unknown, attribute: TrainingAttribut
   if (state.points[attribute] < cost) return null
   state.points[attribute] = Math.round((state.points[attribute] - cost) * 2) / 2
   state.upgrades[attribute] += 1
+  return state
+}
+
+/** Cancela apenas treinos ainda em andamento. Não credita pontos nem cria fadiga. */
+export function cancelTraining(input: unknown, now = Date.now()): TrainingState | null {
+  const state = normalizeTraining(input)
+  if (!state.active || !Number.isFinite(state.active.endsAt) || state.active.endsAt <= now) return null
+  delete state.active
+  return state
+}
+
+/** Ajusta somente o saldo de pontos; evoluções de dados já realizadas permanecem intactas. */
+export function adjustTrainingPoints(
+  input: unknown,
+  attribute: TrainingAttribute,
+  amount: number,
+): TrainingState | null {
+  const state = normalizeTraining(input)
+  if (
+    !TRAINING_ATTRIBUTES.includes(attribute) ||
+    !Number.isFinite(amount) ||
+    !TRAINING_MANUAL_AMOUNTS.some(allowed => allowed === Math.abs(amount)) ||
+    state.points[attribute] + amount < 0
+  ) return null
+  state.points[attribute] = Math.round((state.points[attribute] + amount) * 2) / 2
   return state
 }
 

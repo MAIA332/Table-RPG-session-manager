@@ -24,6 +24,7 @@ import { CharacterBookShelf } from "./class-books"
 import { ClassTimerProgress } from "./class-timer-progress"
 import { CharacterTraining, TrainingCompactBar } from "./character-training"
 import { isTrainingActive, trainingFatiguePenalty } from "@/lib/training-model"
+import { crisisBlocksRoll, crisisRollModifier, type CrisisEntityStatus } from "@/lib/crisis-model"
 import { activeClassBookModifiers, isExpiredClassBookModifier } from "@/lib/class-books"
 import { createClientId } from "@/lib/client-id"
 import { InventoryEquipment, ItemDamageShelf, WornEquipmentSummary } from "./inventory-equipment"
@@ -1633,6 +1634,7 @@ export function CharacterSheet({
   onExpandedChange,
   canExpand = true,
   showCompactDefenses = false,
+  crisisConditions = [],
 }: any) {
   const character = useMemo(() => {
     const normalized = applyInventoryRules(rawCharacter, customEquipment)
@@ -1908,7 +1910,8 @@ export function CharacterSheet({
     : null
   const effectiveAttributes = resolvedItemStats.attributes
   // Bloqueio e redutor derivados dos horários oficiais, nunca de um contador local.
-  const trainingLocked = isTrainingActive((character as any).training, modifierClock || Date.now())
+  const activeCrisis = (Array.isArray(crisisConditions) ? crisisConditions : []) as CrisisEntityStatus["conditions"]
+  const trainingLocked = isTrainingActive((character as any).training, modifierClock || Date.now()) || crisisBlocksRoll(activeCrisis)
   const trainingDexPenalty = trainingFatiguePenalty((character as any).training, modifierClock || Date.now())
   const itemCommitRef = useRef(false)
   const currentZenit = character.zenit || 0
@@ -2598,6 +2601,7 @@ export function CharacterSheet({
         }
       })
       if (attr === "dex") modTotal -= trainingDexPenalty
+      modTotal += crisisRollModifier(activeCrisis, [attr])
 
       // Aplica bônus de Laço se estiver ativado
       if (activeBond) {
@@ -2659,6 +2663,7 @@ export function CharacterSheet({
         }
       })
       if (check.attrs.includes("dex")) modTotal -= trainingDexPenalty
+      modTotal += crisisRollModifier(activeCrisis, check.attrs, check.id)
 
       // Aplica bônus de Laço se estiver ativado
       if (activeBond) {
@@ -2710,6 +2715,7 @@ export function CharacterSheet({
         if (mod.target === "all" || mod.target === check.name || attributes.includes(mod.target)) modifier += mod.value
       })
       if (attributes.includes("dex")) modifier -= trainingDexPenalty
+      modifier += crisisRollModifier(activeCrisis, attributes)
       if (activeBond) modifier += activeBond.value
       const rolls = dieSizes.map(sides => Math.floor(Math.random() * sides) + 1)
       const total = rolls.reduce((sum, value) => sum + value, 0) + modifier
@@ -3333,7 +3339,7 @@ export function CharacterSheet({
                             setDisplayResources(updated.resources)
                             onOptimistic(updated)
                           }}
-                          onRoll={onRoll}
+                          onRoll={trainingLocked ? undefined : onRoll}
                           onRemove={removeEquipmentItem}
                           transferTargets={transferTargets}
                           onTransfer={transferItem}
@@ -4167,6 +4173,10 @@ export function CharacterSheet({
         </div>
       </div>
 
+      {activeCrisis.length > 0 && <div className="mx-3 mt-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-950/20 p-2 text-xs" aria-label="Efeitos de desgaste ativos">
+        <span className="mr-1 font-bold text-rose-300">Desgaste:</span>
+        {activeCrisis.map(condition => <span key={condition.applicationId} title={condition.description} className="rounded border border-rose-500/30 bg-background/70 px-2 py-1 text-rose-200">{condition.name}{condition.stage ? ` · estágio ${condition.stage}` : ""}{condition.source === "manual" ? " · manual" : ""}{condition.nextTickAt && <span className="ml-1 font-mono text-amber-200">{Math.max(0, Math.ceil((condition.nextTickAt - (modifierClock || Date.now())) / 1000))}s</span>}</span>)}
+      </div>}
       {!isExpanded && <TrainingCompactBar character={character as any} />}
       <div
         className="rpg-character-expansion"
@@ -4396,7 +4406,7 @@ export function CharacterSheet({
                       now={modifierClock || Date.now()}
                     />
 
-                    <ItemDamageShelf character={character} catalog={itemCatalog} editable={editable || isGm} onRoll={onRoll} />
+                    <ItemDamageShelf character={character} catalog={itemCatalog} editable={(editable || isGm) && !trainingLocked} onRoll={trainingLocked ? undefined : onRoll} />
                     <ManualDefenseFields
                       key={character.id}
                       character={character}

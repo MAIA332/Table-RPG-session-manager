@@ -137,6 +137,9 @@ import { CutscenePlayer } from "./cutscene-player"
 import type { Cutscene } from "./cutscene-types"
 
 import { Imagepad, SharedImage } from "./imagepad"
+import { GalleryImageViewer } from "./gallery-image-viewer"
+import { CrisisControls } from "./crisis-controls"
+import { crisisBlocksRoll, crisisSelfDamageOnRoll, type CrisisPublicState } from "@/lib/crisis-model"
 import { Lorebook, type LoreEntry } from "./lorebook"
 import { ThemeSwitcher } from "./theme-switcher"
 import { PersonalNotes } from "./personal-notes"
@@ -2732,6 +2735,16 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   }
 
   /** NPCs do Mestre em combate usam o mesmo sigilo das criaturas do bestiário. */
+  function crisisConditionsOf(characterId: string) {
+    const combat = combatController.combat as typeof combatController.combat & { crisis?: CrisisPublicState } | null
+    return combat?.crisis?.players?.[characterId]?.conditions || []
+  }
+
+  function crisisConditionsOfCreature(instanceId: string) {
+    const combat = combatController.combat as typeof combatController.combat & { crisis?: CrisisPublicState } | null
+    return combat?.crisis?.creatures?.[instanceId]?.conditions || []
+  }
+
   function handleCombatSheetRoll(
     character: Character,
     attribute: string,
@@ -2740,6 +2753,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   ) {
     if (isTrainingActive((character as any).training)) {
       setCombatUiError(`${character.name} está treinando e não pode fazer rolagens até a conclusão.`)
+      return
+    }
+    const conditions = crisisConditionsOf(character.id)
+    if (crisisBlocksRoll(conditions)) {
+      setCombatUiError(`${character.name} está com Paralisia e não pode realizar rolagens.`)
       return
     }
     if (isGm && combatController.combat?.enabled && isMasterOwnedCharacter(character)) {
@@ -2761,6 +2779,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       return
     }
     void handleBroadcastRoll(character.name, attribute, result, details)
+    if (crisisSelfDamageOnRoll(conditions)) {
+      void runCombat({ type: "crisis-sheet-roll", characterId: character.id })
+    }
   }
 
   function handleRaiseHand() {
@@ -4423,6 +4444,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       .map((c) => (
                         <CharacterSheet
                           key={c.id}
+                          crisisConditions={crisisConditionsOf(c.id)}
                           spotlightActive={
                             combatController.combat?.enabled &&
                             combatController.combat?.actorCharacterId ===
@@ -4567,32 +4589,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
             <AnimatePresence>
               {activeFullscreenImage && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="fixed inset-0 z-[400] flex items-center justify-center bg-black/95 backdrop-blur-lg p-4 md:p-12"
-                  onClick={() => setActiveFullscreenImage(null)}
-                >
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        setActiveFullscreenImage(null)
-                      }}
-                      className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full z-10 transition-colors"
-                    >
-                      <X className="size-8 text-white" />
-                    </button>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={activeFullscreenImage}
-                      className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-xl border border-white/10"
-                      alt="Visualização Expandida"
-                      onClick={(event) => event.stopPropagation()}
-                    />
-                  </div>
-                </motion.div>
+                <GalleryImageViewer
+                  key={activeFullscreenImage}
+                  src={activeFullscreenImage}
+                  onClose={() => setActiveFullscreenImage(null)}
+                />
               )}
             </AnimatePresence>
 
@@ -5209,10 +5210,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           <CombatMonsterCard
                             key={creature.instanceId}
                             creature={creature}
+                            crisisConditions={crisisConditionsOfCreature(creature.instanceId)}
                             customChecks={customChecks}
                             isGm={isGm}
                             pending={combatController.pending}
-                            canAct={canGmAct}
+                            canAct={canGmAct && !crisisBlocksRoll(crisisConditionsOfCreature(creature.instanceId))}
                             targeting={
                               !!pendingCombatAction && !pendingCombatAction.isGm
                             }
@@ -5537,6 +5539,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           <CharacterBookShelf campaignId={data.campaign.id} character={c} isGm={isGm} refreshToken={booksRevision} onCharacterUpdated={applyOptimistic} />
                         <CharacterSheet
                           key={c.id}
+                          crisisConditions={crisisConditionsOf(c.id)}
                           spotlightActive={
                             combatController.combat?.enabled &&
                             combatController.combat?.actorCharacterId ===
@@ -5594,6 +5597,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           {isGm && <CharacterBookShelf campaignId={data.campaign.id} character={c} isGm refreshToken={booksRevision} onCharacterUpdated={applyOptimistic} />}
                         <CharacterSheet
                           key={c.id}
+                          crisisConditions={crisisConditionsOf(c.id)}
                           spotlightActive={
                             combatController.combat?.enabled &&
                             combatController.combat?.actorCharacterId ===
@@ -5653,6 +5657,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   </div>
 
                   <div className="flex flex-col gap-2">
+                    <CrisisControls controller={combatController} />
                     <Button
                       variant="outline"
                       className="rpg-tool-button w-full justify-start gap-2"
