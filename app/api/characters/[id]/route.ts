@@ -6,12 +6,13 @@ import { assertInventoryChange, InventoryCapacityError, itemWeightGrams } from "
 import { campaignItemCatalog } from "@/lib/inventory-server"
 import { normalizePortraitCrop, normalizePortraitFrame } from "@/lib/portrait-frames"
 import { fatigueModifier, isTrainingActive, normalizeTraining, type TrainingState } from "@/lib/training-model"
+import { validatePlayerSpecialAttacks, type PlayerSpecialAttackCharacter } from "@/lib/player-special-attacks"
 import type { Character } from "@/lib/types"
 
 class RequestError extends Error {
   constructor(message: string, public status = 400) { super(message) }
 }
-type TrainedCharacter = Character & { training?: TrainingState; customModifiers?: any[] }
+type TrainedCharacter = Character & { training?: TrainingState; customModifiers?: any[] } & PlayerSpecialAttackCharacter
 
 /** Lore e treinamento são estados protegidos de alterações genéricas da ficha. */
 function persistedLore(character: Character): number {
@@ -38,8 +39,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if ((body.avatarUrl !== undefined || body.portraitCrop !== undefined) && current.ownerId !== user.id)
         throw new RequestError("Apenas o dono pode alterar o retrato.", 403)
 
-      // Nunca aceitar training do cliente neste PATCH: há uma API transacional própria.
       if (body.training !== undefined) throw new RequestError("Use a API de treinamento.", 403)
+      if (body.specialAttackUsage !== undefined || body.specialAttackUseCounts !== undefined)
+        throw new RequestError("Histórico e contadores de golpes são controlados pelo servidor.", 403)
       const training = normalizeTraining(current.training)
       const now = Date.now()
       if (isTrainingActive(training, now) && body.attributes !== undefined)
@@ -47,14 +49,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       const authoritativeLp = persistedLore(current)
       const next = structuredClone(current) as TrainedCharacter
-
       if (body.avatarUrl !== undefined) {
         const avatar = String(body.avatarUrl).trim()
         if (avatar.length > 3500000 || !(avatar.startsWith("/") || /^https?:\/\//i.test(avatar) || /^data:image\/(png|jpe?g|webp|gif|avif);base64,/i.test(avatar)))
           throw new RequestError("Imagem de retrato inválida ou muito grande.")
         next.avatarUrl = avatar
       }
-
       if (body.resources !== undefined) {
         if (!body.resources || typeof body.resources !== "object" || Array.isArray(body.resources))
           throw new RequestError("Recursos inválidos.")
@@ -70,7 +70,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           ;(next.resources as any)[key] = value
         }
       }
-
       for (const key of ["skills", "attributes", "classes", "customModifiers"] as const) {
         if (body[key] === undefined) continue
         const value = body[key]
@@ -80,7 +79,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
       if (!next.attributes || !["dex", "ins", "mig", "wlp"].every(key => /^d(6|8|10|12|14|16|18|20)$/.test((next.attributes as any)[key])))
         throw new RequestError("Dados de atributos inválidos.")
-
       if (body.equipment !== undefined) {
         if (!Array.isArray(body.equipment) || body.equipment.some((value: unknown) => typeof value !== "string"))
           throw new RequestError("Equipamentos inválidos.")
@@ -102,11 +100,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
       for (const key of ["origin", "identity", "theme"] as const)
         if (body[key] !== undefined) next[key] = String(body[key]).trim().slice(0, 20000)
-
       next.portraitFrame = normalizePortraitFrame(body.portraitFrame ?? current.portraitFrame)
       next.portraitCrop = normalizePortraitCrop(body.portraitCrop ?? current.portraitCrop)
 
-      // Um PATCH de modificadores antigo não pode apagar a condição controlada pelo servidor.
+      // A API de golpes também salva transacionalmente. PATCHs de recursos não alteram golpes.
+      if (body.specialAttacks !== undefined) {
+        try { next.specialAttacks = validatePlayerSpecialAttacks(body.specialAttacks, now) }
+        catch (error) { throw new RequestError(error instanceof Error ? error.message : "Golpes especiais inválidos.") }
+      }
+      // O cliente não pode apagar a janela de rate-limit dos golpes.
+      next.specialAttackUsage = current.specialAttackUsage
+      next.specialAttackUseCounts = current.specialAttackUseCounts
+
       const original = Array.isArray(next.customModifiers) ? next.customModifiers : []
       const retained = original.filter((entry: any) => entry?.id !== "training_fatigue" && entry?.type !== "training_fatigue")
       const fatigue = fatigueModifier(training, now)
@@ -119,6 +124,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const result = {
         ...normalized,
         training,
+        specialAttacks: next.specialAttacks || [],
+        specialAttackUsage: current.specialAttackUsage,
+        specialAttackUseCounts: current.specialAttackUseCounts,
         resources: { ...normalized.resources, lp: authoritativeLp } as Character["resources"],
       } as TrainedCharacter
       db.characters.set(id, result)

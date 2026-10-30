@@ -5,6 +5,7 @@ import { CreatureAbilitiesManager } from "./creature-abilities-manager"
 import { SpotlightPanel } from "./spotlight-panel"
 import { CreatureResourceControls, CreatureSheetDetails, CreatureAttackDetails, CreatureAbilityDetails } from "./combat-monster-card"
 import { MonsterAttackOverlay } from "./monster-attack-overlay"
+import { MonsterAttackPreviewShelf } from "./monster-attack-preview"
 import { MonsterAttributeRollOverlay } from "./monster-attribute-roll-overlay"
 import type { MonsterAttribute, MonsterAttributeRoll, MonsterDiceState } from "@/lib/monster-dice"
 import type { MonsterCheckRoll } from "@/lib/monster-checks"
@@ -247,6 +248,13 @@ export function CampaignCombat({
       combat.qte.targets.every((id) => !!combat.qte!.outcomes[id]))
   return (
     <>
+      <MonsterAttackPreviewShelf
+        previews={combat?.attackPreviews || []}
+        serverOffset={serverOffset}
+        onCancel={isGm ? previewId => {
+          void run({ type: "cancel-attack-preview", previewId })
+        } : undefined}
+      />
       <MonsterAttributeRollOverlay roll={visibleMonsterRoll} />
       {editingAbilities &&
         combat?.creatures.find((c) => c.instanceId === editingAbilities) && (
@@ -462,7 +470,7 @@ export function CampaignCombat({
                         </select>
                       </label>
                       <div className="my-4">
-                        <AttackEditor value={draft} onChange={setDraft} />
+                        <AttackEditor value={draft} onChange={setDraft} allowPreviewConfig={false} />
                       </div>
                       <button
                         className={button}

@@ -6,10 +6,10 @@ import {
   type Ability,
   type Attack,
   type Attribute,
+  DEFAULT_SPECIAL_ATTACK_PREVIEW_SECONDS,
   type Cost,
 } from "@/lib/combat-model"
 import { QTE_CHECKS } from "@/lib/combat-checks"
-import { MAX_BESTIARY_ATTACK_ATTRIBUTES } from "@/lib/bestiary-attack-formula"
 import { createClientId } from "@/lib/client-id"
 const input =
   "w-full min-w-0 rounded-lg border border-white/15 bg-zinc-900 p-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -21,21 +21,115 @@ function Field({ title, children }: { title: string; children: ReactNode }) {
     </label>
   )
 }
-export function AttackEditor({
+function AttackPreviewFields({
   value,
   onChange,
-  maxAttributes = 2,
-  creatureDice,
 }: {
   value: Attack
   onChange: (attack: Attack) => void
-  /** Dois por padrão (jogadores); dez apenas para criação de criaturas. */
-  maxAttributes?: number
-  creatureDice?: Partial<Record<Attribute, string>>
 }) {
-  const isBestiary = maxAttributes > 2
-  const count = isBestiary ? value.attributes.length : 2
-  const changeAttributes = (attributes: Attack["attributes"]) => onChange({ ...value, attributes })
+  return (
+    <div className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
+      <div>
+        <p className="text-sm font-bold text-amber-200">Ilustração do golpe</p>
+        <p className="mt-1 text-xs text-zinc-400">
+          Opcional. O alvo receberá um botão discreto e temporário para abrir a imagem, mesmo após responder ao ataque.
+        </p>
+      </div>
+      <Field title="URL HTTPS ou imagem compacta em data:image/...">
+        <input
+          className={input}
+          value={value.previewImageUrl || ""}
+          placeholder="https://meu-servidor.com/golpes/ataque.webp"
+          onChange={event => onChange({ ...value, previewImageUrl: event.target.value })}
+        />
+      </Field>
+      <label className="block cursor-pointer rounded-lg border border-dashed border-primary/40 px-3 py-2 text-center text-xs text-amber-100 hover:bg-primary/10">
+        Escolher imagem do computador (compactada automaticamente)
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+          className="sr-only"
+          onChange={async event => {
+            const file = event.target.files?.[0]
+            if (!file) return
+            event.target.value = ""
+            try {
+              if (file.size > 12_000_000) throw new Error("Arquivo muito grande (máximo 12 MB antes da compactação).")
+              const bitmap = await createImageBitmap(file)
+              const scale = Math.min(1, 1280 / bitmap.width, 900 / bitmap.height)
+              const canvas = document.createElement("canvas")
+              canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+              canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+              const context = canvas.getContext("2d")
+              if (!context) throw new Error("Seu navegador não suporta compactação de imagens.")
+              context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+              bitmap.close()
+              let encoded = canvas.toDataURL("image/webp", 0.76)
+              if (encoded.length > 650_000) encoded = canvas.toDataURL("image/webp", 0.45)
+              if (encoded.length > 650_000) throw new Error("Imagem ainda muito grande. Use uma URL HTTPS para preservar a qualidade.")
+              onChange({ ...value, previewImageUrl: encoded })
+            } catch (error) {
+              window.alert(error instanceof Error ? error.message : "Falha ao processar imagem.")
+            }
+          }}
+        />
+      </label>
+      {!!value.previewImageUrl && (
+        <div className="relative overflow-hidden rounded-lg border border-white/10 bg-black/35">
+          <img
+            src={value.previewImageUrl}
+            alt="Prévia da imagem do golpe"
+            className="max-h-44 w-full object-contain"
+          />
+          <button
+            type="button"
+            onClick={() => onChange({ ...value, previewImageUrl: "" })}
+            className="absolute right-2 top-2 rounded-md bg-black/80 px-2 py-1 text-xs text-white"
+          >
+            Remover imagem
+          </button>
+        </div>
+      )}
+      <Field title="Disponibilidade para o jogador (segundos)">
+        <input
+          type="number"
+          min={1}
+          max={86400}
+          step={1}
+          className={input}
+          value={value.previewDurationSeconds ?? DEFAULT_SPECIAL_ATTACK_PREVIEW_SECONDS}
+          onChange={event => {
+            const seconds = Number(event.target.value)
+            onChange({
+              ...value,
+              previewDurationSeconds: Number.isSafeInteger(seconds) && seconds > 0
+                ? seconds
+                : DEFAULT_SPECIAL_ATTACK_PREVIEW_SECONDS,
+            })
+          }}
+        />
+      </Field>
+      <p className="text-xs text-zinc-400">
+        Padrão: 300 segundos (5 minutos). O tempo começa quando o Mestre dispara o golpe.
+      </p>
+    </div>
+  )
+}
+
+export function AttackEditor({
+  value,
+  onChange,
+  maxDice = 2,
+  allowPreviewConfig = true,
+}: {
+  value: Attack
+  onChange: (attack: Attack) => void
+  /** Ataques comuns permanecem com dois dados; bestiário permite até dez. */
+  maxDice?: number
+  /** Quando falso, oculta os controles de imagem temporária do golpe. */
+  allowPreviewConfig?: boolean
+}) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
       <Field title="Nome do ataque">
@@ -45,46 +139,40 @@ export function AttackEditor({
           onChange={(e) => onChange({ ...value, name: e.target.value })}
         />
       </Field>
-      <fieldset className={isBestiary ? "min-w-0 sm:col-span-2 xl:col-span-4" : "min-w-0"}>
+      <fieldset className="min-w-0">
         <legend className="mb-2 text-xs text-zinc-300">
           Fórmula de acerto
         </legend>
-        {isBestiary && <p className="mb-2 text-[11px] text-zinc-400">
-          {count} de {maxAttributes} dados · atributos repetidos rolam várias vezes.
-        </p>}
-        <div className={isBestiary ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "flex items-center gap-1"}>
-          {Array.from({ length: count }, (_, i) => (
-            <div key={i} className="flex min-w-0 items-center gap-1">
-              <select
-                aria-label={`Atributo ${i + 1} do acerto`}
-                className={input}
-                value={value.attributes[i] || "mig"}
-                onChange={(e) => {
-                  const attributes = [...value.attributes]
-                  attributes[i] = e.target.value as Attribute
-                  changeAttributes(attributes)
-                }}
-              >
-                {ATTRIBUTES.map((a) => (
-                  <option key={a} value={a}>
-                    {a.toUpperCase()}{creatureDice?.[a] ? ` (${creatureDice[a]})` : ""}
-                  </option>
-                ))}
-              </select>
-              {isBestiary && <button type="button"
-                disabled={count <= 1}
-                onClick={() => changeAttributes(value.attributes.filter((_, index) => index !== i))}
-                aria-label={`Remover dado ${i + 1} da fórmula`}
-                className="shrink-0 rounded-md border border-white/15 px-2 py-2 text-red-300 hover:bg-red-400/10 disabled:opacity-30"
-              >−</button>}
-            </div>
+        <div className="flex flex-wrap gap-1 items-center">
+          {Array.from({ length: maxDice > 2 ? value.attributes.length : 2 }, (_, i) => i).map((i) => (
+            <select
+              key={i}
+              aria-label={`Atributo ${i + 1} do acerto`}
+              className={input}
+              value={value.attributes[i]}
+              onChange={(e) => {
+                const attributes = [...value.attributes]
+                attributes[i] = e.target.value as Attribute
+                onChange({ ...value, attributes })
+              }}
+            >
+              {ATTRIBUTES.map((a) => (
+                <option key={a} value={a}>
+                  {a.toUpperCase()}
+                </option>
+              ))}
+            </select>
           ))}
         </div>
-        {isBestiary && <button type="button"
-          disabled={count >= maxAttributes}
-          onClick={() => changeAttributes([...value.attributes, value.attributes[value.attributes.length - 1] || "mig"])}
-          className="mt-2 rounded-md border border-amber-400/30 px-3 py-2 text-xs font-bold text-amber-200 transition hover:border-amber-400 hover:bg-amber-400/10 disabled:opacity-40"
-        >+ Adicionar dado ({count}/{maxAttributes})</button>}
+        {maxDice > 2 && <div className="mt-2 flex gap-2">
+          <button type="button" disabled={value.attributes.length <= 1}
+            onClick={() => onChange({ ...value, attributes: value.attributes.slice(0, -1) })}
+            className="rounded-md border border-white/20 px-2 py-1 text-xs disabled:opacity-40">− Dado</button>
+          <button type="button" disabled={value.attributes.length >= maxDice}
+            onClick={() => onChange({ ...value, attributes: [...value.attributes, "mig"] })}
+            className="rounded-md border border-amber-400/30 px-2 py-1 text-xs text-amber-200 disabled:opacity-40">+ Dado</button>
+          <span className="self-center text-[11px] text-zinc-400">{value.attributes.length}/{maxDice}</span>
+        </div>}
       </fieldset>
       <Field title="Alvo do ataque">
         <select
@@ -135,6 +223,11 @@ export function AttackEditor({
           <textarea className={input} rows={2} value={value.description || ""} onChange={e => onChange({ ...value, description: e.target.value })} />
         </Field>
       </div>
+      {allowPreviewConfig && (
+        <div className="sm:col-span-2 xl:col-span-5">
+          <AttackPreviewFields value={value} onChange={onChange} />
+        </div>
+      )}
     </div>
   )
 }
@@ -178,11 +271,11 @@ export function AbilityEditor({
   value,
   onChange,
   focusId,
-  creatureDice,
 }: {
   value: Ability[]
   onChange: (abilities: Ability[]) => void
   focusId?: string
+  /** Preserva compatibilidade com o editor do Bestiário. */
   creatureDice?: Partial<Record<Attribute, string>>
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
@@ -269,23 +362,10 @@ export function AbilityEditor({
                   />
                   <AttackEditor
                     value={a.attack}
+                    maxDice={10}
+                    allowPreviewConfig
                     onChange={(attack) => patch({ ...a, attack })}
-                    maxAttributes={MAX_BESTIARY_ATTACK_ATTRIBUTES}
-                    creatureDice={creatureDice}
                   />
-                  <Field title="Efeito narrativo">
-                    <textarea
-                      className={input}
-                      rows={2}
-                      value={a.attack.description || ""}
-                      onChange={(e) =>
-                        patch({
-                          ...a,
-                          attack: { ...a.attack, description: e.target.value },
-                        })
-                      }
-                    />
-                  </Field>
                 </>
               )}
               {a.kind === "passive" && (

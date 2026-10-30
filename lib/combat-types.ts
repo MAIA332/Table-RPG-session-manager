@@ -18,6 +18,16 @@ export type PendingMonsterAttack = {
   attackName: string; total: number; rolls: number[]; dice: string[]
   damage: number; effect: string
 }
+/** Uma imagem de golpe disponibilizada por um prazo absoluto. */
+export type MonsterAttackPreview = {
+  id: string
+  characterId: string
+  creatureName: string
+  attackName: string
+  imageUrl: string
+  startedAt: number
+  expiresAt: number
+}
 export type CombatLog = {
   id: string; at: number; text: string
   roll?: Extract<import("./types").RealtimeEvent, { type: "dice:roll" }>
@@ -33,6 +43,8 @@ export type CombatSession = {
   pendingAttack?: PendingMonsterAttack | null
   /** Histórico recente de testes tradicionais de criaturas, visível apenas conforme shared. */
   monsterCheckRolls?: MonsterCheckRoll[]
+  /** Imagens temporárias, filtradas por destinatário em snapshot(). */
+  attackPreviews?: MonsterAttackPreview[]
   log: CombatLog[]; receipts: string[]
 }
 export type CombatSnapshot = Omit<CombatSession, "receipts"> & {

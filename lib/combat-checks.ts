@@ -378,6 +378,18 @@ export const PRESET_CHECKS = [
     attrs: ["mig", "wlp", "dex"],
     desc: "Imobilizar, agarrar ou incapacitar usando força pura.",
   },
+  {
+    id: "c64",
+    name: "Luta",
+    attrs: ["mig", "dex", "dex"],
+    desc: "Acerto de golpes corporais e técnicas físicas. Confronta a Defesa Física do alvo.",
+  },
+  {
+    id: "c65",
+    name: "Magia e Arcanismo",
+    attrs: ["ins", "wlp","ins"],
+    desc: "Canalização arcana e acerto de golpes mágicos. Confronta a Defesa Mágica do alvo.",
+  },
 ]
 
 export const QTE_CHECKS = [

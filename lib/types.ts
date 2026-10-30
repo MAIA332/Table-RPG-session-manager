@@ -138,6 +138,7 @@ export interface Character {
   createdAt: number
   updatedAt: number
   bonds?: any
+  specialAttackUsage?:any
 }
 export interface ItemTransfer {
   donorRetainsItem?: boolean

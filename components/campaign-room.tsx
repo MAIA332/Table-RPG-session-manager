@@ -10,6 +10,8 @@ import { CreatureAbilitiesManager } from "./creature-abilities-manager"
 import { CreatureVitals } from "./creature-vitals"
 import { useCombat } from "@/lib/use-combat"
 import { CampaignCombat, type CombatActionRequest } from "./campaign-combat"
+import { MonsterAttackPreviewShelf } from "./monster-attack-preview"
+import type { PlayerAttackPreview } from "@/lib/player-special-attacks"
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -515,6 +517,35 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [mounted, setMounted] = useState(false)
   const [data, setData] = useState(initial)
   const [characters, setCharacters] = useState<Character[]>(initial.characters)
+  const [playerAttackPreviews, setPlayerAttackPreviews] = useState<PlayerAttackPreview[]>([])
+  const [playerPreviewOffset, setPlayerPreviewOffset] = useState(0)
+  const refreshPlayerAttackPreviews = useCallback(async () => {
+    const response = await apiFetch<{ previews: PlayerAttackPreview[]; serverNow: number }>(
+      `/api/campaigns/${encodeURIComponent(initial.campaign.id)}/player-attack-previews`,
+      { cache: "no-store" },
+    )
+    setPlayerAttackPreviews(Array.isArray(response.previews) ? response.previews : [])
+    if (Number.isFinite(response.serverNow)) setPlayerPreviewOffset(response.serverNow - Date.now())
+  }, [initial.campaign.id])
+  useEffect(() => {
+    void refreshPlayerAttackPreviews().catch(console.error)
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refreshPlayerAttackPreviews().catch(() => undefined)
+    }, 5000)
+    const onFocus = () => void refreshPlayerAttackPreviews().catch(() => undefined)
+    window.addEventListener("focus", onFocus)
+    return () => { window.clearInterval(poll); window.removeEventListener("focus", onFocus) }
+  }, [refreshPlayerAttackPreviews])
+  async function cancelPlayerAttackPreview(previewId: string) {
+    if (initial.role !== "gm") return
+    try {
+      await apiFetch(`/api/campaigns/${encodeURIComponent(initial.campaign.id)}/player-attack-previews`, {
+        method: "DELETE", body: JSON.stringify({ previewId }),
+      })
+      await refreshPlayerAttackPreviews()
+    } catch (error) { alert(error instanceof Error ? error.message : "Falha ao encerrar a imagem.") }
+  }
+
   const [inventorySyncError, setInventorySyncError] = useState<string | null>(null)
   // Ignora respostas antigas se duas requisições forem iniciadas quase juntas.
   const ownedInventoryRequestVersion = useRef(0)
@@ -1917,6 +1948,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const seenCombatRolls = useRef(new Set<string>())
   const handleEvent = useCallback(
     (event: any) => {
+      if (event.type === "player-attack-preview:updated") {
+        void refreshPlayerAttackPreviews().catch(console.error)
+        return
+      }
       if (event.type === "custom-checks:updated") {
         void refreshCustomChecks().catch(console.error)
         return
@@ -2519,7 +2554,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         }
       })
     },
-    [data.campaign.id, data.me.id, data.role, refreshGallery, refreshSounds, refreshMaps, combatController.refresh, refreshOwnedInventory, refreshCustomChecks],
+    [data.campaign.id, data.me.id, data.role, refreshGallery, refreshSounds, refreshMaps, combatController.refresh, refreshOwnedInventory, refreshCustomChecks, refreshPlayerAttackPreviews],
   )
 
   useEffect(() => {
@@ -3696,6 +3731,20 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   return (
     <div className="rpg-page mx-auto flex min-h-dvh max-w-[1680px] flex-col px-3 py-4 sm:px-4 md:h-screen md:px-6 md:py-6">
       <ClassCardReveal value={cardReveal} />
+      <MonsterAttackPreviewShelf
+        previews={playerAttackPreviews.map(preview => ({
+          id: preview.id,
+          characterId: preview.characterId,
+          creatureName: preview.characterName,
+          attackName: `${preview.attackName} · ${preview.targetDefense === "magical" ? "Defesa Mágica" : "Defesa Física"}`,
+          imageUrl: preview.imageUrl,
+          startedAt: preview.startedAt,
+          expiresAt: preview.expiresAt,
+        }))}
+        serverOffset={playerPreviewOffset}
+        position="left"
+        onCancel={isGm ? (previewId) => { void cancelPlayerAttackPreview(previewId) } : undefined}
+      />
       {/* Motor único de áudio: permanece montado enquanto a sala estiver aberta. */}
       <SoundPlaybackEngine
         key={`${data.campaign.id}:${data.me.id}`}

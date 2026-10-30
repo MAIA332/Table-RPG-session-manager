@@ -9,6 +9,9 @@ import {
   canAttack,
   validateCombat,
   rollDamage,
+  DEFAULT_SPECIAL_ATTACK_PREVIEW_SECONDS,
+  MAX_SPECIAL_ATTACK_PREVIEW_SECONDS,
+  validSpecialAttackPreviewUrl,
   type Attack,
   type Ability,
 } from "./combat-model"
@@ -39,6 +42,7 @@ import type {
   CombatSession,
   CombatSnapshot,
   CombatCreature,
+  MonsterAttackPreview,
 } from "./combat-types"
 import type { Character, RealtimeEvent } from "./types"
 type Database = Parameters<Parameters<typeof transactStore>[0]>[0]
@@ -235,6 +239,7 @@ function newSession(): CombatSession {
     playerAttacks: {},
     qte: null,
     pendingAttack: null,
+    attackPreviews: [],
     deathChecks: {},
     log: [],
     receipts: [],
@@ -405,7 +410,8 @@ function snapshot(
 ): CombatSnapshot {
   const { role } = authorize(db, campaignId, userId)
   const gm = role === "gm"
-  const { receipts, monsterAttributeRolls, monsterCheckRolls, crisisConfig: privateCrisisConfig, crisisDue, crisisProgress, ...publicState } = s as CrisisSession & MonsterDiceState
+  const { receipts, monsterAttributeRolls, monsterCheckRolls, attackPreviews,
+    crisisConfig: privateCrisisConfig, crisisDue, crisisProgress, ...publicState } = s as CrisisSession & MonsterDiceState
   const characters = [...db.characters.values()]
     .filter((c) => c.campaignId === campaignId)
     .map((c) => ({
@@ -423,6 +429,10 @@ function snapshot(
     }))
   return {
     ...publicState,
+    // Nunca enviar URLs de golpes de outros jogadores no snapshot da campanha.
+    attackPreviews: (attackPreviews || []).filter(preview =>
+      preview.expiresAt > Date.now() &&
+      (gm || db.characters.get(preview.characterId)?.ownerId === userId)),
     ...{ crisis: crisisPublicState(db, campaignId, s), ...(gm ? { crisisConfig: crisisConfig(s) } : {}) },
     ...{
       // Nunca transmite as rolagens privadas via JSON para os jogadores.
@@ -610,6 +620,18 @@ function validateAttack(value: unknown, origin: "player" | "creature" = "player"
       typeof a.description === "string" && a.description.length <= 2000,
       "Efeito muito longo",
     )
+  if (a.previewImageUrl !== undefined && a.previewImageUrl !== "") {
+    requireTrue(origin === "creature", "Imagem de golpe exclusiva de criaturas e oponentes.")
+    requireTrue(validSpecialAttackPreviewUrl(a.previewImageUrl),
+      "Imagem do golpe inválida. Use URL HTTPS ou imagem PNG/JPEG/WebP/GIF/AVIF compacta.")
+  }
+  if (a.previewDurationSeconds !== undefined) {
+    requireTrue(origin === "creature", "Duração de imagem exclusiva de criaturas e oponentes.")
+    requireTrue(Number.isSafeInteger(a.previewDurationSeconds) &&
+      a.previewDurationSeconds >= 1 &&
+      a.previewDurationSeconds <= MAX_SPECIAL_ATTACK_PREVIEW_SECONDS,
+      "Duração da imagem inválida (1 a 86400 segundos).")
+  }
   return structuredClone(a)
 }
 function validateCreature(value: unknown): CombatCreature {
@@ -738,7 +760,7 @@ export async function commandCombat(
       if (c.campaignId === campaignId && c.resources.hp > 0 && s.deathChecks?.[c.id]?.active)
         s.deathChecks[c.id].active = false
     }
-    const scoped = ["approve", "cancel", "react", "answer-attack", "crisis-sheet-roll"].includes(command.type)
+    const scoped = ["approve", "cancel", "react", "answer-attack", "crisis-sheet-roll", "cancel-attack-preview"].includes(command.type)
     if (!scoped)
       requireTrue(
         integer(command.expectedRevision, "Revisão") === s.revision,
@@ -759,6 +781,7 @@ export async function commandCombat(
       "remove-creature",
       "set-attacks",
       "monster-attack",
+      "cancel-attack-preview",
       "monster-attribute-roll",
       "monster-check-roll",
       "monster-custom-check-roll",
@@ -792,10 +815,18 @@ export async function commandCombat(
     ) {
       throw new CombatError("Aguarde o QTE terminar antes de trocar o Holofote")
     }
-    if (s.pendingAttack && !["answer-attack", "end", "monster-attribute-roll", "monster-check-roll", "monster-custom-check-roll", "gm-npc-roll", "crisis-sheet-roll", "set-monster-roll-visibility", "set-crisis-enabled", "set-crisis-config", "apply-crisis-effect", "remove-crisis-effect"].includes(command.type)) {
+    if (s.pendingAttack && !["answer-attack", "end", "monster-attribute-roll", "monster-check-roll", "monster-custom-check-roll", "gm-npc-roll", "crisis-sheet-roll", "set-monster-roll-visibility", "set-crisis-enabled", "set-crisis-config", "apply-crisis-effect", "remove-crisis-effect", "cancel-attack-preview"].includes(command.type)) {
       throw new CombatError("Aguarde o jogador resolver o ataque pendente", 409)
     }
     switch (command.type) {
+      case "cancel-attack-preview": {
+        const previewId = text(command.previewId, "Visualização do golpe", 120)
+        const previews = s.attackPreviews || []
+        requireTrue(previews.some(preview => preview.id === previewId),
+          "Imagem não encontrada ou já encerrada.", 404)
+        s.attackPreviews = previews.filter(preview => preview.id !== previewId)
+        break
+      }
       case "crisis-sheet-roll": {
         const c = character(db, campaignId, text(command.characterId, "Personagem"))
         if (s.enabled) requireTrue(s.participantCharacterIds.includes(c.id), "Personagem fora do combate", 403)
@@ -1366,6 +1397,29 @@ export async function commandCombat(
         const monsterRollShared = (s as CombatSession & MonsterDiceState).shareMonsterRolls === true
         const attackId = randomUUID()
         const at = Date.now()
+        // O relógio da imagem é independente da reação e do pendingAttack.
+        // Qualquer golpe da criatura com imagem configurada (normal ou habilidade)
+        // gera a visualização temporária para o alvo.
+        if (validSpecialAttackPreviewUrl(attack.previewImageUrl)) {
+          const seconds = attack.previewDurationSeconds === undefined
+            ? DEFAULT_SPECIAL_ATTACK_PREVIEW_SECONDS
+            : attack.previewDurationSeconds
+          requireTrue(Number.isSafeInteger(seconds) && seconds >= 1 &&
+            seconds <= MAX_SPECIAL_ATTACK_PREVIEW_SECONDS,
+            "Tempo de visualização da imagem inválido.")
+          const preview: MonsterAttackPreview = {
+            id: attackId,
+            characterId: target.id,
+            creatureName: c.name,
+            attackName: attack.name,
+            imageUrl: attack.previewImageUrl,
+            startedAt: at,
+            expiresAt: at + seconds * 1000,
+          }
+          // Retém somente imagens ainda válidas, limitado para evitar crescimento
+          // do documento MongoDB e sem alterar habilidades existentes.
+          s.attackPreviews = [...(s.attackPreviews || []).filter(entry => entry.expiresAt > at), preview].slice(-8)
+        }
         s.log = [{
           ...{ monsterRollShared },
           id: `${attackId}:hit`, at,

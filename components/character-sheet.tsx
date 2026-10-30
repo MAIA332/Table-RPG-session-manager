@@ -23,6 +23,9 @@ import { canPlayerUpgradeClass, playerVisibleClassCatalog, type CustomClassVisib
 import { CharacterBookShelf } from "./class-books"
 import { ClassTimerProgress } from "./class-timer-progress"
 import { CharacterTraining, TrainingCompactBar } from "./character-training"
+import { PlayerSpecialAttacks } from "./player-special-attacks"
+import { PRESET_CHECKS as PLAYER_PRESET_CHECKS } from "@/lib/combat-checks"
+import { playerAttackDefenseLabel, type PlayerSpecialAttack } from "@/lib/player-special-attacks"
 import { isTrainingActive, trainingFatiguePenalty } from "@/lib/training-model"
 import { crisisBlocksRoll, crisisModifierLabel, crisisRollModifier, type CrisisEntityStatus } from "@/lib/crisis-model"
 import { activeClassBookModifiers, isExpiredClassBookModifier } from "@/lib/class-books"
@@ -1855,9 +1858,16 @@ export function CharacterSheet({
     // Pontos de Lore são um recurso persistido; não podem desaparecer quando
     // a normalização de peso/inventário recalcula os recursos da ficha.
     const lp = rawCharacter?.resources?.lp
+    const withAttacks = {
+      ...normalized,
+      // Preserva os golpes salvos mesmo quando o inventário é normalizado.
+      specialAttacks: (rawCharacter as any)?.specialAttacks ?? (normalized as any).specialAttacks ?? [],
+      // A classificação de atalhos precisa sobreviver à normalização do inventário.
+      specialAttackUseCounts: (rawCharacter as any)?.specialAttackUseCounts ?? (normalized as any).specialAttackUseCounts ?? {},
+    }
     return typeof lp === "number" && Number.isSafeInteger(lp) && lp >= 0
-      ? { ...normalized, resources: { ...normalized.resources, lp } }
-      : normalized
+      ? { ...withAttacks, resources: { ...withAttacks.resources, lp } }
+      : withAttacks
   }, [rawCharacter, customEquipment])
   // --- INICIO SOLUÇÃO PERSISTENCIA LAÇOS ---
   // Extrai e separa os Laços escondidos dentro de customModifiers para que o Backend consiga persistir os dados nativamente
@@ -2850,7 +2860,7 @@ export function CharacterSheet({
     }, 800)
   }
 
-  function handleCombinedRoll(check: any) {
+  function handleCombinedRoll(check: any, specialAttack?: PlayerSpecialAttack) {
     if (rollingAttr || !editable || trainingLocked) return
     setRollingAttr(check.id)
 
@@ -2892,7 +2902,7 @@ export function CharacterSheet({
       const totalDice = rolledPool.total
       modTotal = rolledPool.modifier
       const finalResult = totalDice + modTotal
-      const logDetail = `${check.name} [${check.attrs.join("+").toUpperCase()} ${diceLabels.join(" + ")}]${activeBond ? ` + Laço (${activeBond.target})` : ""}`
+      const logDetail = `${specialAttack ? `Golpe: ${specialAttack.name} → ${playerAttackDefenseLabel(specialAttack.targetDefense)} | ` : ""}${check.name} [${check.attrs.join("+").toUpperCase()} ${diceLabels.join(" + ")}]${activeBond ? ` + Laço (${activeBond.target})` : ""}`
 
       if (onRoll)
         onRoll(logDetail, finalResult, {
@@ -4550,6 +4560,18 @@ export function CharacterSheet({
                       isGm={isGm}
                       isOwner={isOwned}
                       onUpdated={onOptimistic}
+                    />
+
+                    <PlayerSpecialAttacks
+                      character={character as any}
+                      isGm={isGm}
+                      editable={Boolean(editable)}
+                      disabled={Boolean(trainingLocked || rollingAttr)}
+                      onUpdated={onOptimistic}
+                      onRollCheck={(attack) => {
+                        const check = PLAYER_PRESET_CHECKS.find(entry => entry.id === attack.checkId)
+                        if (check) handleCombinedRoll(check, attack)
+                      }}
                     />
 
                     {/* VISUALIZAÇÃO DE LAÇO ATIVO PREPARADO */}
