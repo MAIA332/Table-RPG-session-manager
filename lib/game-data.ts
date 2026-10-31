@@ -641,7 +641,8 @@ export const CLASSES: GameClass[] = [
         name: "Presságios",
         maxLevel: 5,
         description:
-          "No início de uma cena, receba [Nível da Perícia] Presságios. Gaste 1 Presságio para adicionar +2 a uma rolagem sua ou de um aliado.",
+          "No início de uma cena gaste 2 PM, receba [Nível da Perícia] Presságios. Gaste 1 Presságio para adicionar [Nível da Perícia]+2 a uma rolagem sua ou de um aliado.",
+        action: { cost: 2, resource: "mp" },
       },
       {
         id: "pr-premonition",
@@ -888,37 +889,37 @@ export const CLASSES: GameClass[] = [
               id: "bone-armor",
               name: "Armadura Óssea — Fortificação",
               description:
-                "O bônus da Armadura Óssea aumenta para +3 em testes de resistência física.",
+                "O bônus da Armadura Óssea aumenta para +4 em testes de resistência física.",
             },
             {
               id: "claws",
               name: "Garras — Predador",
               description:
-                "O bônus das Garras aumenta para +3 em testes de ataque e ações físicas que dependam de precisão ou força.",
+                "O bônus das Garras aumenta para +4 em testes de ataque e ações físicas que dependam de precisão ou força.",
             },
             {
               id: "tentacles",
               name: "Tentáculos — Controle",
               description:
-                "O bônus dos Tentáculos aumenta para +3 em testes de agarrar, imobilizar e manipular objetos.",
+                "O bônus dos Tentáculos aumenta para +4 em testes de agarrar, imobilizar e manipular objetos.",
             },
             {
               id: "extra-eye",
               name: "Olho Extra — Percepção Aguçada",
               description:
-                "O bônus do Olho Extra aumenta para +3 em testes de Percepção e investigação visual.",
+                "O bônus do Olho Extra aumenta para +4 em testes de Percepção e investigação visual.",
             },
             {
               id: "poison",
               name: "Veneno — Toxina Potente",
               description:
-                "O bônus do Veneno aumenta para +3 em testes relacionados a venenos e toxinas.",
+                "O bônus do Veneno aumenta para +4 em testes relacionados a venenos e toxinas.",
             },
             {
               id: "regeneration",
               name: "Regeneração — Recuperação",
               description:
-                "O bônus da Regeneração aumenta para +3 em testes para resistir a dor, exaustão, sangramento e ferimentos.",
+                "O bônus da Regeneração aumenta para +4 em testes para resistir a dor, exaustão, sangramento e ferimentos.",
             },
           ],
 
@@ -927,37 +928,37 @@ export const CLASSES: GameClass[] = [
               id: "bone-armor",
               name: "Armadura Óssea — Carapaça",
               description:
-                "Receba +4 em testes de resistência física. Além disso, você recebe vantagem em testes para resistir a impactos violentos.",
+                "Receba +5 em testes de resistência física. Além disso, você recebe vantagem em testes para resistir a impactos violentos.",
             },
             {
               id: "claws",
               name: "Garras — Carnificina",
               description:
-                "Receba +4 em testes de ataque usando suas garras e em testes para causar ou manter ferimentos físicos.",
+                "Receba +5 em testes de ataque usando suas garras e em testes para causar ou manter ferimentos físicos.",
             },
             {
               id: "tentacles",
               name: "Tentáculos — Dominação",
               description:
-                "Receba +4 em testes de agarrar e imobilizar. Você também pode realizar manipulações complexas usando seus tentáculos.",
+                "Receba +5 em testes de agarrar e imobilizar. Você também pode realizar manipulações complexas usando seus tentáculos.",
             },
             {
               id: "extra-eye",
               name: "Olho Extra — Sentidos Sobrenaturais",
               description:
-                "Receba +4 em testes de Percepção. Você pode perceber detalhes que normalmente seriam difíceis de enxergar.",
+                "Receba +5 em testes de Percepção. Você pode perceber detalhes que normalmente seriam difíceis de enxergar.",
             },
             {
               id: "poison",
               name: "Veneno — Toxina Persistente",
               description:
-                "Receba +4 em testes relacionados ao Veneno. Seus efeitos tóxicos também são mais difíceis de neutralizar.",
+                "Receba +5 em testes relacionados ao Veneno. Seus efeitos tóxicos também são mais difíceis de neutralizar.",
             },
             {
               id: "regeneration",
               name: "Regeneração — Regeneração Acelerada",
               description:
-                "Receba +4 em testes para resistir a ferimentos, dor e exaustão. Você também pode tentar resistir a condições físicas incapacitantes.",
+                "Receba +5 em testes para resistir a ferimentos, dor e exaustão. Você também pode tentar resistir a condições físicas incapacitantes.",
             },
           ],
 
@@ -966,37 +967,37 @@ export const CLASSES: GameClass[] = [
               id: "bone-armor",
               name: "Armadura Óssea — Fortaleza Viva",
               description:
-                "Receba +5 em testes de resistência física e vantagem para resistir a impactos, fraturas e efeitos que tentem derrubar ou deslocar você.",
+                "Receba +6 em testes de resistência física e vantagem para resistir a impactos, fraturas e efeitos que tentem derrubar ou deslocar você.",
             },
             {
               id: "claws",
               name: "Garras — Caçador Perfeito",
               description:
-                "Receba +5 em testes de ataque e perseguição que utilizem suas garras ou capacidades físicas predatórias.",
+                "Receba +6 em testes de ataque e perseguição que utilizem suas garras ou capacidades físicas predatórias.",
             },
             {
               id: "tentacles",
               name: "Tentáculos — Múltiplos Membros",
               description:
-                "Receba +5 em testes de agarrar, imobilizar e manipular objetos. Você pode executar múltiplas ações de manipulação simultaneamente.",
+                "Receba +6 em testes de agarrar, imobilizar e manipular objetos. Você pode executar múltiplas ações de manipulação simultaneamente.",
             },
             {
               id: "extra-eye",
               name: "Olho Extra — Visão Absoluta",
               description:
-                "Receba +5 em testes de Percepção e investigação visual. Você recebe vantagem para perceber criaturas escondidas ou detalhes sutis.",
+                "Receba +6 em testes de Percepção e investigação visual. Você recebe vantagem para perceber criaturas escondidas ou detalhes sutis.",
             },
             {
               id: "poison",
               name: "Veneno — Toxina Letal",
               description:
-                "Receba +5 em testes relacionados ao Veneno. Criaturas afetadas têm maior dificuldade para resistir ou remover seus efeitos.",
+                "Receba +6 em testes relacionados ao Veneno. Criaturas afetadas têm maior dificuldade para resistir ou remover seus efeitos.",
             },
             {
               id: "regeneration",
               name: "Regeneração — Corpo Imortal",
               description:
-                "Receba +5 em testes para resistir a ferimentos, dor, exaustão e condições físicas debilitantes.",
+                "Receba +6 em testes para resistir a ferimentos, dor, exaustão e condições físicas debilitantes.",
             },
           ],
 
@@ -1005,37 +1006,37 @@ export const CLASSES: GameClass[] = [
               id: "bone-armor",
               name: "Armadura Óssea — Forma Colossal",
               description:
-                "Sua estrutura óssea se torna extremamente resistente. Receba +6 em testes de resistência física e vantagem para resistir a qualquer efeito baseado em força ou impacto.",
+                "Sua estrutura óssea se torna extremamente resistente. Receba +7 em testes de resistência física e vantagem para resistir a qualquer efeito baseado em força ou impacto.",
             },
             {
               id: "claws",
               name: "Garras — Predador Supremo",
               description:
-                "Suas garras tornam-se armas naturais perfeitas. Receba +6 em testes de ataque, perseguição e ações físicas predatórias.",
+                "Suas garras tornam-se armas naturais perfeitas. Receba +7 em testes de ataque, perseguição e ações físicas predatórias.",
             },
             {
               id: "tentacles",
               name: "Tentáculos — Aberração Perfeita",
               description:
-                "Seus tentáculos possuem força e coordenação excepcionais. Receba +6 em testes de agarrar, imobilizar e manipulação.",
+                "Seus tentáculos possuem força e coordenação excepcionais. Receba +7 em testes de agarrar, imobilizar e manipulação.",
             },
             {
               id: "extra-eye",
               name: "Olho Extra — Percepção Total",
               description:
-                "Seu olho adicional percebe o mundo de maneira extraordinária. Receba +6 em testes de Percepção e investigação e vantagem contra tentativas de ocultação.",
+                "Seu olho adicional percebe o mundo de maneira extraordinária. Receba +7 em testes de Percepção e investigação e vantagem contra tentativas de ocultação.",
             },
             {
               id: "poison",
               name: "Veneno — Toxina Primordial",
               description:
-                "Seu corpo produz um veneno extremamente poderoso. Receba +6 em testes relacionados a toxinas e vantagem para aplicar ou resistir aos efeitos de venenos.",
+                "Seu corpo produz um veneno extremamente poderoso. Receba +7 em testes relacionados a toxinas e vantagem para aplicar ou resistir aos efeitos de venenos.",
             },
             {
               id: "regeneration",
               name: "Regeneração — Regeneração Monstruosa",
               description:
-                "Seu corpo desafia os limites da biologia. Receba +6 em testes para resistir a ferimentos, dor, exaustão e condições físicas debilitantes.",
+                "Seu corpo desafia os limites da biologia. Receba +7 em testes para resistir a ferimentos, dor, exaustão e condições físicas debilitantes.",
             },
           ],
         },
