@@ -502,7 +502,7 @@ export function Imagepad({
 
         setError("Selecione um jogador válido para a transmissão.")
 
-        return
+        return false
 
       }
 
@@ -517,10 +517,12 @@ export function Imagepad({
     try {
 
       await onAction(action, payload)
+      return true
 
     } catch (cause) {
 
       setError(cause instanceof Error ? cause.message : "Não foi possível concluir a ação.")
+      return false
 
     } finally {
 
@@ -565,9 +567,8 @@ export function Imagepad({
 
     const image: SharedImage = { id: createClientId(), name, url, isPublic: false, folderId, ownerId: myUserId, createdAt: Date.now() }
 
-    if (isGm) updateForGm([...normalizedImages, image])
-
-    else await runAction("add", "add", { image })
+    // Adição pontual para ambos: NÃO envia a galeria inteira ao servidor.
+    if (!(await runAction("add", "add", { image }))) return
 
     setNewName("")
 
@@ -664,17 +665,15 @@ export function Imagepad({
   cardActions.current = {
     show: image => { void showImage(image) },
     toggle: image => {
-      if (isGm && !privacyEnabled) updateForGm(normalizedImages.map(entry => entry.id === image.id ? { ...entry, isPublic: !entry.isPublic } : entry))
-      else void runAction(`visibility:${image.id}`, "toggle-public", { imageId: image.id })
+      // Edição individual, inclusive para o Mestre com proteção desligada.
+      void runAction(`visibility:${image.id}`, "toggle-public", { imageId: image.id })
     },
     move: (image, folderId) => {
-      if (isGm) updateForGm(normalizedImages.map(entry => entry.id === image.id ? { ...entry, folderId } : entry))
-      else void runAction(`move:${image.id}`, "move", { imageId: image.id, folderId })
+      void runAction(`move:${image.id}`, "move", { imageId: image.id, folderId })
     },
     request: image => { void runAction(`send:${image.id}`, "request-broadcast", { imageId: image.id }) },
     remove: image => {
-      if (isGm && !privacyEnabled) updateForGm(normalizedImages.filter(entry => entry.id !== image.id))
-      else void runAction(`delete:${image.id}`, "delete", { imageId: image.id })
+      void runAction(`delete:${image.id}`, "delete", { imageId: image.id })
     },
   }
   const cardShow = useCallback((image: SharedImage) => cardActions.current.show(image), [])

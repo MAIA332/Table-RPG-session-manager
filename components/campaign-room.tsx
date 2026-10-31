@@ -1019,21 +1019,52 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         throw new Error("O envio individual não está disponível para esse jogador.")
       }
     }
+    // O protocolo incremental evita que a API envie megabytes de base64 em
+    // toda alteração de visibilidade, exclusão, movimentação ou adição.
+    const useDelta = ["toggle-public", "delete", "move", "add"].includes(action)
     const response = await apiFetch<{
-      images: SharedImage[]
-      folders: GalleryFolder[]
-      requests: GalleryBroadcastRequest[]
+      images?: SharedImage[]
+      folders?: GalleryFolder[]
+      requests?: GalleryBroadcastRequest[]
       capabilities?: { targetedImages?: boolean }
+      delta?: { action: string; imageId: string; isPublic?: boolean; folderId?: string }
     }>(`/api/campaigns/${data.campaign.id}/gallery`, {
       method: "POST",
-      body: JSON.stringify({ action, ...payload }),
+      body: JSON.stringify({ action, ...payload, ...(useDelta ? { compactResponse: true } : {}) }),
     })
-    applyGalleryResponse(response)
+    if (response.delta) {
+      // Aplicar somente após confirmação do servidor: falhas não alteram a UI.
+      const delta = response.delta
+      setGalleryImages(current => {
+        let next = current
+        if (delta.action === "toggle-public") next = current.map(image =>
+          image.id === delta.imageId ? { ...image, isPublic: delta.isPublic === true } : image)
+        else if (delta.action === "delete") next = current.filter(image => image.id !== delta.imageId)
+        else if (delta.action === "move") next = current.map(image =>
+          image.id === delta.imageId ? { ...image, folderId: delta.folderId || "root" } : image)
+        else if (delta.action === "add" && payload.image && typeof payload.image === "object") {
+          const added = payload.image as SharedImage
+          if (!current.some(image => image.id === delta.imageId)) next = [...current, added]
+        }
+        storeJsonWhenIdle(`images_${data.campaign.id}`, next)
+        return next
+      })
+      if (delta.action === "delete") setGalleryRequests(current =>
+        current.filter(entry => entry.imageId !== delta.imageId))
+    } else if (Array.isArray(response.images)) {
+      // Compatibilidade com servidores que ainda respondem no formato antigo.
+      applyGalleryResponse({
+        images: response.images,
+        folders: response.folders,
+        requests: response.requests,
+        capabilities: response.capabilities,
+      })
+    }
     // Show locally after successful delivery; do not broaden the server recipients.
     if (data.role === "gm" && payload.targetUserId != null &&
       (action === "broadcast" || (action === "resolve-broadcast" && payload.resolution === "approved"))) {
       const request = galleryRequests.find(entry => entry.id === payload.requestId)
-      const image = response.images.find(entry => entry.id === payload.imageId)
+      const image = response.images?.find(entry => entry.id === payload.imageId)
         || galleryImages.find(entry => entry.id === payload.imageId)
       const url = image?.url || request?.imageUrl
       if (url) setActiveFullscreenImage(url)

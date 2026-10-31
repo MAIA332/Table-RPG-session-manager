@@ -85,6 +85,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const body = await request.json().catch(() => null)
   if (!body || typeof body !== "object" || Array.isArray(body)) return error("Dados inválidos.")
   const action = String(body.action || "")
+  // Respostas incrementais evitam reenviar todo o acervo (inclusive imagens base64)
+  // a cada clique. Só clientes que solicitam explicitamente este protocolo o usam.
+  const compactResponse = body.compactResponse === true &&
+    (action === "toggle-public" || action === "delete" || action === "move" || action === "add")
   const state = getCampaignState(campaignId)
   let records = Array.isArray(state.galleryFolders) ? [...state.galleryFolders] : []
   let enabled = privateFoldersEnabled(records)
@@ -254,7 +258,60 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return error("Ação inválida.")
   }
 
-  await updateCampaignState(campaignId, { gallery: images, galleryFolders: records, galleryBroadcastRequests: requests })
-  publish(campaignId, { type: "gallery:changed" })
+  // Numa galeria grande, alterar uma imagem NÃO deve regravar campos que
+  // permaneceram iguais. Isto reduz o custo da gravação e evita amplificar
+  // coleções com imagens em base64 e solicitações de transmissão.
+  const patch: {
+    gallery?: GalleryImage[]
+    galleryFolders?: GalleryFolder[]
+    galleryBroadcastRequests?: GalleryBroadcastRequest[]
+  } = {}
+  if (action === "replace" || action === "add" || action === "toggle-public" ||
+    action === "move" || action === "delete" || action === "delete-folder") patch.gallery = images
+  if (action === "replace") patch.galleryFolders = records
+  if (action === "replace" || action === "delete") patch.galleryBroadcastRequests = requests
+
+  try {
+    await updateCampaignState(campaignId, patch)
+  } catch (cause) {
+    // Evita 500 sem diagnóstico: localizar esta referência nos logs de produção.
+    // Não registra as URLs/imagens, que podem ser privadas.
+    const traceId = genId("gallery_error")
+    console.error(`[GALLERY_PERSISTENCE:${traceId}]`, {
+      campaignId, action, fields: Object.keys(patch),
+      imageCount: images.length,
+      estimatedGalleryBytes: images.reduce((sum, image) => sum + (image.url?.length || 0), 0),
+    }, cause)
+    const detail = cause instanceof Error ? cause.message : String(cause)
+    const exceedsStorage = /BSON|16\s*(?:MB|MiB)|document.*(?:large|size)|too large|maximum.*size/i.test(detail)
+    return NextResponse.json({
+      error: exceedsStorage
+        ? "O documento da galeria excedeu o limite de armazenamento. Reduza imagens base64 ou migre os arquivos para armazenamento externo."
+        : `Falha ao persistir a alteração da galeria. Código para consultar nos logs: ${traceId}.`,
+      code: exceedsStorage ? "GALLERY_STORAGE_LIMIT" : "GALLERY_PERSISTENCE_ERROR",
+      traceId,
+    }, { status: exceedsStorage ? 507 : 500, headers: { "Cache-Control": "private, no-store" } })
+  }
+
+  // Se o broadcast realtime falhar após a gravação, não responder 500: a
+  // alteração já está persistida. O GET posterior recupera o estado correto.
+  try {
+    publish(campaignId, { type: "gallery:changed" })
+  } catch (cause) {
+    console.error("[GALLERY_REALTIME] Estado salvo, mas falhou o aviso de atualização.", { campaignId, action }, cause)
+  }
+  if (compactResponse) {
+    const imageId = action === "add" ? String(body.image?.id || "") : String(body.imageId || "")
+    const updatedImage = images.find(image => image.id === imageId)
+    return NextResponse.json({
+      ok: true,
+      delta: {
+        action,
+        imageId,
+        ...(action === "toggle-public" ? { isPublic: updatedImage?.isPublic === true } : {}),
+        ...(action === "move" ? { folderId: updatedImage?.folderId || "root" } : {}),
+      },
+    }, { headers: { "Cache-Control": "private, no-store" } })
+  }
   return NextResponse.json(galleryResponse(access), { headers: { "Cache-Control": "private, no-store" } })
 }
