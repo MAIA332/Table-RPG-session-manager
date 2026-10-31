@@ -120,7 +120,7 @@ export const CLASSES: GameClass[] = [
         name: "Ruptura",
         maxLevel: 4,
         description:
-          "Gaste 10 PM para atacar ignorando Resistências e causar [Nível x 5] de dano extra.",
+          "Gaste 10 PM para atacar e causar [Nível x 5] de dano extra.",
         action: { cost: 10, resource: "mp" },
       },
       {
@@ -162,7 +162,7 @@ export const CLASSES: GameClass[] = [
         name: "Encorajar",
         maxLevel: 6,
         description:
-          "Restaura PV de um aliado e aumenta o tamanho do dado de um atributo dele.",
+          "Restaura 10 PV de um aliado e esse aliado recebe +4 no próximo teste de perícia dele.",
         action: { cost: 5, resource: "mp" },
       },
       {
@@ -551,7 +551,7 @@ export const CLASSES: GameClass[] = [
         name: "Prisão de Terra",
         maxLevel: 3,
         description:
-          "Força o terreno a prender o inimigo. O alvo rola [MIG + DES]; falhas infligem a condição Lento e vulnerabilidade a ataques físicos por [Nível] rodadas.",
+          "Força o terreno a prender o inimigo. O alvo rola [MIG + DES] contra seu teste de Magia e Arcanismo; falhas causam vulnerabilidade a ataques físicos por [Nível] rodadas (o alvo recebe 1.5x de dano em ataques na contra a defesa física) e o alvo fica paralisado por 2 minutos.",
         action: { cost: 10, resource: "mp" },
       },
       {
@@ -721,8 +721,9 @@ export const CLASSES: GameClass[] = [
         name: "Você Não Pertence Aqui",
         maxLevel: 1,
         description:
-          "Uma vez por cena, uma entidade sobrenatural marcada deve realizar um Teste de VON. Em caso de falha, ela é expulsa temporariamente de seu hospedeiro ou perde suas habilidades sobrenaturais por 1 rodada.",
-      },
+          "Uma vez por cena, gaste 10 PM em uma entidade sobrenatural marcada, esta deve realizar um Teste de [Foco e Vontade] contra seu [Magia e Arcanismo]. Em caso de falha, ela é expulsa temporariamente de seu hospedeiro.",
+          action: { cost: 10, resource: "mp" },
+        },
     ],
   },
 
