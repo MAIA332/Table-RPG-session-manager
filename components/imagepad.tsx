@@ -2,13 +2,14 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { Check, ChevronRight, Eye, EyeOff, Folder, FolderPlus, Image as ImageIcon, Loader2, Pencil, Plus, Search, Send, Trash2, Upload, X } from "lucide-react"
+import { Check, ChevronRight, Eye, EyeOff, Folder, FolderPlus, FolderLock, LockKeyhole, ShieldCheck, Image as ImageIcon, Loader2, Pencil, Plus, Search, Send, Trash2, Upload, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
 import type { GalleryBroadcastRequest, GalleryFolder, GalleryImage } from "@/lib/types"
 
 import { createClientId } from "@/lib/client-id"
+import { canOpenGalleryFolder, canManageGalleryImage, canReadGalleryImage, isPrivatePlayerFolder, type GalleryPrivacyFolder } from "@/lib/gallery-privacy"
 
 export type SharedImage = GalleryImage
 
@@ -230,7 +231,7 @@ type GalleryCardProps = {
   busyVisibility: boolean
   busyRequest: boolean
   busyDelete: boolean
-  folders: GalleryFolder[]
+  movableFolders: GalleryFolder[]
   onShow: (image: SharedImage) => void
   onToggle: (image: SharedImage) => void
   onMove: (image: SharedImage, folderId: string) => void
@@ -241,7 +242,7 @@ type GalleryCardProps = {
 // Mantém os elementos de imagem independentes do estado do formulário/pastas.
 const GalleryCard = memo(function GalleryCard({
   image, isGm, canManage, isPending, validTarget, isShowing,
-  busyVisibility, busyRequest, busyDelete, folders,
+  busyVisibility, busyRequest, busyDelete, movableFolders,
   onShow, onToggle, onMove, onRequest, onDelete,
 }: GalleryCardProps) {
   return (
@@ -272,9 +273,9 @@ const GalleryCard = memo(function GalleryCard({
             disabled={busyVisibility} onClick={() => onToggle(image)} title={image.isPublic ? "Tornar privada" : "Tornar pública"}>
             {busyVisibility ? <Loader2 className="size-4 animate-spin" /> : image.isPublic ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
           </Button>
-          {isGm && <select value={image.folderId || "root"} onChange={(event) => onMove(image, event.target.value)}
-            className="h-8 max-w-24 rounded-sm border border-white/10 bg-black/50 px-1 text-[10px]">
-            {folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+          {movableFolders.length > 1 && <select aria-label={`Mover ${image.name} para pasta`} value={image.folderId || "root"} onChange={(event) => onMove(image, event.target.value)}
+            className="h-8 max-w-28 rounded-sm border border-white/10 bg-black/50 px-1 text-[10px]">
+            {movableFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
           </select>}
           {!isGm && <Button size="sm" variant="ghost" className="size-8 p-0 text-primary"
             disabled={isPending || busyRequest} onClick={() => onRequest(image)} title={isPending ? "Aguardando aprovação" : "Solicitar envio ao mestre"}>
@@ -385,21 +386,38 @@ export function Imagepad({
 
   }, [folders])
 
+  const privacyEnabled = Boolean((normalizedFolders.find(folder => folder.id === "root") as GalleryFolder & GalleryPrivacyFolder | undefined)?.privateFoldersEnabled)
+
+  // Defesa adicional contra estado antigo vindo de cache/localStorage da campanha.
+  // A autorização principal continua sendo feita no servidor.
   const normalizedImages = useMemo(
-
-    () => (Array.isArray(images) ? images : []).map((image) => ({ ...image, url: ensureHttps(image.url), folderId: image.folderId || "root" })),
-
-    [images],
-
+    () => (Array.isArray(images) ? images : [])
+      .filter(image => canReadGalleryImage(image, normalizedFolders, privacyEnabled, myUserId, isGm))
+      .map(image => ({ ...image, url: ensureHttps(image.url), folderId: image.folderId || "root" })),
+    [images, normalizedFolders, privacyEnabled, myUserId, isGm],
   )
-
-  const ownFolder = normalizedFolders.find((folder) => folder.ownerId === myUserId)
+  const ownFolder = normalizedFolders.find(folder => folder.ownerId === myUserId && folder.isPlayerFolder)
+  const mayCreateFolder = isGm || privacyEnabled
+  const mayEditFolder = (folder: GalleryFolder) => {
+    if (folder.id === "root" || folder.isPlayerFolder) return false
+    if (folder.ownerId === myUserId) return true
+    return isGm && (!privacyEnabled || !isPrivatePlayerFolder(folder))
+  }
+  const folderCanOpen = (folder: GalleryFolder) => canOpenGalleryFolder(folder, normalizedImages, privacyEnabled, myUserId, isGm)
+  const mayUploadHere = (folder: GalleryFolder) => isGm
+    ? (!privacyEnabled || !isPrivatePlayerFolder(folder))
+    : folder.ownerId === myUserId
+  // Referência estável para não remontar centenas de cards ao alterar o switch.
+  const movableFolders = useMemo(() => normalizedFolders.filter(folder => isGm
+    ? (!privacyEnabled || !isPrivatePlayerFolder(folder))
+    : folder.ownerId === myUserId,
+  ), [normalizedFolders, privacyEnabled, isGm, myUserId])
 
   useEffect(() => {
 
-    if (!normalizedFolders.some((folder) => folder.id === activeFolderId)) setActiveFolderId("root")
+    if (!normalizedFolders.some(folder => folder.id === activeFolderId && folderCanOpen(folder))) setActiveFolderId("root")
 
-  }, [activeFolderId, normalizedFolders])
+  }, [activeFolderId, normalizedFolders, normalizedImages, privacyEnabled])
 
   const visibleImages = useMemo(() => {
 
@@ -451,7 +469,7 @@ export function Imagepad({
 
   const activeFolder = normalizedFolders.find((folder) => folder.id === activeFolderId) || ROOT_FOLDER
 
-  const canManageImage = (image: SharedImage) => isGm || image.ownerId === myUserId
+  const canManageImage = (image: SharedImage) => canManageGalleryImage(image, normalizedFolders, privacyEnabled, myUserId, isGm)
 
   const isPending = (imageId: string) => requests.some((request) => request.imageId === imageId && request.requesterId === myUserId)
 
@@ -542,7 +560,8 @@ export function Imagepad({
 
     }
 
-    const folderId = isGm ? activeFolderId : ownFolder?.id || "root"
+    if (!mayUploadHere(activeFolder)) { setError("Esta pasta está protegida. Selecione uma pasta sua ou uma pasta pública."); return }
+    const folderId = activeFolderId === "root" && !isGm ? ownFolder?.id || "root" : activeFolderId
 
     const image: SharedImage = { id: createClientId(), name, url, isPublic: false, folderId, ownerId: myUserId, createdAt: Date.now() }
 
@@ -554,7 +573,7 @@ export function Imagepad({
 
     setNewUrl("")
 
-    if (!isGm && ownFolder) setActiveFolderId(ownFolder.id)
+    if (!isGm && activeFolderId === "root" && ownFolder) setActiveFolderId(ownFolder.id)
 
   }
 
@@ -582,25 +601,23 @@ export function Imagepad({
 
     const name = newFolderName.trim()
 
-    if (!isGm || !name) return
-
-    if (normalizedFolders.some((folder) => folder.name.trim().toLowerCase() === name.toLowerCase())) return setError("Já existe uma pasta com esse nome.")
-
-    const folder = { id: createClientId(), name }
-
-    updateForGm(normalizedImages, [...normalizedFolders, folder])
-
-    setActiveFolderId(folder.id)
-
+    if (!mayCreateFolder || !name) return
+    if (normalizedFolders.some(folder => folder.name.trim().toLowerCase() === name.toLowerCase())) return setError("Já existe uma pasta com esse nome.")
+    if (isGm) {
+      const folder = { id: createClientId(), name }
+      updateForGm(normalizedImages, [...normalizedFolders, folder])
+      setActiveFolderId(folder.id)
+    } else {
+      void runAction("create-folder", "create-folder", { name })
+    }
     setNewFolderName("")
-
     setShowNewFolder(false)
 
   }
 
   function renameFolder(folder: GalleryFolder) {
 
-    if (!isGm || folder.id === "root" || folder.isPlayerFolder) return
+    if (!mayEditFolder(folder)) return
 
     const name = window.prompt("Novo nome da pasta:", folder.name)?.trim()
 
@@ -608,23 +625,22 @@ export function Imagepad({
 
     if (normalizedFolders.some((entry) => entry.id !== folder.id && entry.name.toLowerCase() === name.toLowerCase())) return setError("Já existe uma pasta com esse nome.")
 
-    updateForGm(normalizedImages, normalizedFolders.map((entry) => entry.id === folder.id ? { ...entry, name } : entry))
+    if (isGm) updateForGm(normalizedImages, normalizedFolders.map(entry => entry.id === folder.id ? { ...entry, name } : entry))
+    else void runAction(`folder:${folder.id}`, "rename-folder", { folderId: folder.id, name })
 
   }
 
   function deleteFolder(folder: GalleryFolder) {
 
-    if (!isGm || folder.id === "root" || folder.isPlayerFolder) return
+    if (!mayEditFolder(folder)) return
 
     if (!window.confirm(`Excluir a pasta "${folder.name}"? As imagens serão movidas para Todas as imagens.`)) return
 
-    updateForGm(
-
-      normalizedImages.map((image) => image.folderId === folder.id ? { ...image, folderId: "root" } : image),
-
-      normalizedFolders.filter((entry) => entry.id !== folder.id),
-
+    if (isGm) updateForGm(
+      normalizedImages.map(image => image.folderId === folder.id ? { ...image, folderId: folder.ownerId ? `player:${folder.ownerId}` : "root" } : image),
+      normalizedFolders.filter(entry => entry.id !== folder.id),
     )
+    else void runAction(`folder:${folder.id}`, "delete-folder", { folderId: folder.id })
 
     setActiveFolderId("root")
 
@@ -648,15 +664,16 @@ export function Imagepad({
   cardActions.current = {
     show: image => { void showImage(image) },
     toggle: image => {
-      if (isGm) updateForGm(normalizedImages.map(entry => entry.id === image.id ? { ...entry, isPublic: !entry.isPublic } : entry))
+      if (isGm && !privacyEnabled) updateForGm(normalizedImages.map(entry => entry.id === image.id ? { ...entry, isPublic: !entry.isPublic } : entry))
       else void runAction(`visibility:${image.id}`, "toggle-public", { imageId: image.id })
     },
     move: (image, folderId) => {
-      updateForGm(normalizedImages.map(entry => entry.id === image.id ? { ...entry, folderId } : entry))
+      if (isGm) updateForGm(normalizedImages.map(entry => entry.id === image.id ? { ...entry, folderId } : entry))
+      else void runAction(`move:${image.id}`, "move", { imageId: image.id, folderId })
     },
     request: image => { void runAction(`send:${image.id}`, "request-broadcast", { imageId: image.id }) },
     remove: image => {
-      if (isGm) updateForGm(normalizedImages.filter(entry => entry.id !== image.id))
+      if (isGm && !privacyEnabled) updateForGm(normalizedImages.filter(entry => entry.id !== image.id))
       else void runAction(`delete:${image.id}`, "delete", { imageId: image.id })
     },
   }
@@ -689,6 +706,22 @@ export function Imagepad({
       </header>
 
       {error && <div className="mb-3 flex shrink-0 items-center justify-between rounded-sm border border-red-500/40 bg-red-950/40 px-3 py-2 text-sm text-red-200"><span>{error}</span><button onClick={() => setError("")}><X className="size-4" /></button></div>}
+
+      {isGm && <section className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/[0.035] p-3 sm:p-4" aria-label="Proteção das pastas de jogadores">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-primary/25 bg-primary/10 text-primary"><LockKeyhole className="size-4" /></span>
+          <div><p className="text-xs font-bold text-foreground">Pastas privadas dos jogadores</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{privacyEnabled ? "Ativo: somente os donos abrem conteúdos não liberados, inclusive perante o Mestre." : "Desligado: o Mestre pode acessar e editar todas as pastas; demais jogadores continuam vendo apenas imagens liberadas."}</p></div>
+        </div>
+        <button role="switch" type="button" aria-label="Habilitar pastas privadas" aria-checked={privacyEnabled} disabled={!!busyKey}
+          onClick={() => {
+            if (privacyEnabled && !window.confirm("Desativar pastas privadas? O Mestre terá acesso imediato a TODAS as imagens e poderá editar e excluir conteúdos antes protegidos. Outros jogadores continuarão vendo só as imagens liberadas. Deseja continuar?")) return
+            void runAction("privacy-toggle", "set-private-folders", { enabled: !privacyEnabled, confirmed: true })
+          }}
+          className={`relative h-7 w-14 shrink-0 rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${privacyEnabled ? "border-primary bg-primary/80" : "border-border bg-muted"}`}>
+          <span className={`absolute top-[3px] size-5 rounded-full bg-white shadow-sm transition-all ${privacyEnabled ? "left-[30px]" : "left-[3px]"}`} />
+        </button>
+      </section>}
 
       {isGm && <section className="mb-4 shrink-0 rounded-sm border border-primary/25 bg-black/25 p-3">
 
@@ -732,21 +765,47 @@ export function Imagepad({
 
         <aside className="hidden w-64 shrink-0 flex-col overflow-hidden rounded-sm border border-primary/20 bg-black/20 md:flex">
 
-          <div className="flex items-center justify-between border-b border-primary/15 p-3"><span className="text-xs font-black uppercase tracking-widest">Pastas</span>{isGm && <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => setShowNewFolder(true)}><FolderPlus className="size-4" /></Button>}</div>
+          <div className="flex items-center justify-between border-b border-primary/15 p-3"><span className="text-xs font-black uppercase tracking-widest">Pastas</span>{mayCreateFolder && <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => setShowNewFolder(true)} title="Nova pasta"><FolderPlus className="size-4" /></Button>}</div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-2 custom-scrollbar-sepia">{normalizedFolders.map((folder) => <div key={folder.id} className={`group mb-1 flex items-center rounded-sm ${activeFolderId === folder.id ? "bg-primary/15 text-primary" : "hover:bg-white/5"}`}><button onClick={() => setActiveFolderId(folder.id)} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm"><Folder className="size-4 shrink-0" /><span className="min-w-0 flex-1 truncate">{folder.id === "root" ? "Todas as imagens" : folder.isPlayerFolder ? `${folder.name} (jogador)` : folder.name}</span><span className="text-[10px] text-muted-foreground">{count(folder.id)}</span></button>{isGm && folder.id !== "root" && !folder.isPlayerFolder && <div className="mr-1 hidden gap-1 group-hover:flex"><button onClick={() => renameFolder(folder)}><Pencil className="size-3" /></button><button onClick={() => deleteFolder(folder)} className="text-red-400"><Trash2 className="size-3" /></button></div>}</div>)}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-2 custom-scrollbar-sepia">
+            {normalizedFolders.map(folder => {
+              const owned = folder.ownerId === myUserId
+              const protectedFolder = isPrivatePlayerFolder(folder) && (privacyEnabled || !isGm)
+              const openable = folderCanOpen(folder)
+              return <div key={folder.id} className={`group mb-1 flex items-center rounded-lg border ${activeFolderId === folder.id ? "border-primary/35 bg-primary/15 text-primary" : "border-transparent hover:border-border/50 hover:bg-white/5"}`}>
+                <button type="button" disabled={!openable} aria-label={`${folder.name}${openable ? "" : ", pasta bloqueada"}`} title={openable ? folder.name : "Pasta privada: nenhuma imagem liberada pelo dono"}
+                  onClick={() => setActiveFolderId(folder.id)} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-55">
+                  {protectedFolder && !owned ? <FolderLock className="size-4 shrink-0 text-primary/65" /> : <Folder className="size-4 shrink-0" />}
+                  <span className="min-w-0 flex-1"><span className="block truncate">{folder.id === "root" ? "Todas as imagens" : folder.name}</span>
+                    {folder.ownerId && <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">por {(folder as GalleryFolder & GalleryPrivacyFolder).ownerName || players.find(player => player.userId === folder.ownerId)?.name || (owned ? "Você" : "Jogador")}</span>}
+                  </span>
+                  {protectedFolder && !owned && <LockKeyhole className="size-3 shrink-0 text-muted-foreground" />}
+                  <span className="text-[10px] text-muted-foreground">{openable ? count(folder.id) : "—"}</span>
+                </button>
+                {mayEditFolder(folder) && <div className="mr-1 flex gap-1 opacity-60 transition hover:opacity-100 group-focus-within:opacity-100"><button type="button" aria-label={`Renomear ${folder.name}`} onClick={() => renameFolder(folder)}><Pencil className="size-3" /></button><button type="button" aria-label={`Excluir ${folder.name}`} onClick={() => deleteFolder(folder)} className="text-red-400"><Trash2 className="size-3" /></button></div>}
+              </div>
+            })}
+          </div>
 
-          {isGm && showNewFolder && <div className="border-t border-primary/15 p-3"><input autoFocus value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && createFolder()} placeholder="Nome da pasta..." className="mb-2 w-full rounded-sm border border-white/10 bg-black/40 p-2 text-xs outline-none" /><div className="flex gap-2"><Button size="sm" variant="magical" className="flex-1" onClick={createFolder}>Criar</Button><Button size="sm" variant="ghost" onClick={() => setShowNewFolder(false)}>Cancelar</Button></div></div>}
+          {mayCreateFolder && showNewFolder && <div className="border-t border-primary/15 p-3"><input autoFocus value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && createFolder()} placeholder="Nome da pasta..." className="mb-2 w-full rounded-sm border border-white/10 bg-black/40 p-2 text-xs outline-none" /><div className="flex gap-2"><Button size="sm" variant="magical" className="flex-1" onClick={createFolder}>Criar</Button><Button size="sm" variant="ghost" onClick={() => setShowNewFolder(false)}>Cancelar</Button></div></div>}
 
         </aside>
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
 
-          <div className="mb-3 flex shrink-0 items-center gap-2 overflow-x-auto pb-1 md:hidden">{normalizedFolders.map((folder) => <button key={folder.id} onClick={() => setActiveFolderId(folder.id)} className={`flex shrink-0 items-center gap-2 rounded-sm border px-3 py-2 text-xs font-bold ${activeFolderId === folder.id ? "border-primary/40 bg-primary/15 text-primary" : "border-white/10 bg-black/20"}`}><Folder className="size-3.5" />{folder.id === "root" ? "Todas" : folder.name}</button>)}{isGm && <button onClick={() => setShowNewFolder(true)} className="rounded-sm border border-primary/30 p-2"><FolderPlus className="size-4" /></button>}</div>
+          <div className="mb-3 flex shrink-0 items-center gap-2 overflow-x-auto pb-1 md:hidden">{normalizedFolders.map(folder => {
+            const openable = folderCanOpen(folder)
+            const protectedFolder = isPrivatePlayerFolder(folder) && (privacyEnabled || !isGm) && folder.ownerId !== myUserId
+            return <button key={folder.id} type="button" disabled={!openable} onClick={() => setActiveFolderId(folder.id)} className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 ${activeFolderId === folder.id ? "border-primary/40 bg-primary/15 text-primary" : "border-white/10 bg-black/20"}`}>
+              {protectedFolder ? <FolderLock className="size-3.5" /> : <Folder className="size-3.5" />}
+              <span className="flex flex-col items-start"><span>{folder.id === "root" ? "Todas" : folder.name}</span>{folder.ownerId && <small className="text-[9px] font-normal text-muted-foreground">{(folder as GalleryFolder & GalleryPrivacyFolder).ownerName || "Jogador"}</small>}</span>
+              {protectedFolder && <LockKeyhole className="size-3" />}
+            </button>
+          })}{mayCreateFolder && <button type="button" onClick={() => setShowNewFolder(true)} className="rounded-sm border border-primary/30 p-2"><FolderPlus className="size-4" /></button>}</div>
 
-          <div className="mb-3 flex shrink-0 items-center gap-2 text-sm font-bold"><Folder className="size-5 text-primary" /><span className="truncate">{activeFolder.name}</span><ChevronRight className="size-4 text-muted-foreground" /><span className="text-xs font-normal text-muted-foreground">{visibleImages.length} imagem(ns)</span></div>
+          <div className="mb-3 flex shrink-0 items-center gap-2 text-sm font-bold">{isPrivatePlayerFolder(activeFolder) && (privacyEnabled || !isGm) ? <LockKeyhole className="size-5 text-primary" /> : <Folder className="size-5 text-primary" />}<span className="truncate">{activeFolder.name}</span><ChevronRight className="size-4 text-muted-foreground" /><span className="text-xs font-normal text-muted-foreground">{visibleImages.length} imagem(ns)</span>{activeFolder.ownerId && <span className="ml-auto hidden items-center gap-1 text-[10px] font-normal text-muted-foreground sm:inline-flex"><ShieldCheck className="size-3"/> Pasta de {(activeFolder as GalleryFolder & GalleryPrivacyFolder).ownerName || "jogador"}</span>}</div>
 
-          {(isGm || ownFolder) && <div className="panel mb-4 flex shrink-0 flex-col gap-2 rounded-sm border border-primary/20 p-3 sm:flex-row">
+          {mayUploadHere(activeFolder) && <div className="panel mb-4 flex shrink-0 flex-col gap-2 rounded-sm border border-primary/20 p-3 sm:flex-row">
 
             <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Nome da imagem" className="min-w-0 flex-1 rounded-sm border border-white/10 bg-black/40 p-2 text-sm outline-none" />
 
@@ -773,7 +832,7 @@ export function Imagepad({
                 busyVisibility={busyKey === `visibility:${image.id}`}
                 busyRequest={busyKey === `send:${image.id}`}
                 busyDelete={busyKey === `delete:${image.id}`}
-                folders={normalizedFolders}
+                movableFolders={movableFolders}
                 onShow={cardShow}
                 onToggle={cardToggle}
                 onMove={cardMove}
@@ -796,7 +855,7 @@ export function Imagepad({
 
       </div>
 
-      {isGm && showNewFolder && (
+      {mayCreateFolder && showNewFolder && (
 
         <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/75 p-4 md:hidden" onClick={() => setShowNewFolder(false)}>
 

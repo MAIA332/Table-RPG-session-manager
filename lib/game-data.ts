@@ -175,9 +175,10 @@ export const CLASSES: GameClass[] = [
       {
         id: "or-persuasive",
         name: "Persuasivo",
-        maxLevel: 2,
+        maxLevel: 1,
         description:
-          "Gaste [Nível da Perícia x 2] PM em testes sociais para convencer alguém.",
+          "Gaste 21 PM em testes sociais para convencer alguém.",
+          action: { cost: 21, resource: "mp" }
       },
       {
         id: "or-ally",
@@ -1047,7 +1048,7 @@ export const CLASSES: GameClass[] = [
         name: "Instinto do Parasita",
         maxLevel: 4,
         description:
-          "Quando estiver em Crise, recebe +[Nível da Perícia] em testes físicos e seus ataques causam [Nível da Perícia] de dano extra.",
+          "Quando estiver em Crise, recebe +[Nível da Perícia]x2 em testes físicos e seus ataques causam [Nível da Perícia] de dano extra.",
       },
       {
         id: "pa-symbiosis",
@@ -1066,7 +1067,7 @@ export const CLASSES: GameClass[] = [
               id: "simbiose-potencia",
               name: "Potência",
               description:
-                "Aumente em +2 o dano ou em +2 testes relacionados a Mutação.",
+                "Aumente em +4 o dano ou em +2 testes relacionados a Mutação.",
             },
             {
               id: "simbiose-eficiency",
@@ -1081,7 +1082,7 @@ export const CLASSES: GameClass[] = [
               id: "simbiose-potencia-upgraded",
               name: "Potência Aprimorada",
               description:
-                "Aumente em +3 o dano ou em +3 testes relacionados a Mutação.",
+                "Aumente em +5 o dano ou em +3 testes relacionados a Mutação.",
             },
             {
               id: "simbiose-alcance",
@@ -1100,7 +1101,7 @@ export const CLASSES: GameClass[] = [
               id: "simbiose-intensufy",
               name: "Intensidade",
               description:
-                "Aumente em +4 o dano ou +4 em testes relacionados á Mutação.",
+                "Aumente em +6 o dano ou +4 em testes relacionados á Mutação.",
             },
             {
               id: "simbiose-penetration",
@@ -1121,7 +1122,7 @@ export const CLASSES: GameClass[] = [
               id: "simbiose-exalt",
               name: "Exaltação",
               description:
-                "Aumente em +5 o dano ou +5 em testes relacionados á Mutação.",
+                "Aumente em +7 o dano ou +5 em testes relacionados á Mutação.",
             },
             {
               id: "simbiose-sustain",

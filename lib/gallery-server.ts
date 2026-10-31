@@ -1,5 +1,6 @@
 import type { Campaign, GalleryBroadcastRequest, GalleryFolder, GalleryImage, User } from "./types"
 import { store } from "./store"
+import { PRIVATE_FOLDERS_FLAG_ID, privateFoldersEnabled, type GalleryPrivacyFolder } from "./gallery-privacy"
 
 export const ROOT_GALLERY_FOLDER: GalleryFolder = { id: "root", name: "Todas as imagens" }
 
@@ -8,18 +9,31 @@ export function playerFolderId(userId: string) {
 }
 
 export function getGalleryFolders(campaign: Campaign, savedFolders: GalleryFolder[]): GalleryFolder[] {
-  const custom = (Array.isArray(savedFolders) ? savedFolders : []).filter(
-    (folder) => folder && typeof folder.id === "string" && typeof folder.name === "string" && folder.id !== "root" && !folder.id.startsWith("player:"),
-  )
+  const records = Array.isArray(savedFolders) ? savedFolders : []
+  const enabled = privateFoldersEnabled(records)
+  const custom = records.filter(
+    folder => folder && typeof folder.id === "string" && typeof folder.name === "string" &&
+      folder.id !== "root" && folder.id !== PRIVATE_FOLDERS_FLAG_ID && !folder.id.startsWith("player:"),
+  ).map(folder => {
+    const ownerId = (folder as GalleryFolder & GalleryPrivacyFolder).ownerId
+    return ownerId ? { ...folder, ownerName: store.users.get(ownerId)?.name || "Jogador" } : folder
+  })
   const players = campaign.members
-    .filter((member) => member.role === "player")
-    .map((member) => ({
+    .filter(member => member.role === "player")
+    .map(member => ({
       id: playerFolderId(member.userId),
       name: store.users.get(member.userId)?.name || "Jogador",
       ownerId: member.userId,
+      ownerName: store.users.get(member.userId)?.name || "Jogador",
       isPlayerFolder: true,
     }))
-  return [ROOT_GALLERY_FOLDER, ...custom, ...players]
+  // O root transporta apenas a configuração pública do switch. O sentinel
+  // interno nunca aparece como pasta nem é enviado ao navegador.
+  return [
+    { ...ROOT_GALLERY_FOLDER, privateFoldersEnabled: enabled } as GalleryFolder,
+    ...custom,
+    ...players,
+  ]
 }
 
 export function sanitizeGalleryImage(value: unknown, fallbackOwner?: Pick<User, "id" | "name">): GalleryImage | null {
