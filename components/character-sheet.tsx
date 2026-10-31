@@ -1897,7 +1897,11 @@ function SkillGrantManager({
 
   const query = search.trim().toLocaleLowerCase("pt-BR")
   const filtered = allowed.filter((cls: any) => {
-    if (category === "owned" && !ownedClassIds.has(cls.id) && !chosenSubclassIds.includes(cls.id)) return false
+    // Uma subclasse elegível pertence ao percurso da classe-mãe, mesmo sem
+    // seleção prévia no Grimório. O filtro "Minhas" deve mostrá-la.
+    if (category === "owned" && !ownedClassIds.has(cls.id) &&
+        !(cls.parentClassId && ownedClassIds.has(String(cls.parentClassId))) &&
+        !chosenSubclassIds.includes(cls.id)) return false
     if (category === "subclasses" && !cls.parentClassId) return false
     if (!query) return true
     return cls.name.toLocaleLowerCase("pt-BR").includes(query) ||
@@ -2439,18 +2443,21 @@ export function CharacterSheet({
   const ownedClassIds = new Set<string>((character.classes || [])
     .filter((owned: any) => skillRank(owned.level) > 0)
     .map((owned: any) => String(owned.classId ?? owned.id)))
-  const upgradeClassCatalog = isGm
-    ? allClasses
-    : playerVisibleClassCatalog(allClasses, customClasses as CustomClassVisibility[])
-  // Especializações só entram no catálogo de evolução do jogador quando ele
-  // efetivamente possui a classe principal. A seleção no Grimório continua
-  // obrigatória e é validada por canPlayerUpgradeClass.
-  const eligibleUpgradeClasses = upgradeClassCatalog.filter((definition: any) =>
-    isGm || (
-      (!definition.parentClassId || ownedClassIds.has(definition.parentClassId)) &&
-      canPlayerUpgradeClass(definition, customClasses as CustomClassVisibility[], chosenSubclassIds)
-    ),
+  // Classes BASE preservam as regras existentes de publicação do Mestre.
+  // SUBCLASSES têm apenas um requisito: possuir a classe principal (nível >= 1).
+  // Não exigem publicação separada nem seleção prévia no Grimório.
+  const visibleBaseClassIds = new Set<string>(
+    playerVisibleClassCatalog(allClasses, customClasses as CustomClassVisibility[])
+      .filter((definition: any) => !definition.parentClassId)
+      .map((definition: any) => String(definition.id)),
   )
+  const eligibleUpgradeClasses = isGm
+    ? allClasses
+    : allClasses.filter((definition: any) => definition.parentClassId
+      ? ownedClassIds.has(String(definition.parentClassId))
+      : visibleBaseClassIds.has(String(definition.id)) &&
+        canPlayerUpgradeClass(definition, customClasses as CustomClassVisibility[], chosenSubclassIds),
+    )
   const learnedSkillGroups = allClasses
     .map((definition: any) => {
       const learnedSkills = definition.skills.filter(
@@ -2884,16 +2891,18 @@ export function CharacterSheet({
     if (!definition || !skill ||
         skillRank(skillsObj[skillId]) >= skillMaxRank(skill)) return
 
-    if (!isGm && definition.parentClassId && !ownedClassIds.has(definition.parentClassId)) {
+    if (!isGm && definition.parentClassId && !ownedClassIds.has(String(definition.parentClassId))) {
       setSkillSaveError("Para aprender esta subclasse, primeiro adquira sua classe principal.")
       return
     }
-    if (!isGm && !canPlayerUpgradeClass(
+    // A verificação de publicação só se aplica às classes BASE. A subclasse
+    // fica liberada automaticamente para quem possui sua classe-mãe.
+    if (!isGm && !definition.parentClassId && !canPlayerUpgradeClass(
       definition,
       customClasses as CustomClassVisibility[],
       chosenSubclassIds,
     )) {
-      setSkillSaveError("Essa classe ou subclasse não está liberada pelo mestre para evolução.")
+      setSkillSaveError("Essa classe não está liberada pelo mestre para evolução.")
       return
     }
     if (!isGm && unspentPoints <= 0) return

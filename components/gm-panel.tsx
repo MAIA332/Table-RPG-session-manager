@@ -637,197 +637,27 @@ function createBonusDraft(): GameSkillBonus {
   }
 }
 
-export function GmPanel({
-  campaignId,
-  booksRevision = 0,
-  customChecks,
-  customChecksRevision,
-  onRefreshCustomChecks,
-  isOpen,
-  onClose,
-  characters,
-  activeCreatures,
-  members,
-  customEquipment,
-  customClasses,
-  onCreateEquipment,
-  onDeleteEquipment,
-  onCreateClass,
-  onDeleteClass,
-  onGiveZenits,
-  onGiveCustomItem,
-  onGiveSystemItem,
-
-  // Pastas da loja
-  storeFolders,
-  onCreateFolder,
-  onUpdateFolder,
-  onDeleteFolder,
-  onMoveCustomItem,
-
-  activeHazards,
-  onLaunchHazard,
-  onStopHazard,
-}: GmPanelProps) {
-  const [gmPanelTab, setGmPanelTab] = useState<
-    "catalog" | "custom" | "zenits" | "classes" | "hazards" | "store-config" | "checks"
-  >("catalog")
-  const [zenitAmount, setZenitAmount] = useState<number | "">("")
-  const [selectedLoot, setSelectedLoot] = useState<string | null>(null)
-  const [selectedTargetCharId, setSelectedTargetCharId] = useState<
-    string | null
-  >(null)
-  const [sendingLoot, setSendingLoot] = useState(false)
-  const [lootSearchQuery, setLootSearchQuery] = useState("")
-  // Estado apenas de apresentação do catálogo. Nenhuma mudança nos itens persistidos.
-  const [catalogCategory, setCatalogCategory] = useState("all")
-  const [catalogSource, setCatalogSource] = useState("all")
-  const [catalogSort, setCatalogSort] = useState("default")
-  const [catalogView, setCatalogView] = useState<"grid" | "list">("grid")
-  const [newFolderName, setNewFolderName] = useState("")
-  // Filtros locais da interface de organização; não alteram os dados da loja.
-  const [storeItemSearch, setStoreItemSearch] = useState("")
-  const [storeFolderFilter, setStoreFolderFilter] = useState("all")
-
-  // Rascunho Relíquias
-  const [customItemName, setCustomItemName] = useState("")
-  const [customItemType, setCustomItemType] = useState<
-    "text" | "image" | "video" | "app-blueprints"
-  >("text")
-  const [customWeight, setCustomWeight] = useState<ItemWeight>({
-    weight: 100,
-    weightUnit: "g",
-  })
-  const [customItemContent, setCustomItemContent] = useState("")
-
-  // Rascunho Equipamentos de Sistema
-  const [creationMode, setCreationMode] = useState<"relic" | "system">("system")
-  const [sysDraft, setSysDraft] = useState<any>({
-    name: "",
-    category: "weapon",
-    consumable: false,
-    imageUrl: "",
-    cost: 100,
-    purchasable: true,
-    detail: "",
-    damage: "",
-    defense: "",
-    mdef: "",
-    type: "",
-    bonus: "",
-    effect: "",
-    actions: [],
-  })
-
-  // Rascunho de Classe (Homebrew)
-  const createSkillDraft = (): GameSkill => ({
-    id: `sk-${Math.random().toString(36).substring(2, 9)}`,
-    name: "",
-    maxLevel: 5,
-    description: "",
-  })
-
-  const createBonusDraft = (): GameSkillBonus => ({
-    id: `bonus-${Math.random().toString(36).substring(2, 9)}`,
-    name: "",
-    description: "",
-  })
-
-  const [classDraft, setClassDraft] = useState<CustomClassVisibility>({
-    id: "",
-    playerVisible: false,
-    name: "",
-    archetype: "",
-    description: "",
-    hpPerLevel: 5,
-    mpPerLevel: 5,
-    primaryAttribute: "mig",
-    skills: [createSkillDraft()],
-  })
-
-  const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null)
-
-  // Estado para expandir os detalhes da classe homebrew
-  const [expandedClassId, setExpandedClassId] = useState<string | null>(null)
-  const [savingClass, setSavingClass] = useState(false)
-  const [publishingClassId, setPublishingClassId] = useState<string | null>(null)
-
-  async function changeClassVisibility(cls: GameClass) {
-    if (publishingClassId) return
-    setPublishingClassId(cls.id)
-    try {
-      await onCreateClass({ ...cls, playerVisible: !isClassPublished(cls) } as CustomClassVisibility)
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Não foi possível alterar a publicação da classe.")
-    } finally {
-      setPublishingClassId(null)
-    }
-  }
-
-  const allFolders = normalizeStoreFolders(storeFolders)
-
-  // Função para criar pasta
-  function handleCreateFolder() {
-    if (!newFolderName.trim()) return alert("Dê um nome para a pasta.")
-    onCreateFolder({
-      id: "folder-" + Math.random().toString(36).substring(2, 9),
-      name: newFolderName,
-      isVisible: true,
-      isSystem: false,
-    })
-    setNewFolderName("")
-  }
-
-  const allLoot = [...customEquipment, ...EQUIPMENT]
-  const catalogCategories = [
-    { id: "all", label: "Todos", icon: LayoutGrid },
-    { id: "weapon", label: "Armas", icon: Sword },
-    { id: "armor", label: "Armaduras", icon: Shield },
-    { id: "shield", label: "Escudos", icon: Shield },
-    { id: "accessory", label: "Acessórios", icon: Gem },
-    { id: "misc", label: "Diversos", icon: Package },
-  ] as const
-  const catalogCategoryName: Record<string, string> = {
-    weapon: "Arma", armor: "Armadura", shield: "Escudo",
-    accessory: "Acessório", misc: "Diversos",
-  }
-  const filteredLoot = allLoot
-    .filter((item) => {
-      const query = lootSearchQuery.trim().toLocaleLowerCase("pt-BR")
-      const matchesSearch = !query || [item.name, item.detail, item.type]
-        .some((text) => String(text ?? "").toLocaleLowerCase("pt-BR").includes(query))
-      const isCustom = String(item.id).startsWith("custom-eq-")
-      const matchesSource = catalogSource === "all" || (catalogSource === "custom" ? isCustom : !isCustom)
-      return matchesSearch && matchesSource && (catalogCategory === "all" || item.category === catalogCategory)
-    })
-    .sort((a, b) => {
-      if (catalogSort === "name") return String(a.name).localeCompare(String(b.name), "pt-BR")
-      if (catalogSort === "price-asc") return Number(a.cost ?? 0) - Number(b.cost ?? 0)
-      if (catalogSort === "price-desc") return Number(b.cost ?? 0) - Number(a.cost ?? 0)
-      return 0 // A ordem original continua como visualização padrão.
-    })
-  const selectedCatalogItem = allLoot.find((item) => item.id === selectedLoot)
-  const customCatalogCount = customEquipment.length
-
-  function resetCatalogFilters() {
-    setLootSearchQuery("")
-    setCatalogCategory("all")
-    setCatalogSource("all")
-    setCatalogSort("default")
-  }
-
-  function CreatedClassCard({
+/**
+ * Este componente precisa existir FORA de GmPanel.
+ * Se seu tipo muda a cada render, o React desmonta o cartão e o
+ * AnimatePresence reinicia continuamente a expansão.
+ */
+function CreatedClassCard({
     cls,
     expanded,
     onToggle,
     onDelete,
     onEdit,
+    publishingClassId,
+    onChangeVisibility,
   }: {
     cls: GameClass
     expanded: boolean
     onToggle: () => void
     onDelete: () => void
     onEdit: () => void
+    publishingClassId: string | null
+    onChangeVisibility: (cls: GameClass) => void
   }) {
     const attributeLabels: Record<GameClass["primaryAttribute"], string> = {
       mig: "Vigor (MIG)",
@@ -906,7 +736,7 @@ export function GmPanel({
           <button
             type="button"
             disabled={publishingClassId !== null}
-            onClick={() => void changeClassVisibility(cls)}
+            onClick={() => onChangeVisibility(cls)}
             title={isClassPublished(cls) ? "Ocultar dos jogadores" : "Liberar aos jogadores"}
             aria-label={`${isClassPublished(cls) ? "Ocultar" : "Liberar"} ${cls.name} para evolução`}
             className={`rounded-md border p-2 text-xs font-bold disabled:opacity-50 ${isClassPublished(cls)
@@ -1179,6 +1009,186 @@ export function GmPanel({
         </AnimatePresence>
       </div>
     )
+  }
+
+
+export function GmPanel({
+  campaignId,
+  booksRevision = 0,
+  customChecks,
+  customChecksRevision,
+  onRefreshCustomChecks,
+  isOpen,
+  onClose,
+  characters,
+  activeCreatures,
+  members,
+  customEquipment,
+  customClasses,
+  onCreateEquipment,
+  onDeleteEquipment,
+  onCreateClass,
+  onDeleteClass,
+  onGiveZenits,
+  onGiveCustomItem,
+  onGiveSystemItem,
+
+  // Pastas da loja
+  storeFolders,
+  onCreateFolder,
+  onUpdateFolder,
+  onDeleteFolder,
+  onMoveCustomItem,
+
+  activeHazards,
+  onLaunchHazard,
+  onStopHazard,
+}: GmPanelProps) {
+  const [gmPanelTab, setGmPanelTab] = useState<
+    "catalog" | "custom" | "zenits" | "classes" | "hazards" | "store-config" | "checks"
+  >("catalog")
+  const [zenitAmount, setZenitAmount] = useState<number | "">("")
+  const [selectedLoot, setSelectedLoot] = useState<string | null>(null)
+  const [selectedTargetCharId, setSelectedTargetCharId] = useState<
+    string | null
+  >(null)
+  const [sendingLoot, setSendingLoot] = useState(false)
+  const [lootSearchQuery, setLootSearchQuery] = useState("")
+  // Estado apenas de apresentação do catálogo. Nenhuma mudança nos itens persistidos.
+  const [catalogCategory, setCatalogCategory] = useState("all")
+  const [catalogSource, setCatalogSource] = useState("all")
+  const [catalogSort, setCatalogSort] = useState("default")
+  const [catalogView, setCatalogView] = useState<"grid" | "list">("grid")
+  const [newFolderName, setNewFolderName] = useState("")
+  // Filtros locais da interface de organização; não alteram os dados da loja.
+  const [storeItemSearch, setStoreItemSearch] = useState("")
+  const [storeFolderFilter, setStoreFolderFilter] = useState("all")
+
+  // Rascunho Relíquias
+  const [customItemName, setCustomItemName] = useState("")
+  const [customItemType, setCustomItemType] = useState<
+    "text" | "image" | "video" | "app-blueprints"
+  >("text")
+  const [customWeight, setCustomWeight] = useState<ItemWeight>({
+    weight: 100,
+    weightUnit: "g",
+  })
+  const [customItemContent, setCustomItemContent] = useState("")
+
+  // Rascunho Equipamentos de Sistema
+  const [creationMode, setCreationMode] = useState<"relic" | "system">("system")
+  const [sysDraft, setSysDraft] = useState<any>({
+    name: "",
+    category: "weapon",
+    consumable: false,
+    imageUrl: "",
+    cost: 100,
+    purchasable: true,
+    detail: "",
+    damage: "",
+    defense: "",
+    mdef: "",
+    type: "",
+    bonus: "",
+    effect: "",
+    actions: [],
+  })
+
+  // Rascunho de Classe (Homebrew)
+  const createSkillDraft = (): GameSkill => ({
+    id: `sk-${Math.random().toString(36).substring(2, 9)}`,
+    name: "",
+    maxLevel: 5,
+    description: "",
+  })
+
+  const createBonusDraft = (): GameSkillBonus => ({
+    id: `bonus-${Math.random().toString(36).substring(2, 9)}`,
+    name: "",
+    description: "",
+  })
+
+  const [classDraft, setClassDraft] = useState<CustomClassVisibility>({
+    id: "",
+    playerVisible: false,
+    name: "",
+    archetype: "",
+    description: "",
+    hpPerLevel: 5,
+    mpPerLevel: 5,
+    primaryAttribute: "mig",
+    skills: [createSkillDraft()],
+  })
+
+  const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null)
+
+  // Estado para expandir os detalhes da classe homebrew
+  const [expandedClassId, setExpandedClassId] = useState<string | null>(null)
+  const [savingClass, setSavingClass] = useState(false)
+  const [publishingClassId, setPublishingClassId] = useState<string | null>(null)
+
+  async function changeClassVisibility(cls: GameClass) {
+    if (publishingClassId) return
+    setPublishingClassId(cls.id)
+    try {
+      await onCreateClass({ ...cls, playerVisible: !isClassPublished(cls) } as CustomClassVisibility)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Não foi possível alterar a publicação da classe.")
+    } finally {
+      setPublishingClassId(null)
+    }
+  }
+
+  const allFolders = normalizeStoreFolders(storeFolders)
+
+  // Função para criar pasta
+  function handleCreateFolder() {
+    if (!newFolderName.trim()) return alert("Dê um nome para a pasta.")
+    onCreateFolder({
+      id: "folder-" + Math.random().toString(36).substring(2, 9),
+      name: newFolderName,
+      isVisible: true,
+      isSystem: false,
+    })
+    setNewFolderName("")
+  }
+
+  const allLoot = [...customEquipment, ...EQUIPMENT]
+  const catalogCategories = [
+    { id: "all", label: "Todos", icon: LayoutGrid },
+    { id: "weapon", label: "Armas", icon: Sword },
+    { id: "armor", label: "Armaduras", icon: Shield },
+    { id: "shield", label: "Escudos", icon: Shield },
+    { id: "accessory", label: "Acessórios", icon: Gem },
+    { id: "misc", label: "Diversos", icon: Package },
+  ] as const
+  const catalogCategoryName: Record<string, string> = {
+    weapon: "Arma", armor: "Armadura", shield: "Escudo",
+    accessory: "Acessório", misc: "Diversos",
+  }
+  const filteredLoot = allLoot
+    .filter((item) => {
+      const query = lootSearchQuery.trim().toLocaleLowerCase("pt-BR")
+      const matchesSearch = !query || [item.name, item.detail, item.type]
+        .some((text) => String(text ?? "").toLocaleLowerCase("pt-BR").includes(query))
+      const isCustom = String(item.id).startsWith("custom-eq-")
+      const matchesSource = catalogSource === "all" || (catalogSource === "custom" ? isCustom : !isCustom)
+      return matchesSearch && matchesSource && (catalogCategory === "all" || item.category === catalogCategory)
+    })
+    .sort((a, b) => {
+      if (catalogSort === "name") return String(a.name).localeCompare(String(b.name), "pt-BR")
+      if (catalogSort === "price-asc") return Number(a.cost ?? 0) - Number(b.cost ?? 0)
+      if (catalogSort === "price-desc") return Number(b.cost ?? 0) - Number(a.cost ?? 0)
+      return 0 // A ordem original continua como visualização padrão.
+    })
+  const selectedCatalogItem = allLoot.find((item) => item.id === selectedLoot)
+  const customCatalogCount = customEquipment.length
+
+  function resetCatalogFilters() {
+    setLootSearchQuery("")
+    setCatalogCategory("all")
+    setCatalogSource("all")
+    setCatalogSort("default")
   }
 
   const [savingEquipment, setSavingEquipment] = useState(false)
@@ -2181,10 +2191,10 @@ export function GmPanel({
                                   key={cls.id}
                                   cls={cls}
                                   expanded={expandedClassId === cls.id}
+                                  publishingClassId={publishingClassId}
+                                  onChangeVisibility={cls => void changeClassVisibility(cls)}
                                   onToggle={() =>
-                                    setExpandedClassId(
-                                      expandedClassId === cls.id ? null : cls.id,
-                                    )
+                                    setExpandedClassId(current => current === cls.id ? null : cls.id)
                                   }
                                   onEdit={() => { setClassDraft({ ...structuredClone(cls), playerVisible: isClassPublished(cls) }); setExpandedSkillId(null) }}
                                   onDelete={() => {
