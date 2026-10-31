@@ -1826,6 +1826,230 @@ function CharacterCrisisDetailsModal({
   )
 }
 
+/**
+ * Atlas de evolução: apresentação independente das regras de aprendizagem.
+ * A API /learn-skill continua sendo a autoridade para pontos, permissões e níveis.
+ */
+function SkillGrantManager({
+  characterName, isGm, classes, allClasses, ownedClassIds, chosenSubclassIds,
+  skills, unspentPoints, pending, error, success, onLearn, onClose,
+}: {
+  characterName: string
+  isGm: boolean
+  classes: any[]
+  allClasses: any[]
+  ownedClassIds: ReadonlySet<string>
+  chosenSubclassIds: readonly string[]
+  skills: Record<string, number>
+  unspentPoints: number
+  pending: boolean
+  error: string | null
+  success: string | null
+  onLearn: (skillId: string) => void
+  onClose: () => void
+}) {
+  const [search, setSearch] = useState("")
+  const [category, setCategory] = useState<"all" | "owned" | "subclasses">("all")
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
+  const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null)
+  const dialogRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    const previousFocus = document.activeElement as HTMLElement | null
+    document.body.style.overflow = "hidden"
+    dialogRef.current?.focus()
+    const handleKeys = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); onClose(); return }
+      if (event.key !== "Tab" || !dialogRef.current) return
+      const tabbable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex="0"]',
+      )).filter(element => element.getClientRects().length > 0)
+      if (!tabbable.length) return
+      const first = tabbable[0]
+      const last = tabbable[tabbable.length - 1]
+      const active = document.activeElement as HTMLElement | null
+      if (!active || !dialogRef.current.contains(active)) {
+        event.preventDefault(); (event.shiftKey ? last : first).focus()
+      } else if (event.shiftKey && active === first) {
+        event.preventDefault(); last.focus()
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault(); first.focus()
+      }
+    }
+    window.addEventListener("keydown", handleKeys)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener("keydown", handleKeys)
+      previousFocus?.focus()
+    }
+    // O componente é montado apenas quando o Atlas é aberto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const allowed = classes
+    .map((cls: any) => ({
+      ...cls,
+      availableSkills: (Array.isArray(cls.skills) ? cls.skills : [])
+        .filter((skill: any) => skillRank(skills[skill.id]) < skillMaxRank(skill)),
+    }))
+    .filter((cls: any) => cls.availableSkills.length > 0)
+
+  const query = search.trim().toLocaleLowerCase("pt-BR")
+  const filtered = allowed.filter((cls: any) => {
+    if (category === "owned" && !ownedClassIds.has(cls.id) && !chosenSubclassIds.includes(cls.id)) return false
+    if (category === "subclasses" && !cls.parentClassId) return false
+    if (!query) return true
+    return cls.name.toLocaleLowerCase("pt-BR").includes(query) ||
+      cls.availableSkills.some((skill: any) =>
+        String(skill.name).toLocaleLowerCase("pt-BR").includes(query) ||
+        String(skill.description || "").toLocaleLowerCase("pt-BR").includes(query))
+  })
+  const currentClass = filtered.find((cls: any) => cls.id === selectedClassId) ?? filtered[0]
+  const visibleSkills = currentClass?.availableSkills.filter((skill: any) =>
+    !query || currentClass.name.toLocaleLowerCase("pt-BR").includes(query) ||
+    String(skill.name).toLocaleLowerCase("pt-BR").includes(query) ||
+    String(skill.description || "").toLocaleLowerCase("pt-BR").includes(query)) ?? []
+  const currentSkill = visibleSkills.find((skill: any) => skill.id === selectedSkillId) ?? visibleSkills[0]
+  const currentRank = currentSkill ? skillRank(skills[currentSkill.id]) : 0
+  const nextRank = currentRank + 1
+  const canLearn = Boolean(currentSkill && !pending && (isGm || unspentPoints > 0))
+  const totalAvailable = allowed.reduce((count: number, cls: any) => count + cls.availableSkills.length, 0)
+  const parent = currentClass?.parentClassId
+    ? allClasses.find((cls: any) => cls.id === currentClass.parentClassId)
+    : null
+
+  return (
+    <motion.div
+      variants={overlayVariants} initial="hidden" animate="visible" exit="exit"
+      className="fixed inset-0 z-[11000] overflow-hidden bg-[#080807]/95 text-foreground backdrop-blur-xl"
+      role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}
+    >
+      <motion.div
+        ref={dialogRef} role="dialog" aria-modal="true" aria-label={isGm ? "Conceder habilidades" : "Evolução de habilidades"}
+        tabIndex={-1} variants={modalVariants}
+        className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-[#0b0a09] outline-none"
+        style={{ backgroundImage: "radial-gradient(ellipse 55% 38% at 72% 0%, rgba(182,130,60,.09),transparent 85%), linear-gradient(rgba(220,175,100,.024) 1px,transparent 1px),linear-gradient(90deg,rgba(220,175,100,.024) 1px,transparent 1px)", backgroundSize: "auto, 38px 38px, 38px 38px" }}
+      >
+        <header className="z-20 shrink-0 border-b border-primary/20 bg-[#0d0b09]/95 px-4 py-3 sm:px-8 lg:px-12 lg:py-4">
+          <div className="mx-auto flex max-w-[1580px] items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+              <div className="grid size-11 shrink-0 place-items-center border border-primary/50 bg-primary/10 text-primary sm:size-12"><BookOpenText className="size-6" /></div>
+              <div className="min-w-0">
+                <p className="hidden text-[9px] font-black uppercase tracking-[.28em] text-primary/65 sm:block">Morte Mágica <span className="mx-2 text-muted-foreground/50">/</span> Progressão do personagem</p>
+                <h2 className="truncate font-serif text-xl font-black tracking-wide sm:text-2xl lg:text-3xl">{isGm ? "Conceder habilidades" : "Atlas de Evolução"}</h2>
+                <p className="truncate text-[11px] text-muted-foreground">{characterName} · {isGm ? "Gerenciamento do Mestre" : "Escolha sua próxima técnica"}</p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <span className="hidden rounded-sm border border-primary/30 bg-primary/5 px-3 py-2 text-[10px] font-bold uppercase tracking-[.15em] text-primary md:inline-flex">{isGm ? "Concessão gratuita" : `${unspentPoints} ponto(s) disponível(is)`}</span>
+              <button type="button" onClick={onClose} aria-label="Fechar Atlas de habilidades" className="grid size-10 place-items-center border border-border/60 bg-background/70 text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><X className="size-5" /></button>
+            </div>
+          </div>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-8 pt-5 [scrollbar-color:rgba(170,128,68,.5)_transparent] sm:px-8 lg:px-12">
+          <div className="mx-auto w-full max-w-[1580px] space-y-5">
+            <section aria-label="Resumo da evolução" className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+              <div className="border border-primary/25 bg-[#18140f]/85 p-3 sm:p-4">
+                <p className="text-[9px] font-black uppercase tracking-[.16em] text-primary/70">{isGm ? "Modo de concessão" : "Pontos para investir"}</p>
+                <p className="mt-1 font-serif text-2xl font-black text-primary sm:text-3xl">{isGm ? "Livre" : unspentPoints}</p>
+                <p className="text-[10px] text-muted-foreground">{isGm ? "Não consome XP nem pontos" : "Cada nível custa 1 ponto"}</p>
+              </div>
+              <div className="border border-border/45 bg-[#14120f]/80 p-3 sm:p-4">
+                <p className="text-[9px] font-black uppercase tracking-[.16em] text-muted-foreground">Classes elegíveis</p>
+                <p className="mt-1 font-serif text-2xl font-black sm:text-3xl">{allowed.length.toString().padStart(2, "0")}</p>
+                <p className="text-[10px] text-muted-foreground">Classes e especializações liberadas</p>
+              </div>
+              <div className="col-span-2 border border-border/45 bg-[#14120f]/80 p-3 sm:col-span-1 sm:p-4">
+                <p className="text-[9px] font-black uppercase tracking-[.16em] text-muted-foreground">Evoluções possíveis</p>
+                <p className="mt-1 font-serif text-2xl font-black sm:text-3xl">{totalAvailable.toString().padStart(2, "0")}</p>
+                <p className="text-[10px] text-muted-foreground">Técnicas com níveis disponíveis</p>
+              </div>
+            </section>
+
+            {(error || success) && <div role={error ? "alert" : "status"} className={`flex items-start gap-2 border px-4 py-3 text-sm ${error ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"}`}>{error ? <AlertTriangle className="mt-0.5 size-4 shrink-0" /> : <Check className="mt-0.5 size-4 shrink-0" />}{error || success}</div>}
+
+            <div className="grid min-w-0 gap-4 lg:grid-cols-[250px_minmax(0,1fr)] xl:grid-cols-[255px_minmax(0,1fr)_335px] xl:gap-5">
+              <aside className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:self-start">
+                <div className="border-l-2 border-primary/70 pl-3">
+                  <p className="text-[9px] font-black uppercase tracking-[.22em] text-primary/65">01 · Explore o catálogo</p>
+                  <h3 className="mt-0.5 font-serif text-xl font-bold">Suas possibilidades</h3>
+                </div>
+                <label className="relative block">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/70" />
+                  <span className="sr-only">Buscar classes e habilidades</span>
+                  <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar técnica ou classe..." className="h-11 w-full border border-primary/25 bg-black/40 pl-10 pr-9 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground/65 focus:border-primary/70" />
+                  {search && <button type="button" onClick={() => setSearch("")} aria-label="Limpar busca" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-primary"><X className="size-3.5" /></button>}
+                </label>
+                <div className="flex flex-wrap gap-1" role="group" aria-label="Filtrar classes">
+                  {([
+                    ["all", "Todas"], ["owned", "Minhas"], ["subclasses", "Subclasses"],
+                  ] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={category === key} onClick={() => { setCategory(key); setSelectedClassId(null); setSelectedSkillId(null) }} className={`border px-2.5 py-1.5 text-[10px] font-bold transition-colors ${category === key ? "border-primary bg-primary text-primary-foreground" : "border-border/55 bg-card/30 text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>{label}</button>)}
+                </div>
+                <nav aria-label="Classes disponíveis" className="flex gap-2 overflow-x-auto pb-2 lg:max-h-[55dvh] lg:flex-col lg:overflow-y-auto lg:pr-1 [scrollbar-color:rgba(170,128,68,.5)_transparent]">
+                  {filtered.map((cls: any, index: number) => {
+                    const selected = cls.id === currentClass?.id
+                    const isSubclass = Boolean(cls.parentClassId)
+                    const owner = ownedClassIds.has(cls.id) || chosenSubclassIds.includes(cls.id)
+                    return <button key={cls.id} type="button" onClick={() => { setSelectedClassId(cls.id); setSelectedSkillId(null) }} aria-current={selected ? "true" : undefined}
+                      className={`group min-w-[172px] shrink-0 border px-3 py-3 text-left transition-colors lg:min-w-0 ${selected ? "border-primary bg-primary/[.12]" : "border-border/45 bg-[#15120f]/70 hover:border-primary/45 hover:bg-card/40"}`}>
+                      <span className="flex items-start justify-between gap-2"><span className={`text-[9px] font-black uppercase tracking-[.15em] ${selected ? "text-primary" : "text-muted-foreground"}`}>{isSubclass ? "Especialização" : "Classe"} · {String(index + 1).padStart(2, "0")}</span>{selected ? <Check className="size-3.5 shrink-0 text-primary" /> : owner ? <span className="text-[9px] font-bold text-emerald-300">Ativa</span> : null}</span>
+                      <strong className="mt-2 block break-words font-serif text-base leading-tight text-foreground">{cls.name}</strong>
+                      {isSubclass && <p className="mt-1 text-[10px] text-muted-foreground">{allClasses.find((parentClass: any) => parentClass.id === cls.parentClassId)?.name || "Classe principal"}</p>}
+                      <span className="mt-3 inline-flex items-center gap-1.5 text-[10px] text-primary/80"><Sparkles className="size-3" />{cls.availableSkills.length} habilidade(s)</span>
+                    </button>
+                  })}
+                  {filtered.length === 0 && <p className="w-full border border-dashed border-border/50 p-4 text-xs leading-relaxed text-muted-foreground">Nenhuma classe elegível nesse filtro. {search ? "Tente outro termo." : "Confira as classes publicadas e as especializações escolhidas."}</p>}
+                </nav>
+                {!isGm && <div className="flex gap-2 border border-primary/20 bg-primary/[.045] p-3 text-[11px] leading-relaxed text-muted-foreground"><Lock className="mt-0.5 size-4 shrink-0 text-primary/80" /><p>Subclasses aparecem após possuir a classe principal, quando publicadas e selecionadas no Grimório.</p></div>}
+              </aside>
+
+              <main className="min-w-0 space-y-4">
+                <div className="border-l-2 border-primary/70 pl-3"><p className="text-[9px] font-black uppercase tracking-[.22em] text-primary/65">02 · Escolha sua técnica</p><h3 className="mt-0.5 font-serif text-xl font-bold sm:text-2xl">{currentClass?.name || "Catálogo vazio"}</h3><p className="mt-1 text-xs text-muted-foreground">{currentClass?.parentClassId ? `Especialização de ${parent?.name || "classe principal"}` : "Selecione uma habilidade para ver a próxima evolução."}</p></div>
+                {currentClass && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                  {visibleSkills.map((skill: any, index: number) => {
+                    const rank = skillRank(skills[skill.id])
+                    const maxRank = skillMaxRank(skill)
+                    const selected = skill.id === currentSkill?.id
+                    return <button key={skill.id} type="button" aria-pressed={selected} onClick={() => setSelectedSkillId(skill.id)} className={`group relative min-w-0 border p-4 text-left transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:p-5 ${selected ? "border-primary bg-primary/[.095] shadow-[inset_0_0_38px_rgba(179,130,62,.045)]" : "border-border/50 bg-[#16130f]/80 hover:border-primary/45 hover:bg-card/50"}`}>
+                      <div className="flex items-start justify-between gap-3"><span className={`grid size-9 shrink-0 place-items-center border ${selected ? "border-primary/50 bg-primary/15 text-primary" : "border-border/50 bg-black/30 text-muted-foreground"}`}><Swords className="size-4" /></span><span className="font-mono text-[10px] text-muted-foreground">{String(index + 1).padStart(2, "0")} / {String(visibleSkills.length).padStart(2, "0")}</span></div>
+                      <p className="mt-4 break-words font-serif text-lg font-bold text-foreground group-hover:text-primary">{skill.name}</p>
+                      <p className="mt-1.5 line-clamp-3 min-h-[2.8em] text-[11px] leading-relaxed text-muted-foreground">{formatSkillDescription(String(skill.description || ""), rank + 1) || "Aprimore esta habilidade para desbloquear o próximo nível."}</p>
+                      <div className="mt-4 flex items-center justify-between gap-2 text-[10px] font-bold"><span className="text-primary">Nível {rank} → {rank + 1}</span><span className="text-muted-foreground">Máx. {maxRank}</span></div>
+                      <div className="mt-2 flex gap-1" aria-label={`Nível ${rank} de ${maxRank}`}>
+                        {Array.from({ length: Math.min(maxRank, 20) }, (_, i) => <span key={i} className={`h-1.5 min-w-0 flex-1 ${i < rank ? "bg-primary" : i === rank && selected ? "bg-primary/35" : "bg-border/60"}`} />)}
+                      </div>
+                      <div className={`mt-4 flex items-center justify-between border-t pt-3 text-[10px] font-bold uppercase tracking-[.11em] ${selected ? "border-primary/30 text-primary" : "border-border/30 text-muted-foreground"}`}><span>{selected ? "Selecionada" : "Ver evolução"}</span>{selected ? <Check className="size-4" /> : <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />}</div>
+                    </button>
+                  })}
+                </div>}
+                {!currentClass && <div className="flex min-h-[240px] flex-col items-center justify-center border border-dashed border-border/50 bg-card/15 px-5 text-center"><SearchX className="size-9 text-primary/45" /><p className="mt-3 font-serif text-lg font-bold">Nenhuma habilidade disponível</p><p className="mt-2 max-w-md text-xs leading-relaxed text-muted-foreground">As habilidades aparecem após sua classe estar disponível e ainda possuir níveis para evoluir. Ajuste os filtros ou fale com o Mestre.</p>{search && <button type="button" onClick={() => { setSearch(""); setCategory("all") }} className="mt-4 border border-primary/40 px-4 py-2 text-xs font-bold text-primary">Limpar filtros</button>}</div>}
+              </main>
+
+              <aside className="min-w-0 lg:col-span-2 xl:sticky xl:top-4 xl:col-span-1 xl:self-start">
+                <div className="overflow-hidden border border-primary/30 bg-[#17130f]/95 shadow-[0_18px_50px_rgba(0,0,0,.26)]">
+                  <div className="flex items-center justify-between border-b border-primary/20 bg-primary/[.07] px-5 py-4"><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-primary/65">03 · Confirmar evolução</p><h3 className="mt-1 font-serif text-xl font-bold">Detalhes da habilidade</h3></div><Sparkles className="size-5 text-primary" /></div>
+                  {currentSkill ? <div className="space-y-5 p-5">
+                    <div><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Técnica selecionada</p><h4 className="mt-2 font-serif text-2xl font-bold leading-snug text-primary">{currentSkill.name}</h4><p className="mt-1 text-xs text-muted-foreground">{currentClass?.name}</p></div>
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border border-border/50 bg-background/60 p-3 text-center"><div><p className="text-[9px] uppercase tracking-wider text-muted-foreground">Atual</p><p className="font-mono text-xl font-black">Nv. {currentRank}</p></div><ArrowRight className="size-5 text-primary" /><div><p className="text-[9px] uppercase tracking-wider text-primary">Próximo</p><p className="font-mono text-xl font-black text-primary">Nv. {nextRank}</p></div></div>
+                    <div><p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-primary">Efeito do próximo nível</p><div className="max-h-[28dvh] overflow-y-auto whitespace-pre-wrap border-l-2 border-primary/40 bg-background/35 p-3 text-xs leading-relaxed text-foreground/85 [scrollbar-color:rgba(170,128,68,.5)_transparent]">{formatSkillDescription(String(currentSkill.description || ""), nextRank) || "Esta habilidade não possui uma descrição cadastrada."}</div></div>
+                    <div className="border-t border-border/40 pt-4"><p className="flex items-center gap-2 text-xs text-muted-foreground"><Info className="size-4 text-primary" />{isGm ? "Concedido gratuitamente. Não gasta XP ou pontos." : "Aumenta 1 nível e consome 1 ponto disponível."}</p>{!isGm && unspentPoints <= 0 && <p className="mt-2 text-xs font-bold text-rose-300">Sem pontos disponíveis para evoluir.</p>}</div>
+                    <Button type="button" disabled={!canLearn} onClick={() => onLearn(currentSkill.id)} className="h-12 w-full gap-2 rounded-sm bg-primary text-xs font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}{pending ? "Salvando evolução..." : isGm ? "Conceder este nível" : "Aprender este nível"}<ArrowRight className="ml-auto size-4" /></Button>
+                  </div> : <div className="p-6 text-center text-xs text-muted-foreground">Escolha uma classe e uma habilidade para visualizar os detalhes antes de confirmar.</div>}
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+        <footer className="z-20 shrink-0 border-t border-primary/20 bg-[#0d0b09]/95 px-4 py-3 sm:px-8 lg:px-12">
+          <div className="mx-auto flex max-w-[1580px] flex-wrap items-center justify-between gap-3"><p className="text-[11px] text-muted-foreground"><Lock className="mr-1 inline size-3 text-primary" />{isGm ? "Os níveis concedidos são persistidos pela API do personagem." : "Toda evolução é validada e salva no personagem pelo servidor."}</p><button type="button" onClick={onClose} className="border border-border/60 bg-card/20 px-5 py-2 text-xs font-bold text-foreground transition-colors hover:border-primary/50 hover:text-primary">Voltar à ficha</button></div>
+        </footer>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 export function CharacterSheet({
   character: rawCharacter,
   editable,
@@ -1919,6 +2143,7 @@ export function CharacterSheet({
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null)
   const [showLevelUp, setShowLevelUp] = useState(false)
   const [skillSaveError, setSkillSaveError] = useState<string | null>(null)
+  const [skillSaveSuccess, setSkillSaveSuccess] = useState<string | null>(null)
   const skillWriteRef = useRef(false)
   const [showInventory, setShowInventory] = useState(false)
   const [showStore, setShowStore] = useState(false)
@@ -2013,7 +2238,6 @@ export function CharacterSheet({
     value: 1,
   })
 
-  const [classSearch, setClassSearch] = useState("")
 
   function changeExpanded(next: boolean) {
     if (!canExpand) return
@@ -2212,9 +2436,21 @@ export function CharacterSheet({
   const unspentPoints = Math.max(0, charLevel - totalSkillPointsSpent)
   // Um jogador só pode aprender habilidades de classes publicadas pelo mestre.
   // O histórico de classes e perícias continua completo para cálculo dos pontos.
+  const ownedClassIds = new Set<string>((character.classes || [])
+    .filter((owned: any) => skillRank(owned.level) > 0)
+    .map((owned: any) => String(owned.classId ?? owned.id)))
   const upgradeClassCatalog = isGm
     ? allClasses
     : playerVisibleClassCatalog(allClasses, customClasses as CustomClassVisibility[])
+  // Especializações só entram no catálogo de evolução do jogador quando ele
+  // efetivamente possui a classe principal. A seleção no Grimório continua
+  // obrigatória e é validada por canPlayerUpgradeClass.
+  const eligibleUpgradeClasses = upgradeClassCatalog.filter((definition: any) =>
+    isGm || (
+      (!definition.parentClassId || ownedClassIds.has(definition.parentClassId)) &&
+      canPlayerUpgradeClass(definition, customClasses as CustomClassVisibility[], chosenSubclassIds)
+    ),
+  )
   const learnedSkillGroups = allClasses
     .map((definition: any) => {
       const learnedSkills = definition.skills.filter(
@@ -2648,6 +2884,10 @@ export function CharacterSheet({
     if (!definition || !skill ||
         skillRank(skillsObj[skillId]) >= skillMaxRank(skill)) return
 
+    if (!isGm && definition.parentClassId && !ownedClassIds.has(definition.parentClassId)) {
+      setSkillSaveError("Para aprender esta subclasse, primeiro adquira sua classe principal.")
+      return
+    }
     if (!isGm && !canPlayerUpgradeClass(
       definition,
       customClasses as CustomClassVisibility[],
@@ -2661,6 +2901,7 @@ export function CharacterSheet({
     skillWriteRef.current = true
     setPending(true)
     setSkillSaveError(null)
+    setSkillSaveSuccess(null)
     try {
       // O mesmo endpoint valida titularidade (jogador) ou papel GM (mestre),
       // publicação, níveis e saldo de pontos, e grava tudo no MongoDB.
@@ -2674,8 +2915,9 @@ export function CharacterSheet({
         throw new Error("A API não confirmou a evolução. Atualize a ficha antes de tentar novamente.")
       }
       onOptimistic(updated)
-      setShowLevelUp(false)
+      setSkillSaveSuccess(`${skill.name}: nível ${skillRank(updated.skills?.[skillId])} salvo com sucesso.`)
     } catch (error) {
+      setSkillSaveSuccess(null)
       setSkillSaveError(
         error instanceof Error
           ? error.message
@@ -3126,177 +3368,21 @@ export function CharacterSheet({
 
             <AnimatePresence>
               {showLevelUp && (
-                <motion.div
-                  variants={overlayVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-hidden"
-                  onClick={() => setShowLevelUp(false)}
-                >
-                  <motion.div
-                    variants={modalVariants}
-                    className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col border border-primary/50 bg-zinc-950 shadow-2xl"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <div className="flex justify-between items-center p-6 border-b border-border/50 bg-black/40 shrink-0">
-                      <div>
-                        <h4 className="font-serif text-2xl font-black text-primary flex items-center gap-2">
-                          <TrendingUp className="size-6" />{" "}
-                          {isGm ? "Conceder habilidades" : "Evolução"}
-                        </h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {isGm
-                            ? "Concessão gratuita: não consome pontos de evolução nem altera o XP."
-                            : `Você tem ${unspentPoints} ponto(s) para investir em Classes.`}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setShowLevelUp(false)}
-                        className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"
-                      >
-                        <X className="size-5 text-muted-foreground hover:text-white" />
-                      </button>
-                    </div>
-
-                    {skillSaveError && (
-                      <p
-                        role="alert"
-                        className="mx-6 mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
-                      >
-                        {skillSaveError}
-                      </p>
-                    )}
-                    {/* Barra de Busca */}
-                    <div className="px-6 py-4 border-b border-border/30 bg-black/20 shrink-0">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                        <input
-                          type="text"
-                          placeholder="Buscar por classe ou habilidade..."
-                          value={classSearch}
-                          onChange={(e) => setClassSearch(e.target.value)}
-                          className="w-full bg-zinc-900/50 border border-border/50 rounded-lg py-2.5 pl-10 pr-4 text-sm text-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-muted-foreground/50"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="p-6 overflow-y-auto custom-scrollbar-sepia flex-1 relative">
-                      {(() => {
-                        // Filtra e prepara as classes antes de renderizar
-                        const filteredClasses = upgradeClassCatalog
-                          .filter((c: any) => isGm || canPlayerUpgradeClass(c, customClasses as CustomClassVisibility[], chosenSubclassIds))
-                          .map((c) => {
-                            // Pega apenas as habilidades que o jogador ainda pode upar
-                            const availableSkills = c.skills.filter(
-                              (s: any) =>
-                                skillRank(skillsObj[s.id]) < skillMaxRank(s),
-                            )
-                            return { ...c, availableSkills }
-                          })
-                          .filter((c) => {
-                            // Remove a classe se não houver mais habilidades para upar
-                            if (c.availableSkills.length === 0) return false
-
-                            // Filtro de busca
-                            if (classSearch) {
-                              const term = classSearch.toLowerCase()
-                              const matchClass = c.name
-                                .toLowerCase()
-                                .includes(term)
-                              const matchSkill = c.availableSkills.some(
-                                (s: any) => s.name.toLowerCase().includes(term),
-                              )
-                              return matchClass || matchSkill
-                            }
-
-                            return true
-                          })
-
-                        if (filteredClasses.length === 0) {
-                          return (
-                            <div className="flex flex-col items-center justify-center py-12 text-center opacity-60">
-                              <SearchX className="size-12 text-muted-foreground mb-4" />
-                              <p className="text-muted-foreground font-medium">
-                                Nenhuma classe ou habilidade encontrada.
-                              </p>
-                              {classSearch && (
-                                <p className="text-sm mt-1 text-muted-foreground/70">
-                                  Tente buscar por outro termo.
-                                </p>
-                              )}
-                            </div>
-                          )
-                        }
-
-                        return filteredClasses.map((c) => (
-                          <div key={c.id} className="mb-8 last:mb-2 relative">
-                            {/* Sticky header para a classe não sumir ao dar scroll */}
-                            <div className="sticky top-[-24px] z-10 bg-zinc-950/95 backdrop-blur-sm py-2 mb-3">
-                              <h5 className="font-bold text-foreground bg-primary/10 border border-primary/20 px-4 py-2.5 rounded-md flex items-center gap-2 shadow-sm">
-                                <BookOpenText className="size-4 text-primary" />{" "}
-                                {c.name}
-                              </h5>
-                            </div>
-
-                            <div className="space-y-3 pl-2 pr-1">
-                              {c.availableSkills.map((s: any) => {
-                                const lvl = skillsObj[s.id] || 0
-
-                                // Highlight caso a busca seja exatamente na habilidade
-                                const isSkillMatch =
-                                  classSearch &&
-                                  s.name
-                                    .toLowerCase()
-                                    .includes(classSearch.toLowerCase())
-
-                                return (
-                                  <div
-                                    key={s.id}
-                                    className={`flex flex-col sm:flex-row justify-between sm:items-center gap-4 p-4 rounded-lg bg-card/40 border transition-all ${
-                                      isSkillMatch
-                                        ? "border-primary/50 shadow-[0_0_15px_rgba(var(--primary),0.1)]"
-                                        : "border-border/40 hover:border-primary/30"
-                                    }`}
-                                  >
-                                    <div className="flex-1 pr-4">
-                                      <p className="text-base text-primary font-bold flex items-baseline gap-2">
-                                        {s.name}
-                                        <span className="text-xs font-mono bg-background/50 px-1.5 py-0.5 rounded text-muted-foreground">
-                                          Nv.{lvl} ➔ {lvl + 1}
-                                        </span>
-                                      </p>
-                                      <div className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                                        {formatSkillDescription(
-                                          s.description,
-                                          lvl + 1,
-                                        )}
-                                      </div>
-                                    </div>
-                                    <Button
-                                      size="default"
-                                      className="shrink-0 self-end sm:self-auto font-bold shadow-md"
-                                      disabled={
-                                        pending || (!isGm && unspentPoints <= 0)
-                                      }
-                                      onClick={() => saveNewSkillPoint(s.id)}
-                                    >
-                                      {pending
-                                        ? "Salvando..."
-                                        : isGm
-                                          ? "Conceder grátis"
-                                          : "Aprender"}
-                                    </Button>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        ))
-                      })()}
-                    </div>
-                  </motion.div>
-                </motion.div>
+                <SkillGrantManager
+                  characterName={character.name}
+                  isGm={isGm}
+                  classes={eligibleUpgradeClasses}
+                  allClasses={allClasses}
+                  ownedClassIds={ownedClassIds}
+                  chosenSubclassIds={chosenSubclassIds}
+                  skills={skillsObj}
+                  unspentPoints={unspentPoints}
+                  pending={pending}
+                  error={skillSaveError}
+                  success={skillSaveSuccess}
+                  onLearn={skillId => void saveNewSkillPoint(skillId)}
+                  onClose={() => setShowLevelUp(false)}
+                />
               )}
             </AnimatePresence>
 
@@ -4497,6 +4583,7 @@ export function CharacterSheet({
                             className="h-8 text-xs animate-pulse bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 shrink-0"
                             onClick={() => {
                               setSkillSaveError(null)
+                              setSkillSaveSuccess(null)
                               setShowLevelUp(true)
                             }}
                           >
