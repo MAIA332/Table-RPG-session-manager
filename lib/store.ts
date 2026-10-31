@@ -57,7 +57,10 @@ interface StoreShape {
   presenceSubscribers: Set<PresenceSubscriber>
 }
 
+// Cada imagem passa a ser um documento independente de campanha.
+// NUNCA incluir os dados base64 completos no documento campaignState.
 const PERSISTED_COLLECTIONS = [
+  "galleryImages",
   "users",
   "sessions",
   "campaigns",
@@ -79,6 +82,64 @@ type MongoStoreDocument = {
   collection: PersistedCollection
   key: string
   value: unknown
+}
+
+/** Persistido em vtt_store, um documento por imagem; a API antiga não muda. */
+type GalleryImageDocument = {
+  campaignId: string
+  imageId: string
+  image: Record<string, unknown>
+}
+
+function storedImage(value: unknown): GalleryImageDocument | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const record = value as Partial<GalleryImageDocument>
+  if (typeof record.campaignId !== "string" || !record.campaignId ||
+      typeof record.imageId !== "string" || !record.imageId ||
+      !record.image || typeof record.image !== "object" || Array.isArray(record.image) ||
+      (record.image as Record<string, unknown>).id !== record.imageId) return null
+  return record as GalleryImageDocument
+}
+
+function galleryImageKey(campaignId: string, imageId: string): string {
+  return `${campaignId}:${imageId}`
+}
+
+function readGalleryId(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const id = (value as Record<string, unknown>).id
+  return typeof id === "string" && id.length > 0 ? id : null
+}
+
+/**
+ * Reconstitui o formato legado em memória (state.gallery: image[]), sem reintroduzir
+ * a lista no documento BSON. galleryOrder mantém a ordem sem carregar base64.
+ */
+function hydrateGallery(
+  states: Map<string, Record<string, unknown>>,
+  documents: Map<string, unknown>,
+): void {
+  const groups = new Map<string, Map<string, Record<string, unknown>>>()
+  for (const value of documents.values()) {
+    const doc = storedImage(value)
+    if (!doc) continue
+    let group = groups.get(doc.campaignId)
+    if (!group) { group = new Map(); groups.set(doc.campaignId, group) }
+    group.set(doc.imageId, doc.image)
+  }
+  for (const [campaignId, group] of groups) {
+    const state = states.get(campaignId) || {}
+    // A ordem é autoritativa para evitar ressuscitar exclusões parcialmente gravadas.
+    const order = Array.isArray(state.galleryOrder)
+      ? state.galleryOrder.filter((id): id is string => typeof id === "string")
+      : [...group.keys()]
+    state.gallery = order.flatMap(id => {
+      const image = group.get(id)
+      return image ? [image] : []
+    })
+    states.set(campaignId, state)
+  }
+  // Campanhas sem imagens permanecem com o comportamento original.
 }
 
 const MONGO_COLLECTION =
@@ -125,6 +186,7 @@ function characterTimestamp(character: Character): number {
 
 function createEmptySnapshot(): PersistedSnapshot {
   return {
+    galleryImages: new Map(),
     users: new Map(),
     sessions: new Map(),
     campaigns: new Map(),
@@ -141,12 +203,34 @@ function createEmptySnapshot(): PersistedSnapshot {
 
 function snapshotFromStore(storeData: StoreShape): PersistedSnapshot {
   const lore = cloneMap(storeData.lore)
-  for (const [campaignId, campaignState] of storeData.campaignState) {
-    if (Array.isArray(campaignState.lore))
-      lore.set(campaignId, cloneValue(campaignState.lore))
+  const campaignState = cloneMap(storeData.campaignState)
+  const galleryImages = new Map<string, unknown>()
+  for (const [campaignId, raw] of storeData.campaignState) {
+    if (Array.isArray(raw.lore)) lore.set(campaignId, cloneValue(raw.lore))
+    const clean = campaignState.get(campaignId)!
+    // gallery é sempre uma coleção de documentos individuais. A ordem (IDs)
+    // permanece no estado leve e NÃO carrega URLs ou arquivos em base64.
+    if (Array.isArray(raw.gallery)) {
+      const order: string[] = []
+      const seen = new Set<string>()
+      for (const value of raw.gallery) {
+        const id = readGalleryId(value)
+        if (!id) throw new Error(`Imagem sem ID válido na galeria da campanha ${campaignId}. Migração interrompida para proteger os dados.`)
+        if (seen.has(id)) throw new Error(`ID de imagem duplicado na campanha ${campaignId}: ${id}`)
+        seen.add(id)
+        order.push(id)
+        galleryImages.set(galleryImageKey(campaignId, id), {
+          campaignId, imageId: id, image: cloneValue(value as Record<string, unknown>),
+        } satisfies GalleryImageDocument)
+      }
+      clean.galleryOrder = order
+    }
+    // Se não houve modificação explícita da galeria, preservar a ordem anterior.
+    delete clean.gallery
   }
 
   return {
+    galleryImages,
     users: cloneMap(storeData.users),
     sessions: cloneMap(storeData.sessions),
     campaigns: cloneMap(storeData.campaigns),
@@ -155,7 +239,7 @@ function snapshotFromStore(storeData: StoreShape): PersistedSnapshot {
     maps: cloneMap(storeData.maps),
     lore,
     combatSessions: cloneMap(storeData.combatSessions),
-    campaignState: cloneMap(storeData.campaignState),
+    campaignState,
     classBooks: cloneMap(storeData.classBooks),
     personalNotes: cloneMap(storeData.personalNotes),
   }
@@ -178,6 +262,7 @@ function storeFromSnapshot(snapshot: PersistedSnapshot): StoreShape {
   next.personalNotes = cloneMap(
     snapshot.personalNotes as Map<string, PersonalNotesRecord>,
   )
+  hydrateGallery(next.campaignState, snapshot.galleryImages)
   return next
 }
 
@@ -216,14 +301,104 @@ async function loadFromMongo(): Promise<StoreShape> {
   const collection = await ensureMongoCollection()
   const docs = await collection.find({}).toArray()
   const loaded = createEmptyStore()
+  const galleryDocs = new Map<string, unknown>()
 
   for (const doc of docs) {
     if (!PERSISTED_COLLECTIONS.includes(doc.collection)) continue
     if (typeof doc.key !== "string") continue
+    if (doc.collection === "galleryImages") {
+      const stored = storedImage(doc.value)
+      if (stored) galleryDocs.set(doc.key, cloneValue(stored))
+      continue
+    }
     const target = loaded[doc.collection] as Map<string, unknown>
     target.set(doc.key, cloneValue(doc.value))
   }
 
+  // Migração conservadora: inserir/verificar todas as imagens como documentos
+  // individuais ANTES de apagar o array antigo do documento da campanha.
+  for (const [campaignId, state] of loaded.campaignState) {
+    if (!Array.isArray(state.gallery)) continue
+    const legacy = state.gallery as unknown[]
+    const legacyIds: string[] = []
+    const seen = new Set<string>()
+    for (const image of legacy) {
+      const id = readGalleryId(image)
+      if (!id || seen.has(id)) {
+        throw new Error(`Migração da galeria ${campaignId} interrompida: imagens sem ID ou duplicadas. Dados antigos preservados.`)
+      }
+      seen.add(id)
+      legacyIds.push(id)
+    }
+
+    // Documentos já separados prevalecem sobre cópias legadas desatualizadas.
+    // $setOnInsert permite retomar uma migração interrompida sem reverter edições.
+    const existingIds = new Set<string>()
+    for (const value of galleryDocs.values()) {
+      const doc = storedImage(value)
+      if (doc?.campaignId === campaignId) existingIds.add(doc.imageId)
+    }
+    const order = [...legacyIds, ...[...existingIds].filter(id => !seen.has(id))]
+    let batch: AnyBulkWriteOperation<MongoStoreDocument>[] = []
+    let batchBytes = 0
+    const flush = async () => {
+      if (!batch.length) return
+      await collection.bulkWrite(batch, { ordered: true })
+      batch = []
+      batchBytes = 0
+    }
+    for (const image of legacy) {
+      const id = readGalleryId(image)!
+      const key = galleryImageKey(campaignId, id)
+      const wrapper: GalleryImageDocument = {
+        campaignId, imageId: id, image: image as Record<string, unknown>,
+      }
+      if (!galleryDocs.has(key)) {
+        const estimated = JSON.stringify(wrapper).length
+        if (estimated > 12_000_000)
+          throw new Error(`Imagem ${id} muito grande para migração individual. Documento original preservado.`)
+        if (batch.length >= 30 || batchBytes + estimated > 5_000_000) await flush()
+        batch.push({ updateOne: {
+          filter: { _id: mongoDocumentId("galleryImages", key) },
+          update: { $setOnInsert: { collection: "galleryImages", key, value: wrapper } },
+          upsert: true,
+        } })
+        batchBytes += estimated
+        galleryDocs.set(key, cloneValue(wrapper))
+      }
+    }
+    await flush()
+
+    // Conferir a existência e identidade dos registros antes de remover o legado.
+    // A projeção não carrega novamente os arquivos base64 através da rede.
+    const keys = legacyIds.map(id => mongoDocumentId("galleryImages", galleryImageKey(campaignId, id)))
+    for (let index = 0; index < keys.length; index += 80) {
+      const chunk = keys.slice(index, index + 80)
+      const persisted = await collection.find(
+        { _id: { $in: chunk } },
+        { projection: { _id: 1, "value.campaignId": 1, "value.imageId": 1, "value.image.id": 1 } },
+      ).toArray()
+      const verified = new Set(persisted.filter(doc => {
+        const value = storedImage(doc.value)
+        return value?.campaignId === campaignId
+      }).map(doc => doc._id))
+      if (chunk.some(key => !verified.has(key))) {
+        throw new Error(`Migração incompleta da galeria ${campaignId}. Documentos antigos mantidos para segurança.`)
+      }
+    }
+
+    // Somente após os upserts confirmados retiramos o payload pesado do legado.
+    // O update é atômico no documento da campanha. Se falhar, o array legado
+    // continua lá; a migração poderá ser executada de novo no próximo boot.
+    await collection.updateOne(
+      { _id: mongoDocumentId("campaignState", campaignId), "value.gallery": { $exists: true } },
+      { $set: { "value.galleryOrder": order }, $unset: { "value.gallery": "" } },
+    )
+    state.galleryOrder = order
+    delete state.gallery
+  }
+
+  hydrateGallery(loaded.campaignState, galleryDocs)
   return loaded
 }
 
@@ -232,45 +407,46 @@ async function persistSnapshot(
   previous: PersistedSnapshot,
 ): Promise<boolean> {
   const collection = await ensureMongoCollection()
-  const operations: AnyBulkWriteOperation<MongoStoreDocument>[] = []
+  const galleryUpserts: AnyBulkWriteOperation<MongoStoreDocument>[] = []
+  const regularUpdates: AnyBulkWriteOperation<MongoStoreDocument>[] = []
+  const galleryDeletes: AnyBulkWriteOperation<MongoStoreDocument>[] = []
   let changed = false
 
   for (const collectionName of PERSISTED_COLLECTIONS) {
     const current = snapshot[collectionName]
     const previousMap = previous[collectionName]
-
     for (const [key, value] of current) {
       if (previousMap.has(key) && equivalent(previousMap.get(key), value)) continue
       changed = true
-      operations.push({
+      const update: AnyBulkWriteOperation<MongoStoreDocument> = {
         updateOne: {
           filter: { _id: mongoDocumentId(collectionName, key) },
-          update: {
-            $set: {
-              collection: collectionName,
-              key,
-              value: cloneValue(value),
-            },
-          },
+          update: { $set: { collection: collectionName, key, value: cloneValue(value) } },
           upsert: true,
         },
-      })
+      }
+      if (collectionName === "galleryImages") galleryUpserts.push(update)
+      else regularUpdates.push(update)
     }
-
     for (const key of previousMap.keys()) {
       if (current.has(key)) continue
       changed = true
-      operations.push({
-        deleteOne: {
-          filter: { _id: mongoDocumentId(collectionName, key) },
-        },
-      })
+      const deletion: AnyBulkWriteOperation<MongoStoreDocument> = {
+        deleteOne: { filter: { _id: mongoDocumentId(collectionName, key) } },
+      }
+      if (collectionName === "galleryImages") galleryDeletes.push(deletion)
+      else regularUpdates.push(deletion)
     }
   }
 
-  if (!operations.length) return false
-  await collection.bulkWrite(operations, { ordered: false })
-  return changed
+  if (!changed) return false
+  // A ordem é essencial para migrações e edições concorrentes:
+  // (1) garantir imagens -> (2) salvar lista leve de IDs -> (3) apagar imagens
+  // que já não aparecem nessa lista. Não usar ordered:false neste protocolo.
+  if (galleryUpserts.length) await collection.bulkWrite(galleryUpserts, { ordered: true })
+  if (regularUpdates.length) await collection.bulkWrite(regularUpdates, { ordered: true })
+  if (galleryDeletes.length) await collection.bulkWrite(galleryDeletes, { ordered: true })
+  return true
 }
 
 const globalForStore = globalThis as unknown as {
