@@ -23,7 +23,10 @@ import { canPlayerUpgradeClass, playerVisibleClassCatalog, type CustomClassVisib
 import { CharacterBookShelf } from "./class-books"
 import { ClassTimerProgress } from "./class-timer-progress"
 import { CharacterTraining, TrainingCompactBar } from "./character-training"
+import { SkillEvolutionTree, hasEvolutionBonuses, type EvolutionSkill } from "./skill-evolution-tree"
 import { PlayerSpecialAttacks } from "./player-special-attacks"
+import { ElementalAffinityManager } from "./elemental-affinity-manager"
+import { ELEMENT_NAMES, classElement, elementId, availableClassElements, readElementalSelection, tieredElements } from "@/lib/elemental-affinities"
 import { PRESET_CHECKS as PLAYER_PRESET_CHECKS } from "@/lib/combat-checks"
 import { playerAttackDefenseLabel, type PlayerSpecialAttack } from "@/lib/player-special-attacks"
 import { isTrainingActive, trainingFatiguePenalty } from "@/lib/training-model"
@@ -46,6 +49,8 @@ import { ResourceBar } from "@/components/resource-bar"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
 import { PortraitEditor } from "@/components/portrait-editor"
+import { PortraitGalleryViewer } from "@/components/portrait-gallery-viewer"
+import type { AlternatePortrait } from "@/lib/portrait-gallery"
 import {
   PORTRAIT_FRAMES,
   type PortraitCrop,
@@ -100,6 +105,7 @@ import {
   Skull,
   ScrollText,
   ImageIcon,
+  Images,
   Film,
   Lock,
   Trash2,
@@ -112,6 +118,7 @@ import {
   Swords,
   ChevronDown,
   ChevronRight,
+  GitBranch,
   Sword,
   Gem,
   Eye,
@@ -926,7 +933,7 @@ export function CreatureSheet({
                 key={element}
                 className={`flex flex-col items-center justify-center p-1 rounded text-[9px] font-bold border ${affinity === "VU" ? "border-red-500/50 text-red-400 bg-red-500/10" : affinity === "RS" ? "border-blue-500/50 text-blue-400 bg-blue-500/10" : affinity === "IM" || affinity === "AB" ? "border-green-500/50 text-green-400 bg-green-500/10" : "border-border/30 text-muted-foreground bg-black/20"}`}
               >
-                <span className="uppercase">{element.slice(0, 3)}</span>
+                <span className="uppercase" title={elementId(element) ? ELEMENT_NAMES[elementId(element)!] : element}>{elementId(element) ? ELEMENT_NAMES[elementId(element)!].slice(0, 3) : element.slice(0, 3)}</span>
                 <span className="font-mono">{String(affinity)}</span>
               </div>
             ))}
@@ -1832,7 +1839,7 @@ function CharacterCrisisDetailsModal({
  */
 function SkillGrantManager({
   characterName, isGm, classes, allClasses, ownedClassIds, chosenSubclassIds,
-  skills, unspentPoints, pending, error, success, onLearn, onClose,
+  skills, unspentPoints, pending, error, success, onLearn, onClose, onPreviewSkill,
 }: {
   characterName: string
   isGm: boolean
@@ -1847,6 +1854,7 @@ function SkillGrantManager({
   success: string | null
   onLearn: (skillId: string) => void
   onClose: () => void
+  onPreviewSkill: (skill: EvolutionSkill, className: string, level: number) => void
 }) {
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState<"all" | "owned" | "subclasses">("all")
@@ -2038,6 +2046,10 @@ function SkillGrantManager({
                     <div><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Técnica selecionada</p><h4 className="mt-2 font-serif text-2xl font-bold leading-snug text-primary">{currentSkill.name}</h4><p className="mt-1 text-xs text-muted-foreground">{currentClass?.name}</p></div>
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border border-border/50 bg-background/60 p-3 text-center"><div><p className="text-[9px] uppercase tracking-wider text-muted-foreground">Atual</p><p className="font-mono text-xl font-black">Nv. {currentRank}</p></div><ArrowRight className="size-5 text-primary" /><div><p className="text-[9px] uppercase tracking-wider text-primary">Próximo</p><p className="font-mono text-xl font-black text-primary">Nv. {nextRank}</p></div></div>
                     <div><p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-primary">Efeito do próximo nível</p><div className="max-h-[28dvh] overflow-y-auto whitespace-pre-wrap border-l-2 border-primary/40 bg-background/35 p-3 text-xs leading-relaxed text-foreground/85 [scrollbar-color:rgba(170,128,68,.5)_transparent]">{formatSkillDescription(String(currentSkill.description || ""), nextRank) || "Esta habilidade não possui uma descrição cadastrada."}</div></div>
+                    {hasEvolutionBonuses(currentSkill.bonuses) && <button type="button"
+                      onClick={() => onPreviewSkill(currentSkill, String(currentClass?.name || "Classe"), currentRank)}
+                      className="inline-flex items-center gap-2 self-start rounded-sm border border-primary/35 bg-primary/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[.14em] text-primary transition-colors hover:bg-primary/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                    ><GitBranch className="size-3.5" /> Ver árvore de evolução <ArrowRight className="size-3.5" /></button>}
                     <div className="border-t border-border/40 pt-4"><p className="flex items-center gap-2 text-xs text-muted-foreground"><Info className="size-4 text-primary" />{isGm ? "Concedido gratuitamente. Não gasta XP ou pontos." : "Aumenta 1 nível e consome 1 ponto disponível."}</p>{!isGm && unspentPoints <= 0 && <p className="mt-2 text-xs font-bold text-rose-300">Sem pontos disponíveis para evoluir.</p>}</div>
                     <Button type="button" disabled={!canLearn} onClick={() => onLearn(currentSkill.id)} className="h-12 w-full gap-2 rounded-sm bg-primary text-xs font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}{pending ? "Salvando evolução..." : isGm ? "Conceder este nível" : "Aprender este nível"}<ArrowRight className="ml-auto size-4" /></Button>
                   </div> : <div className="p-6 text-center text-xs text-muted-foreground">Escolha uma classe e uma habilidade para visualizar os detalhes antes de confirmar.</div>}
@@ -2052,6 +2064,22 @@ function SkillGrantManager({
       </motion.div>
     </motion.div>
   )
+}
+
+type VitalKey = "hp" | "mp"
+type VitalEdit = { mode: "delta" | "max" | "min"; amount: number }
+
+function applyVitalEdit(resources: CharacterResources, key: VitalKey, change: VitalEdit): number {
+  const max = Math.max(0, Number(key === "hp" ? resources.maxHp : resources.maxMp) || 0)
+  const base = change.mode === "delta" ? (Number(resources[key]) || 0)
+    : change.mode === "max" ? max : Math.min(1, max)
+  return Math.max(0, Math.min(max, base + change.amount))
+}
+
+/** Combina cliques em uma única operação; ajustes máximos anulam deltas antigos. */
+function mergeVitalEdit(previous: VitalEdit | undefined, incoming: VitalEdit): VitalEdit {
+  if (!previous || incoming.mode !== "delta") return incoming
+  return { ...previous, amount: previous.amount + incoming.amount }
 }
 
 export function CharacterSheet({
@@ -2088,6 +2116,10 @@ export function CharacterSheet({
     const lp = rawCharacter?.resources?.lp
     const withAttacks = {
       ...normalized,
+      // A normalização de peso não deve remover a galeria de retratos.
+      portraitLabel: rawCharacter?.portraitLabel ?? (normalized as any).portraitLabel ?? "Normal",
+      portraitGallery: rawCharacter?.portraitGallery ?? (normalized as any).portraitGallery ?? [],
+      elementalAffinities: rawCharacter?.elementalAffinities ?? (normalized as any).elementalAffinities,
       // Preserva os golpes salvos mesmo quando o inventário é normalizado.
       specialAttacks: (rawCharacter as any)?.specialAttacks ?? (normalized as any).specialAttacks ?? [],
       // A classificação de atalhos precisa sobreviver à normalização do inventário.
@@ -2145,6 +2177,8 @@ export function CharacterSheet({
 
   const [rollingAttr, setRollingAttr] = useState<string | null>(null)
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null)
+  const [evolutionView, setEvolutionView] = useState<{ skill: EvolutionSkill; className: string; level: number } | null>(null)
+  const [showElementalAffinities, setShowElementalAffinities] = useState(false)
   const [showLevelUp, setShowLevelUp] = useState(false)
   const [skillSaveError, setSkillSaveError] = useState<string | null>(null)
   const [skillSaveSuccess, setSkillSaveSuccess] = useState<string | null>(null)
@@ -2163,6 +2197,7 @@ export function CharacterSheet({
   const [showBondsModal, setShowBondsModal] = useState(false) // <-- Modal de Laços
   const [showFrameGallery, setShowFrameGallery] = useState(false)
   const [showPortraitEditor, setShowPortraitEditor] = useState(false)
+  const [showPortraitGallery, setShowPortraitGallery] = useState(false)
   const [editingZenit, setEditingZenit] = useState(false)
   const [zenitDraft, setZenitDraft] = useState("")
   const zenitInputRef = useRef<HTMLInputElement | null>(null)
@@ -2172,8 +2207,14 @@ export function CharacterSheet({
   const resourceDraftRef = useRef<CharacterResources>(character.resources)
   const resourceConfirmedRef = useRef<CharacterResources>(character.resources)
   const resourceCharacterRef = useRef<Character>(character)
-  const resourceWriteQueueRef = useRef<Promise<unknown>>(Promise.resolve())
+  const resourceLatestRemoteRef = useRef<Character>(character)
   const resourceWriteCountRef = useRef(0)
+  const resourcePendingVitalsRef = useRef<Partial<Record<VitalKey, VitalEdit>>>({})
+  const resourcePendingOtherRef = useRef<Record<string, number>>({})
+  const resourceFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const resourceFirstEditAtRef = useRef(0)
+  const resourceFlushBusyRef = useRef(false)
+  const [resourceError, setResourceError] = useState("")
   const [loreBusy, setLoreBusy] = useState(false)
   const loreBusyRef = useRef(false)
   const loreUpgradeRequestIds = useRef<Record<string, string>>({})
@@ -2327,6 +2368,10 @@ export function CharacterSheet({
   }, [defaultExpanded])
 
   useEffect(() => {
+    // O snapshot da sala pode chegar fora de ordem (polling, combate, inventário).
+    // Nunca substituir recursos mais novos por uma resposta antiga.
+    if (Number(character.updatedAt || 0) < Number(resourceLatestRemoteRef.current.updatedAt || 0)) return
+    resourceLatestRemoteRef.current = character
     if (resourceWriteCountRef.current > 0) {
       resourceCharacterRef.current = {
         ...character,
@@ -2339,6 +2384,15 @@ export function CharacterSheet({
     resourceCharacterRef.current = character
     setDisplayResources(character.resources)
   }, [character])
+
+  useEffect(() => () => {
+    if (resourceFlushTimerRef.current !== null) clearTimeout(resourceFlushTimerRef.current)
+    // O timer é drenado ao desmontar; uma requisição já em voo continua.
+    if (Object.keys(resourcePendingVitalsRef.current).length ||
+        Object.keys(resourcePendingOtherRef.current).length) {
+      void flushResourceChanges()
+    }
+  }, [])
 
   useEffect(() => {
     if (!shouldOpenInventory) return
@@ -2408,9 +2462,26 @@ export function CharacterSheet({
     zenitInputRef.current?.select()
   }, [editingZenit])
 
+  // Definições autorizadas exclusivamente a esta ficha não aparecem no catálogo
+  // global da campanha nem na Forja. Buscá-las só quando o dono abre a ficha.
+  const [sheetClassCatalog, setSheetClassCatalog] = useState<GameClass[] | null>(null)
+  useEffect(() => {
+    setSheetClassCatalog(null)
+    if (isGm || !isOwned || (!isExpanded && !defaultExpanded)) return
+    let active = true
+    void apiFetch<{ classes?: GameClass[] }>(
+      `/api/campaigns/${encodeURIComponent(character.campaignId)}/visible-classes?characterId=${encodeURIComponent(character.id)}`,
+      { cache: "no-store" },
+    ).then(result => {
+      if (active) setSheetClassCatalog(Array.isArray(result.classes) ? result.classes : [])
+    }).catch(() => { if (active) setSheetClassCatalog(null) })
+    return () => { active = false }
+  }, [character.id, character.campaignId, isOwned, isGm, isExpanded, defaultExpanded, customClasses, booksRevision])
+  const effectiveCustomClasses: GameClass[] = !isGm && isOwned && sheetClassCatalog !== null
+    ? sheetClassCatalog : customClasses
   const allClasses = useMemo<any[]>(() =>
-    getCampaignClassCatalog([...(campaignCharacters || []), character], customClasses || []),
-    [campaignCharacters, character, customClasses],
+    getCampaignClassCatalog([...(campaignCharacters || []), character], effectiveCustomClasses || []),
+    [campaignCharacters, character, effectiveCustomClasses],
   )
   const [chosenSubclassIds, setChosenSubclassIds] = useState<string[]>([])
   useEffect(() => {
@@ -2426,7 +2497,7 @@ export function CharacterSheet({
     return () => { active = false }
   }, [character.campaignId, character.id, isExpanded, defaultExpanded, booksRevision])
   const customSkillIds = new Set<string>(
-    (customClasses || []).flatMap((c: any) =>
+    (effectiveCustomClasses || []).flatMap((c: any) =>
       (c.skills || []).map((skill: any) => skill.id),
     ),
   )
@@ -2443,22 +2514,30 @@ export function CharacterSheet({
   const ownedClassIds = new Set<string>((character.classes || [])
     .filter((owned: any) => skillRank(owned.level) > 0)
     .map((owned: any) => String(owned.classId ?? owned.id)))
-  // Classes BASE preservam as regras existentes de publicação do Mestre.
-  // SUBCLASSES têm apenas um requisito: possuir a classe principal (nível >= 1).
-  // Não exigem publicação separada nem seleção prévia no Grimório.
+  // O estado da campanha recebido do servidor já contém apenas classes
+  // autorizadas para a CONTA atual. Nunca restaurar classes ocultas a partir
+  // de fichas históricas de outros jogadores.
+  const authorizedDefinitionIds = new Set<string>([
+    ...CLASSES.map(definition => String(definition.id)),
+    ...(effectiveCustomClasses || []).map(definition => String(definition.id)),
+  ])
   const visibleBaseClassIds = new Set<string>(
-    playerVisibleClassCatalog(allClasses, customClasses as CustomClassVisibility[])
-      .filter((definition: any) => !definition.parentClassId)
+    playerVisibleClassCatalog(allClasses, effectiveCustomClasses as CustomClassVisibility[])
+      .filter((definition: any) => !definition.parentClassId && authorizedDefinitionIds.has(String(definition.id)))
       .map((definition: any) => String(definition.id)),
   )
   const eligibleUpgradeClasses = isGm
     ? allClasses
-    : allClasses.filter((definition: any) => definition.parentClassId
-      ? ownedClassIds.has(String(definition.parentClassId))
-      : visibleBaseClassIds.has(String(definition.id)) &&
-        canPlayerUpgradeClass(definition, customClasses as CustomClassVisibility[], chosenSubclassIds),
+    : allClasses.filter((definition: any) =>
+        authorizedDefinitionIds.has(String(definition.id)) && (definition.parentClassId
+          ? ownedClassIds.has(String(definition.parentClassId))
+          : visibleBaseClassIds.has(String(definition.id)) &&
+            canPlayerUpgradeClass(definition, effectiveCustomClasses as CustomClassVisibility[], chosenSubclassIds)),
     )
+  // A ficha própria mantém as habilidades já adquiridas; espectadores não
+  // podem usar a ficha de outro jogador para descobrir classes restritas.
   const learnedSkillGroups = allClasses
+    .filter((definition: any) => isGm || isOwned || authorizedDefinitionIds.has(String(definition.id)))
     .map((definition: any) => {
       const learnedSkills = definition.skills.filter(
         (skill: any) => skillRank(skillsObj[skill.id]) > 0,
@@ -2716,9 +2795,124 @@ export function CharacterSheet({
     }
   }
 
+  /** Uma gravação por rajada, não uma requisição por clique. */
+  function scheduleResourceFlush() {
+    if (resourceFlushBusyRef.current) return
+    if (resourceFlushTimerRef.current !== null) clearTimeout(resourceFlushTimerRef.current)
+    if (!resourceFirstEditAtRef.current) resourceFirstEditAtRef.current = Date.now()
+    // Debounce curto com espera máxima: inclusive durante cliques contínuos.
+    const elapsed = Date.now() - resourceFirstEditAtRef.current
+    const delay = Math.max(0, Math.min(180, 650 - elapsed))
+    resourceFlushTimerRef.current = setTimeout(() => {
+      resourceFlushTimerRef.current = null
+      void flushResourceChanges()
+    }, delay)
+  }
+
+  async function flushResourceChanges() {
+    if (resourceFlushBusyRef.current) return
+    const vitals = resourcePendingVitalsRef.current
+    const others = resourcePendingOtherRef.current
+    if (!Object.keys(vitals).length && !Object.keys(others).length) return
+    resourcePendingVitalsRef.current = {}
+    resourcePendingOtherRef.current = {}
+    resourceFirstEditAtRef.current = 0
+    resourceFlushBusyRef.current = true
+    let confirmed: Character | null = null
+    try {
+      // Modificações de máximos/XP/FP seguem a validação de recursos original.
+      // HP e MP usam um update atômico do próprio personagem, sem clonar a galeria.
+      if (Object.keys(others).length) {
+        const response = await apiFetch<{ character: Character }>(
+          `/api/characters/${character.id}`,
+          { method: "PATCH", body: JSON.stringify({ resources: others }) },
+        )
+        confirmed = response.character
+      }
+      if (Object.keys(vitals).length) {
+        const response = await apiFetch<{ character: Character }>(
+          `/api/characters/${character.id}/vitals`,
+          { method: "PATCH", body: JSON.stringify({ changes: vitals }) },
+        )
+        confirmed = response.character
+      }
+      if (!confirmed) throw new Error("O servidor não confirmou os recursos.")
+      // Outro cliente pode ter confirmado uma versão ainda mais nova enquanto
+      // esta requisição estava em trânsito. O maior updatedAt sempre vence.
+      if (Number(resourceLatestRemoteRef.current.updatedAt || 0) > Number(confirmed.updatedAt || 0)) {
+        confirmed = resourceLatestRemoteRef.current
+      } else {
+        resourceLatestRemoteRef.current = confirmed
+      }
+      resourceConfirmedRef.current = confirmed.resources
+
+      // Reaplica somente os cliques realizados DURANTE a requisição em voo.
+      // Nunca substitui esses cliques pelo retorno de uma requisição antiga.
+      const next = { ...confirmed.resources }
+      for (const [key, value] of Object.entries(resourcePendingOtherRef.current)) {
+        ;(next as any)[key] = value
+      }
+      for (const key of ["hp", "mp"] as const) {
+        const operation = resourcePendingVitalsRef.current[key]
+        if (operation) next[key] = applyVitalEdit(next, key, operation)
+      }
+      resourceDraftRef.current = next
+      const merged = { ...confirmed, resources: next }
+      resourceCharacterRef.current = merged
+      setDisplayResources(next)
+      onOptimistic(merged)
+    } catch (cause) {
+      // Não esconder falhas: desfaz todos os cliques que não foram confirmados.
+      // Se o PATCH tradicional já passou e só os vitais falharam, preserva a
+      // primeira confirmação em vez de inventar um saldo de recursos.
+      const remote = resourceLatestRemoteRef.current
+      const authoritative = confirmed && Number(confirmed.updatedAt || 0) >= Number(remote.updatedAt || 0)
+        ? confirmed : remote
+      const saved = authoritative.resources ?? resourceConfirmedRef.current
+      resourcePendingVitalsRef.current = {}
+      resourcePendingOtherRef.current = {}
+      resourceDraftRef.current = saved
+      resourceCharacterRef.current = { ...authoritative, resources: saved }
+      setDisplayResources(saved)
+      onOptimistic(resourceCharacterRef.current)
+      setResourceError(cause instanceof Error ? cause.message : "Falha ao salvar HP/MP.")
+    } finally {
+      resourceFlushBusyRef.current = false
+      const remaining = Object.keys(resourcePendingVitalsRef.current).length +
+        Object.keys(resourcePendingOtherRef.current).length
+      if (remaining) scheduleResourceFlush()
+      else {
+        resourceWriteCountRef.current = 0
+        setPending(false)
+      }
+    }
+  }
+
+  function changeVital(key: VitalKey, operation: VitalEdit) {
+    if (!editable || itemCommitRef.current || loreBusyRef.current) return
+    const current = resourceDraftRef.current
+    const nextValue = applyVitalEdit(current, key, operation)
+    if (nextValue === current[key]) return
+    const next = { ...current, [key]: nextValue }
+    resourceDraftRef.current = next
+    resourcePendingVitalsRef.current[key] = mergeVitalEdit(resourcePendingVitalsRef.current[key], operation)
+    setDisplayResources(next)
+    const optimistic = { ...resourceCharacterRef.current, resources: next }
+    resourceCharacterRef.current = optimistic
+    // A barra tem estado local: não remontar a sala inteira a cada clique.
+    // O pai recebe uma atualização autoritativa no fim da gravação em lote.
+    resourceWriteCountRef.current = 1
+    setPending(true)
+    setResourceError("")
+    scheduleResourceFlush()
+  }
+
+  function setVitalBoundary(key: VitalKey, mode: "max" | "min") {
+    changeVital(key, { mode, amount: 0 })
+  }
+
   function patchResource(key: string, delta: number) {
     if (key === "lp") {
-      // Lore possui persistência autorizada dedicada; nunca usar PATCH parcial.
       if (isGm && (delta === -1 || delta === 1)) void adjustLore(delta)
       return
     }
@@ -2726,71 +2920,32 @@ export function CharacterSheet({
       alert("IP representa kg livres e é recalculado pelo peso dos itens.")
       return
     }
-    if (itemCommitRef.current || loreBusyRef.current) return
+    if (!editable || itemCommitRef.current || loreBusyRef.current) return
+    if (key === "hp" || key === "mp") {
+      changeVital(key, { mode: "delta", amount: delta })
+      return
+    }
     const res = resourceDraftRef.current as any
     const next = { ...res }
-
     if (key === "xp" || key === "fp" || key.startsWith("max")) {
       next[key] = Math.max(0, (res[key] || 0) + delta)
     } else {
-      const maxKey =
-        key === "hp"
-          ? "maxHp"
-          : key === "mp"
-            ? "maxMp"
-            : key === "ip"
-              ? "maxIp"
-              : null
+      const maxKey = key === "ip" ? "maxIp" : null
       const max = maxKey ? res[maxKey] : Infinity
       next[key] = Math.max(0, Math.min(max, res[key] + delta))
     }
-
     if (next[key] === res[key]) return
     resourceDraftRef.current = next
+    resourcePendingOtherRef.current[key] = next[key]
     setDisplayResources(next)
     const optimistic = { ...resourceCharacterRef.current, resources: next }
     resourceCharacterRef.current = optimistic
-    onOptimistic(optimistic)
-    resourceWriteCountRef.current += 1
+    // A barra tem estado local: não remontar a sala inteira a cada clique.
+    // O pai recebe uma atualização autoritativa no fim da gravação em lote.
+    resourceWriteCountRef.current = 1
     setPending(true)
-    const request = resourceWriteQueueRef.current
-      .catch(() => undefined)
-      .then(async () => {
-        try {
-          const { character: updated } = await apiFetch<{
-            character: Character
-          }>(`/api/characters/${character.id}`, {
-            method: "PATCH",
-            body: JSON.stringify({ resources: { [key]: next[key] } }),
-          })
-          resourceConfirmedRef.current = updated.resources
-          resourceWriteCountRef.current -= 1
-          if (resourceWriteCountRef.current === 0) {
-            resourceDraftRef.current = updated.resources
-            resourceCharacterRef.current = updated
-            setDisplayResources(updated.resources)
-            onOptimistic(updated)
-            setPending(false)
-          } else {
-            const current = { ...updated, resources: resourceDraftRef.current }
-            resourceCharacterRef.current = current
-            onOptimistic(current)
-          }
-        } catch (error) {
-          resourceWriteCountRef.current -= 1
-          if (resourceWriteCountRef.current === 0) {
-            const resources = resourceConfirmedRef.current
-            const rollback = { ...resourceCharacterRef.current, resources }
-            resourceDraftRef.current = resources
-            resourceCharacterRef.current = rollback
-            setDisplayResources(resources)
-            onOptimistic(rollback)
-            setPending(false)
-          }
-          throw error
-        }
-      })
-    resourceWriteQueueRef.current = request.catch(console.error)
+    setResourceError("")
+    scheduleResourceFlush()
   }
 
   async function saveZenit(value: number) {
@@ -2864,13 +3019,15 @@ export function CharacterSheet({
   async function savePortraitImage(
     avatarUrl: string,
     portraitCrop: PortraitCrop,
+    portraitLabel: string,
+    portraitGallery: AlternatePortrait[],
   ) {
-    if (!isOwned) throw new Error("Apenas o dono pode alterar o retrato.")
+    if (!isOwned && !isGm) throw new Error("Somente o dono ou o Mestre podem editar retratos.")
     const { character: updated } = await apiFetch<{ character: Character }>(
-      `/api/characters/${character.id}`,
+      `/api/characters/${encodeURIComponent(character.id)}/portraits`,
       {
         method: "PATCH",
-        body: JSON.stringify({ avatarUrl, portraitCrop }),
+        body: JSON.stringify({ avatarUrl, portraitCrop, portraitLabel, portraitGallery }),
       },
     )
     onOptimistic(updated)
@@ -2899,7 +3056,7 @@ export function CharacterSheet({
     // fica liberada automaticamente para quem possui sua classe-mãe.
     if (!isGm && !definition.parentClassId && !canPlayerUpgradeClass(
       definition,
-      customClasses as CustomClassVisibility[],
+      effectiveCustomClasses as CustomClassVisibility[],
       chosenSubclassIds,
     )) {
       setSkillSaveError("Essa classe não está liberada pelo mestre para evolução.")
@@ -3369,11 +3526,21 @@ export function CharacterSheet({
                   avatarUrl={character.avatarUrl}
                   frame={character.portraitFrame}
                   crop={character.portraitCrop}
+                  portraitLabel={character.portraitLabel}
+                  portraitGallery={character.portraitGallery}
                   onClose={() => setShowPortraitEditor(false)}
                   onSave={savePortraitImage}
                 />
               )}
             </AnimatePresence>
+
+            {showPortraitGallery && (
+              <PortraitGalleryViewer
+                name={character.name}
+                character={character}
+                onClose={() => setShowPortraitGallery(false)}
+              />
+            )}
 
             <AnimatePresence>
               {showLevelUp && (
@@ -3390,6 +3557,7 @@ export function CharacterSheet({
                   error={skillSaveError}
                   success={skillSaveSuccess}
                   onLearn={skillId => void saveNewSkillPoint(skillId)}
+                  onPreviewSkill={(skill, className, level) => setEvolutionView({ skill, className, level })}
                   onClose={() => setShowLevelUp(false)}
                 />
               )}
@@ -4282,23 +4450,33 @@ export function CharacterSheet({
               alt={`Retrato de ${character.name}`}
               frame={character.portraitFrame}
               crop={character.portraitCrop}
-              className={`${spotlightActive ? "rounded-full ring-2 ring-amber-300 shadow-[0_0_24px_rgba(252,211,77,0.65)] motion-safe:animate-pulse" : ""} ${isExpanded ? "size-[88px] sm:size-[104px]" : "size-[72px] sm:size-[80px]"} ${isOwned || canExpand ? "cursor-pointer" : "cursor-default"} transition-[width,height] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)]`}
+              className={`${spotlightActive ? "rounded-full ring-2 ring-amber-300 shadow-[0_0_24px_rgba(252,211,77,0.65)] motion-safe:animate-pulse" : ""} ${isExpanded ? "size-[88px] sm:size-[104px]" : "size-[72px] sm:size-[80px]"} cursor-pointer transition-[width,height] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)]`}
               sizes="104px"
-              role={isOwned ? "button" : undefined}
-              tabIndex={isOwned ? 0 : undefined}
-              title={isOwned ? "Editar retrato" : undefined}
+              role="button"
+              tabIndex={0}
+              title={isOwned || isGm ? "Editar retratos" : "Ver galeria de retratos"}
               onClick={(event) => {
                 event.stopPropagation()
-                if (isOwned) setShowPortraitEditor(true)
-                else if (canExpand) changeExpanded(!isExpanded)
+                if (isOwned || isGm) setShowPortraitEditor(true)
+                else setShowPortraitGallery(true)
               }}
               onKeyDown={(event) => {
-                if (isOwned && (event.key === "Enter" || event.key === " ")) {
+                if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault()
-                  setShowPortraitEditor(true)
+                  if (isOwned || isGm) setShowPortraitEditor(true)
+                  else setShowPortraitGallery(true)
                 }
               }}
             />
+            <button
+              type="button"
+              onClick={(event) => { event.stopPropagation(); setShowPortraitGallery(true) }}
+              title="Ver galeria de retratos"
+              aria-label={`Ver galeria de retratos de ${character.name}`}
+              className="absolute -bottom-2 -left-1 z-10 grid size-7 place-items-center rounded-sm border border-primary/45 bg-background text-primary shadow-md transition hover:bg-primary/15"
+            >
+              <Images className="size-3.5" />
+            </button>
             {!isExpanded && editable && (
               <button
                 type="button"
@@ -4670,6 +4848,28 @@ export function CharacterSheet({
                       }}
                     />
 
+                    {/* Afinidades elementais: o histórico antigo permanece neutro até a primeira escolha. */}
+                    {(() => {
+                      const definitions = allClasses.map((cls: any) => (effectiveCustomClasses || []).find((item: any) => item.id === cls.id) || cls)
+                      const options = availableClassElements(definitions.filter((cls: any) => (character.classes || []).some((owned: any) => owned.classId === cls.id && owned.level > 0)))
+                      const stored = readElementalSelection((character as any).elementalAffinities)
+                      const determined = Boolean(stored.primary || stored.secondary)
+                      const tiers = tieredElements(options, stored)
+                      return <section className="mt-4 overflow-hidden rounded-xl border border-primary/30 bg-card/35 p-4 sm:p-5" aria-label="Afinidades elementais">
+                        <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2"><Sparkles className="size-5 text-primary" /><h3 className="font-serif text-lg font-bold">Afinidades</h3></div>
+                          {(isGm || isOwned) && <Button type="button" size="sm" variant="outline" onClick={() => setShowElementalAffinities(true)} className="border-primary/40 text-primary">Gerenciar afinidades</Button>}
+                          {!(isGm || isOwned) && <Button type="button" size="sm" variant="outline" onClick={() => setShowElementalAffinities(true)}>Ver afinidades</Button>}
+                        </div>
+                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <div className="rounded-lg border border-border/50 bg-background/50 px-3 py-2"><p className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">Afinidade principal</p><p className="mt-1 text-sm font-semibold text-primary">{determined && tiers.primary ? ELEMENT_NAMES[tiers.primary] : "Não definido"}</p></div>
+                          <div className="rounded-lg border border-border/50 bg-background/50 px-3 py-2"><p className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">Afinidade secundária</p><p className="mt-1 text-sm font-semibold text-primary">{determined && tiers.secondary ? ELEMENT_NAMES[tiers.secondary] : "Não definido"}</p></div>
+                        </div>
+                        <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Complementares: <strong className="text-foreground">{determined ? tiers.complementary.map(element => ELEMENT_NAMES[element]).join(" · ") || "Nenhuma" : "Não definido"}</strong></p>
+                        {!determined && <p className="mt-1 text-[10px] text-primary">Sem definição: todos os ataques elementais causam dano padrão (1×).</p>}
+                        {showElementalAffinities && <ElementalAffinityManager character={character} classDefinitions={definitions} editable={Boolean(isGm || isOwned)} onUpdated={onOptimistic} onClose={() => setShowElementalAffinities(false)} />}
+                      </section>
+                    })()}
+
                     {/* VISUALIZAÇÃO DE LAÇO ATIVO PREPARADO */}
                     <AnimatePresence>
                       {activeBond && (
@@ -4779,6 +4979,7 @@ export function CharacterSheet({
 
                     {/* BARRAS DE RECURSOS E CONTROLE MANUAL DO MESTRE */}
                     <div className="mt-6 flex flex-col gap-4">
+                      {resourceError && <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">{resourceError}</p>}
                       <div className="flex items-center gap-3">
                         <div className="flex-1">
                           <ResourceBar
@@ -4792,6 +4993,22 @@ export function CharacterSheet({
                             onChange={(d) => patchResource("hp", d)}
                           />
                         </div>
+                        {editable && (
+                          <div className="flex shrink-0 flex-col gap-1" role="group" aria-label="Atalhos de Vida">
+                            <button type="button" onClick={() => setVitalBoundary("hp", "max")}
+                              disabled={displayResources.hp >= displayResources.maxHp}
+                              title="Preencher vida até o máximo" aria-label="Maximizar vida"
+                              className="rounded-md border border-[color:var(--hp)]/40 bg-background px-2 py-1 text-[10px] font-bold text-[color:var(--hp)] transition hover:bg-card disabled:cursor-not-allowed disabled:opacity-40">
+                              MAX
+                            </button>
+                            <button type="button" onClick={() => setVitalBoundary("hp", "min")}
+                              disabled={displayResources.hp <= Math.min(1, displayResources.maxHp)}
+                              title="Definir vida como 1" aria-label="Minimizar vida para 1"
+                              className="rounded-md border border-border/60 bg-background px-2 py-1 text-[10px] font-bold text-muted-foreground transition hover:border-primary/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40">
+                              1
+                            </button>
+                          </div>
+                        )}
                         {isGm && (
                           <div className="flex flex-col gap-1 shrink-0">
                             <button
@@ -4824,6 +5041,22 @@ export function CharacterSheet({
                             onChange={(d) => patchResource("mp", d)}
                           />
                         </div>
+                        {editable && (
+                          <div className="flex shrink-0 flex-col gap-1" role="group" aria-label="Atalhos de Mente">
+                            <button type="button" onClick={() => setVitalBoundary("mp", "max")}
+                              disabled={displayResources.mp >= displayResources.maxMp}
+                              title="Preencher mente até o máximo" aria-label="Maximizar mente"
+                              className="rounded-md border border-[color:var(--mp)]/40 bg-background px-2 py-1 text-[10px] font-bold text-[color:var(--mp)] transition hover:bg-card disabled:cursor-not-allowed disabled:opacity-40">
+                              MAX
+                            </button>
+                            <button type="button" onClick={() => setVitalBoundary("mp", "min")}
+                              disabled={displayResources.mp <= Math.min(1, displayResources.maxMp)}
+                              title="Definir mente como 1" aria-label="Minimizar mente para 1"
+                              className="rounded-md border border-border/60 bg-background px-2 py-1 text-[10px] font-bold text-muted-foreground transition hover:border-primary/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40">
+                              1
+                            </button>
+                          </div>
+                        )}
                         {isGm && (
                           <div className="flex flex-col gap-1 shrink-0">
                             <button
@@ -4998,6 +5231,10 @@ export function CharacterSheet({
                                     {group.learnedSkills.length} habilidade(s)
                                     aprendida(s)
                                   </p>
+                                  <p className="mt-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-primary/85">
+                                    <Sparkles className="size-3" aria-hidden="true" />
+                                    Afinidade: {ELEMENT_NAMES[classElement((effectiveCustomClasses || []).find(definition => definition.id === group.id) || group)]}
+                                  </p>
                                 </div>
                               </div>
                               <div className="flex flex-wrap gap-2 text-[10px] font-bold">
@@ -5028,6 +5265,7 @@ export function CharacterSheet({
                                     key={skill.id}
                                     className={`overflow-hidden rounded-lg border transition-colors ${skillExpanded ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background/30 hover:border-primary/25"}`}
                                   >
+                                    <div className="flex items-center gap-1 sm:gap-2">
                                     <button
                                       type="button"
                                       aria-expanded={skillExpanded}
@@ -5036,7 +5274,7 @@ export function CharacterSheet({
                                           skillExpanded ? null : skillKey,
                                         )
                                       }
-                                      className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+                                      className="flex min-w-0 flex-1 items-center justify-between gap-3 px-3 py-3 text-left"
                                     >
                                       <div className="min-w-0">
                                         <span className="block break-words text-sm font-bold text-foreground">
@@ -5058,6 +5296,15 @@ export function CharacterSheet({
                                         />
                                       </div>
                                     </button>
+                                    {hasEvolutionBonuses(skill.bonuses) && (
+                                      <button type="button"
+                                        title={`Ver todos os estágios de ${skill.name}`}
+                                        aria-label={`Árvore de evolução de ${skill.name}`}
+                                        onClick={() => setEvolutionView({ skill, className: group.name, level: lvl })}
+                                        className="mr-2 inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-primary/35 bg-primary/[.065] px-2.5 py-2 text-[10px] font-bold text-primary transition-colors hover:border-primary/60 hover:bg-primary/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:px-3"
+                                      ><GitBranch className="size-3.5" /><span className="hidden sm:inline">Árvore de evolução</span><span className="sm:hidden">Árvore</span></button>
+                                    )}
+                                    </div>
                                     {skillExpanded && (
                                       <div className="border-t border-primary/10 px-3 pb-3 pt-3">
                                         <div className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
@@ -5460,6 +5707,13 @@ export function CharacterSheet({
           )}
         </div>
       </div>
+      {evolutionView && <SkillEvolutionTree
+        key={`${evolutionView.skill.id}:${evolutionView.level}`}
+        skill={evolutionView.skill}
+        className={evolutionView.className}
+        level={evolutionView.level}
+        onClose={() => setEvolutionView(null)}
+      />}
     </div>
   )
 }

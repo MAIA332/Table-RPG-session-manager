@@ -8,6 +8,8 @@ import {
   Attribute,
 } from "@/lib/combat-model"
 
+import { ELEMENTS, ELEMENT_NAMES, elementId, type ElementId } from "@/lib/elemental-affinities"
+
 const input =
   "w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-destructive/40 focus:ring-2 focus:ring-destructive/20"
 
@@ -51,7 +53,8 @@ export function BestiaryAttackEditor({
   creatureDice: CreatureDice
   onChange: (value: Attack) => void
 }) {
-  const attributes: Attribute[] = Array.isArray(value.attributes) && value.attributes.length > 0
+  // A anotação explícita impede que o fallback ["mig"] amplie o tipo para string[].
+  const attributes: Attribute[] = Array.isArray(value.attributes) && value.attributes.length
     ? value.attributes
     : ["mig"]
 
@@ -164,14 +167,10 @@ export function BestiaryAttackEditor({
           <span>Tipo de dano</span>
           <select
             className={input}
-            value={value.type}
+            value={elementId(value.type) || value.type}
             onChange={(event) => onChange({ ...value, type: event.target.value })}
           >
-            {["físico", "fogo", "gelo", "raio", "ar", "terra", "luz", "trevas", "veneno"].map((entry) => (
-              <option key={entry} value={entry}>
-                {entry}
-              </option>
-            ))}
+            {ELEMENTS.map((element: ElementId) => <option key={element} value={element}>{ELEMENT_NAMES[element]}</option>)}
           </select>
         </label>
       </div>

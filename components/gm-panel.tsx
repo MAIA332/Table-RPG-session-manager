@@ -1,11 +1,15 @@
 "use client"
 import { normalizeStoreFolders } from "@/lib/store-folders"
 import { ClassBooksWorkbench } from "./class-books"
+import { DeathTokenWorkbench } from "./death-token-workbench"
 import { CustomChecksWorkbench } from "./custom-checks-workbench"
 import type { CustomCheck } from "@/lib/custom-checks"
 import { getCampaignClassCatalog } from "@/lib/class-catalog"
 import { isClassPublished, type CustomClassVisibility } from "@/lib/class-visibility"
+import { allowedPlayerIds, allowedCharacterIds, type ClassAudience } from "@/lib/class-audience"
+import { ClassAudienceEditor, type AudienceMode } from "./class-audience-editor"
 import { CLASSES } from "@/lib/game-data"
+import { ELEMENTS, ELEMENT_NAMES, classElement, type ElementId } from "@/lib/elemental-affinities"
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -648,17 +652,31 @@ function CreatedClassCard({
     onToggle,
     onDelete,
     onEdit,
-    publishingClassId,
-    onChangeVisibility,
+    onChangeAffinity,
+    onConfigureVisibility,
   }: {
     cls: GameClass
     expanded: boolean
     onToggle: () => void
     onDelete: () => void
     onEdit: () => void
-    publishingClassId: string | null
-    onChangeVisibility: (cls: GameClass) => void
+    onChangeAffinity: (element: ElementId) => Promise<void>
+    onConfigureVisibility: (cls: GameClass) => void
   }) {
+    const [savingAffinity, setSavingAffinity] = useState(false)
+    const [affinityError, setAffinityError] = useState("")
+    async function saveAffinity(value: ElementId) {
+      if (savingAffinity || value === classElement(cls)) return
+      setSavingAffinity(true)
+      setAffinityError("")
+      try {
+        await onChangeAffinity(value)
+      } catch (error) {
+        setAffinityError(error instanceof Error ? error.message : "Não foi possível salvar a afinidade.")
+      } finally {
+        setSavingAffinity(false)
+      }
+    }
     const attributeLabels: Record<GameClass["primaryAttribute"], string> = {
       mig: "Vigor (MIG)",
       dex: "Destreza (DEX)",
@@ -697,7 +715,10 @@ function CreatedClassCard({
                   {cls.parentClassId ? "Subclasse" : "Homebrew"}
                 </span>
                 <span className={`text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-full border ${isClassPublished(cls) ? "border-green-500/30 text-green-300" : "border-orange-500/30 text-orange-300"}`}>
-                  {isClassPublished(cls) ? "Liberada" : "Oculta"}
+                  {!isClassPublished(cls) ? "Oculta" : allowedPlayerIds(cls) === null && allowedCharacterIds(cls) === null ? "Todos" : [
+                    allowedPlayerIds(cls)?.length ? `${allowedPlayerIds(cls)!.length} jogador(es)` : "",
+                    allowedCharacterIds(cls)?.length ? `${allowedCharacterIds(cls)!.length} personagem(ns)` : "",
+                  ].filter(Boolean).join(" · ") || "Restrita"}
                 </span>
               </div>
 
@@ -717,6 +738,9 @@ function CreatedClassCard({
                 <span className="text-[9px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10">
                   {attributeLabels[cls.primaryAttribute]}
                 </span>
+                <span className="text-[9px] px-2 py-1 rounded border border-primary/25 bg-primary/10 text-primary">
+                  Afinidade: {ELEMENT_NAMES[classElement(cls)]}
+                </span>
 
                 <span className="text-[9px] px-2 py-1 rounded bg-amber-500/10 text-amber-300 border border-amber-500/10">
                   {cls.skills.length} perícia
@@ -733,17 +757,12 @@ function CreatedClassCard({
             />
           </button>
 
-          <button
-            type="button"
-            disabled={publishingClassId !== null}
-            onClick={() => onChangeVisibility(cls)}
-            title={isClassPublished(cls) ? "Ocultar dos jogadores" : "Liberar aos jogadores"}
-            aria-label={`${isClassPublished(cls) ? "Ocultar" : "Liberar"} ${cls.name} para evolução`}
-            className={`rounded-md border p-2 text-xs font-bold disabled:opacity-50 ${isClassPublished(cls)
-              ? "border-green-600/40 text-green-300 hover:bg-green-700/10"
-              : "border-orange-500/40 text-orange-300 hover:bg-orange-700/10"}`}
-          >
+          <button type="button" onClick={() => onConfigureVisibility(cls)}
+            title={`Configurar jogadores e personagens que podem ver ${cls.name}`}
+            aria-label={`Configurar visibilidade de ${cls.name} por jogador e personagem`}
+            className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/[.07] px-2.5 py-2 text-[11px] font-bold text-primary transition-colors hover:bg-primary/[.14]">
             {isClassPublished(cls) ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+            <span className="hidden sm:inline">Permissões</span>
           </button>
           <button type="button" onClick={onEdit} title="Editar classe ou subclasse" className="p-2 rounded-lg text-amber-300 hover:bg-amber-500/10"><Pencil className="size-4" /></button>
           <button
@@ -777,6 +796,23 @@ function CreatedClassCard({
               onMouseDown={(e) => e.stopPropagation()}
             >
               <div className="border-t border-border/60 p-4 space-y-5">
+                <div className="rounded-xl border border-primary/25 bg-primary/[.04] p-4">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-primary" htmlFor={`affinity-${cls.id}`}>
+                    Afinidade elemental · editar classe criada
+                  </label>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <select id={`affinity-${cls.id}`}
+                      aria-label={`Afinidade elemental de ${cls.name}`}
+                      value={classElement(cls)} disabled={savingAffinity}
+                      onChange={event => void saveAffinity(event.target.value as ElementId)}
+                      className="min-w-0 flex-1 rounded-lg border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary/70">
+                      {ELEMENTS.map(element => <option key={element} value={element}>{ELEMENT_NAMES[element]}</option>)}
+                    </select>
+                    {savingAffinity && <span role="status" className="text-xs text-primary">Salvando…</span>}
+                  </div>
+                  {affinityError && <p role="alert" className="mt-2 text-xs text-destructive">{affinityError}</p>}
+                  <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">A alteração é salva diretamente nesta classe. Classes antigas sem elemento definido usam Físico.</p>
+                </div>
                 {/* IDENTIDADE */}
                 <div className="rounded-xl border border-amber-500/10 bg-amber-500/[0.02] p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -1044,6 +1080,7 @@ export function GmPanel({
   onLaunchHazard,
   onStopHazard,
 }: GmPanelProps) {
+  const [showDeathTokens, setShowDeathTokens] = useState(false)
   const [gmPanelTab, setGmPanelTab] = useState<
     "catalog" | "custom" | "zenits" | "classes" | "hazards" | "store-config" | "checks"
   >("catalog")
@@ -1108,7 +1145,7 @@ export function GmPanel({
     description: "",
   })
 
-  const [classDraft, setClassDraft] = useState<CustomClassVisibility>({
+  const [classDraft, setClassDraft] = useState<CustomClassVisibility & { affinity?: ElementId }>({
     id: "",
     playerVisible: false,
     name: "",
@@ -1117,6 +1154,7 @@ export function GmPanel({
     hpPerLevel: 5,
     mpPerLevel: 5,
     primaryAttribute: "mig",
+    affinity: "fisico",
     skills: [createSkillDraft()],
   })
 
@@ -1125,18 +1163,20 @@ export function GmPanel({
   // Estado para expandir os detalhes da classe homebrew
   const [expandedClassId, setExpandedClassId] = useState<string | null>(null)
   const [savingClass, setSavingClass] = useState(false)
-  const [publishingClassId, setPublishingClassId] = useState<string | null>(null)
+  const [audienceClassId, setAudienceClassId] = useState<string | null>(null)
+  const audienceClass = customClasses.find((cls: GameClass) => cls.id === audienceClassId) as GameClass | undefined
 
-  async function changeClassVisibility(cls: GameClass) {
-    if (publishingClassId) return
-    setPublishingClassId(cls.id)
-    try {
-      await onCreateClass({ ...cls, playerVisible: !isClassPublished(cls) } as CustomClassVisibility)
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Não foi possível alterar a publicação da classe.")
-    } finally {
-      setPublishingClassId(null)
+  async function saveAudience(mode: AudienceMode, userIds: string[], characterIds: string[]) {
+    if (!audienceClass) throw new Error("A classe deixou de existir. Atualize a lista.")
+    const current = audienceClass as ClassAudience
+    const update: ClassAudience = {
+      ...current,
+      playerVisible: mode !== "hidden",
+      // null retira qualquer lista anterior, inclusive se a persistência usar merge.
+      allowedPlayerIds: mode === "all" ? null : mode === "selected" ? userIds : (current.allowedPlayerIds ?? null),
+      allowedCharacterIds: mode === "all" ? null : mode === "selected" ? characterIds : (current.allowedCharacterIds ?? null),
     }
+    await onCreateClass(update)
   }
 
   const allFolders = normalizeStoreFolders(storeFolders)
@@ -1373,18 +1413,21 @@ export function GmPanel({
       return alert("Uma habilidade possui o mesmo ID de outra classe. Crie um novo identificador.")
     }
 
-    const newClass: CustomClassVisibility = {
+    const newClass: CustomClassVisibility & { affinity?: ElementId } = {
       id: classDraft.id || "custom-class-" + Math.random().toString(36).substring(2, 10),
       ...(classDraft.parentClassId ? { parentClassId: classDraft.parentClassId } : {}),
 
       name: classDraft.name.trim(),
       playerVisible: isClassPublished(classDraft),
+      allowedPlayerIds: (classDraft as ClassAudience).allowedPlayerIds ?? null,
+      allowedCharacterIds: (classDraft as ClassAudience).allowedCharacterIds ?? null,
       archetype: classDraft.archetype.trim(),
       description: classDraft.description.trim(),
 
       hpPerLevel: Number(classDraft.hpPerLevel),
       mpPerLevel: Number(classDraft.mpPerLevel),
       primaryAttribute: classDraft.primaryAttribute,
+      affinity: classElement(classDraft),
 
       skills: validSkills.map((skill) => ({
         ...skill,
@@ -1431,6 +1474,7 @@ export function GmPanel({
       hpPerLevel: 5,
       mpPerLevel: 5,
       primaryAttribute: "mig",
+      affinity: "fisico",
       skills: [createSkillDraft()],
     })
 
@@ -1502,6 +1546,7 @@ export function GmPanel({
   }
 
   return (
+    <>
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -2191,12 +2236,14 @@ export function GmPanel({
                                   key={cls.id}
                                   cls={cls}
                                   expanded={expandedClassId === cls.id}
-                                  publishingClassId={publishingClassId}
-                                  onChangeVisibility={cls => void changeClassVisibility(cls)}
+                                  onConfigureVisibility={cls => setAudienceClassId(cls.id)}
                                   onToggle={() =>
                                     setExpandedClassId(current => current === cls.id ? null : cls.id)
                                   }
-                                  onEdit={() => { setClassDraft({ ...structuredClone(cls), playerVisible: isClassPublished(cls) }); setExpandedSkillId(null) }}
+                                  onEdit={() => { setClassDraft({ ...structuredClone(cls), affinity: classElement(cls), playerVisible: isClassPublished(cls) }); setExpandedSkillId(null) }}
+                                  onChangeAffinity={async (affinity) => {
+                                    await onCreateClass({ ...cls, affinity })
+                                  }}
                                   onDelete={() => {
                                     onDeleteClass(cls.id)
 
@@ -2210,6 +2257,10 @@ export function GmPanel({
                           </div>
                         </div>
 
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/[.045] p-4">
+                          <div><h3 className="flex items-center gap-2 font-serif text-lg font-bold"><Gift className="size-5 text-primary"/> Recompensas de renascimento</h3><p className="mt-1 text-xs text-muted-foreground">Configure níveis, Zenits, itens e classes para o próximo personagem de um jogador.</p></div>
+                          <Button type="button" variant="outline" onClick={() => setShowDeathTokens(true)} className="gap-2 border-primary/40 text-primary"><Gift className="size-4" /> Tokens de morte</Button>
+                        </div>
                         <ClassBooksWorkbench campaignId={campaignId} characters={characters} refreshToken={booksRevision} />
                         <div className="flex items-center gap-3">
                           <div className="h-px flex-1 bg-foreground/[0.045]" />
@@ -2251,13 +2302,24 @@ export function GmPanel({
                                 ))}
                               </select>
                             </label>
+                            <label className="flex min-w-0 flex-col gap-1.5 rounded-xl border border-primary/25 bg-primary/[.04] p-3 text-xs text-primary">
+                              <span className="font-black uppercase tracking-widest">Afinidade elemental da classe</span>
+                              <select
+                                value={classDraft.affinity ?? "fisico"}
+                                onChange={event => setClassDraft(previous => ({ ...previous, affinity: event.target.value as ElementId }))}
+                                className="w-full rounded-lg border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground"
+                              >
+                                {ELEMENTS.map(element => <option key={element} value={element}>{ELEMENT_NAMES[element]}</option>)}
+                              </select>
+                              <span className="text-[11px] leading-relaxed text-muted-foreground">O elemento ficará vinculado à classe e será oferecido como afinidade aos personagens que a possuem.</span>
+                            </label>
                             {classDraft.id && <p className="text-xs text-amber-300">Editando classe existente. O ID será preservado para não perder vínculos dos personagens.</p>}
                             <label className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
                               <input type="checkbox" checked={isClassPublished(classDraft)}
                                 onChange={event => setClassDraft(previous => ({ ...previous, playerVisible: event.target.checked }))} />
                               <span>
                                 <strong>Liberar para evolução dos jogadores</strong>
-                                <small className="block text-xs text-muted-foreground">Desmarcada: a classe ou subclasse não aparece na tela Aprender. A concessão do mestre continua disponível.</small>
+                                <small className="block text-xs text-muted-foreground">Desmarcada: a classe ou subclasse não aparece na tela Aprender. Após salvar, use <b>Permissões</b> em Classes Criadas para escolher jogadores específicos.</small>
                               </span>
                             </label>
                             <div className="grid grid-cols-2 gap-3">
@@ -2893,5 +2955,9 @@ export function GmPanel({
         </motion.div>
       )}
     </AnimatePresence>
+    {audienceClass && <ClassAudienceEditor key={audienceClass.id} cls={audienceClass} members={members} characters={characters}
+      onSave={saveAudience} onClose={() => setAudienceClassId(null)} />}
+    {showDeathTokens && <DeathTokenWorkbench campaignId={campaignId} members={members} customClasses={customClasses} customEquipment={customEquipment} onClose={() => setShowDeathTokens(false)} />}
+    </>
   )
 }

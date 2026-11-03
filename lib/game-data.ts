@@ -1,5 +1,6 @@
 import type { AttributeKey, DieSize, EquipmentItem } from "./types"
 import type { Creature } from "./types"
+import type { ElementId } from "./elemental-affinities"
 
 export interface AttributeProfile {
   id: string
@@ -85,7 +86,11 @@ export interface GameClass {
   hpPerLevel: number
   mpPerLevel: number
   primaryAttribute: AttributeKey
+  /** Elemento fixo da classe. Custom antigas sem afinidade assumem Físico. */
+  affinity?: ElementId
   skills: GameSkill[]
+  allowedPlayerIds?:any
+  allowedCharacterIds?:any
 }
 
 export const CLASSES: GameClass[] = [
@@ -99,6 +104,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 5,
     mpPerLevel: 2,
     primaryAttribute: "mig",
+    affinity: "fisico",
     skills: [
       {
         id: "wm-bladestorm",
@@ -148,6 +154,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 4,
     mpPerLevel: 4,
     primaryAttribute: "wlp",
+    affinity: "mental",
     skills: [
       {
         id: "or-condemn",
@@ -198,6 +205,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 4,
     mpPerLevel: 4,
     primaryAttribute: "ins",
+    affinity: "arcano",
     skills: [
       {
         id: "ti-emergency",
@@ -245,6 +253,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 4,
     mpPerLevel: 4,
     primaryAttribute: "wlp",
+    affinity: "som",
     skills: [
       {
         id: "ch-magisong",
@@ -293,6 +302,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 3,
     mpPerLevel: 5,
     primaryAttribute: "ins",
+    affinity: "mental",
     skills: [
       {
         id: "lo-flash",
@@ -343,6 +353,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 6,
     mpPerLevel: 3,
     primaryAttribute: "mig",
+    affinity: "sangue",
     skills: [
       {
         id: "mu-akro",
@@ -390,6 +401,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 4,
     mpPerLevel: 5,
     primaryAttribute: "wlp",
+    affinity: "luz",
     skills: [
       {
         id: "cl-aura",
@@ -439,6 +451,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 5,
     mpPerLevel: 3,
     primaryAttribute: "dex",
+    affinity: "espiritual",
     skills: [
       {
         id: "mk-ironfist",
@@ -488,6 +501,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 4,
     mpPerLevel: 4,
     primaryAttribute: "dex",
+    affinity: "trevas",
     skills: [
       {
         id: "nj-ninjutsu",
@@ -537,6 +551,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 4,
     mpPerLevel: 5,
     primaryAttribute: "ins",
+    affinity: "terra",
     skills: [
       {
         id: "ge-leyline",
@@ -586,6 +601,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 4,
     mpPerLevel: 5,
     primaryAttribute: "wlp",
+    affinity: "sangue",
     skills: [
       {
         id: "he-bloodfuel",
@@ -635,6 +651,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 3,
     mpPerLevel: 5,
     primaryAttribute: "ins",
+    affinity: "mental",
     skills: [
       {
         id: "pr-omens",
@@ -686,6 +703,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 5,
     mpPerLevel: 3,
     primaryAttribute: "wlp",
+    affinity: "espiritual",
     skills: [
       {
         id: "ex-mark",
@@ -737,6 +755,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 4,
     mpPerLevel: 4,
     primaryAttribute: "ins",
+    affinity: "espiritual",
     skills: [
       {
         id: "pu-thread",
@@ -787,6 +806,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 5,
     mpPerLevel: 3,
     primaryAttribute: "ins",
+    affinity: "fisico",
     skills: [
       {
         id: "prx-prey",
@@ -835,6 +855,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 6,
     mpPerLevel: 3,
     primaryAttribute: "mig",
+    affinity: "sangue",
     skills: [
       {
         id: "pa-mutation",

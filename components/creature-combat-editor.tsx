@@ -10,6 +10,7 @@ import {
   type Cost,
 } from "@/lib/combat-model"
 import { QTE_CHECKS } from "@/lib/combat-checks"
+import { ELEMENTS, ELEMENT_NAMES, elementId } from "@/lib/elemental-affinities"
 import { createClientId } from "@/lib/client-id"
 const input =
   "w-full min-w-0 rounded-lg border border-white/15 bg-zinc-900 p-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -200,22 +201,10 @@ export function AttackEditor({
       <Field title="Tipo de dano">
         <select
           className={input}
-          value={value.type}
+          value={elementId(value.type) || value.type}
           onChange={(e) => onChange({ ...value, type: e.target.value })}
         >
-          {[
-            "físico",
-            "fogo",
-            "gelo",
-            "raio",
-            "ar",
-            "terra",
-            "luz",
-            "trevas",
-            "veneno",
-          ].map((t) => (
-            <option key={t}>{t}</option>
-          ))}
+          {ELEMENTS.map((element) => <option key={element} value={element}>{ELEMENT_NAMES[element]}</option>)}
         </select>
       </Field>
       <div className="sm:col-span-2 xl:col-span-5">

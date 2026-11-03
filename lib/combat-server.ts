@@ -1,5 +1,7 @@
 import "server-only"
-import { BESTIARY } from "./game-data"
+import { BESTIARY, CLASSES, type GameClass } from "./game-data"
+import { getCampaignClassCatalog } from "./class-catalog"
+import { affinityDamageAmount, availableClassElements, characterEffectiveness, readElementalSelection } from "./elemental-affinities"
 import { deathDieSize, deathOutcome } from "./death-model"
 import { randomInt, randomUUID } from "node:crypto"
 import { store, transactStore, getMemberRole, publish } from "./store"
@@ -33,7 +35,6 @@ import {
   characterDefense,
   characterRoll,
   checkDefinition,
-  affinityDamage,
   legacyAttacks,
   random,
 } from "./combat-rules-server"
@@ -50,8 +51,6 @@ type CrisisSession = CombatSession & {
   crisisConfig?: CrisisConfig
   crisisDue?: Record<string, number>
   crisisProgress?: Record<string, CrisisProgress>
-  /** Último HP observado para identificar transições REAIS 1+ -> 0. */
-  deathObservedHp?: Record<string, number>
 }
 const officialCheckIds = PRESET_CHECKS.map(check => check.id)
 const crisisConfig = (session: CombatSession) => normalizeCrisisConfig((session as CrisisSession).crisisConfig, officialCheckIds)
@@ -73,12 +72,6 @@ function crisisForCreature(session: CombatSession, c: CombatCreature): ResolvedC
 }
 
 /** Avança efeitos tanto na ficha fora de combate quanto em combatentes vivos. */
-/**
- * O DoT é resolvido em ciclos futuros, nunca cobrando períodos acumulados
- * durante suspensão/restart ou muitos GETs simultâneos.
- * A recuperação pelo teste de morte (1 HP) suspende danos periódicos até a
- * próxima cura efetiva (>1 HP) ou reinício explícito da condição pelo Mestre.
- */
 function advanceCrisis(db: Database, campaignId: string, s: CombatSession, now = Date.now(), updatedCharacters = new Set<string>()): boolean {
   const state = s as CrisisSession
   const previous = state.crisisDue || {}
@@ -93,84 +86,53 @@ function advanceCrisis(db: Database, campaignId: string, s: CombatSession, now =
     ...(s.enabled ? s.creatures.map(c => ({ kind: "creature" as const, id: c.instanceId, c })) : []),
   ]
   for (const entry of sources) {
-    const c = entry.c
-    const getHp = () => entry.kind === "player"
-      ? (db.characters.get(entry.id)?.resources.hp ?? 0)
-      : (c as CombatCreature).currentHp
-    const maxHp = entry.kind === "player" ? (c as Character).resources.maxHp : (c as CombatCreature).maxHp
-    const prefix = `${entry.kind}:${entry.id}:`
-    const conditions = () => entry.kind === "player"
-      ? crisisForCharacter(s, db.characters.get(entry.id)!)
-      : crisisForCreature(s, c as CombatCreature)
-    const updateProgress = () => {
-      const previousForEntity = entityProgress(s, entry.kind, entry.id)
-      const updated = advanceCrisisProgress(crisisConfig(s), getHp(), maxHp, conditions(), previousForEntity)
-      for (const key of Object.keys(workingProgress)) if (key.startsWith(prefix)) delete workingProgress[key]
-      for (const [key, stage] of Object.entries(updated)) workingProgress[`${prefix}${key}`] = stage
-    }
-    updateProgress()
-    const deathResult = entry.kind === "player" ? s.deathChecks?.[entry.id] : undefined
-    const protectedRecovery = deathResult?.status === "recovered" && getHp() <= 1
-
-    for (const condition of conditions()) {
-      if (condition.kind !== "dot" || !condition.damage || !condition.intervalSeconds) continue
-      if (protectedRecovery || getHp() <= 0) continue
-      const key = `${prefix}${condition.applicationId}`
-      const interval = Math.round(condition.intervalSeconds * 1000)
-      if (!Number.isSafeInteger(interval) || interval < 1000) continue
-      const due = previous[key]
-      if (typeof due !== "number" || !Number.isFinite(due)) {
-        next[key] = now + interval
-        continue
+      const c = entry.c
+      const getHp = () => entry.kind === "player" ? (db.characters.get(entry.id)?.resources.hp || 0) : (c as CombatCreature).currentHp
+      const maxHp = entry.kind === "player" ? (c as Character).resources.maxHp : (c as CombatCreature).maxHp
+      const prefix = `${entry.kind}:${entry.id}:`
+      const conditions = () => entry.kind === "player"
+        ? crisisForCharacter(s, db.characters.get(entry.id)!)
+        : crisisForCreature(s, c as CombatCreature)
+      const updateProgress = () => {
+        const previousForEntity = entityProgress(s, entry.kind, entry.id)
+        const updated = advanceCrisisProgress(crisisConfig(s), getHp(), maxHp, conditions(), previousForEntity)
+        for (const key of Object.keys(workingProgress)) if (key.startsWith(prefix)) delete workingProgress[key]
+        for (const [key, stage] of Object.entries(updated)) workingProgress[`${prefix}${key}`] = stage
       }
-      if (due > now) {
-        next[key] = due
-        continue
+      updateProgress()
+      for (const condition of conditions()) {
+        if (condition.kind !== "dot" || !condition.damage || !condition.intervalSeconds) continue
+        const key = `${prefix}${condition.applicationId}`
+        const interval = condition.intervalSeconds * 1000
+        const due = previous[key] ?? now + interval
+        if (due > now) { next[key] = due; continue }
+        const intervals = Math.floor((now - due) / interval) + 1
+        const damage = Math.min(getHp(), condition.damage * intervals)
+        next[key] = due + intervals * interval
+        if (damage <= 0) continue
+        if (entry.kind === "player") {
+          applyDamage(db, db.characters.get(entry.id)!, damage, s)
+          updatedCharacters.add(entry.id)
+        } else {
+          const creature = c as CombatCreature
+          creature.currentHp = Math.max(0, creature.currentHp - damage)
+        }
+        addLog(s, `${c.name}: ${condition.name} causou ${damage} de dano (${intervals} período(s)).`, entry.kind === "player" ? entry.id : undefined, damage)
+        changed = true
       }
-      // Atrasos de >= um intervalo são períodos perdidos, não dívida de HP.
-      // O timer normal pode variar alguns milissegundos: isso não é atraso.
-      if (now - due >= interval) {
-        next[key] = now + interval
-        continue
+      updateProgress()
+      // Estágios que acabaram de surgir precisam ganhar timers imediatamente,
+      // sem esperar a próxima ação de jogador ou do Mestre.
+      const currentEffects = conditions()
+      const activeKeys = new Set(currentEffects.map(effect => `${prefix}${effect.applicationId}`))
+      for (const key of Object.keys(next)) {
+        if (key.startsWith(prefix) && !activeKeys.has(key)) delete next[key]
       }
-      // No máximo um pulso por tick. Não aplica dano retroativo ao iniciar a aplicação.
-      const damage = Math.min(getHp(), condition.damage)
-      next[key] = now + interval
-      if (!Number.isFinite(damage) || damage <= 0) continue
-      const before = getHp()
-      if (entry.kind === "player") {
-        applyDamage(db, db.characters.get(entry.id)!, damage, s)
-        if (getHp() !== before) updatedCharacters.add(entry.id)
-      } else {
-        const creature = c as CombatCreature
-        creature.currentHp = Math.max(0, creature.currentHp - damage)
+      for (const effect of currentEffects) {
+        if (effect.kind !== "dot" || !effect.intervalSeconds) continue
+        const key = `${prefix}${effect.applicationId}`
+        if (!next[key]) next[key] = now + effect.intervalSeconds * 1000
       }
-      // A recuperação de morte pode elevar o HP para 1. Não repetir pulsos
-      // para essa personagem neste mesmo avanço.
-      addLog(s, `${c.name}: ${condition.name} causou ${damage} de dano.`, entry.kind === "player" ? entry.id : undefined, damage)
-      changed = true
-      if (entry.kind === "player" && s.deathChecks?.[entry.id]?.status === "recovered" && getHp() <= 1) break
-    }
-    updateProgress()
-    const currentEffects = conditions()
-    const activeKeys = new Set(currentEffects.map(effect => `${prefix}${effect.applicationId}`))
-    for (const key of Object.keys(next)) {
-      if (key.startsWith(prefix) && !activeKeys.has(key)) delete next[key]
-    }
-    // Não alimentar timers para personagens em 0 HP ou recém recuperados.
-    const hold = getHp() <= 0 || (entry.kind === "player" &&
-      s.deathChecks?.[entry.id]?.status === "recovered" && getHp() <= 1)
-    if (hold) {
-      for (const key of Object.keys(next)) if (key.startsWith(prefix)) delete next[key]
-      continue
-    }
-    for (const effect of currentEffects) {
-      if (effect.kind !== "dot" || !effect.intervalSeconds) continue
-      const interval = Math.round(effect.intervalSeconds * 1000)
-      if (!Number.isSafeInteger(interval) || interval < 1000) continue
-      const key = `${prefix}${effect.applicationId}`
-      if (!next[key]) next[key] = now + interval
-    }
   }
   if (JSON.stringify(previous) !== JSON.stringify(next)) changed = true
   if (JSON.stringify(oldProgress) !== JSON.stringify(workingProgress)) changed = true
@@ -311,22 +273,34 @@ function addLog(
     ...s.log,
   ].slice(0, 60)
 }
+/** Resolução de defesa elemental para personagens (sem deduzir escolhas antigas). */
+function elementalDefense(db: Database, character: Character, attackType: unknown) {
+  const saved = readElementalSelection((character as Character & { elementalAffinities?: unknown }).elementalAffinities)
+  if (!saved.primary && !saved.secondary) return { multiplier: 1, element: null, rank: null }
+  const definitions = db.campaignState.get(character.campaignId)?.customClasses
+  const custom = Array.isArray(definitions) ? definitions as GameClass[] : []
+  const catalog = getCampaignClassCatalog([...db.characters.values()].filter(c => c.campaignId === character.campaignId), custom)
+  const owned = new Set(character.classes.filter(cls => cls.level > 0).map(cls => cls.classId))
+  const options = availableClassElements(catalog.filter(cls => owned.has(cls.id)).map(cls => {
+    // Não perder a afinidade explícita se um catálogo intermediário remover
+    // metadados adicionais de classes personalizadas.
+    const original = custom.find(entry => entry.id === cls.id)
+    return original || CLASSES.find(official => official.id === cls.id) || cls
+  }))
+  return characterEffectiveness(attackType, options, saved)
+}
+
 function applyDamage(db: Database, c: Character, damage: number, s: CombatSession) {
-  if (!Number.isFinite(damage) || damage <= 0) return
+  // Sempre desconta do valor mais recente na transação: Atordoamento pode
+  // causar 1 HP antes do próprio golpe/reação provocar dano adicional.
   const current = db.characters.get(c.id) || c
-  const before = current.resources.hp
-  if (!Number.isFinite(before) || before <= 0) return
-  const hp = Math.max(0, Math.min(current.resources.maxHp, before - damage))
-  if (hp === before) return
+  const hp = Math.max(0, Math.min(current.resources.maxHp, current.resources.hp - damage))
   db.characters.set(c.id, {
     ...current,
     resources: { ...current.resources, hp },
     updatedAt: Math.max(Date.now(), Number(current.updatedAt || 0) + 1),
   })
   reconcileDeath(db, db.characters.get(c.id)!, s)
-  // O estado observado armazena o HP final, inclusive recuperação para 1.
-  const observed = ((s as CrisisSession).deathObservedHp ??= {})
-  observed[c.id] = db.characters.get(c.id)?.resources.hp ?? hp
 }
 function reconcileDeath(db: Database, c: Character, s: CombatSession): boolean {
   const checks = s.deathChecks ??= {}
@@ -335,7 +309,6 @@ function reconcileDeath(db: Database, c: Character, s: CombatSession): boolean {
     if (previous?.active) { previous.active = false; return true }
     return false
   }
-  // Um óbito vigente não pode ser reprocessado em leituras subsequentes.
   if (previous?.active) return false
   const die = String(c.attributes.mig)
   const size = deathDieSize(die)
@@ -365,30 +338,14 @@ function reconcileDeath(db: Database, c: Character, s: CombatSession): boolean {
   return true
 }
 function reconcileCampaignDeaths(db: Database, campaignId: string, s: CombatSession, userId: string) {
-  // GET/sincronização deve OBSERVAR o estado; nunca gerar morte só porque
-  // um personagem já estava a 0 HP quando a aplicação foi iniciada.
   const { role } = authorize(db, campaignId, userId)
-  const state = s as CrisisSession
-  const observed = state.deathObservedHp ?? {}
-  const next = { ...observed }
   let changed = false
   for (const c of db.characters.values()) {
-    if (c.campaignId !== campaignId || (role !== "gm" && c.ownerId !== userId)) continue
-    const hp = c.resources.hp
-    const last = observed[c.id]
-    // Sem linha de base na sessão: apenas registra o valor atual, sem rolagem.
-    if (typeof last === "number" && last > 0 && hp <= 0) {
-      if (reconcileDeath(db, c, s)) changed = true
-    } else if (hp > 0 && s.deathChecks?.[c.id]?.active) {
-      if (reconcileDeath(db, c, s)) changed = true
-    }
-    const finalHp = db.characters.get(c.id)?.resources.hp ?? hp
-    if (next[c.id] !== finalHp) { next[c.id] = finalHp; changed = true }
+    if (c.campaignId === campaignId && (role === "gm" || c.ownerId === userId))
+      changed = reconcileDeath(db, c, s) || changed
   }
-  if (changed) state.deathObservedHp = next
   return changed
 }
-
 function finishQte(
   db: Database,
   campaignId: string,
@@ -472,7 +429,7 @@ function snapshot(
   const { role } = authorize(db, campaignId, userId)
   const gm = role === "gm"
   const { receipts, monsterAttributeRolls, monsterCheckRolls, attackPreviews,
-    crisisConfig: privateCrisisConfig, crisisDue, crisisProgress, deathObservedHp, ...publicState } = s as CrisisSession & MonsterDiceState
+    crisisConfig: privateCrisisConfig, crisisDue, crisisProgress, ...publicState } = s as CrisisSession & MonsterDiceState
   const characters = [...db.characters.values()]
     .filter((c) => c.campaignId === campaignId)
     .map((c) => ({
@@ -490,10 +447,13 @@ function snapshot(
     }))
   return {
     ...publicState,
-    // Nunca enviar URLs de golpes de outros jogadores no snapshot da campanha.
+    // As imagens dos ataques dos monstros são visíveis a TODOS os membros
+    // autenticados da campanha, inclusive espectadores fora do combate.
+    // A autorização de membro já é aplicada por authorize() neste snapshot.
+    // Somente a visualização é pública na campanha: reagir, causar dano e
+    // cancelar uma imagem continuam sujeitos às permissões de cada comando.
     attackPreviews: (attackPreviews || []).filter(preview =>
-      preview.expiresAt > Date.now() &&
-      (gm || db.characters.get(preview.characterId)?.ownerId === userId)),
+      preview.expiresAt > Date.now()),
     ...{ crisis: crisisPublicState(db, campaignId, s), ...(gm ? { crisisConfig: crisisConfig(s) } : {}) },
     ...{
       // Nunca transmite as rolagens privadas via JSON para os jogadores.
@@ -1374,18 +1334,10 @@ export async function commandCombat(
         )
         const defense =
           attack.targetDefense === "magical" ? target.mdef : target.def
-        const damage =
-          rolled.total >= defense
-            ? affinityDamage(
-                rollDamage(attack.damage, random),
-                attack.type,
-                target.affinities,
-              )
-            : 0
-        target.currentHp = Math.max(
-          0,
-          Math.min(target.maxHp, target.currentHp - damage),
-        )
+        // Ataques de jogadores apenas exibem o dano bruto. O Mestre é quem
+        // decide e aplica dano/efeitos manualmente na criatura.
+        // Não aplicar multiplicadores nem subtrair HP no servidor.
+        const displayDamage = rolled.total >= defense ? rollDamage(attack.damage, random) : 0
         s.spotlight = spotlightReducer(s.spotlight, {
           type: "gm-result",
           total: rolled.total,
@@ -1394,7 +1346,7 @@ export async function commandCombat(
         s.actorCharacterId = null
         addLog(
           s,
-          `${c.name} usou ${attack.name} em ${target.name}: ${rolled.total < defense ? "falha" : rolled.total === defense ? "sucesso com custo" : "sucesso limpo"}. ${rolled.total >= defense ? attack.description || "" : ""}`,
+          `${c.name} usou ${attack.name} em ${target.name}: ${rolled.total < defense ? "falha" : rolled.total === defense ? "sucesso com custo" : "sucesso limpo"}. ${rolled.total >= defense ? `Dano bruto sugerido: ${displayDamage} (${attack.type}), aplicação manual pelo Mestre. ${attack.description || ""}` : ""}`,
         )
         break
       }
@@ -1494,12 +1446,17 @@ export async function commandCombat(
           },
         }, ...s.log].slice(0, 60)
         if (result.outcome !== "failure") {
+          // Calcular no servidor o multiplicador, mas só APROPRIAR HP após
+          // o jogador falhar na reação ou optar por deixar passar.
+          const relation = elementalDefense(db, target, attack.type)
+          const finalDamage = affinityDamageAmount(result.damage, relation.multiplier)
           s.pendingAttack = {
+            ...{ affinityMultiplier: relation.multiplier, baseDamage: result.damage },
             ...{ monsterRollShared },
             id: attackId, at, characterId: target.id, creatureName: c.name,
             attackName: attack.name, total: attackTotal, rolls: result.rolls,
             dice: attack.attributes.map(a => c.attributes[a]),
-            damage: affinityDamage(result.damage, attack.type, (target as any).affinities || {}),
+            damage: finalDamage,
             effect: result.effect,
           }
         } else {
@@ -1545,7 +1502,11 @@ export async function commandCombat(
           addLog(s, `${target.name} evitou ${attack.attackName} de ${attack.creatureName}. Nenhum dano aplicado.`, target.id)
         } else {
           applyDamage(db, target, attack.damage, s)
-          addLog(s, `${attack.creatureName} atingiu ${target.name} com ${attack.attackName}: ${attack.damage < 0 ? `absorveu ${-attack.damage} HP` : `${attack.damage} de dano`}. ${attack.effect}`, target.id, attack.damage)
+          const affinityMeta = attack as typeof attack & { affinityMultiplier?: number; baseDamage?: number }
+          const detail = affinityMeta.affinityMultiplier !== undefined
+            ? ` (base ${affinityMeta.baseDamage ?? attack.damage} × ${affinityMeta.affinityMultiplier.toLocaleString("pt-BR")})`
+            : ""
+          addLog(s, `${attack.creatureName} atingiu ${target.name} com ${attack.attackName}: ${attack.damage} de dano${detail}. ${attack.effect}`, target.id, attack.damage)
         }
         s.pendingAttack = null
         s.spotlight = spotlightReducer(s.spotlight, { type: "gm-pass" })
@@ -1658,6 +1619,5 @@ export async function commandCombat(
   schedule(campaignId, result.session)
   return result.view
 }
-// Não iniciar cronômetros na importação do módulo: o MongoDB é carregado de
-// modo assíncrono e prazos antigos não devem provocar cobranças retroativas.
-// getCombat/commandCombat reconstroem o agendamento ao acessar a campanha.
+// Recover durable deadlines after a process restart. Missed deadlines resolve once under the disk lock.
+for (const [id, s] of store.combatSessions) schedule(id, s)

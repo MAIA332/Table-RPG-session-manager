@@ -514,24 +514,22 @@ function enqueuePersistence<T>(task: () => Promise<T>): Promise<T> {
 }
 
 export async function saveToDisk(storeData: StoreShape): Promise<void> {
-  const previous = globalForStore.__vttPersistedSnapshot ?? createEmptySnapshot()
-  const previousStore = storeFromSnapshot(previous)
-
-  try {
-    enforceInventoryDatabase(storeData, previousStore)
-  } catch (error) {
-    // Preserve the previous safety behavior: only inventory-backed state is
-    // rolled back when its validation fails. Other pending changes remain.
-    storeData.characters = previousStore.characters
-    storeData.campaignState = previousStore.campaignState
-    storeData.lore = previousStore.lore
-    throw error
-  }
-
-  const snapshot = snapshotFromStore(storeData)
-
+  // Construir o snapshot DENTRO da fila. Caso contrário, uma gravação geral
+  // enfileirada durante um ajuste rápido de HP/MP poderia carregar recursos
+  // antigos e sobrescrever a atualização já confirmada no MongoDB.
   await enqueuePersistence(async () => {
-    const changed = await persistSnapshot(snapshot, globalForStore.__vttPersistedSnapshot ?? createEmptySnapshot())
+    const previous = globalForStore.__vttPersistedSnapshot ?? createEmptySnapshot()
+    const previousStore = storeFromSnapshot(previous)
+    try {
+      enforceInventoryDatabase(storeData, previousStore)
+    } catch (error) {
+      storeData.characters = previousStore.characters
+      storeData.campaignState = previousStore.campaignState
+      storeData.lore = previousStore.lore
+      throw error
+    }
+    const snapshot = snapshotFromStore(storeData)
+    const changed = await persistSnapshot(snapshot, previous)
     if (changed) {
       globalForStore.__vttPersistedSnapshot = snapshot
       notifyCombatStorageChanged()
@@ -765,5 +763,71 @@ export function transactStore<T>(
     }
 
     return result.value
+  })
+}
+
+/** Ajuste de vitalidade aceito pela rota rápida e validado no servidor. */
+export type CharacterVitalChange = {
+  mode: "delta" | "max" | "min"
+  amount: number
+}
+
+/**
+ * Atualiza HP/MP usando $set com expressões atômicas no documento do personagem.
+ * NÃO clona o store completo nem a galeria a cada clique. A operação usa a
+ * mesma fila das demais transações e atualiza somente a entrada de personagem
+ * no snapshot persistido; assim, saves futuros não revertem os novos valores.
+ *
+ * delta => soma/subtrai do VALOR ATUAL NO BANCO, não de um estado antigo do React.
+ * max/min => define o limite com possibilidade de offset, sempre com clamp.
+ */
+export async function applyCharacterVitalChanges(
+  characterId: string,
+  changes: Partial<Record<"hp" | "mp", CharacterVitalChange>>,
+): Promise<Character> {
+  await globalForStore.__vttStoreReady
+  return enqueuePersistence(async () => {
+    const known = store.characters.get(characterId)
+    if (!known) throw new Error("Personagem não encontrado.")
+    const operations = Object.entries(changes) as Array<["hp" | "mp", CharacterVitalChange]>
+    if (!operations.length) return known
+
+    const fields: Record<string, unknown> = {}
+    for (const [key, change] of operations) {
+      if (!change || !["delta", "max", "min"].includes(change.mode) ||
+          !Number.isSafeInteger(change.amount) || Math.abs(change.amount) > 1_000_000) {
+        throw new Error("Ajuste de HP/MP inválido.")
+      }
+      const limit = key === "hp" ? "maxHp" : "maxMp"
+      const maximum = { $max: [0, { $ifNull: [`$value.resources.${limit}`, 0] }] }
+      const base = change.mode === "delta"
+        ? { $ifNull: [`$value.resources.${key}`, 0] }
+        : change.mode === "max" ? maximum : { $min: [1, maximum] }
+      fields[`value.resources.${key}`] = {
+        $min: [maximum, { $max: [0, { $add: [base, change.amount] }] }],
+      }
+    }
+    const now = Date.now()
+    fields["value.updatedAt"] = {
+      $max: [now, { $add: [{ $ifNull: ["$value.updatedAt", 0] }, 1] }],
+    }
+    const collection = await ensureMongoCollection()
+    const saved = await collection.findOneAndUpdate(
+      { _id: mongoDocumentId("characters", characterId), collection: "characters" },
+      [{ $set: fields }],
+      { returnDocument: "after" },
+    )
+    if (!saved || !saved.value || typeof saved.value !== "object") {
+      throw new Error("Personagem não encontrado no MongoDB.")
+    }
+    const updated = saved.value as Character
+    if (!updated.resources || !Number.isFinite(updated.resources.hp) || !Number.isFinite(updated.resources.mp)) {
+      throw new Error("O MongoDB retornou recursos inválidos.")
+    }
+    store.characters.set(characterId, updated)
+    // Sem snapshotFromStore(): clona APENAS este personagem, nunca a galeria.
+    globalForStore.__vttPersistedSnapshot?.characters.set(characterId, cloneValue(updated))
+    notifyCombatStorageChanged()
+    return updated
   })
 }

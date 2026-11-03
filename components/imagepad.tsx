@@ -316,7 +316,6 @@ export function Imagepad({
 
   requests,
 
-  onUpdateGallery,
 
   onAction,
 
@@ -340,7 +339,6 @@ export function Imagepad({
 
   requests: GalleryBroadcastRequest[]
 
-  onUpdateGallery: (images: SharedImage[], folders: GalleryFolder[]) => void
 
   onAction: (action: string, payload?: Record<string, unknown>) => Promise<void>
 
@@ -532,14 +530,6 @@ export function Imagepad({
 
   }
 
-  function updateForGm(nextImages: SharedImage[], nextFolders = normalizedFolders) {
-
-    if (!isGm) return
-
-    onUpdateGallery(nextImages, nextFolders)
-
-  }
-
   async function addImage(urlOverride?: string) {
 
     const name = newName.trim()
@@ -598,53 +588,34 @@ export function Imagepad({
 
   }
 
-  function createFolder() {
-
+  async function createFolder() {
     const name = newFolderName.trim()
-
     if (!mayCreateFolder || !name) return
-    if (normalizedFolders.some(folder => folder.name.trim().toLowerCase() === name.toLowerCase())) return setError("Já existe uma pasta com esse nome.")
-    if (isGm) {
-      const folder = { id: createClientId(), name }
-      updateForGm(normalizedImages, [...normalizedFolders, folder])
-      setActiveFolderId(folder.id)
-    } else {
-      void runAction("create-folder", "create-folder", { name })
-    }
+    if (normalizedFolders.some(folder => folder.name.trim().toLowerCase() === name.toLowerCase()))
+      return setError("Já existe uma pasta com esse nome.")
+    const folderId = isGm ? createClientId() : undefined
+    // Salvar só a nova pasta: nunca enviar todas as imagens ao criar uma pasta.
+    const saved = await runAction("create-folder", "create-folder", { name, ...(folderId ? { folderId } : {}) })
+    if (!saved) return
+    if (folderId) setActiveFolderId(folderId)
     setNewFolderName("")
     setShowNewFolder(false)
-
   }
 
-  function renameFolder(folder: GalleryFolder) {
-
+  async function renameFolder(folder: GalleryFolder) {
     if (!mayEditFolder(folder)) return
-
     const name = window.prompt("Novo nome da pasta:", folder.name)?.trim()
-
-    if (!name) return
-
-    if (normalizedFolders.some((entry) => entry.id !== folder.id && entry.name.toLowerCase() === name.toLowerCase())) return setError("Já existe uma pasta com esse nome.")
-
-    if (isGm) updateForGm(normalizedImages, normalizedFolders.map(entry => entry.id === folder.id ? { ...entry, name } : entry))
-    else void runAction(`folder:${folder.id}`, "rename-folder", { folderId: folder.id, name })
-
+    if (!name || name === folder.name) return
+    if (normalizedFolders.some(entry => entry.id !== folder.id && entry.name.toLowerCase() === name.toLowerCase()))
+      return setError("Já existe uma pasta com esse nome.")
+    await runAction(`folder:${folder.id}`, "rename-folder", { folderId: folder.id, name })
   }
 
-  function deleteFolder(folder: GalleryFolder) {
-
+  async function deleteFolder(folder: GalleryFolder) {
     if (!mayEditFolder(folder)) return
-
-    if (!window.confirm(`Excluir a pasta "${folder.name}"? As imagens serão movidas para Todas as imagens.`)) return
-
-    if (isGm) updateForGm(
-      normalizedImages.map(image => image.folderId === folder.id ? { ...image, folderId: folder.ownerId ? `player:${folder.ownerId}` : "root" } : image),
-      normalizedFolders.filter(entry => entry.id !== folder.id),
-    )
-    else void runAction(`folder:${folder.id}`, "delete-folder", { folderId: folder.id })
-
-    setActiveFolderId("root")
-
+    if (!window.confirm(`Excluir a pasta "${folder.name}"? As imagens serão movidas para ${isPrivatePlayerFolder(folder) ? "sua pasta pessoal" : "Todas as imagens"}.`)) return
+    const saved = await runAction(`folder:${folder.id}`, "delete-folder", { folderId: folder.id })
+    if (saved) setActiveFolderId("root")
   }
 
   function count(folderId: string) {
@@ -781,12 +752,12 @@ export function Imagepad({
                   {protectedFolder && !owned && <LockKeyhole className="size-3 shrink-0 text-muted-foreground" />}
                   <span className="text-[10px] text-muted-foreground">{openable ? count(folder.id) : "—"}</span>
                 </button>
-                {mayEditFolder(folder) && <div className="mr-1 flex gap-1 opacity-60 transition hover:opacity-100 group-focus-within:opacity-100"><button type="button" aria-label={`Renomear ${folder.name}`} onClick={() => renameFolder(folder)}><Pencil className="size-3" /></button><button type="button" aria-label={`Excluir ${folder.name}`} onClick={() => deleteFolder(folder)} className="text-red-400"><Trash2 className="size-3" /></button></div>}
+                {mayEditFolder(folder) && <div className="mr-1 flex gap-1 opacity-60 transition hover:opacity-100 group-focus-within:opacity-100"><button type="button" aria-label={`Renomear ${folder.name}`} onClick={() => void renameFolder(folder)}><Pencil className="size-3" /></button><button type="button" aria-label={`Excluir ${folder.name}`} onClick={() => void deleteFolder(folder)} className="text-red-400"><Trash2 className="size-3" /></button></div>}
               </div>
             })}
           </div>
 
-          {mayCreateFolder && showNewFolder && <div className="border-t border-primary/15 p-3"><input autoFocus value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && createFolder()} placeholder="Nome da pasta..." className="mb-2 w-full rounded-sm border border-white/10 bg-black/40 p-2 text-xs outline-none" /><div className="flex gap-2"><Button size="sm" variant="magical" className="flex-1" onClick={createFolder}>Criar</Button><Button size="sm" variant="ghost" onClick={() => setShowNewFolder(false)}>Cancelar</Button></div></div>}
+          {mayCreateFolder && showNewFolder && <div className="border-t border-primary/15 p-3"><input autoFocus value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void createFolder()} placeholder="Nome da pasta..." className="mb-2 w-full rounded-sm border border-white/10 bg-black/40 p-2 text-xs outline-none" /><div className="flex gap-2"><Button size="sm" variant="magical" className="flex-1" onClick={() => void createFolder()}>Criar</Button><Button size="sm" variant="ghost" onClick={() => setShowNewFolder(false)}>Cancelar</Button></div></div>}
 
         </aside>
 
@@ -862,9 +833,9 @@ export function Imagepad({
 
             <div className="mb-3 flex items-center justify-between"><strong className="flex items-center gap-2"><FolderPlus className="size-5 text-primary" /> Nova pasta</strong><button onClick={() => setShowNewFolder(false)}><X className="size-4" /></button></div>
 
-            <input autoFocus value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && createFolder()} placeholder="Nome da pasta..." className="mb-3 w-full rounded-sm border border-white/10 bg-black/40 p-2 text-sm outline-none" />
+            <input autoFocus value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void createFolder()} placeholder="Nome da pasta..." className="mb-3 w-full rounded-sm border border-white/10 bg-black/40 p-2 text-sm outline-none" />
 
-            <div className="flex gap-2"><Button variant="magical" className="flex-1" onClick={createFolder}>Criar</Button><Button variant="ghost" onClick={() => setShowNewFolder(false)}>Cancelar</Button></div>
+            <div className="flex gap-2"><Button variant="magical" className="flex-1" onClick={() => void createFolder()}>Criar</Button><Button variant="ghost" onClick={() => setShowNewFolder(false)}>Cancelar</Button></div>
 
           </div>
 

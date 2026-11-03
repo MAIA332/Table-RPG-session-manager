@@ -89,6 +89,7 @@ export interface CharacterResources {
   maxIp: number
   fp: number
   xp: number
+  lp?:any
 }
 export interface PersonalNote {
   id: string

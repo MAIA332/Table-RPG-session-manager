@@ -88,7 +88,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // Respostas incrementais evitam reenviar todo o acervo (inclusive imagens base64)
   // a cada clique. Só clientes que solicitam explicitamente este protocolo o usam.
   const compactResponse = body.compactResponse === true &&
-    (action === "toggle-public" || action === "delete" || action === "move" || action === "add")
+    (action === "toggle-public" || action === "delete" || action === "move" || action === "add" ||
+      action === "create-folder" || action === "rename-folder" || action === "delete-folder")
   const state = getCampaignState(campaignId)
   let records = Array.isArray(state.galleryFolders) ? [...state.galleryFolders] : []
   let enabled = privateFoldersEnabled(records)
@@ -119,17 +120,30 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   if (action === "create-folder") {
-    if (!enabled || isGm) return error("Pastas privadas de jogadores precisam estar habilitadas pelo Mestre.", 403)
+    if (!isGm && !enabled) return error("Pastas privadas de jogadores precisam estar habilitadas pelo Mestre.", 403)
     const name = typeof body.name === "string" ? body.name.trim() : ""
     if (!name || name.length > 90) return error("Escolha um nome de pasta com até 90 caracteres.")
-    if (folders.filter(folder => folder.ownerId === user.id && !folder.isPlayerFolder).length >= 40)
+    if (!isGm && folders.filter(folder => folder.ownerId === user.id && !folder.isPlayerFolder).length >= 40)
       return error("Limite de 40 pastas privadas por jogador.", 409)
     if (folders.some(folder => folder.name.toLocaleLowerCase() === name.toLocaleLowerCase()))
       return error("Já existe uma pasta com esse nome.", 409)
-    const folder: GalleryFolder = { id: genId("gallery_folder"), name, ownerId: user.id } as GalleryFolder
+    // O ID gerado pelo navegador permite selecionar imediatamente a pasta
+    // depois que o servidor confirmar a criação. Players usam IDs do servidor.
+    const requestedId = isGm && typeof body.folderId === "string" ? body.folderId.trim() : ""
+    if (requestedId && (!/^[A-Za-z0-9_-]{5,120}$/.test(requestedId) ||
+      requestedId === "root" || requestedId.startsWith("player:") ||
+      requestedId === PRIVATE_FOLDERS_FLAG_ID)) return error("Identificador da pasta inválido.")
+    const folderId = requestedId || genId("gallery_folder")
+    if (folders.some(folder => folder.id === folderId)) return error("Identificador da pasta já existe.", 409)
+    const folder: GalleryFolder = isGm
+      ? { id: folderId, name, isGmFolder: true } as GalleryFolder
+      : { id: folderId, name, ownerId: user.id } as GalleryFolder
     records.push(folder)
     await updateCampaignState(campaignId, { galleryFolders: records })
     publish(campaignId, { type: "gallery:changed" })
+    if (compactResponse) return NextResponse.json({
+      ok: true, delta: { action, folderId }, folders: getGalleryFolders(campaign, records),
+    }, { headers: { "Cache-Control": "private, no-store" } })
     return NextResponse.json(galleryResponse(access))
   }
 
@@ -138,6 +152,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!folder) return error("Pasta não encontrada.", 404)
     if (folder.id === "root" || folder.isPlayerFolder || !canEditFolder(folder))
       return error("Sem permissão para modificar esta pasta.", 403)
+    let destinationFolderId: string | undefined
     if (action === "rename-folder") {
       const name = typeof body.name === "string" ? body.name.trim() : ""
       if (!name || name.length > 90) return error("Informe um nome de até 90 caracteres.")
@@ -147,11 +162,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     } else {
       // Nunca despejar imagens privadas na raiz compartilhada ao excluir uma pasta.
       const destination = folder.ownerId && isPrivatePlayerFolder(folder) ? playerFolderId(folder.ownerId) : "root"
+      destinationFolderId = destination
       images = images.map(image => image.folderId === folder.id ? { ...image, folderId: destination } : image)
       records = records.filter(entry => entry.id !== folder.id)
     }
-    await updateCampaignState(campaignId, { gallery: images, galleryFolders: records })
+    await updateCampaignState(campaignId, action === "rename-folder"
+      ? { galleryFolders: records }
+      : { gallery: images, galleryFolders: records })
     publish(campaignId, { type: "gallery:changed" })
+    if (compactResponse) return NextResponse.json({
+      ok: true,
+      delta: { action, folderId: folder.id, ...(destinationFolderId ? { destinationFolderId } : {}) },
+      folders: getGalleryFolders(campaign, records),
+    }, { headers: { "Cache-Control": "private, no-store" } })
     return NextResponse.json(galleryResponse(access))
   }
 
@@ -266,8 +289,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     galleryFolders?: GalleryFolder[]
     galleryBroadcastRequests?: GalleryBroadcastRequest[]
   } = {}
-  if (action === "replace" || action === "add" || action === "toggle-public" ||
-    action === "move" || action === "delete" || action === "delete-folder") patch.gallery = images
+  // rename-folder/delete-folder e set-private-folders já persistem e retornam
+  // acima. Nesta altura, action só pode ser replace/add/toggle-public/move/delete.
+  patch.gallery = images
   if (action === "replace") patch.galleryFolders = records
   if (action === "replace" || action === "delete") patch.galleryBroadcastRequests = requests
 

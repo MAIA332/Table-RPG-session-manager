@@ -32,6 +32,7 @@ import { upsertArchivedNPC, upsertNurseryNPC, linkSpawnedCharacter } from "@/lib
 import { captureArchivedCharacter, buildArchivedNpcPatch, missingRestoredFields } from "@/lib/npc-archive-snapshot"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
+import { PortraitGalleryViewer } from "@/components/portrait-gallery-viewer"
 import {
   DiceRollPresentation,
   HandRaisePresentation,
@@ -554,6 +555,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const [expandedCharacterId, setExpandedCharacterId] = useState<string | null>(
     null,
   )
+  const [portraitGalleryCharacterId, setPortraitGalleryCharacterId] = useState<string | null>(null)
   const [leaving, setLeaving] = useState(false)
   const [activeMap, setActiveMap] = useState<GameMap | null>(null)
   const [showMapImporter, setShowMapImporter] = useState(false)
@@ -1002,13 +1004,17 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     storeJsonWhenIdle(`gallery_folders_${data.campaign.id}`, response.folders || [])
   }, [data.campaign.id])
 
+  // Respostas antigas de GET não podem desfazer criações/renomeações já confirmadas.
+  const galleryRefreshVersion = useRef(0)
   const refreshGallery = useCallback(async () => {
+    const version = ++galleryRefreshVersion.current
     const response = await apiFetch<{
       images: SharedImage[]
       folders: GalleryFolder[]
       requests: GalleryBroadcastRequest[]
       capabilities?: { targetedImages?: boolean }
     }>(`/api/campaigns/${data.campaign.id}/gallery`)
+    if (version !== galleryRefreshVersion.current) return
     applyGalleryResponse(response)
   }, [applyGalleryResponse, data.campaign.id])
 
@@ -1021,21 +1027,27 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     }
     // O protocolo incremental evita que a API envie megabytes de base64 em
     // toda alteração de visibilidade, exclusão, movimentação ou adição.
-    const useDelta = ["toggle-public", "delete", "move", "add"].includes(action)
+    const useDelta = ["toggle-public", "delete", "move", "add", "create-folder", "rename-folder", "delete-folder"].includes(action)
     const response = await apiFetch<{
       images?: SharedImage[]
       folders?: GalleryFolder[]
       requests?: GalleryBroadcastRequest[]
       capabilities?: { targetedImages?: boolean }
-      delta?: { action: string; imageId: string; isPublic?: boolean; folderId?: string }
+      delta?: { action: string; imageId?: string; isPublic?: boolean; folderId?: string; destinationFolderId?: string }
     }>(`/api/campaigns/${data.campaign.id}/gallery`, {
       method: "POST",
       body: JSON.stringify({ action, ...payload, ...(useDelta ? { compactResponse: true } : {}) }),
     })
+    // Cancela GETs anteriores que poderiam restaurar pastas desatualizadas.
+    ++galleryRefreshVersion.current
     if (response.delta) {
       // Aplicar somente após confirmação do servidor: falhas não alteram a UI.
       const delta = response.delta
-      setGalleryImages(current => {
+      if (Array.isArray(response.folders)) {
+        setGalleryFolders(response.folders)
+        storeJsonWhenIdle(`gallery_folders_${data.campaign.id}`, response.folders)
+      }
+      if (["toggle-public", "delete", "move", "add", "delete-folder"].includes(delta.action)) setGalleryImages(current => {
         let next = current
         if (delta.action === "toggle-public") next = current.map(image =>
           image.id === delta.imageId ? { ...image, isPublic: delta.isPublic === true } : image)
@@ -1046,6 +1058,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           const added = payload.image as SharedImage
           if (!current.some(image => image.id === delta.imageId)) next = [...current, added]
         }
+        else if (delta.action === "delete-folder") next = current.map(image =>
+          image.folderId === delta.folderId
+            ? { ...image, folderId: delta.destinationFolderId || "root" }
+            : image)
         storeJsonWhenIdle(`images_${data.campaign.id}`, next)
         return next
       })
@@ -1070,31 +1086,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       if (url) setActiveFullscreenImage(url)
     }
   }, [applyGalleryResponse, data.campaign.id, data.role, data.members, galleryTargetingEnabled, galleryImages, galleryRequests])
-
-  const saveGallery = useCallback(
-    (images: SharedImage[], folders: GalleryFolder[]) => {
-      const normalizedImages = images.map((image) => ({
-        ...image,
-        folderId: image.folderId || "root",
-      }))
-
-      setGalleryImages(normalizedImages)
-      setGalleryFolders(folders)
-
-      localStorage.setItem(
-        `images_${data.campaign.id}`,
-        JSON.stringify(normalizedImages),
-      )
-
-      localStorage.setItem(
-        `gallery_folders_${data.campaign.id}`,
-        JSON.stringify(folders),
-      )
-
-      void galleryAction("replace", { images: normalizedImages, folders }).catch(console.error)
-    },
-    [data.campaign.id, galleryAction],
-  )
 
   // Montagem & Carregar Storage
   useEffect(() => {
@@ -1592,7 +1583,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         characterName: "Sistema",
         playerName: "Mestre",
         attribute: "SYNC_CLASSES:UPDATE",
-        result: JSON.stringify(clsArray),
+        // Apenas um sinal público. Definições ocultas NUNCA viajam no canal de rolagens.
+        result: "updated",
       }),
     }).catch(console.error)
     setBooksRevision(v => v + 1)
@@ -1925,9 +1917,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       // novo so porque outra parte da ficha tem um updatedAt diferente.
       const sameEquipment = JSON.stringify(character.equipment || []) === JSON.stringify(entry.equipment)
       const sameCustomItems = JSON.stringify(character.customItems || []) === JSON.stringify(entry.customItems)
-      const authoritativeUpdatedAt = Number(entry.updatedAt || 0) || character.updatedAt
-      if (sameEquipment && sameCustomItems && authoritativeUpdatedAt === character.updatedAt)
-        return character
+      // Consultas de mochila podem terminar depois de um ajuste de HP/MP.
+      // Seus timestamps antigos nunca devem rebaixar a versão da ficha.
+      const inventoryUpdatedAt = Number(entry.updatedAt || 0)
+      const authoritativeUpdatedAt = Math.max(Number(character.updatedAt || 0), inventoryUpdatedAt)
+      if (sameEquipment && sameCustomItems) return character
       return {
         ...character,
         equipment: entry.equipment,
@@ -2401,14 +2395,17 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         }
 
         if (attr === "SYNC_CLASSES:UPDATE") {
-          try {
-            const synced = JSON.parse(String(event.result))
-            setCustomClasses(synced)
-            localStorage.setItem(
-              `custom_classes_${data.campaign.id}`,
-              JSON.stringify(synced),
-            )
-          } catch (e) {}
+          // Reconsulta autenticada: jamais aceitar definições completas no
+          // evento de rolagem, pois a visibilidade depende da conta da sessão.
+          void apiFetch<{ classes: any[] }>(
+            `/api/campaigns/${encodeURIComponent(data.campaign.id)}/public-classes`,
+            { cache: "no-store" },
+          ).then(result => {
+            if (!Array.isArray(result.classes)) return
+            setCustomClasses(result.classes)
+            storeJsonWhenIdle(`custom_classes_${data.campaign.id}`, result.classes)
+            setBooksRevision(previous => previous + 1)
+          }).catch(console.error)
           return
         }
 
@@ -2533,10 +2530,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         )
       }
 
-      // HP changes outside /combat must reconcile death results immediately.
+      // Atualização de HP/MP não altera o inventário: evitar uma nova consulta
+      // de mochila a cada rajada de cliques. Ainda conciliamos o combate/morte.
       if (event.type === "character:updated" || event.type === "character:created") {
+        const vitalsOnly = (event as typeof event & { vitalsOnly?: boolean }).vitalsOnly === true
         void combatController.refresh().catch(console.error)
-        if (event.character?.ownerId === data.me.id || data.role === "gm") {
+        if (!vitalsOnly && (event.character?.ownerId === data.me.id || data.role === "gm")) {
           void refreshOwnedInventory().catch((error) =>
             setInventorySyncError(error instanceof Error ? error.message : "Falha ao sincronizar mochila."),
           )
@@ -2621,6 +2620,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       setCharacters((prev) =>
         prev.map((x) => {
           if (x.id === c.id) {
+            // Nunca substituir uma confirmação mais recente por resposta atrasada.
+            if (Number(c.updatedAt || 0) < Number(x.updatedAt || 0)) return x
             return {
               ...c,
               customItems:
@@ -3809,6 +3810,14 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 />
               )}
             <DeathCheckOverlay controller={combatController} viewerId={data.me.id} isGm={isGm} campaignId={data.campaign.id} characters={characters} />
+            {portraitGalleryCharacterId && (() => {
+              const selected = characters.find(entry => entry.id === portraitGalleryCharacterId)
+              return selected ? <PortraitGalleryViewer
+                name={selected.name}
+                character={selected}
+                onClose={() => setPortraitGalleryCharacterId(null)}
+              /> : null
+            })()}
             <CampaignCombat
               controller={combatController}
               campaignId={data.campaign.id}
@@ -4656,7 +4665,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                         images={galleryImages}
                         folders={galleryFolders}
                         requests={galleryRequests}
-                        onUpdateGallery={saveGallery}
                         onAction={galleryAction}
                         onShowImage={handleImageClick}
                         onClose={() => setShowImagepad(false)}
@@ -5434,14 +5442,23 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                             )}
 
                             <div className="flex items-center gap-4 relative z-10 pointer-events-none">
-                              <CharacterPortrait
-                                src={char.avatarUrl}
-                                alt={`Retrato de ${char.name}`}
-                                frame={char.portraitFrame}
-                                crop={char.portraitCrop}
-                                className={`size-12 shrink-0 transition-all ${isMyTurn ? "rounded-full ring-2 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.8)] motion-safe:animate-pulse" : ""}`}
-                                sizes="48px"
-                              />
+                              <button type="button" aria-label={`Ver retratos de ${char.name}`}
+                                title="Abrir galeria de retratos"
+                                className="pointer-events-auto relative shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                                onClick={event => {
+                                  event.stopPropagation()
+                                  if (pendingCombatAction?.isGm) { void handleTargetSelect(char.id); return }
+                                  setPortraitGalleryCharacterId(char.id)
+                                }}>
+                                <CharacterPortrait
+                                  src={char.avatarUrl}
+                                  alt={`Retrato de ${char.name}`}
+                                  frame={char.portraitFrame}
+                                  crop={char.portraitCrop}
+                                  className={`size-12 shrink-0 transition-all ${isMyTurn ? "rounded-full ring-2 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.8)] motion-safe:animate-pulse" : ""}`}
+                                  sizes="48px"
+                                />
+                              </button>
                               <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-start mb-1">
                                   <p

@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { CLASSES, type GameClass } from "@/lib/game-data"
 import { getCampaignClassCatalog } from "@/lib/class-catalog"
 import { isClassAvailableToPlayers, playerVisibleClassCatalog, type CustomClassVisibility } from "@/lib/class-visibility"
+import { canViewClassDefinition, isClassVisibleToUser } from "@/lib/class-audience"
 import {
   accessibleClassIds,
   canAccessBook,
@@ -109,6 +110,12 @@ function allClasses(campaignId: string) {
   return getCampaignClassCatalog(campaignCharacters, custom).map(({ id, name, parentClassId }) => ({ id, name, ...(parentClassId ? { parentClassId } : {}) }))
 }
 
+const SYSTEM_CLASS_IDS = new Set(CLASSES.map(cls => cls.id))
+
+function canViewClass(campaignId: string, classId: string, userId: string, gm = false, characterId?: string): boolean {
+  return canViewClassDefinition(classId, SYSTEM_CLASS_IDS, customDefinitions(campaignId), userId, gm, characterId)
+}
+
 function snapshot(campaignId: string) {
   return store.classBooks.get(campaignId) ?? emptyClassBooks()
 }
@@ -173,24 +180,26 @@ export async function GET(request: Request, context: RouteContext) {
   const progress = character ? progressFor(data, character.id) : { subclassIds: [], granted: {} }
   const ids = character ? accessibleClassIds(character, progress) : []
   const definitions = allClasses(id)
+  const accessibleDefinitions = gm ? definitions : definitions.filter(def => canViewClass(id, def.id, user.id, false, character?.id))
   const levelFor = (book: CampaignClassBooks["books"][number]) =>
     character ? characterBookClassLevel(character, book.classId, progress, definitions) : 0
   // A mesma autorização vale para mestre e jogador quando o livro pertence a uma ficha.
   // Uma concessão explícita também funciona para quem não possui a classe do livro.
   const books = gm && !character
     ? data.books
-    : data.books.filter((book) => canAccessBook(book, progress, ids.includes(book.classId), levelFor(book)))
+    : data.books.filter((book) => canViewClass(id, book.classId, user.id, gm, character?.id) &&
+        canAccessBook(book, progress, ids.includes(book.classId), levelFor(book)))
       .map((book) => permittedBook(book, progress, ids.includes(book.classId), levelFor(book)))
   return NextResponse.json({
     serverNow: Date.now(),
     books,
     ...(character ? { characterClassLevels: {
-      [character.id]: Object.fromEntries(definitions.map(def => [def.id, characterBookClassLevel(character, def.id, progress, definitions)])),
+      [character.id]: Object.fromEntries(accessibleDefinitions.map(def => [def.id, characterBookClassLevel(character, def.id, progress, definitions)])),
     } } : {}),
-    classes: gm ? allClasses(id) : playerVisibleClassCatalog(allClasses(id), customDefinitions(id)),
+    classes: gm ? definitions : playerVisibleClassCatalog(accessibleDefinitions, customDefinitions(id)),
     // O progresso privado pode conter IDs de cartas ainda acima do nível.
     // O jogador recebe apenas concessões que já constam dos livros filtrados.
-    progress: { subclassIds: progress.subclassIds, granted: character
+    progress: { subclassIds: gm ? progress.subclassIds : progress.subclassIds.filter(subId => canViewClass(id, subId, user.id, false, character?.id)), granted: character
       ? Object.fromEntries(books.map(book => [book.id,
           (progress.granted[book.id] ?? []).filter(entryId => book.entries.some(entry => entry.id === entryId)),
         ]))
@@ -224,7 +233,8 @@ export async function GET(request: Request, context: RouteContext) {
         cooldownUntil: visible.cooldownUntil,
       }]]
     }) : []),
-    activity: gm && !character ? data.activity : data.activity.filter(item => item.characterId === character?.id),
+    activity: gm && !character ? data.activity : data.activity.filter(item =>
+      item.characterId === character?.id && books.some(book => book.id === item.bookId)),
     ...(gm ? {
       characterProgress: data.progress,
       characterClasses: Object.fromEntries(
@@ -394,6 +404,8 @@ export async function POST(request: Request, context: RouteContext) {
           }
         }
         const book = data.books.find(item => item.id === bookId)
+        if (!gm && book && !canViewClass(id, book.classId, user.id, false, characterId))
+          throw new Error("Grimório indisponível para sua conta.")
         if (!book || book.kind !== "spellbook" || book.unlockMode !== "learn")
           throw new Error("Grimório indisponível para Aprendizado.")
         const hasClass = ownsBookClass(book, character, progress)
@@ -489,7 +501,8 @@ export async function POST(request: Request, context: RouteContext) {
           throw new Error("Personagem não autorizado.")
         const subclasses = customDefinitions(id)
         const subclass = subclasses.find((item) => item.id === body.subclassId && item.parentClassId)
-        if (!gm && !isClassAvailableToPlayers(body.subclassId, subclasses))
+        if (!gm && (!subclass || !isClassAvailableToPlayers(body.subclassId, subclasses) ||
+          !isClassVisibleToUser(subclass, user.id, characterId)))
           throw new Error("Subclasse ainda não liberada pelo mestre.")
         if (!subclass?.parentClassId || !characterClassIds(character).includes(subclass.parentClassId))
           throw new Error("A subclasse não pertence às classes desse personagem.")
@@ -514,7 +527,8 @@ export async function POST(request: Request, context: RouteContext) {
           throw new Error("Personagem não autorizado.")
         const progress = data.progress[characterId] ?? { subclassIds: [], granted: {} }
         const book = data.books.find(item => item.id === bookId)
-        if (!book || book.kind !== "spellbook" || book.playMode === "gallery" ||
+        if (!book || (!gm && !canViewClass(id, book.classId, user.id, false, characterId)) ||
+          book.kind !== "spellbook" || book.playMode === "gallery" ||
           !canAccessBook(book, progress, ownsBookClass(book, character, progress), bookLevel(book, character, progress, id)))
           throw new Error("Deck indisponível.")
         const hasClass = ownsBookClass(book, character, progress)
@@ -574,7 +588,8 @@ export async function POST(request: Request, context: RouteContext) {
           return { value: { activity: existing, learnedEntryId: null, revision: data.revision, duplicate: true, changed: false }, changed: false }
         }
         const level = book ? bookLevel(book, character, progress, id) : 0
-        if (!book || !canAccessBook(book, progress, ownsBookClass(book, character, progress), level))
+        if (!book || (!gm && !canViewClass(id, book.classId, user.id, false, characterId)) ||
+          !canAccessBook(book, progress, ownsBookClass(book, character, progress), level))
           throw new Error("Livro indisponível para o nível atual da classe.")
         const entry = permittedBook(book, progress, ownsBookClass(book, character, progress), level)
           .entries.find((item) => item.id === entryId)

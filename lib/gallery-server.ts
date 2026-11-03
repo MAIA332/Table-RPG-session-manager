@@ -11,11 +11,23 @@ export function playerFolderId(userId: string) {
 export function getGalleryFolders(campaign: Campaign, savedFolders: GalleryFolder[]): GalleryFolder[] {
   const records = Array.isArray(savedFolders) ? savedFolders : []
   const enabled = privateFoldersEnabled(records)
+  const gmIds = new Set([
+    campaign.ownerId,
+    ...campaign.members.filter(member => member.role === "gm").map(member => member.userId),
+  ])
   const custom = records.filter(
     folder => folder && typeof folder.id === "string" && typeof folder.name === "string" &&
       folder.id !== "root" && folder.id !== PRIVATE_FOLDERS_FLAG_ID && !folder.id.startsWith("player:"),
   ).map(folder => {
-    const ownerId = (folder as GalleryFolder & GalleryPrivacyFolder).ownerId
+    const saved = folder as GalleryFolder & GalleryPrivacyFolder
+    const ownerId = saved.ownerId
+    // Corrige também pastas antigas criadas pelo Mestre com ownerId: gmId.
+    // Não expor ownerId nelas: consumidores legados usavam esse campo como
+    // sinônimo de pasta privada, mesmo quando o dono era o Mestre.
+    if ((ownerId && gmIds.has(ownerId)) || (!ownerId && saved.isGmFolder === true)) {
+      const { ownerId: _ownerId, ownerName: _ownerName, isPlayerFolder: _player, ...publicFolder } = saved
+      return { ...publicFolder, isGmFolder: true } as GalleryFolder & GalleryPrivacyFolder
+    }
     return ownerId ? { ...folder, ownerName: store.users.get(ownerId)?.name || "Jogador" } : folder
   })
   const players = campaign.members

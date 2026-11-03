@@ -7,6 +7,8 @@ export type GalleryPrivacyFolder = {
   ownerId?: string
   ownerName?: string
   isPlayerFolder?: boolean
+  /** Pastas criadas pelo Mestre nunca herdam a privacidade das pastas dos jogadores. */
+  isGmFolder?: boolean
   privateFoldersEnabled?: boolean
 }
 export type GalleryPrivacyImage = {
@@ -25,7 +27,9 @@ export function privateFoldersEnabled(folders: readonly GalleryPrivacyFolder[] |
 
 export function isPrivatePlayerFolder(folder: GalleryPrivacyFolder | undefined): boolean {
   return Boolean(folder && folder.id !== "root" && folder.id !== PRIVATE_FOLDERS_FLAG_ID &&
-    (folder.isPlayerFolder || folder.id.startsWith("player:") || folder.ownerId))
+    // Marcador legado de pasta do jogador é sempre prioritário.
+    (folder.isPlayerFolder || folder.id.startsWith("player:") ||
+      (!folder.isGmFolder && Boolean(folder.ownerId))))
 }
 
 export function isProtectedImage(
@@ -43,8 +47,11 @@ export function canReadGalleryImage(
   userId: string,
   isGm: boolean,
 ): boolean {
+  const folder = folders.find(entry => entry.id === (image.folderId || "root"))
+  if (enabled && isPrivatePlayerFolder(folder)) {
+    return folder?.ownerId === userId || Boolean(image.isPublic)
+  }
   if (image.ownerId === userId) return true
-  if (isProtectedImage(image, folders, enabled)) return Boolean(image.isPublic)
   return isGm || Boolean(image.isPublic)
 }
 
@@ -55,8 +62,10 @@ export function canManageGalleryImage(
   userId: string,
   isGm: boolean,
 ): boolean {
+  const folder = folders.find(entry => entry.id === (image.folderId || "root"))
+  if (enabled && isPrivatePlayerFolder(folder)) return folder?.ownerId === userId
   if (image.ownerId === userId) return true
-  return isGm && !isProtectedImage(image, folders, enabled)
+  return isGm
 }
 
 export function canOpenGalleryFolder(

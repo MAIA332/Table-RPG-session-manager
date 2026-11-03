@@ -13,7 +13,19 @@ import { Skull, X, Search, Heart, Zap, Target, Plus, Save, Trash2, FolderOpen, C
 
 import { Button } from "@/components/ui/button"
 import { BESTIARY } from "@/lib/game-data"
+import { ELEMENTS, ELEMENT_NAMES, elementId } from "@/lib/elemental-affinities"
 import type { Creature } from "@/lib/types"
+
+function normalizeCreatureAffinities(value: unknown): Record<string, string> {
+  const normalized: Record<string, string> = Object.fromEntries(ELEMENTS.map(element => [element, "none"]))
+  if (!value || typeof value !== "object") return normalized
+  for (const [key, raw] of Object.entries(value)) {
+    const element = elementId(key)
+    if (!element || typeof raw !== "string") continue
+    if (normalized[element] === "none" || key === element) normalized[element] = raw
+  }
+  return normalized
+}
 
 const overlayVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 }, exit: { opacity: 0, transition: { duration: 0.2 } } }
 const modalVariants = { hidden: { opacity: 0, scale: 0.95, y: 20 }, visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.3 } }, exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } } }
@@ -34,7 +46,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
   const [spawning, setSpawning] = useState(false)
   const savingRef = useRef(false)
   const [error, setError] = useState("")
-  const [affinities, setAffinities] = useState<Creature["affinities"]>({ physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none" })
+  const [affinities, setAffinities] = useState<Record<string, string>>(() => normalizeCreatureAffinities(null))
   const [equipmentText, setEquipmentText] = useState("")
   const [spellsText, setSpellsText] = useState("")
   function closeEditor() {
@@ -113,7 +125,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
       attributes: [...a.attributes], targetDefense: /Defesa Mágica/i.test(a.description || "") ? "magical" : "physical",
     })) : [defaultAttack()])
     setAbilities(structuredClone(creature?.abilities || []))
-    setAffinities({ physical: "none", air: "none", bolt: "none", dark: "none", earth: "none", fire: "none", ice: "none", light: "none", poison: "none", ...creature?.affinities })
+    setAffinities(normalizeCreatureAffinities(creature?.affinities))
     setEquipmentText((creature?.equipment || []).join("\n"))
     setSpellsText((creature?.spells || []).join("\n"))
     setIsCreating(true)
@@ -135,7 +147,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
       name: draft.name.trim(), species: draft.species.trim(),
       imageUrl: draft.imageUrl.trim() || "/mystic-adventurer-portrait.png",
       attributes: draft.attributes as Creature["attributes"],
-      affinities,
+      affinities: affinities as unknown as Creature["affinities"],
       basicAttacks: attacks.map(attack => ({ name: attack.name, attributes: attack.attributes as Creature["basicAttacks"][number]["attributes"], damage: /^\d+$/.test(attack.damage.trim()) ? Number(attack.damage) : 0, type: attack.type, description: `Dano: ${attack.damage}; alvo: ${attack.targetDefense === "physical" ? "Defesa Física" : "Defesa Mágica"}${attack.description ? "; " + attack.description : ""}` })),
       combatVersion: 2, basicAttacksV2: attacks, abilities,
       spells: spellsText.split("\n").map(s => s.trim()).filter(Boolean),
@@ -342,10 +354,10 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                       <div className="col-span-2 space-y-3">
                         <p className="text-sm font-bold">Afinidades</p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          {(Object.keys(affinities) as (keyof Creature["affinities"])[]).map(key => <label key={key} className="flex flex-col gap-1 text-xs">
-                            {{physical: "Físico", air: "Ar", bolt: "Raio", dark: "Trevas", earth: "Terra", fire: "Fogo", ice: "Gelo", light: "Luz", poison: "Veneno"}[key]}
-                            <select className="rounded bg-zinc-900 p-2" value={affinities[key]} onChange={e => setAffinities(previous => ({...previous, [key]: e.target.value as Creature["affinities"][typeof key]}))}>
-                              <option value="none">Normal</option><option value="VU">Vulnerável</option><option value="RS">Resistente</option><option value="IM">Imune</option><option value="AB">Absorve</option>
+                          {ELEMENTS.map(key => <label key={key} className="flex flex-col gap-1 text-xs">
+                            {ELEMENT_NAMES[key]}
+                            <select className="rounded bg-zinc-900 p-2" value={affinities[key] || "none"} onChange={e => setAffinities(previous => ({...previous, [key]: e.target.value}))}>
+                              <option value="none">Normal (1×)</option><option value="WK">Fraqueza (2×)</option><option value="VU">Vulnerável (1,5×)</option><option value="RS">Resistente (0,5×)</option><option value="AB">Absorve (0,2×)</option><option value="IM">Imune (0×)</option>
                             </select>
                           </label>)}
                         </div>
