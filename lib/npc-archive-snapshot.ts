@@ -1,4 +1,7 @@
 import type { Character } from "./types"
+import type { AlternatePortrait } from "./portrait-gallery"
+import type { PlayerSpecialAttack } from "./player-special-attacks"
+import { readElementalSelection, type ElementalAffinitySelection } from "./elemental-affinities"
 
 export interface ArchivedNpcDraft {
   name: string
@@ -10,6 +13,10 @@ export interface ArchivedNpcDraft {
   skills: Character["skills"]
   attributes: Character["attributes"]
   equipment: Character["equipment"]
+  portraitLabel?: string
+  portraitGallery?: AlternatePortrait[]
+  elementalAffinities?: ElementalAffinitySelection
+  specialAttacks?: PlayerSpecialAttack[]
   archivedSnapshot?: Character
   archivedAt?: number
 }
@@ -94,6 +101,8 @@ export function buildArchivedNpcPatch(draft: ArchivedNpcDraft, now = Date.now())
     patch.customModifiers = modifiers
   }
   if (extended.customItems !== undefined) patch.customItems = structuredClone(extended.customItems)
+  // Afinidades e retratos possuem APIs especializadas. Não os inclui neste
+  // PATCH genérico: ele pode ignorá-los e passar uma falsa ideia de sucesso.
   return patch
 }
 
@@ -125,24 +134,43 @@ export function missingRestoredFields(
   const expected: Record<string, unknown> = { ...source, ...patch }
   if (draft.avatarUrl) expected.avatarUrl = draft.avatarUrl
   else delete expected.avatarUrl // O servidor pode aplicar o retrato padrão.
+  // As opções podem ter sido editadas no Berçário depois do arquivamento.
+  if (draft.portraitLabel !== undefined) expected.portraitLabel = draft.portraitLabel
+  if (draft.portraitGallery !== undefined) expected.portraitGallery = draft.portraitGallery
+  if (draft.elementalAffinities !== undefined) expected.elementalAffinities = draft.elementalAffinities
+  if (draft.specialAttacks !== undefined) expected.specialAttacks = draft.specialAttacks
   const actual = restored as Character & Record<string, unknown>
   const missing: string[] = []
 
   for (const key of Object.keys(expected)) {
     if (immutable.has(key)) continue
-    // Laços legados foram migrados para customModifiers (comparados abaixo).
-    // Não exigimos que a API volte a gravar também o campo raiz obsoleto.
     if (key === "bonds") continue
     if (key === "resources") {
       const saved = actual.resources as any
       const resource = expected.resources as Record<string, unknown> | undefined
       for (const resourceKey of Object.keys(resource ?? {})) {
-        // Peso ocupado é calculado pelo inventário, não enviado no PATCH.
-        if (resourceKey === "ip") continue
-        if (canonical(resource?.[resourceKey]) !== canonical(saved?.[resourceKey])) {
-          missing.push(`resources.${resourceKey}`)
-        }
+        if (resourceKey === "ip") continue // Peso ocupado é recalculado pelo inventário.
+        if (canonical(resource?.[resourceKey]) !== canonical(saved?.[resourceKey])) missing.push(`resources.${resourceKey}`)
       }
+      continue
+    }
+    if (key === "elementalAffinities") {
+      // Fichas antigas sem afinidades e fichas com seleção explicitamente vazia
+      // representam a mesma regra neutra de 1×.
+      if (canonical(readElementalSelection(expected[key])) !== canonical(readElementalSelection(actual[key]))) {
+        missing.push(key)
+      }
+      continue
+    }
+    if (key === "specialAttacks") {
+      // A API especialista atualiza updatedAt de cada golpe no salvamento.
+      // Esse metadado não afeta a ficha nem deve ser confundido com golpe perdido.
+      const meaningful = (input: unknown) => Array.isArray(input) ? input.map(value => {
+        if (!value || typeof value !== "object") return value
+        const { updatedAt: _updatedAt, ...attack } = value as Record<string, unknown>
+        return attack
+      }) : []
+      if (canonical(meaningful(expected[key])) !== canonical(meaningful(actual[key]))) missing.push(key)
       continue
     }
     if (canonical(expected[key]) !== canonical(actual[key])) missing.push(key)

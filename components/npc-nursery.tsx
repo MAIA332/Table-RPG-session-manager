@@ -1,248 +1,95 @@
 "use client"
 
-import React, { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import Image from "next/image"
-import { UserPlus, X, Save, Target, Trash2, ChevronDown, Pencil } from "lucide-react"
+import { Archive, BookOpenText, Eye, Pencil, Plus, Search, Target, Trash2, UserPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { NPCCreator, type NPCDraft } from "@/components/character-sheet"
+import { getCampaignClassCatalog } from "@/lib/class-catalog"
 import type { Character } from "@/lib/types"
 import type { GameClass } from "@/lib/game-data"
+import { NPCCreator, type NPCDraft } from "@/components/character-sheet"
+import { NpcArchivePreview } from "./npc-archive-preview"
 
-// Variantes de animação (trazidas para o componente para mantê-lo independente)
-const overlayVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 }, exit: { opacity: 0, transition: { duration: 0.2 } } } as any
-const modalVariants = { hidden: { opacity: 0, scale: 0.95, y: 20 }, visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.3 } }, exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } } } as any
-
+type Gear = { id: string; name: string; detail?: string; cost?: number; category?: string; purchasable?: boolean }
 interface NpcNurseryProps {
-  isOpen: boolean;
-  onClose: () => void;
-  customNPCs: NPCDraft[];
-  onSpawn: (npc: NPCDraft) => void | Promise<void>;
-  onRepair?: (npc: NPCDraft, characterId: string) => void | Promise<void>;
-  onDelete: (id: string) => void | Promise<void>;
-  onCreated: (newNpc: NPCDraft) => void | Promise<void>;
-  customClasses?: GameClass[];
-  campaignCharacters?: Character[];
+  isOpen: boolean
+  onClose: () => void
+  customNPCs: NPCDraft[]
+  onSpawn: (npc: NPCDraft) => void | Promise<void>
+  onRepair?: (npc: NPCDraft, characterId: string) => void | Promise<void>
+  onDelete: (id: string) => void | Promise<void>
+  onCreated: (npc: NPCDraft) => void | Promise<void>
+  customClasses?: GameClass[]
+  campaignCharacters?: Character[]
+  customEquipment?: Gear[]
 }
 
-export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onRepair, onDelete, onCreated, customClasses = [], campaignCharacters = [] }: NpcNurseryProps) {
-  const [expandedNpcId, setExpandedNpcId] = useState<string | null>(null);
-  const [editingNpcId, setEditingNpcId] = useState<string | null>(null);
-  const [busyNpcId, setBusyNpcId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  const editingNpc = customNPCs.find(npc => npc.id === editingNpcId);
+/** Biblioteca de NPCs: a prévia é apenas leitura e nunca altera o snapshot arquivado. */
+export function NpcNursery({ isOpen, onClose, customNPCs, onSpawn, onRepair, onDelete, onCreated, customClasses = [], campaignCharacters = [], customEquipment = [] }: NpcNurseryProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [forging, setForging] = useState(false)
+  const [editingNpcId, setEditingNpcId] = useState<string | null>(null)
+  const [search, setSearch] = useState("")
+  const [source, setSource] = useState<"all" | "archived" | "manual">("all")
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
-  async function runAction(id: string, action: () => void | Promise<void>, successMessage?: string) {
-    if (busyNpcId) return;
-    setActionError(null); setActionSuccess(null); setBusyNpcId(id);
-    try { await action(); if (successMessage) setActionSuccess(successMessage) }
-    catch (error) { setActionError(error instanceof Error ? error.message : "Não foi possível persistir a alteração.") }
-    finally { setBusyNpcId(null) }
+  const catalog = useMemo(() => getCampaignClassCatalog([...campaignCharacters, ...customNPCs], customClasses), [campaignCharacters, customNPCs, customClasses])
+  const filtered = useMemo(() => customNPCs.filter(npc => {
+    if (source === "archived" && !npc.archivedSnapshot) return false
+    if (source === "manual" && npc.archivedSnapshot) return false
+    const query = search.trim().toLocaleLowerCase("pt-BR")
+    return !query || [npc.name, npc.origin, npc.identity, npc.theme, ...(npc.classes || []).map(cls => catalog.find(c => c.id === cls.classId)?.name || cls.classId)]
+      .some(text => String(text || "").toLocaleLowerCase("pt-BR").includes(query))
+  }), [customNPCs, source, search, catalog])
+  const selectedNpc = filtered.find(npc => npc.id === selectedId) || filtered[0] || null
+  const editing = customNPCs.find(npc => npc.id === editingNpcId)
+  const archivedCount = customNPCs.filter(npc => !!npc.archivedSnapshot).length
+  const activeLinks = selectedNpc ? campaignCharacters.filter(c => selectedNpc.linkedCharacterIds?.includes(c.id)) : []
+
+  useEffect(() => {
+    if (!isOpen) { setForging(false); setEditingNpcId(null); return }
+    if (selectedId && !customNPCs.some(npc => npc.id === selectedId)) setSelectedId(null)
+  }, [isOpen, selectedId, customNPCs])
+
+  async function action(id: string, call: () => void | Promise<void>, successMessage?: string) {
+    if (busyId) return
+    setError(null); setSuccess(null); setBusyId(id)
+    try { await call(); if (successMessage) setSuccess(successMessage) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Não foi possível persistir esta operação.") }
+    finally { setBusyId(null) }
   }
+  function openNew() { setEditingNpcId(null); setForging(true); setError(null) }
+  function openEdit(id: string) { setEditingNpcId(id); setForging(true); setError(null) }
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[140] flex items-center justify-center overflow-hidden bg-black/80 p-4 backdrop-blur-md md:p-8" onClick={onClose}>
-          <motion.div variants={modalVariants} className="rpg-modal relative flex h-full w-full max-w-6xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-
-            <div className="rpg-modal-header flex shrink-0 items-center justify-between border-b border-border/50 p-6">
-              <div>
-                <h4 className="font-serif text-2xl font-black flex items-center gap-2">
-                  <UserPlus className="size-6 text-destructive" /> <span className="text-foreground">Berçário</span>
-                </h4>
-                <p className="text-sm text-muted-foreground mt-1">Forje novas ameaças usando o sistema completo de classes e atributos.</p>
-              </div>
-              <button onClick={onClose} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors">
-                <X className="size-5 text-muted-foreground hover:text-white" />
-              </button>
-            </div>
-
-            {actionError && <div role="alert" className="border-b border-red-500/30 bg-red-500/10 px-6 py-3 text-sm text-red-300">{actionError}</div>}
-            {actionSuccess && <div role="status" className="border-b border-emerald-500/30 bg-emerald-500/10 px-6 py-3 text-sm text-emerald-300">{actionSuccess}</div>}
-            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-              <div className="lg:w-1/3 border-r border-border/40 p-6 flex flex-col gap-4 bg-black/20 overflow-y-auto custom-scrollbar-sepia">
-                <h5 className="text-xs font-bold uppercase tracking-widest border-b border-white/10 pb-2 flex items-center gap-2">
-                  <Save className="size-3 text-destructive" /> <span className="text-foreground">Prontos para Invocação</span>
-                </h5>
-
-                <div className="flex flex-col gap-3">
-                  {customNPCs.length === 0 && <p className="text-sm text-muted-foreground italic text-center mt-4">Nenhum NPC no berçário.</p>}
-
-                  {customNPCs.map(npc => {
-                    const isExpanded = expandedNpcId === npc.id;
-                    const snapshot = npc.archivedSnapshot;
-                    const modifiers = (snapshot as Character & { customModifiers?: unknown })?.customModifiers;
-                    const stateCount = Array.isArray(modifiers) ? modifiers.length : 0;
-                    const extraItems = Array.isArray(snapshot?.customItems) ? snapshot.customItems.length : 0;
-                    const activeLinked = campaignCharacters.filter(character => npc.linkedCharacterIds?.includes(character.id));
-
-                    return (
-                      <div key={npc.id} className={`flex flex-col gap-3 rounded-sm border-l-2 p-4 transition-all duration-300 ${isExpanded ? 'border-destructive bg-black/40 shadow-lg' : 'border-destructive/30 bg-card/20'}`}>
-                        
-                        {/* CABEÇALHO DO CARD */}
-                        <div className="flex items-start gap-3">
-                          <div className="relative size-12 rounded border border-destructive/30 overflow-hidden shrink-0 mt-1">
-                            <Image src={npc.avatarUrl || "/mystic-adventurer-portrait.png"} alt={npc.name} fill className="object-cover" />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex justify-between items-start">
-                              <p className="text-sm font-bold text-foreground truncate pr-2">{npc.name}</p>
-                              <button 
-                                onClick={() => setExpandedNpcId(isExpanded ? null : npc.id)}
-                                className="shrink-0 p-1 bg-white/5 hover:bg-white/10 rounded text-muted-foreground transition-colors"
-                              >
-                                <ChevronDown className={`size-4 transition-transform duration-300 ${isExpanded ? "rotate-180 text-destructive" : ""}`} />
-                              </button>
-                            </div>
-                            
-                            {/* Resumo compacto (some quando expandido) */}
-                            {!isExpanded && (
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-relaxed mt-1 line-clamp-2">
-                                NPC • {npc.origin || "Sem origem"}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* ÁREA EXPANDIDA DETALHADA */}
-                        <AnimatePresence>
-                          {isExpanded && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="flex flex-col gap-4 pt-2 pb-3 border-t border-white/5 mt-1">
-                                
-                                {/* LORE */}
-                                <div>
-                                  <span className="text-[9px] font-bold text-destructive uppercase tracking-widest mb-1.5 block">História / Origem</span>
-                                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap bg-black/30 p-2.5 rounded border border-white/5">
-                                    {npc.origin || "Origem desconhecida."}
-                                  </p>
-                                </div>
-
-                                {/* IDENTIDADE E TEMA */}
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div className="bg-black/30 border border-white/5 p-2 rounded">
-                                    <span className="text-[9px] text-muted-foreground uppercase tracking-wider block mb-0.5">Identidade</span>
-                                    <span className="text-xs text-foreground font-medium">{npc.identity || "-"}</span>
-                                  </div>
-                                  <div className="bg-black/30 border border-white/5 p-2 rounded">
-                                    <span className="text-[9px] text-muted-foreground uppercase tracking-wider block mb-0.5">Tema</span>
-                                    <span className="text-xs text-foreground font-medium italic">{npc.theme || "-"}</span>
-                                  </div>
-                                </div>
-
-                                {/* ATRIBUTOS */}
-                                <div>
-                                  <span className="text-[9px] font-bold text-destructive uppercase tracking-widest mb-1.5 block">Atributos Base</span>
-                                  <div className="grid grid-cols-4 gap-1.5">
-                                    {['dex', 'ins', 'mig', 'wlp'].map((attr) => (
-                                      <div key={attr} className="bg-black/30 border border-destructive/20 p-1.5 rounded text-center">
-                                        <span className="text-[9px] uppercase text-muted-foreground font-bold block mb-0.5">{attr}</span>
-                                        <span className="text-sm font-mono font-black text-destructive">{(npc.attributes as any)[attr]}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                {/* CLASSES & EQUIPAMENTOS */}
-                                <div className="flex justify-between items-end mt-1">
-                                  <div className="flex gap-1.5 flex-wrap">
-                                    {npc.classes?.map((c) => (
-                                      <span key={c.classId} className="text-[9px] px-1.5 py-0.5 bg-destructive/10 text-destructive border border-destructive/20 rounded uppercase tracking-wider font-bold">
-                                        {c.classId.split('-').pop()} Nv.{c.level}
-                                      </span>
-                                    ))}
-                                    {(!npc.classes || npc.classes.length === 0) && (
-                                      <span className="text-[9px] text-muted-foreground italic bg-black/40 px-2 py-1 rounded">Sem classes</span>
-                                    )}
-                                  </div>
-                                  
-                                  <span className="text-[10px] text-muted-foreground font-mono bg-black/40 px-2 py-1 rounded border border-white/5 shrink-0">
-                                    {npc.equipment?.length || 0} Itens
-                                  </span>
-                                </div>
-
-                                {/* Conferência do estado capturado, sem alterar o snapshot. */}
-                                {snapshot ? (
-                                  <div className="rounded border border-emerald-500/20 bg-emerald-950/15 p-2.5 text-[10px] leading-relaxed text-emerald-100/85">
-                                    <p className="mb-1 font-bold uppercase tracking-wide text-emerald-300">Ficha integral arquivada</p>
-                                    <p>HP {snapshot.resources.hp}/{snapshot.resources.maxHp} · MP {snapshot.resources.mp}/{snapshot.resources.maxMp} · Zenit {snapshot.zenit ?? 0}</p>
-                                    <p>{npc.equipment?.length ?? 0} itens na mochila · {extraItems} personalizados · {stateCount} registros de condições/efeitos/uso</p>
-                                    <p className="mt-1 text-emerald-200/70">Os itens em uso e guardados, bem como os modificadores, serão restaurados na invocação.</p>
-                                  </div>
-                                ) : (
-                                  <p className="rounded border border-amber-500/20 bg-amber-950/15 p-2 text-[10px] text-amber-200">
-                                    Registro antigo sem snapshot integral: a invocação utiliza apenas os dados que já estavam salvos.
-                                  </p>
-                                )}
-
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        {/* AÇÕES INFERIORES */}
-                        <div className="flex gap-2 w-full mt-1">
-                          <Button size="sm" className="flex-1 bg-destructive/10 border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground" disabled={!!busyNpcId} onClick={() => void runAction(npc.id, () => onSpawn(npc))}>
-                            <Target className="size-3 mr-1.5" /> Invocar
-                          </Button>
-                          <Button size="sm" variant="outline" disabled={!!busyNpcId} title={`Editar ${npc.name}`} aria-label={`Editar ${npc.name}`} className="px-3 border-primary/30 text-primary hover:bg-primary/10" onClick={() => { setEditingNpcId(npc.id); setActionError(null); }}>
-                            <Pencil className="size-4" />
-                          </Button>
-                          <Button size="sm" variant="outline" disabled={!!busyNpcId} className="px-3 border-border/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => {
-                            if (!window.confirm(`Excluir ${npc.name} do Berçário?`)) return;
-                            void runAction(npc.id, async () => { await onDelete(npc.id); if (editingNpcId === npc.id) setEditingNpcId(null); });
-                          }}>
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
-                        {!!snapshot && onRepair && activeLinked.map(character => (
-                          <Button
-                            key={character.id}
-                            size="sm"
-                            variant="outline"
-                            disabled={!!busyNpcId}
-                            className="w-full border-amber-500/40 text-amber-300 hover:bg-amber-500/10"
-                            onClick={() => {
-                              if (!window.confirm(`Restaurar ${character.name} (${character.id}) para o estado arquivado? Isso sobrescreve as alterações feitas após a invocação.`)) return;
-                              void runAction(npc.id, () => onRepair?.(npc, character.id), `Ficha ${character.name} restaurada sem criar outro NPC.`);
-                            }}
-                          >
-                            Restaurar ficha existente · {character.name}
-                          </Button>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="lg:w-2/3 px-6 pb-12 pt-6 overflow-y-auto custom-scrollbar-sepia flex justify-center">
-                <NPCCreator
-                  key={editingNpc?.id ?? "new-npc"}
-                  initialNpc={editingNpc}
-                  customClasses={customClasses}
-                  campaignCharacters={campaignCharacters}
-                  nurseryNPCs={customNPCs}
-                  onCreated={async npc => {
-                    await onCreated(npc);
-                    if (editingNpcId) setEditingNpcId(null);
-                  }}
-                  onCancel={() => editingNpcId ? setEditingNpcId(null) : onClose()}
-                />
-              </div>
-
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+  return <AnimatePresence>{isOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[140] flex items-center justify-center overflow-hidden bg-black/85 p-2 backdrop-blur-md sm:p-4" onClick={event => event.stopPropagation()}>
+    <motion.div initial={{ opacity: 0, scale: .985, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .985 }} role="dialog" aria-modal="true" aria-label="Berçário de NPCs" className="rpg-modal relative flex h-full max-h-[97dvh] w-full max-w-[1680px] flex-col overflow-hidden rounded-2xl border border-primary/35 bg-background text-foreground shadow-2xl sm:max-h-[94dvh]" onClick={event => event.stopPropagation()}>
+      <header className="relative shrink-0 overflow-hidden border-b border-primary/25 bg-card/60 px-4 py-5 sm:px-7">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-28 size-72 rounded-full border-[35px] border-primary/[.05]" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4"><div className="flex min-w-0 items-center gap-3"><span className="grid size-11 shrink-0 place-items-center border border-primary/40 bg-primary/10 text-primary"><Archive className="size-5" /></span><div><p className="text-[10px] font-black uppercase tracking-[.23em] text-primary">Acervo do Mestre · Campanha</p><h2 className="font-serif text-2xl font-black sm:text-3xl">O Berçário das Almas</h2><p className="mt-1 text-xs text-muted-foreground">Forje, arquive, examine e invoque fichas completas sem perder seus registros.</p></div></div><div className="flex items-center gap-2"><Button type="button" onClick={openNew} className="h-10 gap-2 rounded-sm px-3 text-xs font-bold sm:px-5"><Plus className="size-4" /> Forjar NPC</Button><button type="button" aria-label="Fechar Berçário" onClick={onClose} className="grid size-10 place-items-center rounded-full border border-border/75 bg-background/75 text-muted-foreground hover:border-primary/60 hover:text-primary"><X className="size-5" /></button></div></div>
+      </header>
+      {error && <div role="alert" className="border-b border-destructive/35 bg-destructive/10 px-5 py-3 text-xs text-destructive">{error}</div>}
+      {success && <div role="status" className="border-b border-primary/25 bg-primary/[.07] px-5 py-3 text-xs text-primary">{success}</div>}
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[345px_minmax(0,1fr)] xl:grid-cols-[375px_minmax(0,1fr)]">
+        <aside className="flex min-h-0 flex-col border-b border-border/65 bg-card/25 lg:border-b-0 lg:border-r" aria-label="Acervo de NPCs">
+          <div className="shrink-0 space-y-3 border-b border-border/60 p-4 sm:p-5"><div className="flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-[.15em] text-primary">Prontos para invocação</p><span className="font-mono text-xs text-muted-foreground">{customNPCs.length} registrados</span></div>
+            <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input type="search" aria-label="Pesquisar NPCs" placeholder="Nome, classe, história..." value={search} onChange={event => setSearch(event.target.value)} className="h-10 w-full rounded-md border border-border/75 bg-background/80 pl-9 pr-3 text-xs text-foreground outline-none focus:border-primary/60" /></div>
+            <div className="flex gap-1" role="group" aria-label="Origem do NPC">{[{ id: "all", label: "Todos", count: customNPCs.length },{ id: "archived", label: "Arquivados", count: archivedCount },{ id: "manual", label: "Forjados", count: customNPCs.length - archivedCount }].map(option => <button key={option.id} type="button" onClick={() => setSource(option.id as typeof source)} aria-pressed={source === option.id} className={`min-w-0 flex-1 rounded-md border px-2 py-2 text-[10px] font-bold transition ${source === option.id ? "border-primary/50 bg-primary/10 text-primary" : "border-border/60 bg-background/40 text-muted-foreground hover:border-primary/30"}`}>{option.label} <span className="font-mono">{option.count}</span></button>)}</div>
+          </div>
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 custom-scrollbar-sepia sm:p-4">
+            {filtered.length ? filtered.map(npc => { const selected = selectedNpc?.id === npc.id; const count = (npc.classes || []).reduce((sum, item) => sum + item.level, 0); const linked = campaignCharacters.filter(char => npc.linkedCharacterIds?.includes(char.id)).length; return <button key={npc.id} type="button" onClick={() => { setSelectedId(npc.id); setError(null); setSuccess(null) }} aria-pressed={selected} className={`group flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-all ${selected ? "border-primary/65 bg-primary/[.10] shadow-sm" : "border-border/55 bg-background/55 hover:border-primary/40 hover:bg-card"}`}><span className="relative size-[70px] shrink-0 overflow-hidden rounded-md border border-primary/20 bg-background"><img src={/^(https?:\/\/|\/|data:image\/)/i.test(npc.avatarUrl) ? npc.avatarUrl : "/mystic-adventurer-portrait.png"} alt="" className="size-full object-cover" /></span><span className="min-w-0 flex-1"><span className="block truncate font-serif text-base font-bold">{npc.name}</span><span className="mt-0.5 block line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">{npc.identity || npc.origin || "Sem história definida"}</span><span className="mt-2 flex flex-wrap items-center gap-1.5"><span className="rounded border border-primary/25 bg-primary/[.07] px-1.5 py-0.5 font-mono text-[10px] text-primary">Nv. {count}</span><span className="rounded border border-border/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">{npc.archivedSnapshot ? "Arquivado" : "Forjado"}</span>{linked > 0 && <span className="text-[10px] text-primary">{linked} ativo(s)</span>}</span></span><Eye className={`mt-1 size-4 shrink-0 ${selected ? "text-primary" : "text-muted-foreground/50 group-hover:text-primary"}`} /></button> }) : <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed border-border/60 px-5 text-center"><GhostSymbol /><p className="mt-3 text-sm font-semibold">Nenhum NPC encontrado</p><p className="mt-1 text-xs text-muted-foreground">Altere os filtros ou forje um novo NPC.</p></div>}
+          </div>
+        </aside>
+        <div className="flex min-h-0 flex-col overflow-hidden">
+          {selectedNpc ? <><div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/65 bg-card/35 px-4 py-3 sm:px-6"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-primary">Ficha do acervo</p><p className="text-xs text-muted-foreground">Prévia integral · Somente leitura</p></div><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={!!busyId} onClick={() => openEdit(selectedNpc.id)} className="gap-1.5 border-primary/35 text-primary"><Pencil className="size-3.5" /> Editar</Button><Button type="button" size="sm" disabled={!!busyId} onClick={() => void action(selectedNpc.id, () => onSpawn(selectedNpc))} className="gap-1.5"><Target className="size-3.5" /> Invocar</Button><Button type="button" size="sm" variant="outline" title="Excluir registro do Berçário" aria-label={`Excluir ${selectedNpc.name}`} disabled={!!busyId} onClick={() => { if (!window.confirm(`Excluir ${selectedNpc.name} do Berçário? Isso não apaga as fichas já invocadas.`)) return; void action(selectedNpc.id, () => onDelete(selectedNpc.id), "NPC excluído do Berçário.") }} className="border-destructive/30 text-destructive hover:bg-destructive/10"><Trash2 className="size-4" /></Button></div></div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 custom-scrollbar-sepia sm:p-6"><NpcArchivePreview key={selectedNpc.id} npc={selectedNpc} classes={catalog} customEquipment={customEquipment} />{!!onRepair && activeLinks.length > 0 && <div className="mt-5 space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/[.055] p-4"><p className="text-xs font-black uppercase tracking-widest text-amber-500">Fichas invocadas e vinculadas</p><p className="text-[11px] leading-relaxed text-muted-foreground">{selectedNpc.archivedSnapshot ? "Restaurar sobrescreve alterações atuais da ficha com o estado arquivado, sem gerar outro NPC." : "Conclui o registro de golpes especiais, retratos e afinidades em uma ficha já invocada, sem criar outro NPC."}</p>{activeLinks.map(character => <Button key={character.id} type="button" size="sm" variant="outline" disabled={!!busyId} className="mr-2 mt-2 border-amber-500/35 text-amber-400" onClick={() => { if (!window.confirm(selectedNpc.archivedSnapshot ? `Restaurar ${character.name} (${character.id}) ao snapshot arquivado?` : `Aplicar golpes, retratos e afinidades do Berçário à ficha ${character.name} já invocada?`)) return; void action(selectedNpc.id, () => onRepair(selectedNpc, character.id), `Ficha ${character.name} restaurada.`) }}>{selectedNpc.archivedSnapshot ? "Restaurar ficha" : "Concluir configuração"} · {character.name}</Button>)}</div>}</div></> : <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center"><BookOpenText className="size-12 text-primary/50" /><h3 className="font-serif text-xl font-bold">O acervo está vazio</h3><p className="max-w-sm text-sm text-muted-foreground">Crie um NPC na Forja ou arquive um viajante para consultar sua ficha completa aqui.</p><Button type="button" onClick={openNew} className="mt-3 gap-2"><UserPlus className="size-4" /> Forjar primeiro NPC</Button></div>}
+        </div>
+      </div>
+    </motion.div>
+    {forging && <NPCCreator key={editing?.id || "new-npc"} initialNpc={editing} customClasses={customClasses} campaignCharacters={campaignCharacters} nurseryNPCs={customNPCs} customEquipment={customEquipment}
+      onCreated={async npc => { await onCreated(npc); setSelectedId(npc.id); setEditingNpcId(null); setForging(false); setSuccess(`${npc.name} foi salvo no Berçário.`) }} onCancel={() => { setEditingNpcId(null); setForging(false) }} />}
+  </motion.div>}</AnimatePresence>
 }
+
+function GhostSymbol() { return <Archive className="size-10 text-primary/35" aria-hidden="true" /> }
