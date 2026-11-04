@@ -132,7 +132,7 @@ import { GameMap, TileData } from "@/lib/map-types"
 import { MapImporter } from "./map-importer"
 import { BattlemapEngine } from "./battlemap-engine"
 
-import { Soundpad, ActiveSound, type Track } from "./soundpad"
+import { Soundpad, type ActiveSound, type Track } from "./soundpad"
 import { SoundPlaybackEngine } from "./sound-playback-engine"
 import { CutsceneManager } from "./cutscene-manager"
 import { DeathCheckOverlay } from "./death-check-overlay"
@@ -3862,7 +3862,36 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         musicVolume={effectsVolume}
         effectsVolume={effectsVolume}
         onSoundEnded={handleSoundEnded}
+        campaignId={data.campaign.id}
+        isSoundpadOpen={showSoundpad}
+        onOpenSoundpad={() => setShowSoundpad(true)}
+        customTracks={customSounds}
+        onPlaySound={handlePlaySound}
+        onStopSound={handleStopSound}
+        hotkeyTargetUserId={soundTargetUserId}
       />
+      {/* Somente o Soundpad cria o portal de tela cheia; não envolver em outro modal. */}
+      {showSoundpad && (
+        <Soundpad
+          isGm={isGm}
+          currentUserId={data.me.id}
+          players={data.members.filter(member => member.role === "player")}
+          targetUserId={soundTargetUserId}
+          onTargetUserIdChange={setSoundTargetUserId}
+          campaignId={data.campaign.id}
+          activeSounds={activeSounds}
+          customTracks={customSounds}
+          musicVolume={effectsVolume}
+          effectsVolume={effectsVolume}
+          onCustomTracksChange={saveCustomSounds}
+          onMusicVolumeChange={setEffectsVolume}
+          onEffectsVolumeChange={setEffectsVolume}
+          onPlaySound={handlePlaySound}
+          onStopSound={handleStopSound}
+          onStopAll={handleStopAllSounds}
+          onClose={() => setShowSoundpad(false)}
+        />
+      )}
       {mounted &&
         createPortal(
           <>
@@ -4664,56 +4693,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   entries={loreEntries}
                   onSaveEntries={handleSaveLoreEntries}
                 />
-              )}
-            </AnimatePresence>
-
-            {/* SOUNDPAD MODAL / ENGINE */}
-            <AnimatePresence>
-              {showSoundpad && (
-                <motion.div
-                  variants={overlayVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 sm:p-8 overflow-hidden"
-                  onClick={() => setShowSoundpad(false)}
-                >
-                  <motion.div
-                    variants={modalVariants}
-                    className="rpg-modal rpg-media-modal relative w-full max-w-6xl h-[85vh] min-h-[600px] flex flex-col bg-transparent"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    {/* Botão de Fechar por Fora */}
-                    <button
-                      onClick={() => setShowSoundpad(false)}
-                      className="absolute -top-4 -right-4 md:-right-8 md:-top-8 text-zinc-500 hover:text-white bg-black/50 hover:bg-black rounded-full p-2 transition-colors z-[300] border border-white/10"
-                    >
-                      <X className="size-6" />
-                    </button>
-
-                    {/* Instancia do Engine Local de Audio Ocupando Todo o Espaço */}
-                    <div className="rpg-media-modal-frame flex-1 w-full h-full overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)]">
-                      <Soundpad
-                        isGm={isGm}
-                        currentUserId={data.me.id}
-                        players={data.members.filter(member => member.role === "player")}
-                        targetUserId={soundTargetUserId}
-                        onTargetUserIdChange={setSoundTargetUserId}
-                        campaignId={data.campaign.id}
-                        activeSounds={activeSounds}
-                        customTracks={customSounds}
-                        musicVolume={effectsVolume}
-                        effectsVolume={effectsVolume}
-                        onCustomTracksChange={saveCustomSounds}
-                        onMusicVolumeChange={setEffectsVolume}
-                        onEffectsVolumeChange={setEffectsVolume}
-                        onPlaySound={handlePlaySound}
-                        onStopSound={handleStopSound}
-                        onStopAll={handleStopAllSounds}
-                      />
-                    </div>
-                  </motion.div>
-                </motion.div>
               )}
             </AnimatePresence>
 

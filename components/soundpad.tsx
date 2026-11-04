@@ -1,12 +1,20 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import {
   Activity, ArrowDown, ArrowUp, Disc3, GripVertical, Headphones,
   Link2, ListMusic, Music2, Pause, Play, Plus, Repeat, Save, Search,
-  SkipBack, SkipForward, Square, Trash2, Volume2, WandSparkles, X,
+  SkipBack, SkipForward, Square, Trash2, Volume2, X,
+  Folder, FolderOpen, Library, ChevronRight,
+  Keyboard, SlidersHorizontal, Radio, MoreHorizontal,
+  Music, Sparkles, PanelRight, List,
 } from "lucide-react"
 import { createClientId } from "@/lib/client-id"
+import {
+  readPendingFolders, readPendingHotkeys, savePendingPreference,
+  clearPendingPreferenceIfMatches,
+} from "@/lib/soundpad-local"
 import {
   SOUND_LIBRARY, SHORTCUT_CODES, normalizeSoundFolders, normalizeSoundHotkeys,
   type ActiveSound, type PlaylistItem, type SoundFolder,
@@ -35,11 +43,13 @@ type SoundpadProps = {
   onPlaySound?: (track: { id: string; url: string }, loop: boolean, targetUserId?: string | null) => void
   onStopSound?: (id: string) => void
   onStopAll?: () => void
+  /** Opcional: permite ao componente pai fechar diretamente a tela cheia. */
+  onClose?: () => void
 }
 
-const inputClass = "w-full min-w-0 rounded-lg border border-[#826044]/30 bg-[#0e0c0b] px-3 py-2 text-sm text-stone-100 outline-none placeholder:text-stone-600 focus:border-amber-500/60"
-const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg border border-[#846445]/35 bg-[#272019] px-3 py-2 text-xs font-semibold text-amber-100 transition-colors hover:border-amber-400/50 hover:bg-[#35281c] disabled:cursor-not-allowed disabled:opacity-40"
-const primaryClass = "inline-flex items-center justify-center gap-2 rounded-full bg-amber-400 px-4 py-2 text-xs font-bold text-[#1c130c] transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-40"
+const inputClass = "w-full min-w-0 rounded-xl border border-border/60 bg-background/55 px-3.5 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/55 transition-colors focus:border-primary/60 focus:ring-2 focus:ring-primary/10"
+const buttonClass = "inline-flex items-center justify-center gap-2 rounded-full border border-border/60 bg-card/65 px-4 py-2.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur-md transition-all hover:border-primary/50 hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40"
+const primaryClass = "inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-[0_10px_30px_-10px_currentColor] transition-all hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40"
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
@@ -64,7 +74,7 @@ export function Soundpad({
   campaignId, players = [], targetUserId = null, onTargetUserIdChange,
   isGm, activeSounds, customTracks = [], musicVolume = 0.5, effectsVolume = 0.5,
   onCustomTracksChange, onMusicVolumeChange, onEffectsVolumeChange,
-  onPlaySound, onStopSound, onStopAll,
+  onPlaySound, onStopSound, onStopAll, onClose,
 }: SoundpadProps) {
   const [targetingReady, setTargetingReady] = useState(false)
   const [folders, setFolders] = useState<SoundFolder[]>([])
@@ -75,6 +85,16 @@ export function Soundpad({
   const [newPlaylistName, setNewPlaylistName] = useState("")
   const [newSoundName, setNewSoundName] = useState("")
   const [newSoundUrl, setNewSoundUrl] = useState("")
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null)
+  // Fechar nunca volta ao antigo modal compacto: o estúdio só existe em tela cheia.
+  const [isVisible, setIsVisible] = useState(true)
+  const [portalReady, setPortalReady] = useState(false)
+  const [mobileInspector, setMobileInspector] = useState(false)
+  const [lastPlaylistAdded, setLastPlaylistAdded] = useState<Record<string, string>>({})
+  const dialogRef = useRef<HTMLDivElement | null>(null)
+  const themeAnchorRef = useRef<HTMLSpanElement | null>(null)
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
   const [loaded, setLoaded] = useState(false)
   const [pendingWrites, setPendingWrites] = useState(0)
   const [busyPlaylist, setBusyPlaylist] = useState<string | null>(null)
@@ -89,6 +109,7 @@ export function Soundpad({
   const trackMap = useMemo(() => new Map(allTracks.map(track => [track.id, track])), [allTracks])
   const soundEndpoint = `/api/campaigns/${encodeURIComponent(campaignId)}/sound`
   const stateEndpoint = `/api/campaigns/${encodeURIComponent(campaignId)}/state`
+  const preferencesEndpoint = `/api/campaigns/${encodeURIComponent(campaignId)}/sound/preferences`
 
   useEffect(() => {
     const version = ++generation.current
@@ -101,28 +122,51 @@ export function Soundpad({
     foldersRef.current = []
     hotkeysRef.current = []
     setActiveFolder("all")
+    setSelectedPlaylistId(null)
     if (!isGm) return () => { abort.abort(); generation.current++ }
+
     void Promise.all([
-      fetch(stateEndpoint, { cache: "no-store", signal: abort.signal }),
+      fetch(preferencesEndpoint, { cache: "no-store", signal: abort.signal }).catch(() => null),
       fetch(soundEndpoint, { cache: "no-store", signal: abort.signal }),
-    ]).then(async ([stateResponse, soundResponse]) => {
-      const [stateData, soundData] = await Promise.all([stateResponse.json(), soundResponse.json()])
-      if (!stateResponse.ok) throw new Error(stateData.error || "Não foi possível carregar o arquivo sonoro.")
+      // Compatibilidade: migrar a leitura de instalações que usavam /state.
+      fetch(stateEndpoint, { cache: "no-store", signal: abort.signal }).catch(() => null),
+    ]).then(async ([preferencesResponse, soundResponse, stateResponse]) => {
+      const soundData = await soundResponse.json()
       if (!soundResponse.ok) throw new Error(soundData.error || "Não foi possível obter os recursos de áudio.")
-      if (version !== generation.current) return
-      const normalizedFolders = normalizeSoundFolders(stateData.state?.soundFolders)
-      const normalizedKeys = normalizeSoundHotkeys(stateData.state?.soundHotkeys)
-      foldersRef.current = normalizedFolders
-      hotkeysRef.current = normalizedKeys
-      setFolders(normalizedFolders)
-      setHotkeys(normalizedKeys)
+      const preferences = preferencesResponse?.ok ? await preferencesResponse.json().catch(() => null) : null
+      const legacy = stateResponse?.ok ? await stateResponse.json().catch(() => null) : null
+      if (version !== generation.current || abort.signal.aborted) return
+
+      const legacyFolders = normalizeSoundFolders(legacy?.state?.soundFolders)
+      const legacyKeys = normalizeSoundHotkeys(legacy?.state?.soundHotkeys)
+      const storedFolders = preferences?.stored?.folders === true
+        ? normalizeSoundFolders(preferences.soundFolders) : legacyFolders
+      const storedKeys = preferences?.stored?.hotkeys === true
+        ? normalizeSoundHotkeys(preferences.soundHotkeys) : legacyKeys
+
+      // Recupera alterações pendentes sem sobrescrever seleções feitas offline.
+      const pendingFolders = readPendingFolders(campaignId)
+      const pendingHotkeys = readPendingHotkeys(campaignId)
+      const nextFolders = pendingFolders ?? storedFolders
+      const nextHotkeys = pendingHotkeys ?? storedKeys
+      foldersRef.current = nextFolders
+      hotkeysRef.current = nextHotkeys
+      setFolders(nextFolders)
+      setHotkeys(nextHotkeys)
+      window.dispatchEvent(new CustomEvent("rpg:sound-hotkeys-updated", { detail: nextHotkeys }))
       setTargetingReady(soundData.capabilities?.targetedSound === true)
       setLoaded(true)
+
+      if (!preferences?.success) {
+        setError("O armazenamento de configurações do Soundpad não respondeu. As alterações ficarão salvas neste navegador até que o servidor esteja disponível.")
+      }
     }).catch(err => {
-      if (version === generation.current && !abort.signal.aborted) setError(errorMessage(err, "Erro ao carregar o arquivo sonoro."))
+      if (version === generation.current && !abort.signal.aborted) {
+        setError(errorMessage(err, "Erro ao carregar o arquivo sonoro."))
+      }
     })
     return () => { abort.abort(); generation.current++ }
-  }, [stateEndpoint, soundEndpoint, isGm, reload])
+  }, [preferencesEndpoint, stateEndpoint, soundEndpoint, campaignId, isGm, reload])
 
   const canPlay = isGm && loaded && (!targetUserId || (targetingReady && players.some(p => p.userId === targetUserId)))
   const isSaving = pendingWrites > 0
@@ -136,60 +180,70 @@ export function Soundpad({
   )
   const getTrackName = (id: string) => trackMap.get(id)?.name || "Faixa indisponível"
 
-  // As gravações são serializadas; cliques rápidos em ordem/loops não perdem alterações.
+  // Filas independentes por recurso: uma atualização de atalhos não apaga pastas,
+  // e várias edições rápidas da mesma playlist são gravadas na ordem correta.
   async function persistFolders(next: SoundFolder[]): Promise<boolean> {
     if (!isGm || !loaded) return false
     foldersRef.current = next
     setFolders(next)
+    savePendingPreference(campaignId, "soundFolders", next)
     setPendingWrites(v => v + 1)
     const version = generation.current
     const job = stateQueue.current.then(async () => {
       if (version !== generation.current) return false
-      const data = await postJson(stateEndpoint, { state: { soundFolders: next } })
-      if (!Array.isArray(data.state?.soundFolders)) {
-        throw new Error("Registre soundFolders em CAMPAIGN_STATE_ARRAY_FIELDS (lib/campaign-state.ts).")
-      }
+      const data = await postJson(preferencesEndpoint, { soundFolders: next })
+      if (data.success !== true || !Array.isArray(data.soundFolders)) throw new Error("O servidor não confirmou as pastas.")
+      clearPendingPreferenceIfMatches(campaignId, "soundFolders", next)
       return true
     })
     stateQueue.current = job.then(() => undefined, () => undefined)
-    try { return await job }
-    catch (err) {
-      if (version === generation.current) {
-        setError(errorMessage(err, "Não foi possível salvar a organização."))
-        setReload(value => value + 1)
-      }
+    try {
+      const saved = await job
+      if (saved && version === generation.current) setError("")
+      return saved
+    } catch (err) {
+      if (version === generation.current) setError(`${errorMessage(err, "Não foi possível salvar a organização.")} Alterações preservadas neste navegador.`)
       return false
-    } finally { if (version === generation.current) setPendingWrites(v => Math.max(0, v - 1)) }
+    } finally {
+      if (version === generation.current) setPendingWrites(v => Math.max(0, v - 1))
+    }
   }
 
   async function persistHotkeys(next: SoundHotkey[]): Promise<boolean> {
     if (!isGm || !loaded) return false
     hotkeysRef.current = next
     setHotkeys(next)
+    savePendingPreference(campaignId, "soundHotkeys", next)
+    // Atualizar o motor de reprodução de imediato (mesmo se o servidor falhar).
+    window.dispatchEvent(new CustomEvent("rpg:sound-hotkeys-updated", { detail: next }))
     setPendingWrites(v => v + 1)
     const version = generation.current
     const job = stateQueue.current.then(async () => {
       if (version !== generation.current) return false
-      const data = await postJson(stateEndpoint, { state: { soundHotkeys: next } })
-      if (!Array.isArray(data.state?.soundHotkeys)) {
-        throw new Error("Registre soundHotkeys em CAMPAIGN_STATE_ARRAY_FIELDS (lib/campaign-state.ts).")
-      }
+      const data = await postJson(preferencesEndpoint, { soundHotkeys: next })
+      if (data.success !== true || !Array.isArray(data.soundHotkeys)) throw new Error("O servidor não confirmou os atalhos.")
+      clearPendingPreferenceIfMatches(campaignId, "soundHotkeys", next)
       return true
     })
     stateQueue.current = job.then(() => undefined, () => undefined)
     try {
       const saved = await job
-      if (saved && version === generation.current) {
-        window.dispatchEvent(new CustomEvent("rpg:sound-hotkeys-updated", { detail: next }))
-      }
+      if (saved && version === generation.current) setError("")
       return saved
     } catch (err) {
-      if (version === generation.current) {
-        setError(errorMessage(err, "Não foi possível salvar os atalhos."))
-        setReload(value => value + 1)
-      }
+      if (version === generation.current) setError(`${errorMessage(err, "Não foi possível salvar os atalhos.")} Alterações preservadas neste navegador.`)
       return false
-    } finally { if (version === generation.current) setPendingWrites(v => Math.max(0, v - 1)) }
+    } finally {
+      if (version === generation.current) setPendingWrites(v => Math.max(0, v - 1))
+    }
+  }
+
+  async function retryPendingChanges() {
+    const pendingFolders = readPendingFolders(campaignId)
+    const pendingHotkeys = readPendingHotkeys(campaignId)
+    if (pendingFolders) await persistFolders(pendingFolders)
+    if (pendingHotkeys) await persistHotkeys(pendingHotkeys)
+    if (!pendingFolders && !pendingHotkeys) setReload(value => value + 1)
   }
 
   async function createFolder() {
@@ -224,6 +278,7 @@ export function Soundpad({
     const folderId = activeFolderObject.id
     const playlist: SoundPlaylist = { id: createId("sound-playlist"), name: newPlaylistName.trim(), items: [] }
     setNewPlaylistName("")
+    setSelectedPlaylistId(playlist.id)
     await persistFolders(foldersRef.current.map(folder => folder.id === folderId
       ? { ...folder, playlists: [...folder.playlists, playlist] } : folder))
   }
@@ -242,6 +297,9 @@ export function Soundpad({
   }
 
   function addTrackToPlaylist(folderId: string, playlistId: string, trackId: string) {
+    const folder = foldersRef.current.find(item => item.id === folderId)
+    const playlistName = folder?.playlists.find(item => item.id === playlistId)?.name
+    if (playlistName) setLastPlaylistAdded(previous => ({ ...previous, [trackId]: playlistName }))
     changePlaylist(folderId, playlistId, playlist => ({
       ...playlist, items: [...playlist.items, { id: createId("cue"), trackId, loops: 0 }],
     }))
@@ -326,224 +384,570 @@ export function Soundpad({
     bindHotkey(trackId, "")
   }
 
-  return (
-    <div className="rpg-themed-workspace flex h-full w-full flex-col overflow-y-auto bg-[#120e0c] font-sans text-stone-100 lg:flex-row lg:overflow-hidden">
-      {isGm ? (
-        <main className="flex min-h-[500px] min-w-0 flex-[2] flex-col lg:min-h-0">
-          <header className="relative shrink-0 overflow-hidden border-b border-amber-900/20 bg-gradient-to-br from-[#45301a] via-[#22180f] to-[#140f0c] px-6 py-6 sm:px-8">
-            <div className="pointer-events-none absolute -right-12 -top-20 size-64 rounded-full bg-amber-500/10 blur-3xl" />
-            <p className="rpg-kicker text-[10px] font-black uppercase tracking-[0.35em] text-amber-400">Arquivo sonoro da campanha</p>
-            <h2 className="rpg-title mt-2 text-3xl font-black tracking-tight text-[#f4e8d6]">Sua trilha, sua narrativa.</h2>
-            <p className="mt-1 max-w-xl text-xs text-stone-400">Organize cenas em pastas, monte playlists sequenciais e dispare sons durante a sessão.</p>
-            <div className="mt-5 flex flex-wrap gap-2 text-[11px] text-stone-300">
-              <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1">{allTracks.length} áudios</span>
-              <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1">{folders.length} pastas</span>
-              <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1">{allPlaylists.length} playlists</span>
-            </div>
-          </header>
 
-          <div className="shrink-0 space-y-4 border-b border-white/5 px-6 py-5 sm:px-8">
-            <label className="block text-xs font-medium text-amber-100">
-              Destinatário das próximas reproduções
-              <select aria-label="Destinatário do áudio" value={targetUserId ?? ""}
-                onChange={e => onTargetUserIdChange?.(e.target.value || null)} className={`${inputClass} mt-2`}>
-                <option value="">Todos na mesa</option>
+  // O Soundpad está SEMPRE em tela cheia. Fechar a tela não renderiza um segundo modal.
+  useEffect(() => { setPortalReady(true) }, [])
+
+  function closeStudio() {
+    window.dispatchEvent(new CustomEvent("rpg:soundpad-visibility", {
+      detail: { campaignId, open: false },
+    }))
+    setIsVisible(false)
+    onCloseRef.current?.()
+  }
+
+  useEffect(() => {
+    if (!portalReady || !isVisible) return
+    window.dispatchEvent(new CustomEvent("rpg:soundpad-visibility", {
+      detail: { campaignId, open: true },
+    }))
+    return () => {
+      window.dispatchEvent(new CustomEvent("rpg:soundpad-visibility", {
+        detail: { campaignId, open: false },
+      }))
+    }
+  }, [campaignId, portalReady, isVisible])
+
+  // Se o pai não desmontar o Soundpad, o miniplayer ainda pode reabrir a tela.
+  useEffect(() => {
+    const open = (event: Event) => {
+      const detail = (event as CustomEvent<{ campaignId: string }>).detail
+      if (detail?.campaignId === campaignId) setIsVisible(true)
+    }
+    window.addEventListener("rpg:soundpad-request-open", open)
+    return () => window.removeEventListener("rpg:soundpad-request-open", open)
+  }, [campaignId])
+
+  // Copia as variáveis de tema da campanha para o portal, que está fora desse escopo.
+  useEffect(() => {
+    const anchor = themeAnchorRef.current
+    const dialog = dialogRef.current
+    if (!portalReady || !isVisible || !anchor || !dialog) return
+    const syncTheme = () => {
+      const computed = window.getComputedStyle(anchor)
+      for (let i = 0; i < computed.length; i++) {
+        const name = computed.item(i)
+        if (name.startsWith("--")) {
+          const value = computed.getPropertyValue(name).trim()
+          if (value) dialog.style.setProperty(name, value)
+        }
+      }
+      const surface = window.getComputedStyle(dialog)
+      dialog.style.setProperty("--soundpad-option-bg", surface.backgroundColor)
+      dialog.style.setProperty("--soundpad-option-fg", surface.color)
+      const background = surface.backgroundColor
+      const values = background.match(/\d+(?:\.\d+)?/g)?.map(Number) ?? []
+      if (background.startsWith("oklch(") && values.length) {
+        dialog.style.colorScheme = values[0] > 0.6 ? "light" : "dark"
+      } else if (background.startsWith("hsl(") && values.length >= 3) {
+        dialog.style.colorScheme = values[2] > 60 ? "light" : "dark"
+      } else if (background.startsWith("rgb(") && values.length >= 3) {
+        const brightness = values[0] * .2126 + values[1] * .7152 + values[2] * .0722
+        dialog.style.colorScheme = brightness > 140 ? "light" : "dark"
+      }
+    }
+    syncTheme()
+    const observer = new MutationObserver(syncTheme)
+    let element: HTMLElement | null = anchor
+    while (element) {
+      observer.observe(element, { attributes: true, attributeFilter: ["class", "style", "data-theme"] })
+      element = element.parentElement
+    }
+    return () => observer.disconnect()
+  }, [portalReady, isVisible])
+
+  useEffect(() => {
+    if (!portalReady || !isVisible) return
+    const previousOverflow = document.body.style.overflow
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    document.body.style.overflow = "hidden"
+    dialogRef.current?.focus()
+    const handleKeys = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        closeStudio()
+        return
+      }
+      if (event.key !== "Tab" || !dialogRef.current) return
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex="0"]',
+      )).filter(el => el.getClientRects().length > 0)
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (!dialogRef.current.contains(document.activeElement)) {
+        event.preventDefault()
+        ;(event.shiftKey ? last : first).focus()
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener("keydown", handleKeys, true)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener("keydown", handleKeys, true)
+      if (previouslyFocused?.isConnected) previouslyFocused.focus()
+    }
+  }, [portalReady, isVisible])
+
+  const focusedEntry = visiblePlaylists.find(entry => entry.playlist.id === selectedPlaylistId) || visiblePlaylists[0]
+  const focusedPlaylist = focusedEntry?.playlist
+  const focusedFolder = focusedEntry?.folder
+  const focusedPlaying = focusedPlaylist ? activeSounds.find(sound => sound.playlist?.playlistId === focusedPlaylist.id) : undefined
+  const featuredSound = activeSounds.find(sound => sound.playlist) || activeSounds.find(sound => sound.loop) || activeSounds[activeSounds.length - 1]
+  const featuredName = featuredSound ? getTrackName(featuredSound.trackId) : "Nenhuma faixa em reprodução"
+  const featuredSubline = featuredSound?.playlist
+    ? `${featuredSound.playlist.playlistName} · ${featuredSound.playlist.index + 1} de ${featuredSound.playlist.total}`
+    : featuredSound?.loop ? "Repetição contínua" : featuredSound ? "Reprodução avulsa" : "Escolha uma faixa para começar"
+  const selectedFolderName = activeFolderObject?.name || (activeFolder === "unfiled" ? "Sem pasta" : "Sua biblioteca")
+
+  const studio = (
+    <div
+      ref={dialogRef}
+      tabIndex={-1}
+      role="dialog"
+      aria-modal={true}
+      aria-label="Estúdio de áudio da campanha"
+      className="rpg-themed-workspace relative isolate flex h-[100dvh] w-full min-w-0 flex-col overflow-hidden bg-background text-foreground outline-none"
+    >
+      <style>{`
+        .rpg-themed-workspace select.soundpad-select {
+          background-color: var(--soundpad-option-bg, #20160f) !important;
+          color: var(--soundpad-option-fg, #f1e8dc) !important;
+          color-scheme: inherit;
+        }
+        .rpg-themed-workspace select.soundpad-select option {
+          background-color: var(--soundpad-option-bg, #20160f);
+          color: var(--soundpad-option-fg, #f1e8dc);
+        }
+      `}</style>
+      {/* Atmosfera cromática utiliza os tokens do tema ativo, sem cores hardcoded. */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -left-52 -top-64 size-[620px] rounded-full bg-primary/[0.10] blur-[115px]" />
+        <div className="absolute right-[-180px] top-[18%] size-[520px] rounded-full bg-primary/[0.065] blur-[110px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-card/25 via-background/40 to-background" />
+      </div>
+
+      {/* TOP BAR · leitura imediata, controles essenciais sempre acessíveis. */}
+      <header className="relative z-40 flex shrink-0 flex-wrap items-center gap-3 border-b border-border/50 bg-background/65 px-4 py-3 shadow-[0_6px_40px_rgba(0,0,0,0.10)] backdrop-blur-2xl sm:px-6 lg:gap-5 lg:px-8">
+        <div className="flex min-w-0 items-center gap-3 lg:w-[220px] lg:shrink-0">
+          <div className="grid size-10 shrink-0 place-items-center rounded-[14px] border border-primary/35 bg-gradient-to-br from-primary/25 via-primary/10 to-card text-primary shadow-[inset_0_1px_0_rgba(255,255,255,.08)]">
+            <Disc3 className="size-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[9px] font-black uppercase tracking-[.26em] text-primary/80">RPG · SOUND STUDIO</p>
+            <h2 className="truncate text-[15px] font-extrabold tracking-tight text-foreground">Arquivo sonoro</h2>
+          </div>
+        </div>
+
+        <div className="order-3 flex w-full min-w-[160px] flex-1 items-center gap-2 rounded-full border border-border/70 bg-card/45 px-4 py-2.5 text-muted-foreground transition-all focus-within:border-primary/60 focus-within:bg-card/75 focus-within:ring-2 focus-within:ring-primary/10 sm:order-none">
+          <Search className="size-4 shrink-0" />
+          <input aria-label="Pesquisar sons" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar sons, músicas e efeitos..."
+            className="w-full min-w-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/65 sm:text-sm" />
+          {search && <button type="button" aria-label="Limpar busca" onClick={() => setSearch("")} className="rounded-full p-1 hover:bg-primary/10 hover:text-primary"><X className="size-3.5" /></button>}
+          <span className="hidden shrink-0 rounded-md border border-border/50 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/70 md:block">BUSCA</span>
+        </div>
+
+        <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
+          {isGm && (
+            <label className="hidden items-center gap-2 rounded-full border border-border/55 bg-card/40 px-3 py-2 text-muted-foreground lg:flex">
+              <Radio className="size-4 shrink-0 text-primary" />
+              <span className="hidden text-[11px] font-semibold xl:block">Transmitir para</span>
+              <select aria-label="Destinatário do áudio" value={targetUserId ?? ""} onChange={event => onTargetUserIdChange?.(event.target.value || null)}
+                className="soundpad-select max-w-[155px] cursor-pointer rounded-lg border border-border/60 px-2 py-1 text-xs font-semibold outline-none">
+                <option value="">Toda a mesa</option>
                 {players.map(player => <option key={player.userId} value={player.userId} disabled={!targetingReady}>{player.name}</option>)}
               </select>
             </label>
-            <p className="text-[11px] text-stone-500">{targetUserId ? "Jogador selecionado + mestre" : "Todos os jogadores + mestre"} · A escolha vale apenas para novos disparos.</p>
-            {targetUserId && !players.some(player => player.userId === targetUserId) && <p className="text-xs text-red-300">O destinatário selecionado não está na mesa.</p>}
-            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3">
-              <Search className="size-4 shrink-0 text-stone-500" />
-              <input aria-label="Pesquisar sons" placeholder="Buscar áudio na biblioteca..." value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-transparent py-2.5 text-sm outline-none placeholder:text-stone-600" />
-              {search && <button aria-label="Limpar pesquisa" onClick={() => setSearch("")}><X className="size-3" /></button>}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <input aria-label="Nova pasta" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} placeholder="Nome da nova pasta" maxLength={100}
-                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void createFolder() } }} className={`${inputClass} max-w-52 flex-1`} />
-              <button className={buttonClass} disabled={!loaded || !newFolderName.trim()} onClick={() => void createFolder()}><Plus className="size-4" /> Pasta</button>
-            </div>
-            <nav aria-label="Pastas de sons" className="flex flex-wrap gap-2">
-              {[{ id: "all", name: "Biblioteca" }, { id: "unfiled", name: "Sem pasta" }, ...folders].map(folder => (
-                <button key={folder.id} type="button" disabled={!loaded} aria-pressed={activeFolder === folder.id}
-                  onClick={() => setActiveFolder(folder.id)}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${activeFolder === folder.id ? "border-amber-400/70 bg-amber-400/15 text-amber-200" : "border-white/10 bg-white/5 text-stone-400 hover:text-white"}`}>
-                  {folder.name}
-                </button>
-              ))}
-            </nav>
-            {activeFolderObject && <div className="flex gap-4 text-xs">
-              <button className="text-amber-400 hover:underline" onClick={() => void renameFolder(activeFolderObject)}>Renomear pasta</button>
-              <button className="text-red-400 hover:underline" onClick={() => void deleteFolder(activeFolderObject)}>Excluir pasta</button>
-            </div>}
-            {isSaving && <p role="status" className="text-xs text-amber-300">Salvando alterações...</p>}
-            {!loaded && !error && <p role="status" className="text-xs text-stone-400">Carregando biblioteca...</p>}
-            {error && <div role="alert" className="flex flex-wrap gap-3 text-xs text-red-300">{error}<button onClick={() => setReload(v => v + 1)} className="underline">Recarregar</button></div>}
-          </div>
+          )}
+          <span className="hidden items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] font-semibold text-primary md:inline-flex">
+            <span className={`size-1.5 rounded-full ${activeSounds.length ? "animate-pulse bg-primary" : "bg-muted-foreground/50"}`} />
+            {activeSounds.length ? `${activeSounds.length} tocando` : "Em espera"}
+          </span>
+          <button type="button" onClick={() => setMobileInspector(value => !value)} title="Abrir painel de controle"
+            aria-label="Abrir painel de controle" aria-expanded={mobileInspector} className="grid size-9 place-items-center rounded-full border border-border/60 bg-card/50 text-muted-foreground hover:border-primary/40 hover:text-primary xl:hidden"><PanelRight className="size-4" /></button>
+          <button type="button" onClick={closeStudio} title="Fechar estúdio de áudio"
+            aria-label="Fechar estúdio de áudio" className="grid size-9 place-items-center rounded-full border border-border/60 bg-card/50 text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary">
+            <X className="size-[18px]" />
+          </button>
+        </div>
+      </header>
 
-          <div className="custom-scrollbar-sepia min-h-0 flex-1 space-y-8 overflow-y-auto px-6 py-6 sm:px-8">
-            <section className="space-y-3">
-              <div className="flex items-center justify-between gap-4">
-                <h3 className="flex items-center gap-2 text-sm font-black text-[#f0ddbf]"><ListMusic className="size-4 text-amber-400" /> Playlists {activeFolderObject ? `· ${activeFolderObject.name}` : ""}</h3>
-                <span className="text-[11px] text-stone-500">Arraste as faixas ou use as setas</span>
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        {isGm ? (
+          <>
+            {/* SIDEBAR · coleção e pastas, visual próximo ao Spotify. */}
+            <aside className="z-10 flex max-h-[220px] w-full shrink-0 flex-col gap-4 overflow-y-auto border-b border-border/45 bg-card/20 p-4 backdrop-blur-xl lg:max-h-none lg:w-[255px] lg:border-b-0 lg:border-r lg:p-5">
+              <div>
+                <div className="mb-3 flex items-center justify-between px-2">
+                  <span className="text-[10px] font-black uppercase tracking-[.22em] text-muted-foreground">Sua coleção</span>
+                  <Library className="size-4 text-muted-foreground/70" />
+                </div>
+                <nav aria-label="Biblioteca de sons" className="space-y-1">
+                  <button type="button" onClick={() => setActiveFolder("all")} aria-pressed={activeFolder === "all"}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition-all ${activeFolder === "all" ? "bg-primary/15 text-primary shadow-[inset_3px_0_0_0_currentColor]" : "text-muted-foreground hover:bg-card/70 hover:text-foreground"}`}>
+                    <Library className="size-[18px]" /> Todos os sons <span className="ml-auto font-mono text-[10px] opacity-65">{allTracks.length}</span>
+                  </button>
+                  <button type="button" onClick={() => setActiveFolder("unfiled")} aria-pressed={activeFolder === "unfiled"}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition-all ${activeFolder === "unfiled" ? "bg-primary/15 text-primary shadow-[inset_3px_0_0_0_currentColor]" : "text-muted-foreground hover:bg-card/70 hover:text-foreground"}`}>
+                    <Music className="size-[18px]" /> Sem pasta
+                  </button>
+                </nav>
               </div>
-              {activeFolderObject && <div className="flex flex-wrap gap-2">
-                <input aria-label="Nome da playlist" value={newPlaylistName} onChange={e => setNewPlaylistName(e.target.value)} maxLength={100}
-                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void createPlaylist() } }} placeholder="Nova playlist: Combate, Taverna..." className={`${inputClass} max-w-80 flex-1`} />
-                <button disabled={!loaded || !newPlaylistName.trim()} className={buttonClass} onClick={() => void createPlaylist()}><Plus className="size-4" /> Criar playlist</button>
-              </div>}
-              {!activeFolderObject && <p className="text-xs text-stone-500">Selecione uma pasta para criar uma playlist dentro dela. As playlists existentes aparecem na Biblioteca.</p>}
-              {loaded && visiblePlaylists.length === 0 && <div className="rounded-xl border border-dashed border-amber-800/30 bg-[#1b1510] p-6 text-center text-xs text-stone-500">Nenhuma playlist nesta visualização.</div>}
-              {visiblePlaylists.map(({ folder, playlist }) => {
-                const playing = activeSounds.find(s => s.playlist?.playlistId === playlist.id)
-                return <article key={playlist.id} className="overflow-hidden rounded-xl border border-amber-900/30 bg-[#1b1612]">
-                  <div className="flex flex-wrap items-center gap-3 border-b border-white/5 bg-gradient-to-r from-amber-500/10 to-transparent px-4 py-4">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-amber-400/10 text-amber-400"><Disc3 className="size-6" /></div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="truncate text-base font-bold text-stone-100">{playlist.name}</h4>
-                      <p className="text-[11px] text-stone-500">{folder.name} · {playlist.items.length} faixas {playing ? "· Em reprodução" : ""}</p>
-                    </div>
-                    <button className={primaryClass} disabled={!canPlay || playlist.items.length === 0 || busyPlaylist === playlist.id}
-                      onClick={() => void playPlaylist(playlist)} title="Iniciar playlist desde a primeira faixa"><Play className="size-4 fill-current" /> Tocar</button>
-                    <button aria-label={`Renomear playlist ${playlist.name}`} className={buttonClass} onClick={() => {
-                      const name = prompt("Nome da playlist:", playlist.name)?.trim()
-                      if (name) changePlaylist(folder.id, playlist.id, p => ({ ...p, name }))
-                    }}>Editar</button>
-                    <button title="Excluir playlist" aria-label={`Excluir ${playlist.name}`} className="text-red-400 hover:text-red-300" onClick={() => void deletePlaylist(folder.id, playlist)}><Trash2 className="size-4" /></button>
-                  </div>
-                  {playlist.items.length === 0 ? <p className="px-4 py-5 text-xs text-stone-500">Adicione faixas da biblioteca usando o seletor “Adicionar à playlist”.</p> : (
-                    <div className="divide-y divide-white/5">
-                      {playlist.items.map((cue, index) => {
-                        const track = trackMap.get(cue.trackId)
-                        const activeCue = playing?.playlist?.index === index
-                        return <div key={cue.id} draggable
-                          onDragStart={e => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", cue.id) }}
-                          onDragOver={e => e.preventDefault()}
-                          onDrop={e => { e.preventDefault(); moveCue(folder.id, playlist.id, e.dataTransfer.getData("text/plain"), cue.id) }}
-                          className={`flex flex-wrap items-center gap-2 px-3 py-2.5 ${activeCue ? "bg-amber-400/10" : "hover:bg-white/[0.025]"}`}>
-                          <GripVertical className="size-4 cursor-grab text-stone-600" />
-                          <span className="w-5 shrink-0 text-right font-mono text-[11px] text-stone-500">{index + 1}</span>
-                          <div className="min-w-28 flex-1 truncate text-xs font-medium text-stone-200">{track?.name || "Arquivo removido"}</div>
-                          {activeCue && <Activity className="size-4 text-amber-400" />}
-                          <label className="flex items-center gap-1.5 text-[11px] text-stone-400" title="0 = tocar uma vez; 1 = tocar duas vezes; e assim por diante">
-                            <Repeat className="size-3" /> Loops
-                            <input aria-label={`Quantidade de loops de ${track?.name || "faixa"}`} type="number" min={0} max={99} step={1} value={cue.loops}
-                              onChange={e => changeCue(folder.id, playlist.id, cue.id, old => ({ ...old, loops: Math.min(99, Math.max(0, Math.trunc(Number(e.target.value) || 0))) }))}
-                              className="w-12 rounded border border-white/10 bg-black/40 px-1 py-1 text-center font-mono text-amber-300" />
-                          </label>
-                          <span className="w-10 text-center text-[10px] text-stone-500">{cue.loops + 1}x</span>
-                          <button aria-label="Mover faixa para cima" disabled={index === 0} title="Subir" onClick={() => moveCue(folder.id, playlist.id, cue.id, playlist.items[index - 1].id)} className="text-stone-400 hover:text-amber-300 disabled:opacity-20"><ArrowUp className="size-4" /></button>
-                          <button aria-label="Mover faixa para baixo" disabled={index === playlist.items.length - 1} title="Descer" onClick={() => moveCue(folder.id, playlist.id, cue.id, playlist.items[index + 1].id)} className="text-stone-400 hover:text-amber-300 disabled:opacity-20"><ArrowDown className="size-4" /></button>
-                          <button aria-label="Remover faixa da playlist" title="Remover da playlist" onClick={() => changePlaylist(folder.id, playlist.id, p => ({ ...p, items: p.items.filter(i => i.id !== cue.id) }))} className="text-stone-500 hover:text-red-400"><X className="size-4" /></button>
-                        </div>
-                      })}
-                    </div>
-                  )}
-                  {playing && <div className="flex flex-wrap items-center justify-end gap-2 border-t border-amber-500/10 px-4 py-2">
-                    <span className="mr-auto text-[11px] text-amber-200">Faixa {(playing.playlist?.index ?? 0) + 1} de {playlist.items.length} · execução {(playing.playlist?.iteration ?? 0) + 1}</span>
-                    <button className={buttonClass} onClick={() => void skipPlaylist(playing.id, "previous")}><SkipBack className="size-3" /> Anterior</button>
-                    <button className={buttonClass} onClick={() => void setPaused(playing)}>{playing.paused ? <Play className="size-3" /> : <Pause className="size-3" />} {playing.paused ? "Retomar" : "Pausar"}</button>
-                    <button className={buttonClass} onClick={() => void skipPlaylist(playing.id, "next")}>Próxima <SkipForward className="size-3" /></button>
-                    <button className={buttonClass} onClick={() => onStopSound?.(playing.id)}><Square className="size-3" /> Parar</button>
-                  </div>}
-                </article>
-              })}
-              <p className="text-[11px] text-stone-600">Mudanças na ordem e nos loops feitas durante a reprodução valem para a próxima execução da playlist.</p>
-            </section>
 
-            <section className="space-y-3">
-              <h3 className="flex items-center gap-2 text-sm font-black text-[#f0ddbf]"><Music2 className="size-4 text-amber-400" /> Faixas da biblioteca</h3>
-              {loaded && visibleTracks.length === 0 && <p className="text-xs text-stone-500">Nenhum áudio encontrado.</p>}
-              {visibleTracks.map(track => {
-                const activeInstances = activeSounds.filter(s => s.trackId === track.id && (s.targetUserId ?? null) === targetUserId)
-                const playing = activeInstances.length > 0
-                return <div key={track.id} data-active={playing} className={`rpg-themed-card group flex flex-wrap items-center gap-3 rounded-xl border p-3 transition-all ${playing ? "border-amber-400/50 bg-amber-400/10" : "border-white/5 bg-[#1b1511] hover:border-amber-500/25"}`}>
-                  <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${playing ? "bg-amber-400 text-[#1a120b]" : "bg-black/40 text-amber-700"}`}>
-                    {track.isCustom ? <Link2 className="size-5" /> : <Disc3 className={`size-5 ${playing ? "animate-spin" : ""}`} style={playing ? { animationDuration: "5s" } : undefined} />}
-                  </span>
-                  <div className="min-w-32 flex-1">
-                    <p className={`truncate text-sm font-bold ${playing ? "text-amber-200" : "text-stone-100"}`}>{track.name}</p>
-                    <p className="text-[10px] uppercase tracking-widest text-stone-500">{track.isCustom ? "Link personalizado" : "Biblioteca base"}</p>
-                    <select aria-label={`Mover ${track.name} para pasta`} disabled={!loaded} value={folderForTrack(track.id)} onChange={e => void moveTrack(track.id, e.target.value)}
-                      className="mt-2 max-w-44 rounded border border-white/10 bg-[#0e0c0b] px-1 py-1 text-[11px] text-stone-400">
-                      <option value="unfiled">Sem pasta</option>
-                      {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
-                    </select>
+              <div className="min-h-0 flex-1">
+                <div className="mb-2 flex items-center justify-between px-2">
+                  <span className="text-[10px] font-black uppercase tracking-[.22em] text-muted-foreground">Pastas</span>
+                  <span className="font-mono text-[10px] text-muted-foreground/70">{folders.length}</span>
+                </div>
+                <nav aria-label="Pastas de sons" className="space-y-1">
+                  {folders.map(folder => (
+                    <button type="button" key={folder.id} onClick={() => setActiveFolder(folder.id)} aria-pressed={activeFolder === folder.id}
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[12px] font-medium transition-all ${activeFolder === folder.id ? "bg-primary/15 text-primary shadow-[inset_3px_0_0_0_currentColor]" : "text-muted-foreground hover:bg-card/70 hover:text-foreground"}`}>
+                      {activeFolder === folder.id ? <FolderOpen className="size-4 shrink-0" /> : <Folder className="size-4 shrink-0" />}
+                      <span className="min-w-0 flex-1 truncate">{folder.name}</span>
+                      <span className="font-mono text-[10px] opacity-60">{folder.playlists.length}</span>
+                    </button>
+                  ))}
+                  {!folders.length && <p className="px-3 py-2 text-[11px] leading-relaxed text-muted-foreground/75">Crie uma pasta para organizar playlists por cena.</p>}
+                </nav>
+              </div>
+
+              <div className="space-y-2 border-t border-border/45 pt-4">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nova pasta</label>
+                <div className="flex items-center gap-2">
+                  <input aria-label="Nome da nova pasta" value={newFolderName} onChange={event => setNewFolderName(event.target.value)} maxLength={100}
+                    onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); void createFolder() } }}
+                    placeholder="Ex: Sessão 04" className={`${inputClass} !py-2 !text-xs`} />
+                  <button type="button" title="Criar pasta" aria-label="Criar pasta" disabled={!loaded || !newFolderName.trim()} onClick={() => void createFolder()}
+                    className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground transition-all hover:brightness-110 disabled:opacity-40"><Plus className="size-4" /></button>
+                </div>
+                {activeFolderObject && <div className="flex items-center gap-4 pt-1">
+                  <button type="button" onClick={() => void renameFolder(activeFolderObject)} className="text-[11px] text-muted-foreground hover:text-primary">Renomear</button>
+                  <button type="button" onClick={() => void deleteFolder(activeFolderObject)} className="text-[11px] text-muted-foreground hover:text-destructive">Excluir pasta</button>
+                </div>}
+                <div className="mt-3 hidden items-center gap-2 rounded-xl border border-border/45 bg-background/35 px-3 py-2 text-[11px] text-muted-foreground lg:flex">
+                  <Keyboard className="size-4 shrink-0 text-primary/70" /><span>Atalhos ativos com o painel fechado</span>
+                </div>
+              </div>
+            </aside>
+
+            {/* MAIN · hero, capas de playlists, tabela de faixas. */}
+            <main className="soundpad-scroll min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-10 pt-5 sm:px-6 lg:px-8 lg:pt-7">
+              {targetUserId && !players.some(player => player.userId === targetUserId) && <p className="mb-4 rounded-xl border border-destructive/35 bg-destructive/10 p-3 text-xs text-destructive">O destinatário selecionado não participa mais da mesa.</p>}
+              <div className="mb-4 flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
+                <div className="flex min-w-0 items-center gap-1.5"><span className="truncate">Biblioteca</span><ChevronRight className="size-3" /><span className="truncate font-semibold text-foreground">{selectedFolderName}</span></div>
+                <span className="hidden text-[10px] uppercase tracking-[.18em] text-primary/85 sm:block">ÁUDIO · EXPERIÊNCIA IMERSIVA</span>
+              </div>
+
+              <section className="relative isolate overflow-hidden rounded-[28px] border border-primary/25 bg-card/55 shadow-[0_20px_70px_rgba(0,0,0,.16)] backdrop-blur-2xl">
+                <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-primary/25 via-primary/[0.07] to-background/30" />
+                <div className="pointer-events-none absolute -right-24 -top-44 size-[450px] rounded-full border-[55px] border-primary/[0.075]" />
+                <div className="pointer-events-none absolute -right-14 top-10 size-[300px] rounded-full border-[45px] border-primary/[0.09]" />
+                <div className="flex flex-col items-start gap-5 p-5 sm:p-7 2xl:flex-row 2xl:items-center 2xl:gap-8">
+                  <div className="relative grid size-32 shrink-0 place-items-center overflow-hidden rounded-[23px] border border-primary/30 bg-gradient-to-br from-primary/40 via-primary/15 to-card shadow-[0_18px_40px_rgba(0,0,0,.28)] sm:size-40">
+                    <div className="absolute left-[-22%] top-[-22%] size-[80%] rounded-full bg-primary/30 blur-3xl" />
+                    <div className="absolute grid size-[74%] place-items-center rounded-full border-[11px] border-foreground/10 bg-background/65 shadow-xl">
+                      <div className="absolute inset-2 rounded-full border border-foreground/10" />
+                      <div className="absolute inset-[24%] rounded-full border border-primary/30" />
+                      <div className="grid size-7 place-items-center rounded-full border border-primary/50 bg-primary text-primary-foreground"><Music2 className="size-3.5" /></div>
+                    </div>
+                    <span className="absolute bottom-2 left-2 rounded-md border border-primary/20 bg-background/70 px-2 py-1 font-mono text-[9px] font-bold tracking-[.2em] text-primary backdrop-blur-lg">RPG</span>
                   </div>
-                  <div className="flex min-w-36 flex-col gap-2">
-                    <select aria-label={`Adicionar ${track.name} à playlist`} defaultValue="" onChange={e => {
-                      const [folderId, playlistId] = e.target.value.split("::")
-                      if (folderId && playlistId) addTrackToPlaylist(folderId, playlistId, track.id)
-                      e.target.value = ""
-                    }} className="max-w-48 rounded border border-white/10 bg-[#0e0c0b] px-2 py-1.5 text-[11px] text-stone-400">
-                      <option value="">+ Adicionar à playlist</option>
-                      {allPlaylists.map(({ folder, playlist }) => <option key={playlist.id} value={`${folder.id}::${playlist.id}`}>{folder.name} / {playlist.name}</option>)}
-                    </select>
-                    <select aria-label={`Atalho de ${track.name}`} disabled={!loaded} value={hotkeys.find(h => h.trackId === track.id)?.code || ""}
-                      onChange={e => bindHotkey(track.id, e.target.value)} className="max-w-48 rounded border border-white/10 bg-[#0e0c0b] px-2 py-1.5 text-[11px] text-stone-400">
-                      <option value="">Sem tecla de atalho</option>
-                      {SHORTCUT_CODES.map(shortcut => <option key={shortcut.code} value={shortcut.code}>{shortcut.label}{hotkeys.some(h => h.code === shortcut.code && h.trackId !== track.id) ? " (substituir)" : ""}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button aria-label={`Tocar ${track.name} uma vez`} title="Tocar uma vez" disabled={!canPlay} onClick={() => onPlaySound?.(track, false, targetUserId)} className="flex size-9 items-center justify-center rounded-full bg-amber-400 text-[#1a120b] hover:bg-amber-300 disabled:opacity-40"><Play className="size-4 fill-current" /></button>
-                    {track.loopable && <button aria-label={`Alternar loop de ${track.name}`} title="Loop infinito avulso" disabled={!canPlay && !activeInstances.some(s => s.loop)}
-                      onClick={() => { const loopSound = activeInstances.find(s => s.loop); if (loopSound) onStopSound?.(loopSound.id); else onPlaySound?.(track, true, targetUserId) }}
-                      className={`flex size-9 items-center justify-center rounded-full border ${activeInstances.some(s => s.loop) ? "border-amber-400 bg-amber-400/20 text-amber-300" : "border-white/10 text-stone-400 hover:text-white"}`}><Repeat className="size-4" /></button>}
-                    {track.isCustom && <button aria-label={`Excluir ${track.name}`} title="Excluir som" onClick={() => removeCustomSound(track.id)} className="text-stone-500 hover:text-red-400"><Trash2 className="size-4" /></button>}
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.25em] text-primary"><Sparkles className="size-3.5" /> Biblioteca sonora</div>
+                    <h1 className="max-w-[750px] break-words text-3xl font-black tracking-[-.045em] text-foreground sm:text-4xl 2xl:text-5xl">{selectedFolderName}</h1>
+                    <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-muted-foreground">Transforme cada momento da campanha em uma cena inesquecível. Suas trilhas, efeitos e playlists em um só lugar.</p>
+                    <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px]">
+                      <span className="rounded-full border border-border/50 bg-background/35 px-3 py-1.5 text-foreground/80 backdrop-blur-md"><strong className="text-primary">{visiblePlaylists.length}</strong> playlists</span>
+                      <span className="rounded-full border border-border/50 bg-background/35 px-3 py-1.5 text-foreground/80 backdrop-blur-md"><strong className="text-primary">{visibleTracks.length}</strong> faixas</span>
+                      {activeSounds.length > 0 && <span className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 font-bold text-primary"><Activity className="size-3.5" /> Mesa em reprodução</span>}
+                    </div>
                   </div>
                 </div>
-              })}
-            </section>
+              </section>
+
+              {isGm && <label className="mt-5 flex items-center gap-2 rounded-xl border border-border/45 bg-card/40 px-3 py-2.5 text-[11px] text-muted-foreground backdrop-blur-xl lg:hidden">
+                <Radio className="size-4 text-primary" /> Enviar para
+                <select aria-label="Destinatário do áudio (mobile)" value={targetUserId ?? ""} onChange={event => onTargetUserIdChange?.(event.target.value || null)} className="soundpad-select min-w-0 flex-1 rounded-lg border border-border/60 px-2 py-1 text-right font-semibold outline-none">
+                  <option value="">Todos na mesa</option>
+                  {players.map(player => <option key={player.userId} value={player.userId} disabled={!targetingReady}>{player.name}</option>)}
+                </select>
+              </label>}
+
+              <section className="mt-8">
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                  <div><p className="text-[10px] font-bold uppercase tracking-[.22em] text-primary/80">Suas coleções</p><h3 className="mt-1 text-xl font-extrabold tracking-tight text-foreground sm:text-2xl">Playlists</h3></div>
+                  <span className="text-[11px] text-muted-foreground">Selecione uma coleção para organizar a fila</span>
+                </div>
+                <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-border/45 bg-card/35 p-2.5 backdrop-blur-xl sm:p-3">
+                  <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Plus className="size-5" /></div>
+                  <input aria-label="Nome da playlist" value={newPlaylistName} onChange={event => setNewPlaylistName(event.target.value)} maxLength={100}
+                    onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); void createPlaylist() } }}
+                    placeholder={activeFolderObject ? `Nova playlist em ${activeFolderObject.name}...` : "Selecione uma pasta à esquerda para criar uma playlist"}
+                    disabled={!activeFolderObject || !loaded}
+                    className="min-w-36 flex-1 bg-transparent px-2 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground/75 disabled:opacity-55 sm:text-sm" />
+                  <button type="button" className={buttonClass} disabled={!activeFolderObject || !loaded || !newPlaylistName.trim()} onClick={() => void createPlaylist()}><Plus className="size-4" /> Criar</button>
+                </div>
+                {loaded && visiblePlaylists.length === 0 ? (
+                  <div className="grid min-h-32 place-items-center rounded-3xl border border-dashed border-border/65 bg-card/20 p-6 text-center backdrop-blur-md">
+                    <div><ListMusic className="mx-auto mb-2 size-7 text-primary/50" /><p className="text-sm font-semibold">Nenhuma playlist por aqui</p><p className="mt-1 text-xs text-muted-foreground">Selecione uma pasta e crie sua primeira sequência de áudio.</p></div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                    {visiblePlaylists.map(({ folder, playlist }, index) => {
+                      const playing = activeSounds.find(sound => sound.playlist?.playlistId === playlist.id)
+                      const selected = focusedEntry?.playlist.id === playlist.id
+                      return <div key={playlist.id} className={`group relative flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left shadow-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:shadow-lg ${selected ? "border-primary/50 bg-primary/[0.10]" : "border-border/50 bg-card/45 hover:border-primary/35 hover:bg-card/70"}`}>
+                        <button type="button" aria-label={`Selecionar playlist ${playlist.name}`} aria-pressed={selected} onClick={() => setSelectedPlaylistId(playlist.id)} className="absolute inset-0 rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" />
+                        <div className="relative pointer-events-none grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-primary/15 bg-gradient-to-br from-primary/35 via-card to-background">
+                          <div className="absolute -right-4 -top-4 size-14 rounded-full border-[9px] border-primary/15" />
+                          <Disc3 className="size-7 text-primary" />
+                          <span className="absolute bottom-1 right-1 font-mono text-[9px] text-primary/70">0{(index % 9) + 1}</span>
+                        </div>
+                        <div className="pointer-events-none relative min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-foreground">{playlist.name}</p>
+                          <p className="mt-1 truncate text-[11px] text-muted-foreground">{folder.name} · {playlist.items.length} faixas</p>
+                          {playing && <p className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-primary"><Activity className="size-3" /> Reproduzindo</p>}
+                        </div>
+                        <button type="button" title={`Tocar ${playlist.name}`} aria-label={`Tocar playlist ${playlist.name}`} disabled={!canPlay || !playlist.items.length || busyPlaylist === playlist.id} onClick={() => void playPlaylist(playlist)}
+                          className="relative z-10 grid size-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform hover:scale-110 disabled:opacity-40"><Play className="ml-0.5 size-4 fill-current" /></button>
+                      </div>
+                    })}
+                  </div>
+                )}
+              </section>
+
+              {focusedPlaylist && focusedFolder && (
+                <section className="mt-9 overflow-hidden rounded-[24px] border border-border/50 bg-card/40 shadow-[0_16px_50px_rgba(0,0,0,.10)] backdrop-blur-xl">
+                  <div className="relative overflow-hidden border-b border-border/45 bg-gradient-to-r from-primary/[0.13] via-primary/[0.04] to-transparent p-4 sm:p-6">
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="grid size-[66px] shrink-0 place-items-center rounded-[17px] border border-primary/35 bg-primary/15 shadow-[inset_0_1px_0_rgba(255,255,255,.05)]"><ListMusic className="size-8 text-primary" /></div>
+                      <div className="min-w-0 flex-1">
+                        <p className="mb-1 text-[10px] font-black uppercase tracking-[.18em] text-primary/90">Playlist selecionada / {focusedFolder.name}</p>
+                        <h3 className="truncate text-xl font-extrabold tracking-tight sm:text-2xl">{focusedPlaylist.name}</h3>
+                        <p className="mt-1 text-xs text-muted-foreground">{focusedPlaylist.items.length} faixas · loops personalizados · ordem de execução</p>
+                      </div>
+                      <button type="button" className={primaryClass} disabled={!canPlay || !focusedPlaylist.items.length || busyPlaylist === focusedPlaylist.id} onClick={() => void playPlaylist(focusedPlaylist)}><Play className="size-4 fill-current" /> Reproduzir</button>
+                      <button type="button" title="Renomear playlist" aria-label={`Renomear playlist ${focusedPlaylist.name}`} className="grid size-9 place-items-center rounded-full border border-border/50 bg-background/45 text-muted-foreground hover:border-primary/40 hover:text-primary" onClick={() => {
+                        const name = prompt("Nome da playlist:", focusedPlaylist.name)?.trim()
+                        if (name) changePlaylist(focusedFolder.id, focusedPlaylist.id, playlist => ({ ...playlist, name }))
+                      }}><MoreHorizontal className="size-5" /></button>
+                      <button type="button" title="Excluir playlist" aria-label={`Excluir playlist ${focusedPlaylist.name}`} onClick={() => void deletePlaylist(focusedFolder.id, focusedPlaylist)} className="grid size-9 place-items-center rounded-full border border-border/50 bg-background/45 text-muted-foreground hover:border-destructive/50 hover:text-destructive"><Trash2 className="size-4" /></button>
+                    </div>
+                    {focusedPlaying && <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-primary/15 pt-4">
+                      <span className="mr-auto inline-flex items-center gap-1.5 text-xs font-semibold text-primary"><Activity className="size-3.5" /> Faixa {(focusedPlaying.playlist?.index ?? 0) + 1}/{focusedPlaylist.items.length} · repetição {(focusedPlaying.playlist?.iteration ?? 0) + 1}</span>
+                      <button type="button" className={buttonClass} onClick={() => void skipPlaylist(focusedPlaying.id, "previous")}><SkipBack className="size-3.5" /> Anterior</button>
+                      <button type="button" className={buttonClass} onClick={() => void setPaused(focusedPlaying)}>{focusedPlaying.paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}{focusedPlaying.paused ? "Retomar" : "Pausar"}</button>
+                      <button type="button" className={buttonClass} onClick={() => void skipPlaylist(focusedPlaying.id, "next")}>Próxima <SkipForward className="size-3.5" /></button>
+                      <button type="button" className={buttonClass} onClick={() => onStopSound?.(focusedPlaying.id)}><Square className="size-3.5" /> Parar</button>
+                    </div>}
+                  </div>
+                  {focusedPlaylist.items.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <div className="min-w-[610px]">
+                        <div className="grid grid-cols-[32px_minmax(170px,1fr)_118px_80px_116px] items-center gap-2 border-b border-border/35 px-4 py-3 text-[10px] font-bold uppercase tracking-[.15em] text-muted-foreground sm:px-6">
+                          <span className="text-center">#</span><span>Faixa</span><span>Loops por faixa</span><span>Execuções</span><span className="text-right">Ordem / Ações</span>
+                        </div>
+                        {focusedPlaylist.items.map((cue, index) => {
+                          const track = trackMap.get(cue.trackId)
+                          const activeCue = focusedPlaying?.playlist?.index === index
+                          return <div key={cue.id} draggable
+                            onDragStart={event => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", cue.id) }}
+                            onDragOver={event => event.preventDefault()}
+                            onDrop={event => { event.preventDefault(); moveCue(focusedFolder.id, focusedPlaylist.id, event.dataTransfer.getData("text/plain"), cue.id) }}
+                            className={`group grid grid-cols-[32px_minmax(170px,1fr)_118px_80px_116px] items-center gap-2 border-b border-border/20 px-4 py-2.5 transition-colors last:border-0 hover:bg-primary/[0.05] sm:px-6 ${activeCue ? "bg-primary/[0.10]" : ""}`}>
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground"><GripVertical className="size-3.5 cursor-grab opacity-50 group-hover:opacity-100" />{activeCue ? <Activity className="size-3.5 text-primary" /> : index + 1}</span>
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <div className="grid size-9 shrink-0 place-items-center rounded-lg border border-primary/15 bg-gradient-to-br from-primary/20 to-card text-primary"><Music2 className="size-4" /></div>
+                              <div className="min-w-0"><p className={`truncate text-xs font-semibold ${activeCue ? "text-primary" : "text-foreground"}`}>{track?.name || "Arquivo removido"}</p><p className="text-[10px] text-muted-foreground">{track?.isCustom ? "Áudio personalizado" : "Biblioteca"}</p></div>
+                            </div>
+                            <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground" title="0 = uma vez; 1 = duas vezes; 2 = três vezes...">
+                              <Repeat className="size-3.5 shrink-0 text-primary/70" />
+                              <input aria-label={`Quantidade de loops de ${track?.name || "faixa"}`} type="number" min={0} max={99} step={1} value={cue.loops}
+                                onChange={event => changeCue(focusedFolder.id, focusedPlaylist.id, cue.id, old => ({ ...old, loops: Math.min(99, Math.max(0, Math.trunc(Number(event.target.value) || 0))) }))}
+                                className="w-14 rounded-lg border border-border/60 bg-background/55 px-2 py-1.5 text-center font-mono text-xs text-foreground outline-none focus:border-primary/60" />
+                            </label>
+                            <span className="font-mono text-xs text-muted-foreground">{cue.loops + 1}<span className="ml-0.5 text-[10px]">vez(es)</span></span>
+                            <div className="flex justify-end gap-1">
+                              <button type="button" title="Mover faixa para cima" aria-label="Mover faixa para cima" disabled={index === 0} onClick={() => moveCue(focusedFolder.id, focusedPlaylist.id, cue.id, focusedPlaylist.items[index - 1].id)} className="grid size-7 place-items-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:opacity-25"><ArrowUp className="size-3.5" /></button>
+                              <button type="button" title="Mover faixa para baixo" aria-label="Mover faixa para baixo" disabled={index === focusedPlaylist.items.length - 1} onClick={() => moveCue(focusedFolder.id, focusedPlaylist.id, cue.id, focusedPlaylist.items[index + 1].id)} className="grid size-7 place-items-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:opacity-25"><ArrowDown className="size-3.5" /></button>
+                              <button type="button" title="Remover faixa" aria-label="Remover faixa da playlist" onClick={() => changePlaylist(focusedFolder.id, focusedPlaylist.id, playlist => ({ ...playlist, items: playlist.items.filter(item => item.id !== cue.id) }))} className="grid size-7 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="size-3.5" /></button>
+                            </div>
+                          </div>
+                        })}
+                      </div>
+                    </div>
+                  ) : <div className="flex min-h-32 flex-col items-center justify-center gap-2 p-6 text-center text-xs text-muted-foreground"><ListMusic className="size-7 text-primary/45" />Sua playlist está vazia. Adicione faixas na biblioteca abaixo.</div>}
+                  <p className="border-t border-border/35 px-4 py-3 text-[11px] text-muted-foreground sm:px-6">Arraste para reordenar ou use as setas. As mudanças feitas enquanto toca valem na próxima execução.</p>
+                </section>
+              )}
+
+              <section className="mt-9">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+                  <div><p className="text-[10px] font-bold uppercase tracking-[.22em] text-primary/80">Acervo da mesa</p><h3 className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl">Faixas da biblioteca</h3></div>
+                  <span className="flex items-center gap-2 rounded-full border border-border/50 bg-card/50 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur-md"><List className="size-3.5" /> {visibleTracks.length} faixas</span>
+                </div>
+                <div className="overflow-hidden rounded-[22px] border border-border/55 bg-card/35 shadow-[0_14px_55px_rgba(0,0,0,.09)] backdrop-blur-xl">
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[760px]">
+                      <div className="grid grid-cols-[minmax(180px,1.3fr)_minmax(112px,.75fr)_minmax(150px,1fr)_minmax(130px,.8fr)_114px] items-center gap-3 border-b border-border/45 px-4 py-3.5 text-[10px] font-bold uppercase tracking-[.15em] text-muted-foreground sm:px-5">
+                        <span>Título</span><span>Pasta</span><span>Adicionar à playlist</span><span>Atalho</span><span className="text-right">Reprodução</span>
+                      </div>
+                      {visibleTracks.map((track, index) => {
+                        const activeInstances = activeSounds.filter(sound => sound.trackId === track.id && (sound.targetUserId ?? null) === targetUserId)
+                        const playing = activeInstances.length > 0
+                        return <div key={track.id} data-active={playing} className={`group grid grid-cols-[minmax(180px,1.3fr)_minmax(112px,.75fr)_minmax(150px,1fr)_minmax(130px,.8fr)_114px] items-center gap-3 border-b border-border/25 px-4 py-2.5 transition-colors last:border-0 hover:bg-primary/[.055] sm:px-5 ${playing ? "bg-primary/[.08]" : ""}`}>
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span className="w-4 shrink-0 text-right font-mono text-[11px] text-muted-foreground/70">{playing ? <Activity className="size-3.5 text-primary" /> : index + 1}</span>
+                            <div className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-primary/15 bg-gradient-to-br from-primary/25 via-card to-background text-primary shadow-sm">{track.isCustom ? <Link2 className="size-[18px]" /> : <Disc3 className="size-[18px]" />}</div>
+                            <div className="min-w-0"><p className={`truncate text-xs font-semibold ${playing ? "text-primary" : "text-foreground"}`} title={track.name}>{track.name}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{track.isCustom ? "Personalizado" : "Biblioteca base"}</p></div>
+                          </div>
+                          <select aria-label={`Mover ${track.name} para pasta`} disabled={!loaded} value={folderForTrack(track.id)} onChange={event => void moveTrack(track.id, event.target.value)} className="soundpad-select min-w-0 max-w-full cursor-pointer rounded-lg border border-border/50 px-2 py-2 text-[11px] outline-none focus:border-primary/50">
+                            <option value="unfiled">Sem pasta</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+                          </select>
+                          <select aria-label={`Adicionar ${track.name} à playlist`} defaultValue="" onChange={event => {
+                            const [folderId, playlistId] = event.target.value.split("::")
+                            if (folderId && playlistId) addTrackToPlaylist(folderId, playlistId, track.id)
+                            event.target.value = ""
+                          }} className="soundpad-select min-w-0 max-w-full cursor-pointer rounded-lg border border-border/50 px-2 py-2 text-[11px] outline-none focus:border-primary/50">
+                            <option value="">{lastPlaylistAdded[track.id] ? `✓ Adicionado: ${lastPlaylistAdded[track.id]}` : "+ Adicionar..."}</option>{allPlaylists.map(({ folder, playlist }) => <option key={playlist.id} value={`${folder.id}::${playlist.id}`}>{folder.name} / {playlist.name}</option>)}
+                          </select>
+                          <select aria-label={`Atalho de ${track.name}`} disabled={!loaded} value={hotkeys.find(hotkey => hotkey.trackId === track.id)?.code || ""} onChange={event => bindHotkey(track.id, event.target.value)} className="soundpad-select min-w-0 max-w-full cursor-pointer rounded-lg border border-border/50 px-2 py-2 text-[11px] outline-none focus:border-primary/50">
+                            <option value="">Sem atalho</option>{SHORTCUT_CODES.map(shortcut => <option key={shortcut.code} value={shortcut.code}>{shortcut.label}{hotkeys.some(hotkey => hotkey.code === shortcut.code && hotkey.trackId !== track.id) ? " (substituir)" : ""}</option>)}
+                          </select>
+                          <div className="flex justify-end gap-1">
+                            <button type="button" title="Tocar uma vez" aria-label={`Tocar ${track.name} uma vez`} disabled={!canPlay} onClick={() => onPlaySound?.(track, false, targetUserId)} className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-110 disabled:opacity-35"><Play className="ml-0.5 size-3.5 fill-current" /></button>
+                            {track.loopable && <button type="button" title="Loop infinito" aria-label={`Alternar loop de ${track.name}`} disabled={!canPlay && !activeInstances.some(sound => sound.loop)} onClick={() => { const loopSound = activeInstances.find(sound => sound.loop); if (loopSound) onStopSound?.(loopSound.id); else onPlaySound?.(track, true, targetUserId) }} className={`grid size-8 shrink-0 place-items-center rounded-full border transition-colors ${activeInstances.some(sound => sound.loop) ? "border-primary bg-primary/15 text-primary" : "border-border/50 text-muted-foreground hover:border-primary/50 hover:text-primary"}`}><Repeat className="size-3.5" /></button>}
+                            {track.isCustom && <button type="button" title="Excluir som" aria-label={`Excluir ${track.name}`} onClick={() => removeCustomSound(track.id)} className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 className="size-3.5" /></button>}
+                          </div>
+                        </div>
+                      })}
+                      {loaded && visibleTracks.length === 0 && <div className="px-5 py-9 text-center text-sm text-muted-foreground">Nenhum som encontrado nesta pasta.</div>}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </main>
+          </>
+        ) : (
+          <main className="relative flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-center">
+            <div className="pointer-events-none absolute size-[300px] rounded-full bg-primary/10 blur-[95px]" />
+            <div className="relative grid size-24 place-items-center rounded-[26px] border border-primary/30 bg-primary/10 text-primary shadow-xl backdrop-blur-xl"><Headphones className="size-11" /></div>
+            <p className="mt-6 text-[10px] font-black uppercase tracking-[.25em] text-primary">Som ambiente conectado</p>
+            <h3 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">Você está na frequência da mesa.</h3>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">O mestre controla as trilhas e os efeitos. Você recebe o áudio sem precisar manter este painel aberto.</p>
+            {featuredSound && <div className="mt-8 flex w-full max-w-sm items-center gap-3 rounded-2xl border border-primary/25 bg-card/60 p-4 text-left backdrop-blur-xl"><Activity className="size-5 text-primary" /><div className="min-w-0"><p className="truncate text-sm font-semibold">{featuredName}</p><p className="truncate text-xs text-muted-foreground">{featuredSubline}</p></div></div>}
+          </main>
+        )}
+
+        {/* Painel do inspetor; em telas pequenas aparece como drawer sobre a biblioteca. */}
+        {mobileInspector && <button type="button" aria-label="Fechar painel de controle" className="absolute inset-0 z-20 bg-background/60 backdrop-blur-sm xl:hidden" onClick={() => setMobileInspector(false)} />}
+        <aside className={`${mobileInspector ? "absolute inset-y-0 right-0 z-30 flex w-[min(92vw,360px)]" : "hidden"} min-h-0 shrink-0 flex-col overflow-y-auto border-l border-border/50 bg-card/55 p-5 shadow-[-12px_0_60px_rgba(0,0,0,.12)] backdrop-blur-2xl xl:relative xl:z-10 xl:flex xl:w-[320px] 2xl:w-[352px]`}>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div><p className="text-[10px] font-bold uppercase tracking-[.22em] text-primary/75">Monitor de áudio</p><h3 className="mt-1 text-[17px] font-extrabold">Tocando agora</h3></div>
+            <div className="flex items-center gap-2">
+              <Activity className="size-[18px] text-primary/75" />
+              {mobileInspector && <button type="button" aria-label="Fechar inspetor" onClick={() => setMobileInspector(false)} className="grid size-8 place-items-center rounded-full border border-border/50 xl:hidden"><X className="size-4" /></button>}
+            </div>
           </div>
-        </main>
-      ) : (
-        <div className="flex min-h-72 flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
-          <Headphones className="size-14 text-amber-700" />
-          <h3 className="text-lg font-bold">Conectado ao áudio da mesa</h3>
-          <p className="max-w-md text-sm text-stone-500">Você ouvirá a ambiência, as playlists e os efeitos controlados pelo mestre.</p>
+          <div className="relative overflow-hidden rounded-[21px] border border-primary/25 bg-background/45 p-3 shadow-[0_15px_45px_rgba(0,0,0,.12)]">
+            <div className="relative grid aspect-[1.3/1] place-items-center overflow-hidden rounded-[15px] bg-gradient-to-br from-primary/35 via-primary/[0.09] to-card">
+              <div className="absolute -right-16 -top-16 size-64 rounded-full border-[38px] border-primary/10" />
+              <div className="absolute -bottom-14 -left-14 size-52 rounded-full bg-primary/10 blur-3xl" />
+              <div className="relative grid size-[105px] place-items-center rounded-full border-[13px] border-foreground/10 bg-background/75 shadow-2xl"><div className="absolute inset-3 rounded-full border border-primary/25" /><div className="grid size-7 place-items-center rounded-full bg-primary text-primary-foreground"><Music2 className="size-4" /></div></div>
+              {featuredSound && <span className="absolute bottom-3 left-3 rounded-full border border-primary/25 bg-background/60 px-3 py-1 text-[10px] font-bold text-primary backdrop-blur-lg">{featuredSound.paused ? "PAUSADO" : "ON AIR"}</span>}
+            </div>
+            <div className="min-w-0 px-1 pb-2 pt-4"><p className="truncate text-base font-extrabold" title={featuredName}>{featuredName}</p><p className="mt-1 truncate text-xs text-muted-foreground">{featuredSubline}</p></div>
+            {isGm && featuredSound && <div className="flex items-center justify-center gap-5 border-t border-border/40 pt-3">
+              {featuredSound.playlist && <button type="button" aria-label="Anterior" title="Anterior" onClick={() => void skipPlaylist(featuredSound.id, "previous")} className="text-muted-foreground hover:text-primary"><SkipBack className="size-[18px]" /></button>}
+              <button type="button" aria-label={featuredSound.paused ? "Retomar" : "Pausar"} title={featuredSound.paused ? "Retomar" : "Pausar"} onClick={() => void setPaused(featuredSound)} className="grid size-10 place-items-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105">{featuredSound.paused ? <Play className="size-4 fill-current" /> : <Pause className="size-4 fill-current" />}</button>
+              <button type="button" aria-label="Parar" title="Parar" onClick={() => onStopSound?.(featuredSound.id)} className="text-muted-foreground hover:text-destructive"><Square className="size-4" /></button>
+              {featuredSound.playlist && <button type="button" aria-label="Próxima" title="Próxima" onClick={() => void skipPlaylist(featuredSound.id, "next")} className="text-muted-foreground hover:text-primary"><SkipForward className="size-[18px]" /></button>}
+            </div>}
+          </div>
+          {isGm && <>
+            <div className="mt-5 flex items-center justify-between"><span className="text-xs font-bold">Fila ativa</span>{activeSounds.length > 0 && <button type="button" onClick={onStopAll} className="text-[11px] font-semibold text-destructive hover:underline">Parar todos</button>}</div>
+            <div className="mt-2 max-h-44 space-y-1.5 overflow-y-auto pr-1">
+              {activeSounds.length === 0 ? <p className="rounded-xl border border-dashed border-border/60 bg-background/25 px-3 py-5 text-center text-xs text-muted-foreground">Silêncio na sala...</p> : activeSounds.map(sound => (
+                <div key={sound.id} className="flex items-center gap-2 rounded-xl border border-border/35 bg-background/40 px-3 py-2.5 transition-colors hover:border-primary/25">
+                  <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary"><Activity className="size-3.5" /></div>
+                  <div className="min-w-0 flex-1"><p className="truncate text-[11px] font-semibold">{getTrackName(sound.trackId)}</p><p className="truncate text-[10px] text-muted-foreground">{sound.playlist ? sound.playlist.playlistName : sound.loop ? "Loop contínuo" : "Avulso"} · {sound.targetUserId == null ? "Todos" : "Individual"}</p></div>
+                  <button type="button" aria-label={`Parar ${getTrackName(sound.trackId)}`} title="Parar áudio" onClick={() => onStopSound?.(sound.id)} className="text-muted-foreground hover:text-destructive"><Square className="size-3.5" /></button>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 border-t border-border/45 pt-5">
+              <div className="mb-3 flex items-center gap-2"><Plus className="size-4 text-primary" /><h4 className="text-xs font-extrabold">Adicionar áudio</h4></div>
+              <div className="space-y-2.5">
+                <input aria-label="Nome do novo áudio" value={newSoundName} onChange={event => setNewSoundName(event.target.value)} placeholder="Nome do áudio" className={inputClass} />
+                <input aria-label="URL do novo áudio" value={newSoundUrl} onChange={event => setNewSoundUrl(event.target.value)} placeholder="URL direta do arquivo MP3" className={inputClass} />
+                <button type="button" onClick={addCustomSound} disabled={!newSoundName.trim() || !newSoundUrl.trim()} className={`${buttonClass} w-full`}><Save className="size-4" /> Salvar áudio</button>
+              </div>
+            </div>
+          </>}
+          <div className="mt-6 border-t border-border/45 pt-5">
+            <div className="mb-4 flex items-center gap-2"><SlidersHorizontal className="size-4 text-primary" /><h4 className="text-xs font-extrabold">Mixer da mesa</h4></div>
+            <div className="space-y-5">
+              <label className="block space-y-2 text-[11px] text-muted-foreground"><span className="flex items-center justify-between"><span className="font-semibold text-foreground">Músicas / playlists</span><span className="font-mono text-primary">{Math.round(musicVolume * 100)}%</span></span>
+                <input aria-label="Volume das músicas" type="range" min={0} max={1} step={0.01} value={musicVolume} onChange={event => onMusicVolumeChange?.(Number(event.target.value))} className="h-1.5 w-full cursor-pointer accent-primary" />
+              </label>
+              <label className="block space-y-2 text-[11px] text-muted-foreground"><span className="flex items-center justify-between"><span className="font-semibold text-foreground">Efeitos sonoros</span><span className="font-mono text-primary">{Math.round(effectsVolume * 100)}%</span></span>
+                <input aria-label="Volume dos efeitos" type="range" min={0} max={1} step={0.01} value={effectsVolume} onChange={event => onEffectsVolumeChange?.(Number(event.target.value))} className="h-1.5 w-full cursor-pointer accent-primary" />
+              </label>
+            </div>
+            <p className="mt-5 flex items-start gap-2 text-[10px] leading-relaxed text-muted-foreground/80"><Keyboard className="mt-0.5 size-3.5 shrink-0" /> Atalhos de teclado exclusivos do mestre. Configure-os em cada faixa da biblioteca.</p>
+          </div>
+        </aside>
+      </div>
+
+      {/* PLAYER DO ESTÚDIO: fixa os controles sem recriar elementos de áudio. */}
+      <footer className="relative z-40 flex min-h-[78px] shrink-0 items-center gap-3 border-t border-border/50 bg-card/65 px-3 py-3 shadow-[0_-14px_50px_rgba(0,0,0,.16)] backdrop-blur-2xl sm:gap-5 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 flex-1 items-center gap-3 lg:max-w-[34%]">
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-primary/25 bg-gradient-to-br from-primary/35 via-primary/10 to-background text-primary shadow-sm sm:size-12"><Disc3 className="size-6" /></div>
+          <div className="min-w-0"><p className="truncate text-xs font-bold sm:text-sm" title={featuredName}>{featuredName}</p><p className="mt-0.5 truncate text-[10px] text-muted-foreground sm:text-[11px]">{featuredSubline}</p></div>
+        </div>
+        {isGm ? (
+          <div className="flex shrink-0 flex-col items-center justify-center gap-2 sm:flex-1">
+            <div className="flex items-center gap-3 sm:gap-5">
+              <button type="button" aria-label="Faixa anterior" title="Faixa anterior" disabled={!featuredSound?.playlist} onClick={() => featuredSound && void skipPlaylist(featuredSound.id, "previous")} className="text-muted-foreground transition-colors hover:text-primary disabled:opacity-25"><SkipBack className="size-[18px]" /></button>
+              <button type="button" aria-label={featuredSound?.paused ? "Retomar" : "Pausar"} title={featuredSound?.paused ? "Retomar" : "Pausar"} disabled={!featuredSound} onClick={() => featuredSound && void setPaused(featuredSound)} className="grid size-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 disabled:opacity-30">{featuredSound?.paused ? <Play className="size-[18px] fill-current" /> : <Pause className="size-[18px] fill-current" />}</button>
+              <button type="button" aria-label="Próxima faixa" title="Próxima faixa" disabled={!featuredSound?.playlist} onClick={() => featuredSound && void skipPlaylist(featuredSound.id, "next")} className="text-muted-foreground transition-colors hover:text-primary disabled:opacity-25"><SkipForward className="size-[18px]" /></button>
+              <button type="button" aria-label="Parar reprodução" title="Parar reprodução" disabled={!featuredSound} onClick={() => featuredSound && onStopSound?.(featuredSound.id)} className="text-muted-foreground transition-colors hover:text-destructive disabled:opacity-25"><Square className="size-[15px]" /></button>
+            </div>
+            <div className="hidden w-full max-w-[380px] items-center justify-center gap-2 text-[10px] text-muted-foreground sm:flex"><Activity className={`size-3.5 text-primary ${featuredSound && !featuredSound.paused ? "animate-pulse" : "opacity-40"}`} /><span>{featuredSound ? (featuredSound.paused ? "Pausado" : "Em reprodução") : "Aguardando reprodução"}</span>{featuredSound?.playlist && <span className="font-mono text-primary">· Faixa {featuredSound.playlist.index + 1}/{featuredSound.playlist.total}</span>}</div>
+          </div>
+        ) : <div className="flex items-center gap-2 text-xs text-primary"><Activity className="size-4" /> Recebendo áudio da mesa</div>}
+        <div className="ml-auto hidden flex-1 items-center justify-end gap-3 text-muted-foreground lg:flex">
+          <Volume2 className="size-4 shrink-0" /><input aria-label="Volume das músicas na barra" type="range" min={0} max={1} step={0.01} value={musicVolume} onChange={event => onMusicVolumeChange?.(Number(event.target.value))} className="w-24 cursor-pointer accent-primary xl:w-28" />
+          <span className="w-9 text-right font-mono text-[10px] text-primary">{Math.round(musicVolume * 100)}%</span>
+          <span className="ml-3 flex items-center gap-1.5 rounded-full border border-border/50 bg-background/35 px-3 py-1.5 text-[10px] text-muted-foreground"><Radio className="size-3.5 text-primary" /> {targetUserId ? "Individual" : "Mesa"}</span>
+        </div>
+      </footer>
+      {(isSaving || error || !loaded) && isGm && (
+        <div className="pointer-events-none absolute bottom-[87px] left-1/2 z-50 w-[min(90vw,500px)] -translate-x-1/2 rounded-xl border border-border/60 bg-background/90 px-4 py-3 text-center text-xs text-foreground shadow-2xl backdrop-blur-xl">
+          {!loaded && !error ? "Carregando biblioteca..." : isSaving ? "Salvando alterações..." : <span role="alert" className="pointer-events-auto text-destructive">{error} <button type="button" className="ml-2 underline" onClick={() => void retryPendingChanges()}>{loaded ? "Tentar salvar novamente" : "Recarregar"}</button></span>}
         </div>
       )}
-
-      <aside className="rpg-themed-subtle flex w-full shrink-0 flex-col border-l border-amber-900/20 bg-[#1b1510] lg:w-[350px]">
-        {isGm && <>
-          <div className="flex min-h-52 flex-col border-b border-white/5 p-5">
-            <div className="mb-4 flex items-center justify-between gap-2">
-              <h3 className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-amber-300"><Activity className="size-4" /> Tocando agora</h3>
-              {activeSounds.length > 0 && <button onClick={onStopAll} className="text-[10px] font-bold uppercase text-red-400 hover:text-red-300">Parar tudo</button>}
-            </div>
-            {activeSounds.length === 0 ? <div className="flex min-h-28 flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-white/10 bg-black/20 text-xs text-stone-500"><Music2 className="mb-2 size-7" /> Silêncio na sala...</div> :
-              <div className="custom-scrollbar-sepia max-h-64 space-y-2 overflow-y-auto">
-                {activeSounds.map(sound => <div key={sound.id} className="flex items-center gap-2 rounded-lg border border-amber-800/25 bg-black/25 px-3 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold text-amber-100">{getTrackName(sound.trackId)}</p>
-                    <p className="truncate text-[10px] text-stone-500">{sound.playlist ? `${sound.playlist.playlistName} · ${sound.playlist.index + 1}/${sound.playlist.total}` : sound.loop ? "Loop contínuo" : "Execução avulsa"}</p>
-                    <p className="mt-0.5 text-[10px] text-stone-600">{sound.targetUserId == null ? "Todos na mesa" : `${players.find(p => p.userId === sound.targetUserId)?.name || "Jogador"} + mestre`}</p>
-                  </div>
-                  {sound.playlist && <button title="Próxima faixa" onClick={() => void skipPlaylist(sound.id, "next")} className="text-stone-400 hover:text-amber-300"><SkipForward className="size-4" /></button>}
-                  <button title={sound.paused ? "Retomar áudio" : "Pausar áudio"} onClick={() => void setPaused(sound)} className="text-stone-400 hover:text-amber-300">{sound.paused ? <Play className="size-4" /> : <Pause className="size-4" />}</button>
-                  <button title="Parar áudio" onClick={() => onStopSound?.(sound.id)} className="text-stone-400 hover:text-red-400"><Square className="size-4" /></button>
-                </div>)}
-              </div>}
-          </div>
-          <div className="space-y-3 border-b border-white/5 p-5">
-            <h3 className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-stone-400"><WandSparkles className="size-4" /> Adicionar áudio por link</h3>
-            <input aria-label="Nome do novo áudio" value={newSoundName} onChange={e => setNewSoundName(e.target.value)} placeholder="Nome do áudio" className={inputClass} />
-            <input aria-label="URL do novo áudio" value={newSoundUrl} onChange={e => setNewSoundUrl(e.target.value)} placeholder="URL direta do arquivo" className={inputClass} />
-            <button onClick={addCustomSound} disabled={!newSoundName.trim() || !newSoundUrl.trim()} className={`${buttonClass} w-full`}><Save className="size-4" /> Salvar em Sem pasta</button>
-          </div>
-        </>}
-        <div className="mt-auto space-y-5 p-5">
-          <h3 className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-stone-400"><Volume2 className="size-4" /> Mixer principal</h3>
-          <label className="block space-y-2 text-xs text-stone-400"><span className="flex justify-between"><span>Músicas / playlists</span><span className="font-mono text-amber-300">{Math.round(musicVolume * 100)}%</span></span>
-            <input type="range" min={0} max={1} step={0.01} value={musicVolume} onChange={e => onMusicVolumeChange?.(Number(e.target.value))} className="w-full accent-amber-400" />
-          </label>
-          <label className="block space-y-2 text-xs text-stone-400"><span className="flex justify-between"><span>Efeitos</span><span className="font-mono text-amber-300">{Math.round(effectsVolume * 100)}%</span></span>
-            <input type="range" min={0} max={1} step={0.01} value={effectsVolume} onChange={e => onEffectsVolumeChange?.(Number(e.target.value))} className="w-full accent-amber-400" />
-          </label>
-          {isGm && <p className="text-[11px] leading-relaxed text-stone-600">Atalhos são exclusivos do mestre, funcionam com o Soundpad fechado e não disparam enquanto você digita em um formulário.</p>}
-        </div>
-      </aside>
     </div>
   )
+
+  return <>
+    <span ref={themeAnchorRef} className="hidden" aria-hidden="true" />
+    {isVisible && portalReady ? createPortal(
+      <div
+        data-soundpad-fullscreen
+        className="pointer-events-auto fixed inset-0 isolate h-[100dvh] w-screen overflow-hidden"
+        style={{ zIndex: 2147483000 }}
+      >
+        {studio}
+      </div>,
+      document.body,
+    ) : null}
+  </>
 }

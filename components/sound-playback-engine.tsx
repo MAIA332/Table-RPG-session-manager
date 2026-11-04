@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Disc3, GripHorizontal, ListMusic, Maximize2, Pause, Play, SkipBack, SkipForward, Square, Volume2 } from "lucide-react"
 import { SOUND_LIBRARY, normalizeSoundHotkeys, type ActiveSound, type SoundHotkey, type Track } from "@/lib/sound-config"
+import { readPendingHotkeys } from "@/lib/soundpad-local"
+import { createClientId } from "@/lib/client-id"
 
 type PlayingAudio = { element: HTMLAudioElement; url: string }
 type Stats = { id: string; current: number; duration: number }
@@ -59,7 +61,7 @@ async function postSound(campaignId: string, action: string, id: string): Promis
  */
 export function SoundPlaybackEngine({
   activeSounds, currentUserId, isGm, musicVolume, effectsVolume, onSoundEnded,
-  campaignId, isSoundpadOpen = true, onOpenSoundpad,
+  campaignId, isSoundpadOpen, onOpenSoundpad,
   customTracks = [], onPlaySound, onStopSound, hotkeyTargetUserId = null,
 }: SoundPlaybackEngineProps) {
   const playingRef = useRef<Map<string, PlayingAudio>>(new Map())
@@ -75,6 +77,12 @@ export function SoundPlaybackEngine({
   const dragRef = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null)
   const [commandError, setCommandError] = useState("")
   const [commandBusy, setCommandBusy] = useState(false)
+  // O prop pode não ter sido passado pelo componente pai; acompanhar o portal
+  // independentemente evita que o miniplayer fique escondido para sempre.
+  const [observedOpen, setObservedOpen] = useState<boolean | null>(null)
+  // A propriedade controlada do CampaignRoom é a fonte de verdade quando disponível.
+  // O evento do portal permanece apenas como fallback para versões antigas do pai.
+  const soundpadOpen = isSoundpadOpen ?? observedOpen ?? false
 
   const tracks = useMemo(() => [...SOUND_LIBRARY, ...customTracks], [customTracks])
   useEffect(() => { onEndedRef.current = onSoundEnded }, [onSoundEnded])
@@ -82,18 +90,39 @@ export function SoundPlaybackEngine({
   useEffect(() => { targetRef.current = hotkeyTargetUserId }, [hotkeyTargetUserId])
   useEffect(() => { tracksRef.current = new Map(tracks.map(track => [track.id, track])) }, [tracks])
 
-  // Hotkeys carregados no motor PERMANENTE; não dependem da existência da modal.
+  // Visibilidade publicada pelo portal: o miniplayer não depende de outro modal.
+  useEffect(() => {
+    const visibility = (event: Event) => {
+      const detail = (event as CustomEvent<{ campaignId: string; open: boolean }>).detail
+      if (detail && (!campaignId || detail.campaignId === campaignId)) setObservedOpen(Boolean(detail.open))
+    }
+    window.addEventListener("rpg:soundpad-visibility", visibility)
+    if (document.querySelector("[data-soundpad-fullscreen]")) setObservedOpen(true)
+    return () => window.removeEventListener("rpg:soundpad-visibility", visibility)
+  }, [campaignId])
+
+  // Atalhos pertencem ao motor permanente, não à existência do painel.
   useEffect(() => {
     if (!isGm || !campaignId) return
     const abort = new AbortController()
-    void fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/state`, {
-      cache: "no-store", signal: abort.signal,
-    }).then(async response => {
-      if (!response.ok) return
-      const data = await response.json()
-      if (!abort.signal.aborted) keysRef.current = normalizeSoundHotkeys(data.state?.soundHotkeys)
+    let updatedDuringFetch = false
+    keysRef.current = readPendingHotkeys(campaignId) ?? []
+    void Promise.all([
+      fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/sound/preferences`, {
+        cache: "no-store", signal: abort.signal,
+      }).catch(() => null),
+      fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/state`, {
+        cache: "no-store", signal: abort.signal,
+      }).catch(() => null),
+    ]).then(async ([preferencesResponse, legacyResponse]) => {
+      const preferences = preferencesResponse?.ok ? await preferencesResponse.json().catch(() => null) : null
+      const legacy = legacyResponse?.ok ? await legacyResponse.json().catch(() => null) : null
+      if (abort.signal.aborted || updatedDuringFetch) return
+      keysRef.current = readPendingHotkeys(campaignId)
+        ?? (preferences?.stored?.hotkeys ? normalizeSoundHotkeys(preferences.soundHotkeys) : normalizeSoundHotkeys(legacy?.state?.soundHotkeys))
     }).catch(() => {})
     const updated = (event: Event) => {
+      updatedDuringFetch = true
       keysRef.current = normalizeSoundHotkeys((event as CustomEvent).detail)
     }
     window.addEventListener("rpg:sound-hotkeys-updated", updated)
@@ -107,15 +136,26 @@ export function SoundPlaybackEngine({
       const target = event.target
       if (target instanceof HTMLElement && (target.isContentEditable || target.closest("input, textarea, select, [contenteditable='true'], [role='dialog'] input"))) return
       const hotkey = keysRef.current.find(item => item.code === event.code)
-      if (!hotkey || !onPlayRef.current) return
+      if (!hotkey) return
       const track = tracksRef.current.get(hotkey.trackId)
       if (!track) return
       event.preventDefault()
-      onPlayRef.current({ id: track.id, url: track.url }, false, targetRef.current)
+      if (onPlayRef.current) {
+        onPlayRef.current({ id: track.id, url: track.url }, false, targetRef.current)
+      } else if (campaignId) {
+        // Compatibilidade com CampaignRoom antigo que ainda não passa onPlaySound.
+        const id = `hotkey-${createClientId()}`
+        void fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/sound`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "play", id, trackId: track.id, url: track.url, loop: false, targetUserId: targetRef.current }),
+        }).then(response => {
+          if (!response.ok) console.warn("Não foi possível reproduzir o atalho:", response.status)
+        }).catch(error => console.warn("Falha ao acionar atalho:", error))
+      }
     }
     window.addEventListener("keydown", keydown)
     return () => window.removeEventListener("keydown", keydown)
-  }, [isGm])
+  }, [isGm, campaignId])
 
   useEffect(() => {
     const audible = activeSounds.filter(sound =>
@@ -177,7 +217,7 @@ export function SoundPlaybackEngine({
   const featured = audible.find(sound => Boolean(sound.playlist)) || audible.find(sound => sound.loop) || audible[audible.length - 1]
   const featuredId = featured?.id
   useEffect(() => {
-    if (!isGm || isSoundpadOpen || !featuredId) return
+    if (!isGm || soundpadOpen || !featuredId) return
     const tick = () => {
       const audio = playingRef.current.get(featuredId)?.element
       if (audio) setStats({
@@ -189,7 +229,7 @@ export function SoundPlaybackEngine({
     tick()
     const interval = window.setInterval(tick, 400)
     return () => window.clearInterval(interval)
-  }, [isGm, isSoundpadOpen, featuredId])
+  }, [isGm, soundpadOpen, featuredId])
 
   useEffect(() => {
     return () => {
@@ -212,7 +252,7 @@ export function SoundPlaybackEngine({
     } finally { setCommandBusy(false) }
   }
 
-  if (!isGm || isSoundpadOpen || !featured) return null
+  if (!isGm || soundpadOpen || !featured) return null
 
   const elapsed = stats?.id === featured.id ? stats.current : 0
   const duration = stats?.id === featured.id ? stats.duration : NaN
@@ -247,7 +287,10 @@ export function SoundPlaybackEngine({
           <p className="truncate text-sm font-bold" title={title}>{title}</p>
           <p className="truncate text-[11px] text-stone-400">{featured.playlist ? `${featured.playlist.playlistName} · ${featured.playlist.index + 1}/${featured.playlist.total}` : featured.loop ? "Repetição contínua" : "Áudio avulso"}</p>
         </div>
-        <button aria-label="Abrir Soundpad" title="Abrir biblioteca de sons" onClick={onOpenSoundpad} disabled={!onOpenSoundpad} className="text-stone-400 hover:text-amber-300 disabled:opacity-40"><Maximize2 className="size-4" /></button>
+        <button type="button" aria-label="Abrir Soundpad" title="Abrir biblioteca de sons" onClick={() => {
+          if (onOpenSoundpad) onOpenSoundpad()
+          else window.dispatchEvent(new CustomEvent("rpg:soundpad-request-open", { detail: { campaignId } }))
+        }} className="text-stone-400 hover:text-amber-300"><Maximize2 className="size-4" /></button>
       </div>
       <div className="px-3">
         <div className="h-1 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-label="Progresso do áudio" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
