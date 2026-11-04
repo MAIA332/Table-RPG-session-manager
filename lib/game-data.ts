@@ -451,7 +451,7 @@ export const CLASSES: GameClass[] = [
     hpPerLevel: 5,
     mpPerLevel: 3,
     primaryAttribute: "dex",
-    affinity: "espiritual",
+    affinity: "fisico",
     skills: [
       {
         id: "mk-ironfist",
