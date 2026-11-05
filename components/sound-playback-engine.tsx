@@ -107,20 +107,29 @@ export function SoundPlaybackEngine({
     const abort = new AbortController()
     let updatedDuringFetch = false
     keysRef.current = readPendingHotkeys(campaignId) ?? []
-    void Promise.all([
-      fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/sound/preferences`, {
-        cache: "no-store", signal: abort.signal,
-      }).catch(() => null),
-      fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/state`, {
-        cache: "no-store", signal: abort.signal,
-      }).catch(() => null),
-    ]).then(async ([preferencesResponse, legacyResponse]) => {
-      const preferences = preferencesResponse?.ok ? await preferencesResponse.json().catch(() => null) : null
-      const legacy = legacyResponse?.ok ? await legacyResponse.json().catch(() => null) : null
-      if (abort.signal.aborted || updatedDuringFetch) return
-      keysRef.current = readPendingHotkeys(campaignId)
-        ?? (preferences?.stored?.hotkeys ? normalizeSoundHotkeys(preferences.soundHotkeys) : normalizeSoundHotkeys(legacy?.state?.soundHotkeys))
-    }).catch(() => {})
+    const preferencesUrl = `/api/campaigns/${encodeURIComponent(campaignId)}/sound/preferences`
+    const legacyUrl = `/api/campaigns/${encodeURIComponent(campaignId)}/state`
+    void fetch(preferencesUrl, { cache: "no-store", signal: abort.signal })
+      .then(async response => {
+        const preferences = response.ok ? await response.json().catch(() => null) : null
+        // A nova rota inclui legado. Compatibilidade com o backend anterior:
+        // /state só é consultado quando a rota falha ou não devolve legado.
+        const needsLegacy = !preferences?.success ||
+          (preferences?.stored?.hotkeys !== true && preferences?.legacyIncluded !== true)
+        let legacy: { state?: { soundHotkeys?: unknown } } | null = null
+        if (needsLegacy) {
+          const legacyResponse = await fetch(legacyUrl, {
+            cache: "no-store", signal: abort.signal,
+          }).catch(() => null)
+          legacy = legacyResponse?.ok ? await legacyResponse.json().catch(() => null) : null
+        }
+        if (abort.signal.aborted || updatedDuringFetch) return
+        const storedHotkeys = preferences?.success &&
+          (preferences.legacyIncluded === true || preferences.stored?.hotkeys === true)
+          ? normalizeSoundHotkeys(preferences.soundHotkeys)
+          : normalizeSoundHotkeys(legacy?.state?.soundHotkeys)
+        keysRef.current = readPendingHotkeys(campaignId) ?? storedHotkeys
+      }).catch(() => {})
     const updated = (event: Event) => {
       updatedDuringFetch = true
       keysRef.current = normalizeSoundHotkeys((event as CustomEvent).detail)

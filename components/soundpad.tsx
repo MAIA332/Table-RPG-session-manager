@@ -66,6 +66,45 @@ async function postJson(url: string, payload: Record<string, unknown>) {
   return data
 }
 
+type SoundPreferenceKind = "soundFolders" | "soundHotkeys"
+
+/** Compara dados normalizados para não confundir diferença de formatação com falha. */
+function samePreference(kind: SoundPreferenceKind, received: unknown, expected: SoundFolder[] | SoundHotkey[]): boolean {
+  const normalize = kind === "soundFolders" ? normalizeSoundFolders : normalizeSoundHotkeys
+  return JSON.stringify(normalize(received)) === JSON.stringify(normalize(expected))
+}
+
+/**
+ * Se a resposta do POST falhar depois de uma gravação concluída, verifica no GET
+ * o dado efetivamente persistido. Nunca usa localStorage como prova de sucesso.
+ */
+async function saveConfirmedPreference(
+  endpoint: string,
+  kind: SoundPreferenceKind,
+  value: SoundFolder[] | SoundHotkey[],
+): Promise<void> {
+  let originalError: unknown
+  try {
+    const result = await postJson(endpoint, { [kind]: value })
+    if (result?.success === true && Array.isArray(result[kind]) && samePreference(kind, result[kind], value)) return
+    throw new Error("O servidor não confirmou os dados gravados.")
+  } catch (error) {
+    originalError = error
+  }
+
+  // Resposta de erro não implica necessariamente que o arquivo deixou de ser gravado.
+  try {
+    const response = await fetch(endpoint, { cache: "no-store" })
+    if (response.ok) {
+      const result = await response.json()
+      const storedKind = kind === "soundFolders" ? "folders" : "hotkeys"
+      if (result?.success === true && result?.stored?.[storedKind] === true &&
+          Array.isArray(result[kind]) && samePreference(kind, result[kind], value)) return
+    }
+  } catch { /* Conservar o erro original do POST. */ }
+  throw originalError
+}
+
 function createId(prefix: string): string {
   return `${prefix}-${createClientId()}`
 }
@@ -125,28 +164,43 @@ export function Soundpad({
     setSelectedPlaylistId(null)
     if (!isGm) return () => { abort.abort(); generation.current++ }
 
+    // A rota /sound/preferences devolve também os dados legados de /state
+    // quando ainda não existe arquivo. Só buscar /state se aquela rota falhar.
     void Promise.all([
       fetch(preferencesEndpoint, { cache: "no-store", signal: abort.signal }).catch(() => null),
       fetch(soundEndpoint, { cache: "no-store", signal: abort.signal }),
-      // Compatibilidade: migrar a leitura de instalações que usavam /state.
-      fetch(stateEndpoint, { cache: "no-store", signal: abort.signal }).catch(() => null),
-    ]).then(async ([preferencesResponse, soundResponse, stateResponse]) => {
+    ]).then(async ([preferencesResponse, soundResponse]) => {
       const soundData = await soundResponse.json()
       if (!soundResponse.ok) throw new Error(soundData.error || "Não foi possível obter os recursos de áudio.")
       const preferences = preferencesResponse?.ok ? await preferencesResponse.json().catch(() => null) : null
-      const legacy = stateResponse?.ok ? await stateResponse.json().catch(() => null) : null
+      let legacy: { state?: { soundFolders?: unknown; soundHotkeys?: unknown } } | null = null
+      if (!preferences?.success || (
+        preferences.legacyIncluded !== true &&
+        (preferences.stored?.folders !== true || preferences.stored?.hotkeys !== true)
+      )) {
+        const stateResponse = await fetch(stateEndpoint, { cache: "no-store", signal: abort.signal }).catch(() => null)
+        legacy = stateResponse?.ok ? await stateResponse.json().catch(() => null) : null
+      }
       if (version !== generation.current || abort.signal.aborted) return
 
-      const legacyFolders = normalizeSoundFolders(legacy?.state?.soundFolders)
-      const legacyKeys = normalizeSoundHotkeys(legacy?.state?.soundHotkeys)
-      const storedFolders = preferences?.stored?.folders === true
-        ? normalizeSoundFolders(preferences.soundFolders) : legacyFolders
-      const storedKeys = preferences?.stored?.hotkeys === true
-        ? normalizeSoundHotkeys(preferences.soundHotkeys) : legacyKeys
+      const storedFolders = preferences?.success && (preferences.legacyIncluded === true || preferences.stored?.folders === true)
+        ? normalizeSoundFolders(preferences.soundFolders)
+        : normalizeSoundFolders(legacy?.state?.soundFolders)
+      const storedKeys = preferences?.success && (preferences.legacyIncluded === true || preferences.stored?.hotkeys === true)
+        ? normalizeSoundHotkeys(preferences.soundHotkeys)
+        : normalizeSoundHotkeys(legacy?.state?.soundHotkeys)
 
-      // Recupera alterações pendentes sem sobrescrever seleções feitas offline.
+      // Recupera alterações pendentes sem confundi-las com confirmação do servidor.
       const pendingFolders = readPendingFolders(campaignId)
       const pendingHotkeys = readPendingHotkeys(campaignId)
+      if (pendingFolders && preferences?.stored?.folders === true &&
+          samePreference("soundFolders", preferences.soundFolders, pendingFolders)) {
+        clearPendingPreferenceIfMatches(campaignId, "soundFolders", pendingFolders)
+      }
+      if (pendingHotkeys && preferences?.stored?.hotkeys === true &&
+          samePreference("soundHotkeys", preferences.soundHotkeys, pendingHotkeys)) {
+        clearPendingPreferenceIfMatches(campaignId, "soundHotkeys", pendingHotkeys)
+      }
       const nextFolders = pendingFolders ?? storedFolders
       const nextHotkeys = pendingHotkeys ?? storedKeys
       foldersRef.current = nextFolders
@@ -191,8 +245,9 @@ export function Soundpad({
     const version = generation.current
     const job = stateQueue.current.then(async () => {
       if (version !== generation.current) return false
-      const data = await postJson(preferencesEndpoint, { soundFolders: next })
-      if (data.success !== true || !Array.isArray(data.soundFolders)) throw new Error("O servidor não confirmou as pastas.")
+      // Ignorar versões intermediárias substituídas enquanto aguardavam a fila.
+      if (next !== foldersRef.current) return false
+      await saveConfirmedPreference(preferencesEndpoint, "soundFolders", next)
       clearPendingPreferenceIfMatches(campaignId, "soundFolders", next)
       return true
     })
@@ -220,8 +275,8 @@ export function Soundpad({
     const version = generation.current
     const job = stateQueue.current.then(async () => {
       if (version !== generation.current) return false
-      const data = await postJson(preferencesEndpoint, { soundHotkeys: next })
-      if (data.success !== true || !Array.isArray(data.soundHotkeys)) throw new Error("O servidor não confirmou os atalhos.")
+      if (next !== hotkeysRef.current) return false
+      await saveConfirmedPreference(preferencesEndpoint, "soundHotkeys", next)
       clearPendingPreferenceIfMatches(campaignId, "soundHotkeys", next)
       return true
     })
