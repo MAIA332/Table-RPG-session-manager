@@ -2,9 +2,10 @@
  * Substitua: app/api/campaigns/[id]/sound/preferences/route.ts
  *
  * O cargo de mestre e a permissao de escrita do SO sao verificacoes diferentes.
- * Preferir a persistencia existente de /state quando ela suporta estes campos.
- * Caso contrario, gravar em um diretorio persistente gravavel (configurado ou
- * no diretorio de dados do usuario do processo), sem tratar /tmp como definitivo.
+ * Corrige EVERIFY: alguns projetos anunciam soundFolders/soundHotkeys em
+ * CAMPAIGN_STATE_ARRAY_FIELDS, mas updateCampaignState nao os confirma.
+ * Nesse caso, usar o arquivo persistente e ler este arquivo com prioridade.
+ * Nao confundir dados locais/estado legado com gravação confirmada.
  */
 import { randomUUID } from "node:crypto"
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
@@ -43,6 +44,8 @@ type Result = { value: Preferences; stored: boolean }
 
 // Serializa alteracoes da mesma campanha dentro de uma instancia Next.js.
 const queues = new Map<string, Promise<void>>()
+// Evita tentar repetidamente o caminho de /state quando ele ja falhou.
+const unsupportedStateKinds = new Set<string>()
 
 async function authorized(params: Params["params"]) {
   const user = await getCurrentUser()
@@ -90,13 +93,13 @@ function readState(id: string, kind: Kind): Preferences | null {
 }
 
 async function readPreference(id: string, kind: Kind): Promise<Result> {
-  if (stateFields.has(kind)) {
-    const stateValue = readState(id, kind)
-    if (stateValue !== null) return { value: stateValue, stored: true }
-  }
+  // IMPORTANTISSIMO: apos um POST que fez fallback para arquivo, /state pode
+  // continuar devolvendo o valor anterior. O arquivo deve vencer o legado.
   const file = await readFromDisk(id, kind)
   if (file.stored) return file
-  // Compatibilidade com o estado legado (ainda que nao seja campo persistivel).
+
+  // Dados de /state sao legado enquanto nao ha arquivo; nunca marcar
+  // "stored: true" sem conseguir comprovar o armazenamento definitivo.
   return { value: readState(id, kind) ?? [], stored: false }
 }
 
@@ -110,8 +113,10 @@ async function writeToDisk(id: string, kind: Kind, value: Preferences): Promise<
       temp = `${destination}.${randomUUID()}.tmp`
       await writeFile(temp, JSON.stringify(value), { encoding: "utf8", flag: "wx", mode: 0o600 })
       await rename(temp, destination)
-      const persisted: unknown = JSON.parse(await readFile(destination, "utf8"))
-      if (!matches(kind, persisted, value)) {
+      // Verificar pela mesma prioridade usada pelo GET. Assim um arquivo
+      // antigo em outro diretorio nao oculta o novo salvamento.
+      const persisted = await readFromDisk(id, kind)
+      if (!persisted.stored || !matches(kind, persisted.value, value)) {
         const error = new Error("Não foi possível confirmar os dados gravados.") as NodeJS.ErrnoException
         error.code = "EVERIFY"
         throw error
@@ -131,20 +136,31 @@ async function writeToDisk(id: string, kind: Kind, value: Preferences): Promise<
 }
 
 async function savePreference(id: string, kind: Kind, value: Preferences): Promise<void> {
-  if (stateFields.has(kind)) {
-    // Usa o MESMO mecanismo persistente da rota /state (sem novo arquivo).
-    // A tipagem do patch varia entre versoes de CampaignState; o campo foi
-    // conferido contra CAMPAIGN_STATE_ARRAY_FIELDS antes da chamada.
+  // Quem ja possui arquivo deve continuar no arquivo: evita gravar em /state
+  // enquanto GET le um arquivo antigo com prioridade.
+  const existingFile = await readFromDisk(id, kind)
+  if (existingFile.stored) {
+    await writeToDisk(id, kind, value)
+    return
+  }
+
+  const stateKey = `${id}:${kind}`
+  if (stateFields.has(kind) && !unsupportedStateKinds.has(stateKey)) {
+    // Suporte declarado em CAMPAIGN_STATE_ARRAY_FIELDS nao garante que
+    // updateCampaignState realmente persista o campo nesta instalacao.
     const patch = { [kind]: value } as unknown as Parameters<typeof updateCampaignState>[1]
     await updateCampaignState(id, patch)
     const confirmed = readState(id, kind)
-    if (confirmed === null || !matches(kind, confirmed, value)) {
-      const error = new Error(`O estado da campanha não confirmou ${kind}.`) as NodeJS.ErrnoException
-      error.code = "EVERIFY"
-      throw error
-    }
-    return
+    if (confirmed !== null && matches(kind, confirmed, value)) return
+
+    // EVERIFY significa que /state NAO confirmou esta alteracao. Em vez de
+    // retornar erro prematuramente, persistir no arquivo dedicado.
+    unsupportedStateKinds.add(stateKey)
+    console.warn(`[sound/preferences] /state não confirmou ${kind}; usando armazenamento em arquivo.`)
   }
+
+  // Se SOUNDPAD_CONFIG_DIR nao for gravavel, a API deve retornar erro real:
+  // nao declarar sucesso apenas porque o navegador possui backup local.
   await writeToDisk(id, kind, value)
 }
 
