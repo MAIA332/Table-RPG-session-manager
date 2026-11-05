@@ -230,7 +230,7 @@ export function CreatureResourceControls({
               </strong>
             </div>
             <div className="grid grid-cols-3 gap-1.5">
-              {[-1, -2, -3, 1, 2, 3].map((delta) => (
+              {[-1, -2, -3, -5, -10, -20, 1, 2, 3, 5, 10, 20].map((delta) => (
                 <button
                   type="button"
                   key={delta}
