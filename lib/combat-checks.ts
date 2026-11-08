@@ -390,6 +390,24 @@ export const PRESET_CHECKS = [
     attrs: ["ins", "wlp","ins"],
     desc: "Canalização arcana e acerto de golpes mágicos. Confronta a Defesa Mágica do alvo.",
   },
+  {
+    id: "c66",
+    name: "Sedução",
+    attrs: ["ins", "wlp", "wlp"],
+    desc: "Seduzir, convencer atráves do corpo ou aparência, fazer alguém se apaixonar por você.",
+  },
+  {
+    id: "c67",
+    name: "Persuasão",
+    attrs: ["ins", "wlp","dex"],
+    desc: "Convencer através da fala, usar lábia e técnica de oratória.",
+  },
+  {
+    id: "c68",
+    name: "Arte e Pintura",
+    attrs: ["dex", "wlp","wlp"],
+    desc: "Pintar, desenhar, retratar lugares e pessoas, encontrar pistas escondidas em quadros ou avaliar obras de arte.",
+  }
 ]
 
 export const QTE_CHECKS = [

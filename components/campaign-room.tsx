@@ -30,6 +30,7 @@ import { createCombatInstanceId } from "@/lib/combat-instance-id"
 import type { MonsterDiceState } from "@/lib/monster-dice"
 import { upsertArchivedNPC, upsertNurseryNPC, linkSpawnedCharacter } from "@/lib/npc-nursery"
 import { captureArchivedCharacter, buildArchivedNpcPatch, missingRestoredFields } from "@/lib/npc-archive-snapshot"
+import { createNurseryRestorePatch, nurseryRestorationFields, missingNurseryExtras } from "@/lib/npc-restoration"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
 import { PortraitGalleryViewer } from "@/components/portrait-gallery-viewer"
@@ -2884,11 +2885,20 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     }).catch(console.error)
   }
 
-  async function handleArchiveCharacter(character: Character) {
-    if (!isGm || !character?.id || archivingCharacterIdsRef.current.has(character.id)) return
+  async function handleArchiveCharacter(selectedCharacter: Character) {
+    if (!isGm || !selectedCharacter?.id || archivingCharacterIdsRef.current.has(selectedCharacter.id)) return
     // CharacterSheet já pede confirmação no modal de arquivamento.
-    archivingCharacterIdsRef.current.add(character.id)
+    archivingCharacterIdsRef.current.add(selectedCharacter.id)
     try {
+      // Recuperar a versão persistida mais recente ANTES de tirar o snapshot:
+      // golpes/afinidades/retratos podem ter sido salvos por APIs separadas.
+      const response = await apiFetch<{ character: Character }>(
+        `/api/characters/${encodeURIComponent(selectedCharacter.id)}/nursery-restore`,
+        { cache: "no-store" },
+      )
+      const character = response.character
+      if (!character?.id || character.id !== selectedCharacter.id || character.campaignId !== data.campaign.id)
+        throw new Error("Não foi possível consultar a ficha atualizada para arquivamento.")
       // Importante: arquivar NÃO cria sempre um novo NPC. A origem e os IDs
       // de invocações anteriores permitem reencontrar o mesmo registro.
       const draft: NPCDraft = {
@@ -2908,6 +2918,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         portraitGallery: (character as Character & { portraitGallery?: NPCDraft["portraitGallery"] }).portraitGallery || [],
         elementalAffinities: (character as Character & { elementalAffinities?: NPCDraft["elementalAffinities"] }).elementalAffinities,
         specialAttacks: (character as Character & PlayerSpecialAttackCharacter).specialAttacks || [],
+        npcModifiers: structuredClone((character as any).customModifiers || []),
+        npcEquippedIds: Array.isArray((character as any).npcEquippedIds)
+          ? structuredClone((character as any).npcEquippedIds)
+          : undefined,
         // Snapshot integral, incluindo recursos atuais, itens personalizados,
         // itens equipados/guardados, condições, efeitos e estados de uso.
         archivedSnapshot: captureArchivedCharacter(character),
@@ -2930,7 +2944,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           return { ...entry, archivedSnapshot: draft.archivedSnapshot, archivedAt: draft.archivedAt,
             portraitLabel: draft.portraitLabel, portraitGallery: draft.portraitGallery,
             elementalAffinities: draft.elementalAffinities,
-            specialAttacks: draft.specialAttacks }
+            specialAttacks: draft.specialAttacks, npcModifiers: draft.npcModifiers,
+            npcEquippedIds: draft.npcEquippedIds }
         })
         if (!snapshotAttached) throw new Error("Não foi possível associar o snapshot ao NPC. A ficha ativa foi preservada.")
         return next
@@ -2948,7 +2963,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       console.error("Falha ao arquivar personagem", error)
       alert(error instanceof Error ? error.message : "Não foi possível arquivar.")
     } finally {
-      archivingCharacterIdsRef.current.delete(character.id)
+      archivingCharacterIdsRef.current.delete(selectedCharacter.id)
     }
   }
 
@@ -3063,61 +3078,41 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         elementalAffinities: npc.elementalAffinities ?? previous?.elementalAffinities,
         // [] é uma remoção intencional dos golpes: nunca usar fallback baseado em tamanho.
         specialAttacks: npc.specialAttacks ?? previous?.specialAttacks,
+        npcModifiers: npc.npcModifiers ?? previous?.npcModifiers,
+        npcEquippedIds: npc.npcEquippedIds ?? previous?.npcEquippedIds,
       } : entry)
     })
   }
 
-  /** Salva galerias e afinidades pela API apropriada; nunca cria uma segunda ficha. */
+  /**
+   * A rota nursery-restore salva todos os extras de forma transacional.
+   * A antiga segunda chamada para /affinities falhava em NPCs com afinidades
+   * fixadas (pedia Lore) MESMO após os dados já estarem restaurados.
+   * Não usamos o fluxo de edição de jogadores ao invocar/arquivar um NPC.
+   */
   async function restoreNpcExtras(draft: NPCDraft, current: Character): Promise<Character> {
-    let restored = current
+    // O POST /nursery-restore já devolve a versão persistida pela transação.
+    // Não consultar /api/characters/[id] via GET: essa rota não oferece GET
+    // e causava 405 após o NPC ter sido criado/restaurado corretamente.
+    const persisted = current
+    if (!persisted?.id) throw new Error("A API não confirmou a restauração do NPC.")
     const archived = draft.archivedSnapshot as (Character & {
+      specialAttacks?: NPCDraft["specialAttacks"]
       portraitLabel?: string
       portraitGallery?: NPCDraft["portraitGallery"]
       elementalAffinities?: NPCDraft["elementalAffinities"]
     }) | undefined
-    const affinity = draft.elementalAffinities ?? archived?.elementalAffinities
-    if (affinity?.primary) {
-      const result = await apiFetch<{ character: Character }>(
-        `/api/characters/${encodeURIComponent(current.id)}/affinities`, {
-          method: "PATCH",
-          body: JSON.stringify({ action: "assign", primary: affinity.primary, secondary: affinity.secondary }),
-        },
-      )
-      if (!result.character?.id) throw new Error("A API não confirmou as afinidades do NPC.")
-      restored = result.character
+    // Inclui NPCs antigos: quando o campo está ausente no draft, ele ainda
+    // pode existir no snapshot arquivado.
+    const expected = {
+      specialAttacks: draft.specialAttacks ?? archived?.specialAttacks,
+      portraitLabel: draft.portraitLabel ?? archived?.portraitLabel,
+      portraitGallery: draft.portraitGallery ?? archived?.portraitGallery,
+      elementalAffinities: draft.elementalAffinities ?? archived?.elementalAffinities,
     }
-    // O catálogo de golpes pertence à ficha ativa; a rota especializada valida os dados.
-    // Ao editar um NPC arquivado, o [] explícito apaga técnicas antigas.
-    const attacks = draft.specialAttacks ?? (archived as (Character & PlayerSpecialAttackCharacter) | undefined)?.specialAttacks
-    if (Array.isArray(attacks)) {
-      const result = await apiFetch<{ character: Character; attacks: PlayerSpecialAttack[] }>(
-        `/api/characters/${encodeURIComponent(current.id)}/special-attacks`, {
-          method: "POST", body: JSON.stringify({ action: "save", attacks }),
-        },
-      )
-      if (!result.character?.id || !Array.isArray(result.attacks)) {
-        throw new Error("A API não confirmou os golpes especiais do NPC.")
-      }
-      restored = result.character
-    }
-    const gallery = draft.portraitGallery ?? archived?.portraitGallery ?? []
-    const label = draft.portraitLabel ?? archived?.portraitLabel ?? "Normal"
-    if (gallery.length > 0 || label !== "Normal" || !!archived && (draft.portraitLabel !== undefined || archived.portraitLabel !== undefined)) {
-      const result = await apiFetch<{ character: Character }>(
-        `/api/characters/${encodeURIComponent(current.id)}/portraits`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            avatarUrl: restored.avatarUrl || draft.avatarUrl || "/mystic-adventurer-portrait.png",
-            portraitCrop: archived?.portraitCrop,
-            portraitLabel: label,
-            portraitGallery: gallery,
-          }),
-        },
-      )
-      if (!result.character?.id) throw new Error("A API não confirmou a galeria do NPC.")
-      restored = result.character
-    }
-    return restored
+    const missing = missingNurseryExtras(expected, persisted)
+    if (missing.length) throw new Error(`Dados do NPC não persistidos: ${missing.join(", ")}`)
+    return persisted
   }
 
   async function spawnNPC(draft: NPCDraft) {
@@ -3125,7 +3120,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       if (draft.archivedSnapshot?.campaignId && draft.archivedSnapshot.campaignId !== data.campaign.id) {
         throw new Error("O snapshot deste NPC pertence a outra campanha.")
       }
-      const restorePatch = buildArchivedNpcPatch(draft)
+      const restorePatch = createNurseryRestorePatch(draft, buildArchivedNpcPatch(draft))
       const maxIp = draft.archivedSnapshot?.resources?.maxIp ?? BASE_MAX_IP
       assertInventoryFits({
         equipment: draft.equipment,
@@ -3156,16 +3151,19 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       try {
         if (restorePatch) {
           const result = await apiFetch<{ character: Character }>(
-            `/api/characters/${encodeURIComponent(spawnedId)}`,
-            { method: "PATCH", body: JSON.stringify(restorePatch) },
+            `/api/characters/${encodeURIComponent(spawnedId)}/nursery-restore`,
+            { method: "POST", body: JSON.stringify({ npcId: draft.id }) },
           )
           if (!result.character?.id) throw new Error("A API não confirmou a ficha restaurada.")
           restoredCharacter = result.character
         }
-        // Precisa acontecer depois da restauração, que pode alterar classes e retratos.
+        // Valida o objeto confirmado e persistido pelo próprio POST de restauração.
         restoredCharacter = await restoreNpcExtras(draft, restoredCharacter)
         if (restorePatch) {
-          const missing = missingRestoredFields(draft, restoredCharacter, restorePatch)
+          const missing = [...new Set([
+            ...missingRestoredFields(draft, restoredCharacter, restorePatch),
+            ...nurseryRestorationFields(restorePatch, restoredCharacter),
+          ])]
           if (missing.length) throw new Error(`A API não preservou: ${missing.join(", ")}`)
         }
       } catch (error) {
@@ -3185,6 +3183,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             portraitGallery: entry.portraitGallery ?? draft.portraitGallery,
             elementalAffinities: entry.elementalAffinities ?? draft.elementalAffinities,
             specialAttacks: entry.specialAttacks ?? draft.specialAttacks,
+            npcModifiers: entry.npcModifiers ?? draft.npcModifiers,
+            npcEquippedIds: entry.npcEquippedIds ?? draft.npcEquippedIds,
           } : entry)
         })
       } catch (linkError) {
@@ -3211,12 +3211,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     if (!active || active.campaignId !== data.campaign.id) {
       throw new Error("A ficha indicada não está ativa nesta campanha.")
     }
-    const patch = buildArchivedNpcPatch(draft)
+    const patch = createNurseryRestorePatch(draft, buildArchivedNpcPatch(draft))
     let restored = active
     if (patch) {
       const response = await apiFetch<{ character: Character }>(
-        `/api/characters/${encodeURIComponent(characterId)}`,
-        { method: "PATCH", body: JSON.stringify(patch) },
+        `/api/characters/${encodeURIComponent(characterId)}/nursery-restore`,
+        { method: "POST", body: JSON.stringify({ npcId: draft.id }) },
       )
       if (!response.character) throw new Error("A API não confirmou a ficha restaurada.")
       restored = response.character
@@ -4651,6 +4651,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           canExpand={canExpandCharacter(c)}
                           showCompactDefenses={isMasterOwnedCharacter(c)}
                           character={c}
+                          npcOnly={isMasterOwnedCharacter(c)}
                           editable={isGm || c.ownerId === data.me.id}
                           isGm={isGm}
                           isOwned={c.ownerId === data.me.id}
@@ -5701,6 +5702,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                               .activePlayerId === c.ownerId
                           }
                           character={c}
+                          npcOnly={isMasterOwnedCharacter(c)}
                           editable={true}
                           canExpand={canExpandCharacter(c)}
                           showCompactDefenses={isMasterOwnedCharacter(c)}
@@ -5759,6 +5761,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                               .activePlayerId === c.ownerId
                           }
                           character={c}
+                          npcOnly={isMasterOwnedCharacter(c)}
                           editable={isGm}
                           canExpand={canExpandCharacter(c)}
                           showCompactDefenses={isMasterOwnedCharacter(c)}

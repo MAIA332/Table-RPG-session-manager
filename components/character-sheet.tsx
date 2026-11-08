@@ -69,6 +69,8 @@ import {
   type GameClass,
 } from "@/lib/game-data"
 import { applyInventoryRules, computeMaxResources } from "@/lib/character"
+import { characterSkillLevel, deriveSkillClassLevels, progressionResourceDelta } from "@/lib/skill-progression"
+import { readNpcExtraDice } from "@/lib/npc-special-dice"
 import {
   formatSkillDescription,
   EssenceStep,
@@ -201,6 +203,10 @@ export interface NPCDraft {
   elementalAffinities?: ElementalAffinitySelection
   /** Golpes configurados opcionalmente na Forja do NPC e no Berçário. */
   specialAttacks?: PlayerSpecialAttack[]
+  /** Condições, estados dos itens e defesas manuais (sem expor no jogo). */
+  npcModifiers?: Array<Record<string, unknown>>
+  /** Seleção de itens preparados, mantida durante arquivo/invocação. */
+  npcEquippedIds?: string[]
 }
 
 const ATTR_KEYS: AttributeKey[] = ["dex", "ins", "mig", "wlp"]
@@ -1954,6 +1960,7 @@ export function CharacterSheet({
   onClearInventoryRequest,
   onArchive,
   spotlightActive = false,
+  npcOnly = false,
   defaultExpanded = false,
   expanded,
   onExpandedChange,
@@ -2256,7 +2263,10 @@ export function CharacterSheet({
   }, [shouldOpenInventory, onClearInventoryRequest, canExpand])
 
   const totalXp = displayResources?.xp || 0
-  const { charLevel, currentLevelXp, xpRequired } = getLevelInfo(totalXp)
+  const { charLevel: xpBudgetLevel, currentLevelXp, xpRequired } = getLevelInfo(totalXp)
+  // O nível real depende SOMENTE das habilidades (inclusive as gratuitas).
+  // XP libera pontos de compra, mas não aumenta nem diminui o nível real.
+  const charLevel = characterSkillLevel(character.skills)
   const itemCatalog = [
     ...customEquipment,
     ...EQUIPMENT.filter(
@@ -2360,7 +2370,10 @@ export function CharacterSheet({
     allMods,
     customSkillIds,
   )
-  const unspentPoints = Math.max(0, charLevel - totalSkillPointsSpent)
+  // A verba de evolução segue os marcos de XP, como antes da separação
+  // entre experiência e nível real. Revogar XP só retira créditos não gastos;
+  // habilidades já aprendidas, concessões grátis e nível real permanecem.
+  const unspentPoints = Math.max(0, xpBudgetLevel - totalSkillPointsSpent)
   // Um jogador só pode aprender habilidades de classes publicadas pelo mestre.
   // O histórico de classes e perícias continua completo para cálculo dos pontos.
   const ownedClassIds = new Set<string>((character.classes || [])
@@ -2400,12 +2413,8 @@ export function CharacterSheet({
       return {
         ...definition,
         learnedSkills,
-        level: Math.max(
-          skillRank(owned?.level),
-          learnedSkills.reduce(
-            (sum: number, skill: any) => sum + skillRank(skillsObj[skill.id]),
-            0,
-          ),
+        level: learnedSkills.reduce(
+          (sum: number, skill: any) => sum + skillRank(skillsObj[skill.id]), 0,
         ),
         freeRanks: learnedSkills.reduce(
           (sum: number, skill: any) =>
@@ -2426,6 +2435,31 @@ export function CharacterSheet({
       skillRank(level) > 0 &&
       !allClasses.some((c) => c.skills.some((skill: any) => skill.id === id)),
   )
+
+  // Editor de Mestre: rebaixa habilidades (inclusive concessões) e atributos.
+  // Todos os ajustes usam PATCH, conferindo que o servidor confirmou os valores.
+  const [gmEditError, setGmEditError] = useState<string | null>(null)
+  const [gmEditBusy, setGmEditBusy] = useState(false)
+  const [gmEditOpen, setGmEditOpen] = useState(false)
+  async function gmSaveSheet(updates: { skills?: Record<string, number>; attributes?: Character["attributes"]; classes?: Character["classes"] }) {
+    if (!isGm || !editable || gmEditBusy || pending) return
+    setGmEditBusy(true); setGmEditError(null)
+    try {
+      // A transação aplica a progressão e os máximos de vida/mana no servidor.
+      // Não confiar no PATCH genérico nem enviar os máximos calculados pelo cliente.
+      const result = await apiFetch<{ character: Character }>(
+        `/api/characters/${encodeURIComponent(character.id)}/gm-progress`,
+        { method: "POST", body: JSON.stringify({ ...updates, expectedUpdatedAt: character.updatedAt }) },
+      )
+      if (!result.character?.id || (updates.skills && JSON.stringify(result.character.skills) !== JSON.stringify(updates.skills)) ||
+          (updates.attributes && JSON.stringify(result.character.attributes) !== JSON.stringify(updates.attributes))) {
+        throw new Error("O servidor não confirmou os níveis ou atributos editados.")
+      }
+      onOptimistic(result.character)
+    } catch (err) {
+      setGmEditError(err instanceof Error ? err.message : "Não foi possível atualizar a ficha.")
+    } finally { setGmEditBusy(false) }
+  }
 
   const currentAttrPoints = Object.values(character.attributes).reduce(
     (acc: number, die: any) => {
@@ -2665,20 +2699,38 @@ export function CharacterSheet({
     if (resourceFlushBusyRef.current) return
     const vitals = resourcePendingVitalsRef.current
     const others = resourcePendingOtherRef.current
-    if (!Object.keys(vitals).length && !Object.keys(others).length) return
+    if (!Object.keys(vitals).length && !Object.keys(others).length) {
+      resourceWriteCountRef.current = 0
+      setPending(false)
+      return
+    }
     resourcePendingVitalsRef.current = {}
     resourcePendingOtherRef.current = {}
     resourceFirstEditAtRef.current = 0
     resourceFlushBusyRef.current = true
     let confirmed: Character | null = null
     try {
-      // Modificações de máximos/XP/FP seguem a validação de recursos original.
-      // HP e MP usam um update atômico do próprio personagem, sem clonar a galeria.
-      if (Object.keys(others).length) {
+      // XP é uma moeda independente da progressão efetiva. A rota genérica
+      // de personagens pode ignorá-lo; o Mestre usa uma transação de DELTA
+      // no servidor para que o valor não reverta nem perca cliques consecutivos.
+      const { xp: xpDelta, ...genericResources } = others
+      if (Object.keys(genericResources).length) {
         const response = await apiFetch<{ character: Character }>(
-          `/api/characters/${character.id}`,
-          { method: "PATCH", body: JSON.stringify({ resources: others }) },
+          `/api/characters/${encodeURIComponent(character.id)}`,
+          { method: "PATCH", body: JSON.stringify({ resources: genericResources }) },
         )
+        if (!response.character?.id) throw new Error("O servidor não confirmou os recursos.")
+        confirmed = response.character
+      }
+      if (typeof xpDelta === "number" && xpDelta !== 0) {
+        if (!isGm) throw new Error("Somente o Mestre pode atribuir ou retirar XP.")
+        const response = await apiFetch<{ character: Character }>(
+          `/api/characters/${encodeURIComponent(character.id)}/gm-xp`,
+          { method: "POST", body: JSON.stringify({ delta: xpDelta }) },
+        )
+        if (!response.character?.id || !Number.isSafeInteger(response.character.resources?.xp)) {
+          throw new Error("O servidor não confirmou a alteração de XP.")
+        }
         confirmed = response.character
       }
       if (Object.keys(vitals).length) {
@@ -2702,7 +2754,8 @@ export function CharacterSheet({
       // Nunca substitui esses cliques pelo retorno de uma requisição antiga.
       const next = { ...confirmed.resources }
       for (const [key, value] of Object.entries(resourcePendingOtherRef.current)) {
-        ;(next as any)[key] = value
+        if (key === "xp") next.xp = Math.max(0, (next.xp || 0) + value)
+        else (next as any)[key] = value
       }
       for (const key of ["hp", "mp"] as const) {
         const operation = resourcePendingVitalsRef.current[key]
@@ -2773,6 +2826,7 @@ export function CharacterSheet({
       return
     }
     if (!editable || itemCommitRef.current || loreBusyRef.current) return
+    if (key === "xp" && !isGm) return
     if (key === "hp" || key === "mp") {
       changeVital(key, { mode: "delta", amount: delta })
       return
@@ -2788,7 +2842,17 @@ export function CharacterSheet({
     }
     if (next[key] === res[key]) return
     resourceDraftRef.current = next
-    resourcePendingOtherRef.current[key] = next[key]
+    if (key === "xp") {
+      if (!isGm) return
+      // Guardar o DELTA, não o valor absoluto calculado com um snapshot antigo.
+      // Dois cliques antes da resposta do servidor devem acumular, inclusive
+      // quando um deles é negativo.
+      const combined = (resourcePendingOtherRef.current.xp ?? 0) + next.xp - (Number(res.xp) || 0)
+      if (combined === 0) delete resourcePendingOtherRef.current.xp
+      else resourcePendingOtherRef.current.xp = combined
+    } else {
+      resourcePendingOtherRef.current[key] = next[key]
+    }
     setDisplayResources(next)
     const optimistic = { ...resourceCharacterRef.current, resources: next }
     resourceCharacterRef.current = optimistic
@@ -2932,8 +2996,42 @@ export function CharacterSheet({
           skillRank(skillsObj[skillId]) + 1) {
         throw new Error("A API não confirmou a evolução. Atualize a ficha antes de tentar novamente.")
       }
-      onOptimistic(updated)
-      setSkillSaveSuccess(`${skill.name}: nível ${skillRank(updated.skills?.[skillId])} salvo com sucesso.`)
+      // A aprendizagem (inclusive concessões grátis) deve ajustar o nível
+      // derivado da habilidade e os máximos de vida/mana exatamente uma vez.
+      const correctedClasses = deriveSkillClassLevels(updated.classes || [], updated.skills || {}, allClasses)
+      const expectedDelta = progressionResourceDelta(
+        { classes: character.classes || [], skills: character.skills || {}, attributes: character.attributes },
+        { classes: correctedClasses, skills: updated.skills || {}, attributes: updated.attributes },
+        allClasses, computeMaxResources,
+      )
+      const actualHpDelta = updated.resources.maxHp - character.resources.maxHp
+      const actualMpDelta = updated.resources.maxMp - character.resources.maxMp
+      const actualIpDelta = updated.resources.maxIp - character.resources.maxIp
+      const missingHp = expectedDelta.maxHp - actualHpDelta
+      const missingMp = expectedDelta.maxMp - actualMpDelta
+      const missingIp = expectedDelta.maxIp - actualIpDelta
+      let confirmed = updated
+      if (missingHp || missingMp || missingIp ||
+          JSON.stringify(correctedClasses) !== JSON.stringify(updated.classes)) {
+        const maxHp = Math.max(1, updated.resources.maxHp + missingHp)
+        const maxMp = Math.max(0, updated.resources.maxMp + missingMp)
+        const maxIp = Math.max(0, updated.resources.maxIp + missingIp)
+        const result = await apiFetch<{ character: Character }>(
+          `/api/characters/${encodeURIComponent(character.id)}`,
+          { method: "PATCH", body: JSON.stringify({
+            classes: correctedClasses,
+            resources: { ...updated.resources, maxHp, maxMp, maxIp,
+              hp: Math.min(maxHp, updated.resources.hp), mp: Math.min(maxMp, updated.resources.mp) },
+          }) },
+        )
+        if (!result.character?.id || result.character.resources.maxHp !== maxHp ||
+            result.character.resources.maxMp !== maxMp) {
+          throw new Error("A habilidade foi aprendida, mas a API não confirmou os novos máximos de vida/mana. Atualize a ficha antes de tentar novamente.")
+        }
+        confirmed = result.character
+      }
+      onOptimistic(confirmed)
+      setSkillSaveSuccess(`${skill.name}: nível ${skillRank(confirmed.skills?.[skillId])} salvo com sucesso.`)
     } catch (error) {
       setSkillSaveSuccess(null)
       setSkillSaveError(
@@ -3127,7 +3225,11 @@ export function CharacterSheet({
     setTimeout(() => {
       const dieSizes: number[] = []
       const diceLabels: string[] = []
-      check.attrs.forEach((a: string) => {
+      // Dados adicionais são exclusivos dos golpes de NPC; repetições contam.
+      const attackDice = specialAttack && npcOnly
+        ? readNpcExtraDice(specialAttack.description) : []
+      const allDice = [...check.attrs, ...attackDice]
+      allDice.forEach((a: string) => {
         const dieLabel = effectiveAttributes[a as AttributeKey] || "d6"
         const dieSize = parseInt(dieLabel.replace("d", ""))
         dieSizes.push(dieSize)
@@ -3162,7 +3264,7 @@ export function CharacterSheet({
       const totalDice = rolledPool.total
       modTotal = rolledPool.modifier
       const finalResult = totalDice + modTotal
-      const logDetail = `${specialAttack ? `Golpe: ${specialAttack.name} → ${playerAttackDefenseLabel(specialAttack.targetDefense)} | ` : ""}${check.name} [${check.attrs.join("+").toUpperCase()} ${diceLabels.join(" + ")}]${activeBond ? ` + Laço (${activeBond.target})` : ""}`
+      const logDetail = `${specialAttack ? `Golpe: ${specialAttack.name} → ${playerAttackDefenseLabel(specialAttack.targetDefense)} | ` : ""}${check.name} [${allDice.join("+").toUpperCase()} ${diceLabels.join(" + ")}]${activeBond ? ` + Laço (${activeBond.target})` : ""}`
 
       if (onRoll)
         onRoll(logDetail, finalResult, {
@@ -4360,6 +4462,11 @@ export function CharacterSheet({
                 </span>
               </h3>
             </div>
+            {!isGm && isOwned && editable && unspentPoints > 0 && (
+              <span role="status" className="mt-1 inline-flex items-center gap-1.5 rounded border border-primary/40 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
+                <Sparkles className="size-3" /> {unspentPoints} {unspentPoints === 1 ? "upgrade disponível" : "upgrades disponíveis"} por XP
+              </span>
+            )}
 
             {!isExpanded ? (
               // VIEW COMPACTA
@@ -4596,6 +4703,65 @@ export function CharacterSheet({
                 {/* CONTEÚDO DAS ABAS */}
                 {sheetTab === "main" && (
                   <div className="animate-in fade-in zoom-in-95 duration-200">
+                    {isGm && editable && (
+                      <section className="mb-4 rounded-lg border border-primary/35 bg-card/45 p-4" aria-label="Edição do Mestre">
+                        <button type="button" onClick={() => setGmEditOpen(value => !value)} className="flex w-full items-center justify-between text-left text-sm font-bold text-primary">
+                          <span className="flex items-center gap-2"><Pencil className="size-4"/> Edição completa do Mestre</span>
+                          <ChevronDown className={`size-4 ${gmEditOpen ? "rotate-180" : ""}`}/>
+                        </button>
+                        {gmEditOpen && <div className="mt-4 space-y-4">
+                          <p className="text-xs text-muted-foreground">Reduza ou aumente níveis das habilidades, inclusive as grátis. O nível total e os recursos são atualizados sem usar XP.</p>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {ATTR_KEYS.map(attribute => <label key={attribute} className="text-xs font-semibold uppercase">{ATTRIBUTE_META[attribute]?.label ?? attribute}
+                              <select disabled={gmEditBusy} className="mt-1 w-full rounded border border-primary/30 bg-background px-2 py-2 text-sm" value={character.attributes[attribute]}
+                                onChange={event => void gmSaveSheet({ attributes: { ...character.attributes, [attribute]: event.target.value as DieSize } })}>
+                                {["d6", "d8", "d10", "d12", "d14", "d16", "d18", "d20"].map(die => <option key={die} value={die}>{die}</option>)}
+                              </select>
+                            </label>)}
+                          </div>
+                          <p className="text-xs font-bold text-primary">Níveis por classe · derivados das habilidades</p>
+                          <div className="max-h-44 space-y-2 overflow-y-auto">
+                            {(character.classes || []).map((owned:any) => {
+                              const definition = allClasses.find(cls => cls.id === owned.classId)
+                              const ids = [...new Set([
+                                ...(definition?.skills ?? []).map((skill:any) => skill.id),
+                                ...allClasses.filter(cls => cls.parentClassId === owned.classId)
+                                  .flatMap(cls => (cls.skills ?? []).map((skill:any) => skill.id)),
+                              ])]
+                              const rankIds = ids.filter(id => skillRank(character.skills?.[id]) > 0)
+                              const rankToReduce = rankIds.sort((a, b) => skillRank(character.skills[b]) - skillRank(character.skills[a]))[0]
+                              return <div key={owned.classId} className="flex items-center gap-2 rounded border border-primary/20 bg-background/40 p-2 text-xs">
+                                <span className="min-w-0 flex-1 truncate" title={definition?.name || owned.classId}>{definition?.name || owned.classId} · Nv. {owned.level}</span>
+                                <button type="button" disabled={gmEditBusy || !rankToReduce} title="Retirar um nível de habilidade desta classe" aria-label={`Retirar um nível de ${definition?.name || owned.classId}`}
+                                  className="rounded border border-border px-2 py-1 disabled:opacity-40" onClick={() => rankToReduce && void gmSaveSheet({ skills: {
+                                    ...character.skills, [rankToReduce]: Math.max(0, skillRank(character.skills[rankToReduce]) - 1),
+                                  } })}>−1</button>
+                                <button type="button" disabled={gmEditBusy} title="Remover a classe e seus níveis da ficha" aria-label={`Remover classe ${definition?.name || owned.classId}`}
+                                  className="rounded border border-destructive/40 px-2 py-1 text-destructive disabled:opacity-40" onClick={() => {
+                                    if (!window.confirm(`Remover ${definition?.name || owned.classId} e todos os níveis das habilidades associadas?`)) return
+                                    const remaining = { ...character.skills }
+                                    ids.forEach(id => { remaining[id] = 0 })
+                                    void gmSaveSheet({ classes: character.classes.filter((cls:any) => cls.classId !== owned.classId), skills: remaining })
+                                  }}>Remover</button>
+                              </div>
+                            })}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">−1 reduz uma habilidade aprendida da classe. Para conceder outro nível, use as habilidades abaixo.</p>
+                          <div className="max-h-52 space-y-2 overflow-y-auto">
+                            {Object.entries(character.skills || {}).filter(([,rank]) => skillRank(rank) > 0).map(([id, rank]) => {
+                              const definition = allClasses.flatMap((entry: any) => entry.skills ?? []).find((entry: any) => entry.id === id)
+                              return <div key={id} className="flex items-center gap-2 rounded border border-border/50 p-2 text-xs">
+                                <span className="min-w-0 flex-1 truncate" title={id}>{definition?.name || id}</span>
+                                <button disabled={gmEditBusy} className="rounded border border-border px-2 py-1" aria-label={`Reduzir nível de ${definition?.name || id}`} onClick={() => void gmSaveSheet({ skills: { ...character.skills, [id]: Math.max(0, skillRank(rank)-1) } })}>−</button>
+                                <strong>{skillRank(rank)}</strong>
+                                <button disabled={gmEditBusy} className="rounded border border-border px-2 py-1" aria-label={`Aumentar nível de ${definition?.name || id}`} onClick={() => void gmSaveSheet({ skills: { ...character.skills, [id]: skillRank(rank)+1 } })}>+</button>
+                              </div>
+                            })}
+                          </div>
+                          {gmEditError && <p className="text-xs text-destructive" role="alert">{gmEditError}</p>}
+                        </div>}
+                      </section>
+                    )}
                     <div className="rounded-sm border border-border/40 bg-black/35 p-3 shadow-inner sm:p-4">
                       <div className="flex justify-between items-center mb-2">
                         <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest">
@@ -4613,6 +4779,15 @@ export function CharacterSheet({
                           }}
                         ></div>
                       </div>
+                      <p className="mb-2 text-[10px] text-muted-foreground">
+                        Nível real: <strong className="text-primary">{charLevel}</strong> (habilidades adquiridas, inclusive gratuitas). O XP define apenas os upgrades disponíveis.
+                      </p>
+                      {!isGm && editable && unspentPoints > 0 && (
+                        <p role="status" className="mb-3 flex items-center gap-2 rounded border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
+                          <Sparkles className="size-4 shrink-0" />
+                          {`XP suficiente! ${unspentPoints} ${unspentPoints === 1 ? "upgrade disponível" : "upgrades disponíveis"} para aprender habilidades.`}
+                        </p>
+                      )}
                       <div className="flex flex-wrap items-center gap-2">
                         {unspentPoints > 0 || isGm ? (
                           <Button
@@ -4635,15 +4810,19 @@ export function CharacterSheet({
                           <div />
                         )}
                         {isGm && (
-                          <div className="flex gap-1.5 ml-auto shrink-0">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card"
-                              onClick={() => patchResource("xp", -1)}
-                            >
-                              -1
-                            </Button>
+                          <div className="ml-auto flex flex-wrap justify-end gap-1.5">
+                            {([-10, -5, -1] as const).map(delta => (
+                              <Button
+                                key={delta}
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-2 text-xs border-border/60 bg-background/50 hover:bg-card"
+                                onClick={() => patchResource("xp", delta)}
+                                aria-label={`Retirar ${Math.abs(delta)} XP`}
+                              >
+                                {delta}
+                              </Button>
+                            ))}
                             <Button
                               size="sm"
                               variant="outline"
@@ -4691,6 +4870,7 @@ export function CharacterSheet({
                     <PlayerSpecialAttacks
                       character={character as any}
                       isGm={isGm}
+                      npcOnly={Boolean(npcOnly && isGm)}
                       editable={Boolean(editable)}
                       disabled={Boolean(trainingLocked || rollingAttr)}
                       onUpdated={onOptimistic}

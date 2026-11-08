@@ -11,7 +11,8 @@ import {
   mostUsedPlayerAttacks, playerAttackCheckLabel, playerAttackDefenseLabel,
   type PlayerSpecialAttack, type PlayerSpecialAttackCharacter,
 } from "@/lib/player-special-attacks"
-import type { Character } from "@/lib/types"
+import type { Character, AttributeKey } from "@/lib/types"
+import { readNpcExtraDice, writeNpcExtraDice, npcAttackDescription, MAX_NPC_EXTRA_DICE } from "@/lib/npc-special-dice"
 
 const field = "w-full rounded-sm border border-border/65 bg-background/80 px-3 py-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
 const sub = "text-[10px] font-black uppercase tracking-[.16em] text-muted-foreground"
@@ -39,9 +40,11 @@ async function compactImage(file: File): Promise<string> {
   return data
 }
 
-export function PlayerSpecialAttacks({ character, isGm, editable, disabled, onUpdated, onRollCheck }: {
+export function PlayerSpecialAttacks({ character, isGm, npcOnly = false, editable, disabled, onUpdated, onRollCheck }: {
   character: SpecialCharacter
   isGm: boolean
+  /** Só NPCs criados/gerenciados pelo Mestre podem adicionar dados ao teste. */
+  npcOnly?: boolean
   editable: boolean
   disabled: boolean
   onUpdated: (character: Character) => void
@@ -122,6 +125,11 @@ export function PlayerSpecialAttacks({ character, isGm, editable, disabled, onUp
         { method: "POST", body: JSON.stringify({ action: "save", attacks }) },
       )
       if (!result.character || !Array.isArray(result.attacks)) throw new Error("A API não confirmou os golpes.")
+      if (npcOnly && attacks.some(attack => {
+        const persisted = result.attacks.find(saved => saved.id === attack.id)
+        return !persisted || JSON.stringify(readNpcExtraDice(attack.description)) !==
+          JSON.stringify(readNpcExtraDice(persisted.description))
+      })) throw new Error("A API descartou os dados extras do NPC. A ficha precisa ser verificada antes de usar os golpes.")
       setAttacks(result.attacks); setDirty(false); onUpdated(result.character)
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Não foi possível salvar os golpes.") }
     finally { setBusy(false) }
@@ -174,7 +182,13 @@ export function PlayerSpecialAttacks({ character, isGm, editable, disabled, onUp
                     <div className="space-y-4 border border-border/70 bg-card/65 p-5"><h4 className={sub}>01 / Identidade do golpe</h4>
                       <label className="block space-y-2"><span className="text-xs font-semibold">Nome da técnica</span><input className={field} disabled={!editable} maxLength={100} value={selected.name} onChange={e=>patch({name:e.target.value})}/></label>
                       <div className="grid gap-3 sm:grid-cols-2">{(["physical","magical"] as const).map(defense => <button key={defense} type="button" disabled={!editable} onClick={()=>patch({targetDefense:defense,checkId:defense==="physical"?"c64":"c65"})} className={`flex items-center gap-3 border p-4 text-left transition ${selected.targetDefense===defense?"border-primary bg-primary/10":"border-border bg-background/60 hover:border-primary/40"}`}>{defense==="physical"?<ShieldCheck className="size-5 text-primary"/>:<WandSparkles className="size-5 text-primary"/>}<span className="min-w-0"><strong className="block text-sm">{playerAttackDefenseLabel(defense)}</strong><small className="text-[11px] text-muted-foreground">Teste: {playerAttackCheckLabel(defense)}</small></span>{selected.targetDefense===defense&&<Check className="ml-auto size-4 text-primary"/>}</button>)}</div>
-                      <label className="block space-y-2"><span className="text-xs font-semibold">Descrição e narrativa</span><textarea disabled={!editable} rows={5} maxLength={4000} className={`${field} resize-y`} value={selected.description} onChange={e=>patch({description:e.target.value})}/></label>
+                      <label className="block space-y-2"><span className="text-xs font-semibold">Descrição e narrativa</span><textarea disabled={!editable} rows={5} maxLength={4000} className={`${field} resize-y`} value={npcAttackDescription(selected.description)} onChange={e=>{try{patch({description:writeNpcExtraDice(e.target.value, readNpcExtraDice(selected.description))});setError("")}catch(cause){setError(cause instanceof Error?cause.message:"Descrição muito longa.")}}}/></label>
+                      {npcOnly && isGm && <div className="mt-4 rounded-lg border border-primary/35 bg-background/60 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-xs text-primary">Dados extras exclusivos de NPC</strong><span className="font-mono text-xs">{readNpcExtraDice(selected.description).length}/{MAX_NPC_EXTRA_DICE}</span></div>
+                        <p className="mt-2 text-xs text-muted-foreground">São rolados junto ao teste padrão de Luta ou Magia e Arcanismo. Pode repetir o mesmo atributo.</p>
+                        <div className="mt-3 flex flex-wrap gap-2">{(["dex", "ins", "mig", "wlp"] as AttributeKey[]).map(key => <button key={key} type="button" disabled={!editable || readNpcExtraDice(selected.description).length >= MAX_NPC_EXTRA_DICE} onClick={() => patch({description:writeNpcExtraDice(selected.description, [...readNpcExtraDice(selected.description), key])})} className="rounded border border-primary/35 px-3 py-2 text-xs font-bold uppercase disabled:opacity-35">+ {key}</button>)}</div>
+                        <div className="mt-3 flex flex-wrap gap-2">{readNpcExtraDice(selected.description).map((key,index) => <button key={`${key}-${index}`} type="button" disabled={!editable} title="Retirar este dado" onClick={() => patch({description:writeNpcExtraDice(selected.description, readNpcExtraDice(selected.description).filter((_,i)=>i!==index))})} className="rounded border border-border bg-card px-2 py-1 text-xs">{key.toUpperCase()} ×</button>)}</div>
+                      </div>}
                     </div>
                     <div className="border border-primary/25 bg-card/65 p-5"><h4 className={sub}>02 / Configuração da visualização</h4><p className="mt-2 text-xs leading-relaxed text-muted-foreground">A imagem fica acessível para os participantes da campanha apenas durante o prazo configurado. O Mestre pode encerrá-la antecipadamente.</p>
                       <label className="mt-4 block space-y-2"><span className="text-xs">URL da imagem (HTTPS) ou data:image compacta</span><input disabled={!editable} className={field} value={selected.previewImageUrl || ""} onChange={e=>patch({previewImageUrl:e.target.value})} placeholder="https://.../golpe.webp"/></label>
@@ -209,7 +223,7 @@ export function PlayerSpecialAttacks({ character, isGm, editable, disabled, onUp
         <span className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-primary/80"><Swords className="size-3"/> Técnica {index+1}</span>
         <strong className="block truncate text-sm text-foreground group-hover:text-primary" title={attack.name}>{attack.name}</strong>
         <span className="mt-1 block text-[10px] text-muted-foreground">{playerAttackDefenseLabel(attack.targetDefense)} · {useCounts[attack.id] || 0} {useCounts[attack.id] === 1 ? "uso" : "usos"}</span>
-        {attack.description && <span className="mt-1 block line-clamp-2 text-[10px] leading-relaxed text-muted-foreground/80">{attack.description}</span>}
+        {npcAttackDescription(attack.description) && <span className="mt-1 block line-clamp-2 text-[10px] leading-relaxed text-muted-foreground/80">{npcAttackDescription(attack.description)}</span>}
       </button>)}</div>
     </div>}
     {modal}</section>
