@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth"
 import { getMemberRole, publish, store, transactStore } from "@/lib/store"
 import { CLASSES, type GameClass } from "@/lib/game-data"
 import { computeMaxResources } from "@/lib/character"
+import { adjustedClassPoints, spentClassPoints, xpClassBudget } from "@/lib/character-class-points"
+import { deriveSkillClassLevels, progressionResourceDelta } from "@/lib/skill-progression"
 import { getCampaignClassCatalog } from "@/lib/class-catalog"
 import { emptyClassBooks, progressFor } from "@/lib/class-books"
 import { canPlayerUpgradeClass, type CustomClassVisibility } from "@/lib/class-visibility"
@@ -15,51 +17,9 @@ const rank = (value: unknown) => Number.isFinite(Number(value)) ? Math.max(0, Ma
 const classId = (entry: any): string => String(entry?.classId ?? entry?.id ?? "")
 const FREE = "free_skill:"
 
-function levelFromXp(raw: unknown): number {
-  let level = 5
-  let remaining = Math.max(0, Number(raw) || 0)
-  let needed = 10
-  while (remaining >= needed && level < 1000) {
-    remaining -= needed
-    level++
-    needed = Math.floor(needed * 1.5)
-  }
-  return level
-}
 function freeRanks(skillId: string, level: number, modifiers: any[], customIds: Set<string>) {
   const entry = modifiers.find(m => m?.id === FREE + skillId)
   return Math.min(level, entry ? rank(entry.value) : customIds.has(skillId) ? level : 0)
-}
-/** Espelha o orçamento atual do CharacterSheet para impedir bypass da interface. */
-function spentPoints(character: any, catalog: GameClass[], customIds: Set<string>): number {
-  const skills: Record<string, number> = character.skills || {}
-  const modifiers: any[] = (character as any).customModifiers || []
-  const counted = new Set<string>()
-  let spent = 0
-  for (const owned of character.classes || []) {
-    const id = classId(owned)
-    const definition = catalog.find(cls => cls.id === id)
-    const classSkills = [
-      ...(definition?.skills || []),
-      ...catalog.filter(cls => cls.parentClassId === id).flatMap(cls => cls.skills || []),
-    ].filter(skill => !counted.has(skill.id))
-    let ranks = 0, free = 0
-    for (const skill of classSkills) {
-      counted.add(skill.id)
-      const level = rank(skills[skill.id])
-      ranks += level
-      free += freeRanks(skill.id, level, modifiers, customIds)
-    }
-    const legacyLevels = Math.max(0, rank(owned.level) - ranks)
-    const legacyCustom = Boolean(definition && classSkills.length && classSkills.every(skill => customIds.has(skill.id)))
-    spent += ranks - free + (legacyCustom ? 0 : legacyLevels)
-  }
-  for (const [skillId, rawLevel] of Object.entries(skills)) {
-    if (counted.has(skillId)) continue
-    const level = rank(rawLevel)
-    spent += level - freeRanks(skillId, level, modifiers, customIds)
-  }
-  return spent
 }
 
 /** Evolução autenticada para o jogador dono da ficha e para o mestre da campanha. */
@@ -79,6 +39,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const role = campaign ? getMemberRole(campaign, user.id) : undefined
       if (!role) throw new Error("Sem acesso à campanha.")
       const isGm = role === "gm"
+      const freeGrant = isGm && body?.mode !== "normal"
       if (!isGm && current.ownerId !== user.id)
         throw new Error("Somente o proprietário ou o mestre pode evoluir este personagem.")
       const state = draft.campaignState.get(current.campaignId)
@@ -90,13 +51,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const skill = definition?.skills.find(s => s.id === skillId)
       if (!definition || !skill) throw new Error("Perícia não encontrada no catálogo da campanha.")
       const selected = progressFor(draft.classBooks.get(current.campaignId) ?? emptyClassBooks(), id).subclassIds
-      if (!isGm && !canPlayerUpgradeClass(definition, custom, selected))
+      if (!isGm && !canPlayerUpgradeClass(definition, custom, selected, { userId: user.id, characterId: current.id }))
         throw new Error("Essa classe ou subclasse não está liberada pelo mestre para evolução.")
       const skills = current.skills || {}
       const currentRank = rank(skills[skillId])
       if (currentRank >= rank(skill.maxLevel)) throw new Error("Nível máximo da habilidade atingido.")
       const customIds = new Set(custom.flatMap(cls => cls.skills.map(s => s.id)))
-      if (!isGm && levelFromXp(current.resources.xp) - spentPoints(current, catalog, customIds) <= 0)
+      if (!isGm && adjustedClassPoints(xpClassBudget(current.resources.xp), spentClassPoints(current, catalog, customIds), current.classPointAdjustment) <= 0)
         throw new Error("Você não possui pontos de evolução disponíveis.")
 
       const newClasses = (current.classes || []).map(cls => ({ ...cls }))
@@ -114,18 +75,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const currentFree = freeRanks(skillId, currentRank, previousMods, customIds)
       const mods = previousMods.filter(m => m.id !== FREE + skillId)
       mods.push({ id: FREE + skillId, name: `Concessão gratuita: ${skill.name}`,
-        target: "skill_grant_hidden", value: currentFree + (isGm ? 1 : 0) })
-      const officialOnly = (classes: typeof newClasses) => classes.filter(cls => CLASSES.some(base => base.id === classId(cls)))
-      const oldMax = computeMaxResources(officialOnly(current.classes || []), current.attributes)
-      const newMax = computeMaxResources(officialOnly(newClasses), current.attributes)
+        target: "skill_grant_hidden", value: currentFree + (freeGrant ? 1 : 0) })
+      const nextSkills = { ...skills, [skillId]: currentRank + 1 }
+      const derivedClasses = deriveSkillClassLevels(newClasses, nextSkills, catalog)
+      const growth = progressionResourceDelta(
+        { classes: current.classes, skills, attributes: current.attributes },
+        { classes: derivedClasses, skills: nextSkills, attributes: current.attributes },
+        catalog, (classes, attributes) => computeMaxResources(classes, attributes, catalog),
+      )
       const resources = {
         ...current.resources,
-        maxHp: (current.resources.maxHp ?? oldMax.maxHp) + newMax.maxHp - oldMax.maxHp,
-        maxMp: (current.resources.maxMp ?? oldMax.maxMp) + newMax.maxMp - oldMax.maxMp,
-        maxIp: (current.resources.maxIp ?? oldMax.maxIp) + newMax.maxIp - oldMax.maxIp,
+        maxHp: Math.max(1, current.resources.maxHp + growth.maxHp),
+        maxMp: Math.max(0, current.resources.maxMp + growth.maxMp),
+        maxIp: Math.max(0, current.resources.maxIp + growth.maxIp),
       }
       const updated = { ...current, skills: { ...skills, [skillId]: currentRank + 1 },
-        classes: newClasses, customModifiers: mods, resources,
+        classes: derivedClasses, customModifiers: mods, resources,
+        ...(current.isNpc && current.npcLevel !== undefined ? { npcLevel: current.npcLevel + 1 } : {}),
         updatedAt: Math.max(Date.now(), Number(current.updatedAt || 0) + 1) }
       draft.characters.set(id, updated)
       return { value: updated, changed: true }

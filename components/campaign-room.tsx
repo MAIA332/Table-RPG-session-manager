@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 
 import { apiFetch } from "@/lib/client"
+import { bestiaryToNpc } from "@/lib/bestiary-to-npc"
 import { useRealtime } from "@/lib/use-realtime"
 import type { CustomCheck } from "@/lib/custom-checks"
 import { CharacterCreator } from "@/components/character-creator"
@@ -2905,6 +2906,9 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         id: `npc-archived-${character.id}`,
         sourceCharacterId: character.id,
         linkedCharacterIds: [character.id],
+        npcLevel: character.npcLevel,
+        npcChecks: character.npcChecks,
+        bestiaryAffinities: character.bestiaryAffinities,
         name: character.name,
         avatarUrl: character.avatarUrl || "",
         origin: character.origin || "Herói Caído/Aposentado",
@@ -3120,8 +3124,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       if (draft.archivedSnapshot?.campaignId && draft.archivedSnapshot.campaignId !== data.campaign.id) {
         throw new Error("O snapshot deste NPC pertence a outra campanha.")
       }
+      const maxIp = draft.resources?.maxIp ?? draft.archivedSnapshot?.resources?.maxIp ?? BASE_MAX_IP
       const restorePatch = createNurseryRestorePatch(draft, buildArchivedNpcPatch(draft))
-      const maxIp = draft.archivedSnapshot?.resources?.maxIp ?? BASE_MAX_IP
       assertInventoryFits({
         equipment: draft.equipment,
         resources: { maxIp },
@@ -3141,6 +3145,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           skills: draft.skills,
           attributes: draft.attributes,
           equipment: draft.equipment,
+          isNpc: true,
+          npcLevel: draft.npcLevel ?? draft.archivedSnapshot?.npcLevel ?? Math.max(1, draft.classes.reduce((sum, entry) => sum + entry.level, 0)),
+          resources: draft.resources ?? draft.archivedSnapshot?.resources,
+          npcChecks: draft.npcChecks ?? draft.archivedSnapshot?.npcChecks,
+          customModifiers: draft.customModifiers,
+          bestiaryAffinities: draft.bestiaryAffinities ?? draft.archivedSnapshot?.bestiaryAffinities,
         }),
       })
       const spawnedId = response.character?.id
@@ -4543,6 +4553,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
               isOpen={showBestiary}
               onClose={() => setShowBestiary(false)}
               onSpawn={spawnCreature}
+              onConvertToNpc={async creature => {
+                const draft = bestiaryToNpc(creature, `npc-bestiary-${creature.id}`)
+                await commitCustomNPCs(current => upsertNurseryNPC(current, draft))
+                setShowNursery(true)
+              }}
               customCreatures={customCreatures}
               onCreate={(c) =>
                 saveCustomCreaturesToStorage([c, ...customCreatures])

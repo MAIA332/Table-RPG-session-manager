@@ -18,8 +18,11 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 
 import { apiFetch } from "@/lib/client"
+import { CharacterNameEditor } from "./character-name-editor"
+import { GmSheetValueEditor } from "./gm-sheet-value-editor"
+import { adjustedClassPoints, spentClassPoints } from "@/lib/character-class-points"
 import { baseGameClasses, getCampaignClassCatalog } from "@/lib/class-catalog"
-import { canPlayerUpgradeClass, playerVisibleClassCatalog, type CustomClassVisibility } from "@/lib/class-visibility"
+import { canPlayerAcquireClass, canPlayerUpgradeClass, playerVisibleClassCatalog, type CustomClassVisibility } from "@/lib/class-visibility"
 import { CharacterBookShelf } from "./class-books"
 import { ClassTimerProgress } from "./class-timer-progress"
 import { CharacterTraining, TrainingCompactBar } from "./character-training"
@@ -182,6 +185,12 @@ export interface Member {
 }
 
 export interface NPCDraft {
+  npcLevel?: number
+  resources?: CharacterResources
+  npcChecks?: CustomCheck[]
+  customModifiers?: any[]
+  sourceBestiaryId?: string
+  bestiaryAffinities?: import("@/lib/types").Creature["affinities"]
   id: string
   name: string
   avatarUrl: string
@@ -203,25 +212,14 @@ export interface NPCDraft {
   elementalAffinities?: ElementalAffinitySelection
   /** Golpes configurados opcionalmente na Forja do NPC e no Berçário. */
   specialAttacks?: PlayerSpecialAttack[]
-  /** Condições, estados dos itens e defesas manuais (sem expor no jogo). */
   npcModifiers?: Array<Record<string, unknown>>
-  /** Seleção de itens preparados, mantida durante arquivo/invocação. */
   npcEquippedIds?: string[]
 }
 
 const ATTR_KEYS: AttributeKey[] = ["dex", "ins", "mig", "wlp"]
 
-const CHECK_MINIMUMS: Record<string, number> = {
-  c1: 9,
-  c2: 13,
-  c3: 6,
-  c20: 12,
-  c22: 11,
-  c23: 12,
-  c27: 9,
-  c28: 10,
-  c29: 10,
-}
+import { CHECK_MINIMUMS } from "@/lib/check-minimums"
+import { GmSheetEditor } from "./gm-sheet-editor"
 
 function rollDicePool(dieSizes: number[], minimum?: number, modifier = 0) {
   if (minimum === undefined) {
@@ -1080,46 +1078,6 @@ function getFreeSkillRanks(
   )
 }
 
-function getSpentSkillPoints(
-  skills: Record<string, number>,
-  classes: any[],
-  catalog: any[],
-  modifiers: any[],
-  customIds: Set<string>,
-): number {
-  const counted = new Set<string>()
-  let spent = 0
-  for (const owned of classes) {
-    const classId = owned.classId ?? owned.id
-    const definition = catalog.find((c) => c.id === classId)
-    const classSkills = [
-      ...(definition?.skills ?? []),
-      ...catalog.filter((specialization: any) => specialization.parentClassId === classId)
-        .flatMap((specialization: any) => specialization.skills ?? []),
-    ].filter((skill: any) => !counted.has(skill.id))
-    let ranks = 0
-    let free = 0
-    for (const skill of classSkills) {
-      counted.add(skill.id)
-      const level = skillRank(skills[skill.id])
-      ranks += level
-      free += getFreeSkillRanks(skill.id, level, modifiers, customIds)
-    }
-    // Preserva níveis iniciais de fichas antigas que não detalham todas as habilidades.
-    const legacyLevels = Math.max(0, skillRank(owned.level) - ranks)
-    const isLegacyCustom =
-      definition &&
-      classSkills.length > 0 &&
-      classSkills.every((skill: any) => customIds.has(skill.id))
-    spent += ranks - free + (isLegacyCustom ? 0 : legacyLevels)
-  }
-  for (const [skillId, rawLevel] of Object.entries(skills)) {
-    if (counted.has(skillId)) continue
-    const level = skillRank(rawLevel)
-    spent += level - getFreeSkillRanks(skillId, level, modifiers, customIds)
-  }
-  return spent
-}
 
 // Valores manuais persistidos na coleção já usada pela ficha.
 const MANUAL_DEFENSE_IDS = {
@@ -1710,7 +1668,7 @@ function SkillGrantManager({
   pending: boolean
   error: string | null
   success: string | null
-  onLearn: (skillId: string) => void
+  onLearn: (skillId: string, mode?: "free" | "normal") => void
   onClose: () => void
   onPreviewSkill: (skill: EvolutionSkill, className: string, level: number) => void
 }) {
@@ -1718,6 +1676,7 @@ function SkillGrantManager({
   const [category, setCategory] = useState<"all" | "owned" | "subclasses">("all")
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null)
+  const [grantMode, setGrantMode] = useState<"free" | "normal">("free")
   const dialogRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -1812,7 +1771,7 @@ function SkillGrantManager({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-3">
-              <span className="hidden rounded-sm border border-primary/30 bg-primary/5 px-3 py-2 text-[10px] font-bold uppercase tracking-[.15em] text-primary md:inline-flex">{isGm ? "Concessão gratuita" : `${unspentPoints} ponto(s) disponível(is)`}</span>
+              {isGm ? <select aria-label="Modo de concessão" value={grantMode} onChange={event => setGrantMode(event.target.value as "free" | "normal")} className="border border-primary/30 bg-background p-2 text-xs"><option value="free">Conceder nível grátis</option><option value="normal">Adicionar nível normalmente</option></select> : <span className="text-xs text-primary">{unspentPoints} ponto(s) disponível(is)</span>}
               <button type="button" onClick={onClose} aria-label="Fechar Atlas de habilidades" className="grid size-10 place-items-center border border-border/60 bg-background/70 text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><X className="size-5" /></button>
             </div>
           </div>
@@ -1909,7 +1868,7 @@ function SkillGrantManager({
                       className="inline-flex items-center gap-2 self-start rounded-sm border border-primary/35 bg-primary/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[.14em] text-primary transition-colors hover:bg-primary/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                     ><GitBranch className="size-3.5" /> Ver árvore de evolução <ArrowRight className="size-3.5" /></button>}
                     <div className="border-t border-border/40 pt-4"><p className="flex items-center gap-2 text-xs text-muted-foreground"><Info className="size-4 text-primary" />{isGm ? "Concedido gratuitamente. Não gasta XP ou pontos." : "Aumenta 1 nível e consome 1 ponto disponível."}</p>{!isGm && unspentPoints <= 0 && <p className="mt-2 text-xs font-bold text-rose-300">Sem pontos disponíveis para evoluir.</p>}</div>
-                    <Button type="button" disabled={!canLearn} onClick={() => onLearn(currentSkill.id)} className="h-12 w-full gap-2 rounded-sm bg-primary text-xs font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}{pending ? "Salvando evolução..." : isGm ? "Conceder este nível" : "Aprender este nível"}<ArrowRight className="ml-auto size-4" /></Button>
+                    <Button type="button" disabled={!canLearn} onClick={() => onLearn(currentSkill.id, grantMode)} className="h-12 w-full gap-2 rounded-sm bg-primary text-xs font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}{pending ? "Salvando evolução..." : isGm ? "Conceder este nível" : "Aprender este nível"}<ArrowRight className="ml-auto size-4" /></Button>
                   </div> : <div className="p-6 text-center text-xs text-muted-foreground">Escolha uma classe e uma habilidade para visualizar os detalhes antes de confirmar.</div>}
                 </div>
               </aside>
@@ -2264,9 +2223,8 @@ export function CharacterSheet({
 
   const totalXp = displayResources?.xp || 0
   const { charLevel: xpBudgetLevel, currentLevelXp, xpRequired } = getLevelInfo(totalXp)
-  // O nível real depende SOMENTE das habilidades (inclusive as gratuitas).
-  // XP libera pontos de compra, mas não aumenta nem diminui o nível real.
-  const charLevel = characterSkillLevel(character.skills)
+  const npcOwned = character.isNpc || campaignMembers.some((member: Member) => member.userId === character.ownerId && member.role === "gm")
+  const charLevel = character.manualLevel ?? (npcOwned ? character.npcLevel ?? Math.max(characterSkillLevel(character.skills, 1), (character.classes || []).reduce((sum: number, entry: ClassLevel) => sum + entry.level, 0)) : characterSkillLevel(character.skills))
   const itemCatalog = [
     ...customEquipment,
     ...EQUIPMENT.filter(
@@ -2363,25 +2321,18 @@ export function CharacterSheet({
       (c.skills || []).map((skill: any) => skill.id),
     ),
   )
-  const totalSkillPointsSpent = getSpentSkillPoints(
-    skillsObj,
-    character.classes || [],
-    allClasses,
-    allMods,
-    customSkillIds,
-  )
+  const totalSkillPointsSpent = spentClassPoints(character, allClasses, customSkillIds)
   // A verba de evolução segue os marcos de XP, como antes da separação
   // entre experiência e nível real. Revogar XP só retira créditos não gastos;
   // habilidades já aprendidas, concessões grátis e nível real permanecem.
-  const unspentPoints = Math.max(0, xpBudgetLevel - totalSkillPointsSpent)
+  const unspentPoints = adjustedClassPoints(xpBudgetLevel, totalSkillPointsSpent, character.classPointAdjustment)
   // Um jogador só pode aprender habilidades de classes publicadas pelo mestre.
   // O histórico de classes e perícias continua completo para cálculo dos pontos.
   const ownedClassIds = new Set<string>((character.classes || [])
     .filter((owned: any) => skillRank(owned.level) > 0)
     .map((owned: any) => String(owned.classId ?? owned.id)))
-  // O estado da campanha recebido do servidor já contém apenas classes
-  // autorizadas para a CONTA atual. Nunca restaurar classes ocultas a partir
-  // de fichas históricas de outros jogadores.
+  // O estado da campanha inclui todas as classes publicadas para consulta.
+  // Nunca restaurar classes ocultas a partir de fichas históricas.
   const authorizedDefinitionIds = new Set<string>([
     ...CLASSES.map(definition => String(definition.id)),
     ...(effectiveCustomClasses || []).map(definition => String(definition.id)),
@@ -2394,13 +2345,13 @@ export function CharacterSheet({
   const eligibleUpgradeClasses = isGm
     ? allClasses
     : allClasses.filter((definition: any) =>
-        authorizedDefinitionIds.has(String(definition.id)) && (definition.parentClassId
+        authorizedDefinitionIds.has(String(definition.id)) && canPlayerAcquireClass(definition.id, effectiveCustomClasses, { userId: character.ownerId, characterId: character.id }) && (definition.parentClassId
           ? ownedClassIds.has(String(definition.parentClassId))
           : visibleBaseClassIds.has(String(definition.id)) &&
-            canPlayerUpgradeClass(definition, effectiveCustomClasses as CustomClassVisibility[], chosenSubclassIds)),
+            canPlayerUpgradeClass(definition, effectiveCustomClasses as CustomClassVisibility[], chosenSubclassIds, { userId: character.ownerId, characterId: character.id })),
     )
-  // A ficha própria mantém as habilidades já adquiridas; espectadores não
-  // podem usar a ficha de outro jogador para descobrir classes restritas.
+  // A ficha própria mantém habilidades adquiridas; espectadores consultam
+  // todas as classes publicadas, inclusive as de aquisição restrita.
   const learnedSkillGroups = allClasses
     .filter((definition: any) => isGm || isOwned || authorizedDefinitionIds.has(String(definition.id)))
     .map((definition: any) => {
@@ -2413,8 +2364,12 @@ export function CharacterSheet({
       return {
         ...definition,
         learnedSkills,
-        level: learnedSkills.reduce(
-          (sum: number, skill: any) => sum + skillRank(skillsObj[skill.id]), 0,
+        level: Math.max(
+          skillRank(owned?.level),
+          learnedSkills.reduce(
+            (sum: number, skill: any) => sum + skillRank(skillsObj[skill.id]),
+            0,
+          ),
         ),
         freeRanks: learnedSkills.reduce(
           (sum: number, skill: any) =>
@@ -2580,7 +2535,7 @@ export function CharacterSheet({
     }
   }
 
-  async function commitItemUpdate(updates: any) {
+  async function commitItemUpdate(updates: any, endpoint = `/api/characters/${character.id}`, method = "PATCH") {
     if (
       (!editable && !isGm) ||
       pending ||
@@ -2603,9 +2558,9 @@ export function CharacterSheet({
     setPending(true)
     try {
       const { character: updated } = await apiFetch<{ character: Character }>(
-        `/api/characters/${character.id}`,
+        endpoint,
         {
-          method: "PATCH",
+          method,
           body: JSON.stringify(updates),
         },
       )
@@ -2949,7 +2904,7 @@ export function CharacterSheet({
     onOptimistic(updated)
   }
 
-  async function saveNewSkillPoint(skillId: string) {
+  async function saveNewSkillPoint(skillId: string, mode: "free" | "normal" = "free") {
     if (
       (!editable && !isGm) ||
       pending ||
@@ -2970,10 +2925,17 @@ export function CharacterSheet({
     }
     // A verificação de publicação só se aplica às classes BASE. A subclasse
     // fica liberada automaticamente para quem possui sua classe-mãe.
+    if (!isGm && !canPlayerAcquireClass(
+      definition.id, effectiveCustomClasses, { userId: character.ownerId, characterId: character.id },
+    )) {
+      setSkillSaveError("Esta classe pode ser consultada, mas não está liberada para este personagem adquirir.")
+      return
+    }
     if (!isGm && !definition.parentClassId && !canPlayerUpgradeClass(
       definition,
       effectiveCustomClasses as CustomClassVisibility[],
       chosenSubclassIds,
+      { userId: character.ownerId, characterId: character.id },
     )) {
       setSkillSaveError("Essa classe não está liberada pelo mestre para evolução.")
       return
@@ -2990,48 +2952,14 @@ export function CharacterSheet({
       // Mestre concede gratuitamente; jogador consome pontos próprios.
       const { character: updated } = await apiFetch<{ character: Character }>(
         `/api/characters/${encodeURIComponent(character.id)}/learn-skill`,
-        { method: "POST", body: JSON.stringify({ skillId }) },
+        { method: "POST", body: JSON.stringify({ skillId, mode }) },
       )
       if (skillRank(updated.skills?.[skillId]) !==
           skillRank(skillsObj[skillId]) + 1) {
         throw new Error("A API não confirmou a evolução. Atualize a ficha antes de tentar novamente.")
       }
-      // A aprendizagem (inclusive concessões grátis) deve ajustar o nível
-      // derivado da habilidade e os máximos de vida/mana exatamente uma vez.
-      const correctedClasses = deriveSkillClassLevels(updated.classes || [], updated.skills || {}, allClasses)
-      const expectedDelta = progressionResourceDelta(
-        { classes: character.classes || [], skills: character.skills || {}, attributes: character.attributes },
-        { classes: correctedClasses, skills: updated.skills || {}, attributes: updated.attributes },
-        allClasses, computeMaxResources,
-      )
-      const actualHpDelta = updated.resources.maxHp - character.resources.maxHp
-      const actualMpDelta = updated.resources.maxMp - character.resources.maxMp
-      const actualIpDelta = updated.resources.maxIp - character.resources.maxIp
-      const missingHp = expectedDelta.maxHp - actualHpDelta
-      const missingMp = expectedDelta.maxMp - actualMpDelta
-      const missingIp = expectedDelta.maxIp - actualIpDelta
-      let confirmed = updated
-      if (missingHp || missingMp || missingIp ||
-          JSON.stringify(correctedClasses) !== JSON.stringify(updated.classes)) {
-        const maxHp = Math.max(1, updated.resources.maxHp + missingHp)
-        const maxMp = Math.max(0, updated.resources.maxMp + missingMp)
-        const maxIp = Math.max(0, updated.resources.maxIp + missingIp)
-        const result = await apiFetch<{ character: Character }>(
-          `/api/characters/${encodeURIComponent(character.id)}`,
-          { method: "PATCH", body: JSON.stringify({
-            classes: correctedClasses,
-            resources: { ...updated.resources, maxHp, maxMp, maxIp,
-              hp: Math.min(maxHp, updated.resources.hp), mp: Math.min(maxMp, updated.resources.mp) },
-          }) },
-        )
-        if (!result.character?.id || result.character.resources.maxHp !== maxHp ||
-            result.character.resources.maxMp !== maxMp) {
-          throw new Error("A habilidade foi aprendida, mas a API não confirmou os novos máximos de vida/mana. Atualize a ficha antes de tentar novamente.")
-        }
-        confirmed = result.character
-      }
-      onOptimistic(confirmed)
-      setSkillSaveSuccess(`${skill.name}: nível ${skillRank(confirmed.skills?.[skillId])} salvo com sucesso.`)
+      onOptimistic(updated)
+      setSkillSaveSuccess(`${skill.name}: nível ${skillRank(updated.skills?.[skillId])} salvo com sucesso.`)
     } catch (error) {
       setSkillSaveSuccess(null)
       setSkillSaveError(
@@ -3226,7 +3154,7 @@ export function CharacterSheet({
       const dieSizes: number[] = []
       const diceLabels: string[] = []
       // Dados adicionais são exclusivos dos golpes de NPC; repetições contam.
-      const attackDice = specialAttack && npcOnly
+      const attackDice = specialAttack && (npcOnly || npcOwned) && isGm
         ? readNpcExtraDice(specialAttack.description) : []
       const allDice = [...check.attrs, ...attackDice]
       allDice.forEach((a: string) => {
@@ -3236,7 +3164,7 @@ export function CharacterSheet({
         diceLabels.push(dieLabel)
       })
 
-      const bonusTargets = [check.id, check.name, ...check.attrs]
+      const bonusTargets = [check.id, check.name, ...allDice]
       const itemBonus = sumItemRollBonus(activeItemBonuses, bonusTargets)
       let modTotal = itemBonus
       const mods = (character as any).customModifiers || []
@@ -3244,14 +3172,14 @@ export function CharacterSheet({
         if (m.type === "training_fatigue") return
         if (
           m.target === "all" ||
-          check.attrs.includes(m.target) ||
+          allDice.includes(m.target) ||
           m.target === check.name
         ) {
           modTotal += m.value
         }
       })
-      if (check.attrs.includes("dex")) modTotal -= trainingDexPenalty
-      modTotal += crisisRollModifier(activeCrisis, check.attrs, check.id)
+      if (allDice.includes("dex")) modTotal -= trainingDexPenalty
+      modTotal += crisisRollModifier(activeCrisis, allDice, check.id)
 
       // Aplica bônus de Laço se estiver ativado
       if (activeBond) {
@@ -3510,7 +3438,7 @@ export function CharacterSheet({
                   pending={pending}
                   error={skillSaveError}
                   success={skillSaveSuccess}
-                  onLearn={skillId => void saveNewSkillPoint(skillId)}
+                  onLearn={(skillId, mode) => void saveNewSkillPoint(skillId, mode)}
                   onPreviewSkill={(skill, className, level) => setEvolutionView({ skill, className, level })}
                   onClose={() => setShowLevelUp(false)}
                 />
@@ -4431,7 +4359,7 @@ export function CharacterSheet({
             >
               <Images className="size-3.5" />
             </button>
-            {!isExpanded && editable && (
+            {(editable || isGm) && (
               <button
                 type="button"
                 onClick={(event) => {
@@ -4451,22 +4379,9 @@ export function CharacterSheet({
             onClick={canExpand ? () => changeExpanded(!isExpanded) : undefined}
           >
             <div className="flex justify-between items-start w-full">
-              <h3
-                className={`font-serif font-bold text-foreground leading-tight truncate transition-[font-size,line-height] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)] ${isExpanded ? "text-2xl sm:text-[26px] md:text-[28px]" : "text-[20px] sm:text-[22px] md:text-2xl"}`}
-              >
-                {character.name}{" "}
-                <span
-                  className={`${isExpanded ? "text-primary text-sm sm:text-base md:text-lg" : "text-zinc-400 text-[12px] sm:text-[13px] md:text-sm"} whitespace-nowrap`}
-                >
-                  (Nv. {charLevel})
-                </span>
-              </h3>
+              <CharacterNameEditor character={character} canEdit={Boolean(isOwned || isGm)} canEditLevel={Boolean(isGm)} level={charLevel} expanded={isExpanded} onSaved={onOptimistic} />
             </div>
-            {!isGm && isOwned && editable && unspentPoints > 0 && (
-              <span role="status" className="mt-1 inline-flex items-center gap-1.5 rounded border border-primary/40 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
-                <Sparkles className="size-3" /> {unspentPoints} {unspentPoints === 1 ? "upgrade disponível" : "upgrades disponíveis"} por XP
-              </span>
-            )}
+            {!isGm && isOwned && editable && unspentPoints > 0 && <span role="status" className="mt-1 inline-flex items-center gap-1.5 rounded border border-primary/40 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary"><Sparkles className="size-3" /> {unspentPoints} {unspentPoints === 1 ? "upgrade disponível" : "upgrades disponíveis"} por XP</span>}
 
             {!isExpanded ? (
               // VIEW COMPACTA
@@ -4780,12 +4695,12 @@ export function CharacterSheet({
                         ></div>
                       </div>
                       <p className="mb-2 text-[10px] text-muted-foreground">
-                        Nível real: <strong className="text-primary">{charLevel}</strong> (habilidades adquiridas, inclusive gratuitas). O XP define apenas os upgrades disponíveis.
+                        Nível: <strong className="text-primary">{charLevel}</strong> {character.manualLevel !== undefined ? "(definido pelo Mestre)." : "(habilidades adquiridas, inclusive gratuitas)."} Os pontos disponíveis consideram XP e ajustes do Mestre.
                       </p>
                       {!isGm && editable && unspentPoints > 0 && (
                         <p role="status" className="mb-3 flex items-center gap-2 rounded border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
                           <Sparkles className="size-4 shrink-0" />
-                          {`XP suficiente! ${unspentPoints} ${unspentPoints === 1 ? "upgrade disponível" : "upgrades disponíveis"} para aprender habilidades.`}
+                          {`${unspentPoints} ${unspentPoints === 1 ? "ponto disponível" : "pontos disponíveis"} para aprender habilidades.`}
                         </p>
                       )}
                       <div className="flex flex-wrap items-center gap-2">
@@ -4802,13 +4717,12 @@ export function CharacterSheet({
                             }}
                           >
                             <TrendingUp className="size-3.5 mr-1.5" /> Classes{" "}
-                            {unspentPoints > 0
-                              ? `(${unspentPoints})`
-                              : "(Mestre)"}
+                            {`(${unspentPoints})`}
                           </Button>
                         ) : (
                           <div />
                         )}
+                        {isGm && <GmSheetValueEditor characterId={character.id} value={unspentPoints} kind="classPoints" canEdit={true} onSaved={onOptimistic} className="text-xs" />}
                         {isGm && (
                           <div className="ml-auto flex flex-wrap justify-end gap-1.5">
                             {([-10, -5, -1] as const).map(delta => (
@@ -4870,7 +4784,7 @@ export function CharacterSheet({
                     <PlayerSpecialAttacks
                       character={character as any}
                       isGm={isGm}
-                      npcOnly={Boolean(npcOnly && isGm)}
+                      npcOnly={Boolean((npcOnly || npcOwned) && isGm)}
                       editable={Boolean(editable)}
                       disabled={Boolean(trainingLocked || rollingAttr)}
                       onUpdated={onOptimistic}
@@ -4993,6 +4907,7 @@ export function CharacterSheet({
                       })}
                     </div>
 
+                    {isGm && <GmSheetEditor character={character} catalog={allClasses} onSave={updates => commitItemUpdate(updates, `/api/characters/${encodeURIComponent(character.id)}/gm-progress`, "POST")} />}
                     <TimedItemAbilityBars
                       character={character}
                       catalog={itemCatalog}
@@ -5408,7 +5323,7 @@ export function CharacterSheet({
                     character={{ ...character, attributes: effectiveAttributes as Character["attributes"] }}
                     onRoll={handleCombinedRoll}
                     onCustomRoll={handleCustomRoll}
-                    customChecks={customChecks}
+                    customChecks={isGm ? [...(character.npcChecks || []), ...customChecks] : customChecks}
                     rollingAttr={rollingAttr}
                     disabled={!editable || trainingLocked}
                   />

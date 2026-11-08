@@ -15,7 +15,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const token = readCampaignDeathTokens(store.campaignState.get(id)).find(item =>
     item.id === requestedTokenId && item.userId === user.id && item.status === "available")
   return NextResponse.json({
-    classes: creatorClassCatalog(id, role === "gm", token),
+    classes: creatorClassCatalog(id, role === "gm", token, user.id),
     equipment: creatorEquipmentCatalog(id).filter(item => role === "gm" || item.purchasable !== false || token?.startingItemIds.includes(item.id)),
   })
 }

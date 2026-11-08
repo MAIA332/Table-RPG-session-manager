@@ -3,7 +3,7 @@ import type { Campaign } from "@/lib/types"
 import type { GameClass } from "@/lib/game-data"
 import { CLASSES, EQUIPMENT } from "@/lib/game-data"
 import { store } from "@/lib/store"
-import { isClassPublished } from "@/lib/class-visibility"
+import { canPlayerAcquireClass } from "@/lib/class-visibility"
 import type { DeathToken } from "@/lib/death-tokens"
 
 const STATE_KEY = "deathTokens"
@@ -19,11 +19,11 @@ export function withCampaignDeathTokens(raw: Record<string, unknown> | undefined
 }
 
 /** Publicações são lidas do estado autoritativo; nunca do localStorage do jogador. */
-export function creatorClassCatalog(campaignId: string, gm: boolean, token?: DeathToken): GameClass[] {
+export function creatorClassCatalog(campaignId: string, gm: boolean, token?: DeathToken, userId?: string): GameClass[] {
   const raw = store.campaignState.get(campaignId)
   const custom = Array.isArray(raw?.customClasses) ? raw.customClasses as GameClass[] : []
   const special = new Set(token?.status === "available" ? token.allowedClassIds : [])
-  const allowedCustom = custom.filter(cls => gm || isClassPublished(cls) || special.has(cls.id))
+  const allowedCustom = custom.filter(cls => gm || canPlayerAcquireClass(cls.id, custom, userId ? { userId } : undefined) || special.has(cls.id))
   const unique = new Map<string, GameClass>()
   // Não reintroduzir classes ocultas ou excluídas através de fichas históricas.
   // A fonte de verdade é a definição atual, publicada ou autorizada pelo token.
@@ -31,7 +31,7 @@ export function creatorClassCatalog(campaignId: string, gm: boolean, token?: Dea
     if (!cls || !cls.id) continue
     // Classes históricas não publicadas só podem aparecer quando explicitamente autorizadas.
     const saved = custom.find(entry => entry.id === cls.id)
-    if (saved && !gm && !isClassPublished(saved) && !special.has(cls.id)) continue
+    if (saved && !gm && !canPlayerAcquireClass(saved.id, custom, userId ? { userId } : undefined) && !special.has(cls.id)) continue
     unique.set(cls.id, cls)
   }
   return [...unique.values()].filter(cls => !cls.parentClassId || unique.has(cls.parentClassId))

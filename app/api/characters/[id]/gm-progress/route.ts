@@ -2,7 +2,9 @@ import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { getMemberRole, publish, transactStore } from "@/lib/store"
 import { getCampaignClassCatalog } from "@/lib/class-catalog"
-import { computeMaxResources } from "@/lib/character"
+import { computeMaxResources, normalizeResources } from "@/lib/character"
+import { campaignItemCatalog } from "@/lib/inventory-server"
+import { validateCustomCheck } from "@/lib/custom-checks"
 import { deriveSkillClassLevels, progressionResourceDelta, reconcileGmFreeSkillRecords } from "@/lib/skill-progression"
 import type { GameClass } from "@/lib/game-data"
 import type { Character, AttributeKey, DieSize } from "@/lib/types"
@@ -15,7 +17,7 @@ class EditError extends Error {
 }
 
 const attributes: AttributeKey[] = ["dex", "ins", "mig", "wlp"]
-const diePattern = /^d(?:6|8|10|12|14|16|18|20)$/
+const diePattern = /^d(?:4|6|8|10|12|14|16|18|20)$/
 
 function validateAttributes(input: unknown): Character["attributes"] {
   if (!input || typeof input !== "object" || Array.isArray(input))
@@ -104,30 +106,46 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const growth = progressionResourceDelta(
         { classes: current.classes, skills: current.skills, attributes: current.attributes },
         { classes: nextClasses, skills: nextSkills, attributes: nextAttributes },
-        catalog, computeMaxResources,
+        catalog, (classes, attributes) => computeMaxResources(classes, attributes, catalog),
       )
       const limits = {
         maxHp: Math.max(1, current.resources.maxHp + growth.maxHp),
         maxMp: Math.max(0, current.resources.maxMp + growth.maxMp),
         maxIp: Math.max(0, current.resources.maxIp + growth.maxIp),
       }
+      const resources = { ...current.resources, ...limits }
+      if (input.resources !== undefined) {
+        if (!input.resources || typeof input.resources !== "object" || Array.isArray(input.resources)) throw new EditError("Recursos inválidos.")
+        for (const [key, value] of Object.entries(input.resources)) {
+          if (!["hp", "mp", "maxHp", "maxMp", "maxIp", "xp", "fp"].includes(key)) continue
+          if (typeof value !== "number" || !Number.isFinite(value) || value < 0) throw new EditError("Recursos devem ser números não negativos.")
+          if (key === "xp" && !Number.isSafeInteger(value)) throw new EditError("XP deve ser um inteiro.")
+          ;(resources as any)[key] = value
+        }
+      }
+      if (resources.maxHp < 1) throw new EditError("A vida máxima deve ser positiva.")
+      if (input.name !== undefined && (typeof input.name !== "string" || !input.name.trim() || input.name.trim().length > 160)) throw new EditError("Informe um nome de 1 a 160 caracteres.")
+      if (input.zenit !== undefined && (typeof input.zenit !== "number" || !Number.isFinite(input.zenit) || input.zenit < 0)) throw new EditError("Zenits inválidos.")
+      if (input.npcLevel !== undefined && (!Number.isSafeInteger(input.npcLevel) || Number(input.npcLevel) < 1 || Number(input.npcLevel) > 1000)) throw new EditError("Nível de NPC inválido.")
+      if (input.npcChecks !== undefined && (!current.isNpc || !Array.isArray(input.npcChecks) || input.npcChecks.length > 100)) throw new EditError("Testes do NPC inválidos.")
       const next: Character = {
         ...current,
         ...(freeSkillRecords === null ? {} : { customModifiers: freeSkillRecords }),
         skills: structuredClone(nextSkills),
         classes: structuredClone(nextClasses),
         attributes: structuredClone(nextAttributes),
-        resources: {
-          ...current.resources,
-          ...limits,
-          hp: Math.min(current.resources.hp, limits.maxHp),
-          mp: Math.min(current.resources.mp, limits.maxMp),
-          ip: Math.min(current.resources.ip, limits.maxIp),
-        },
+        ...(current.isNpc && current.npcLevel !== undefined && skills !== undefined
+          ? { npcLevel: Math.max(1, current.npcLevel + Object.values(nextSkills).reduce((sum, rank) => sum + rank, 0) - Object.values(current.skills || {}).reduce((sum, rank) => sum + Math.max(0, Number(rank) || 0), 0)) } : {}),
+        ...(typeof input.name === "string" ? { name: input.name.trim() } : {}),
+        ...(typeof input.zenit === "number" ? { zenit: input.zenit } : {}),
+        ...(typeof input.npcLevel === "number" ? { npcLevel: input.npcLevel } : {}),
+        ...(Array.isArray(input.npcChecks) ? { npcChecks: input.npcChecks.map(validateCustomCheck).map(check => ({ ...check, isPublic: false })) } : {}),
+        resources,
         updatedAt: Math.max(Date.now(), current.updatedAt + 1),
       }
-      db.characters.set(id, next)
-      return { value: next, changed: true }
+      const normalized = normalizeResources(next, campaignItemCatalog(db, current.campaignId))
+      db.characters.set(id, normalized)
+      return { value: normalized, changed: true }
     })
     publish(updated.campaignId, { type: "character:updated", character: updated })
     return NextResponse.json({ character: updated }, { headers: { "Cache-Control": "no-store" } })

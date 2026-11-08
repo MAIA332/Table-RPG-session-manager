@@ -6,6 +6,9 @@ import { createNurseryRestorePatch } from "@/lib/npc-restoration"
 import { validatePlayerSpecialAttacks } from "@/lib/player-special-attacks"
 import { validateAlternatePortraits } from "@/lib/portrait-gallery"
 import type { Character } from "@/lib/types"
+import { normalizeResources } from "@/lib/character"
+import { campaignItemCatalog } from "@/lib/inventory-server"
+import { validateCustomCheck } from "@/lib/custom-checks"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -37,6 +40,11 @@ interface StoredNpc {
   specialAttacks?: unknown
   portraitLabel?: string
   portraitGallery?: unknown
+  resources?: Character["resources"]
+  npcLevel?: number
+  npcChecks?: Character["npcChecks"]
+  customModifiers?: Array<Record<string, unknown>>
+  bestiaryAffinities?: Character["bestiaryAffinities"]
 }
 
 /** Consulta autenticada do Mestre para arquivar uma ficha atualizada.
@@ -156,10 +164,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         // interpretar o campo junto aos estados originais do snapshot.
         ...(items !== undefined ? { npcEquippedIds: items } : {}),
         ...preserved,
+        isNpc: true,
         updatedAt: Math.max(Date.now(), current.updatedAt + 1),
       } as Character
-      db.characters.set(id, next)
-      return { value: next, changed: true }
+      if (next.npcChecks) next.npcChecks = next.npcChecks.map(validateCustomCheck).map(check => ({ ...check, isPublic: false }))
+      if (Object.values(next.resources).some(value => typeof value !== "number" || !Number.isFinite(value) || value < 0))
+        throw new RestoreError("Recursos do NPC inválidos.")
+      if (next.resources.maxHp < 1) throw new RestoreError("A vida máxima deve ser positiva.")
+      if (!["dex", "ins", "mig", "wlp"].every(key => /^d(4|6|8|10|12|14|16|18|20)$/.test((next.attributes as any)[key])))
+        throw new RestoreError("Atributos do NPC inválidos.")
+      const normalized = normalizeResources(next, campaignItemCatalog(db, current.campaignId))
+      db.characters.set(id, normalized)
+      // A primeira invocação passa a ter o vínculo confirmado na mesma transação.
+      if (!draft.linkedCharacterIds?.includes(id)) db.campaignState.set(current.campaignId, {
+        ...state, customNPCs: entries.map(entry => entry.id === draft.id ? { ...entry, linkedCharacterIds: [...(entry.linkedCharacterIds || []), id] } : entry),
+      })
+      return { value: normalized, changed: true }
     })
     publish(updated.campaignId, { type: "character:updated", character: updated })
     return NextResponse.json({ character: updated }, { headers: { "Cache-Control": "no-store" } })

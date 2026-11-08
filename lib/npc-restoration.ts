@@ -14,6 +14,11 @@ export interface NurseryRestorationDraft {
   npcModifiers?: Array<Record<string, unknown>>
   npcEquippedIds?: string[]
   archivedSnapshot?: Character
+  resources?: Character["resources"]
+  npcLevel?: number
+  npcChecks?: Character["npcChecks"]
+  customModifiers?: Array<Record<string, unknown>>
+  bestiaryAffinities?: Character["bestiaryAffinities"]
 }
 
 export const DEFENSE_IDS = {
@@ -53,22 +58,42 @@ export function createNurseryRestorePatch(
     skills: structuredClone(draft.skills),
     attributes: structuredClone(draft.attributes),
     equipment: structuredClone(draft.equipment),
+    ...(draft.resources !== undefined ? { resources: structuredClone(draft.resources) } : {}),
+    ...(draft.npcLevel !== undefined ? { npcLevel: draft.npcLevel } : {}),
+    ...(draft.npcChecks !== undefined ? { npcChecks: structuredClone(draft.npcChecks) } : {}),
+    ...(draft.bestiaryAffinities !== undefined ? { bestiaryAffinities: structuredClone(draft.bestiaryAffinities) } : {}),
   }
   // Não substitui os outros modificadores (condições, bônus, equipamentos)
   // quando um NPC do acervo não foi editado neste campo.
   if (draft.npcModifiers !== undefined) patch.customModifiers = structuredClone(draft.npcModifiers)
+  else if (draft.customModifiers !== undefined && patch.customModifiers === undefined) patch.customModifiers = structuredClone(draft.customModifiers)
+  if (draft.npcEquippedIds !== undefined) {
+    const prepared = [...new Set(draft.npcEquippedIds.filter(id => draft.equipment.includes(id)))]
+    const modifiers = Array.isArray(patch.customModifiers) ? patch.customModifiers as Array<Record<string, unknown>> : []
+    patch.customModifiers = [
+      ...modifiers.filter(mod => typeof mod.id !== "string" || !mod.id.startsWith("item_equipped:")),
+      ...prepared.map(id => ({ id: `item_equipped:${id}`, name: `Equipado: ${id}`, target: "item_state_hidden", value: 1 })),
+    ]
+    patch.npcEquippedIds = prepared
+  }
   return patch
 }
 
 function equal(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b)
+  const canonical = (value: unknown): unknown => Array.isArray(value) ? value.map(canonical) : value && typeof value === "object"
+    ? Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined).sort(([a], [b]) => a.localeCompare(b)).map(([key, entry]) => [key, canonical(entry)])) : value
+  return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b))
 }
 
 /** Confirma os campos editáveis, inclusive em NPCs antigos sem snapshot. */
 export function nurseryRestorationFields(patch: Record<string, unknown>, restored: Character): string[] {
   const actual = restored as Character & Record<string, unknown>
   return ["name", "origin", "identity", "theme", "classes", "skills", "attributes", "equipment", "customModifiers"]
-    .filter(key => patch[key] !== undefined && !equal(patch[key], actual[key]))
+    .filter(key => {
+      const comparable = (value: unknown) => key === "customModifiers" && Array.isArray(value)
+        ? value.filter(mod => mod?.id !== "system:inventory-overweight").sort((a,b) => String(a.id).localeCompare(String(b.id))) : value
+      return patch[key] !== undefined && !equal(comparable(patch[key]), comparable(actual[key]))
+    })
 }
 
 /** Inspeciona o registro efetivamente gravado depois das rotas especializadas. */

@@ -1,4 +1,4 @@
-import { BASE_HP, BASE_MP, BASE_MAX_IP, getClass } from "./game-data"
+import { BASE_HP, BASE_MP, BASE_MAX_IP, getClass, type GameClass } from "./game-data"
 import type { AttributeKey, Character, ClassLevel, DieSize } from "./types"
 import {
   inventoryStatus,
@@ -40,14 +40,15 @@ export function dieValue(die: DieSize): number {
 export function computeMaxResources(
   classes: ClassLevel[],
   attributes: Record<AttributeKey, DieSize>,
+  catalog: GameClass[] = [],
 ): { maxHp: number; maxMp: number; maxIp: number } {
   let hp = BASE_HP + dieValue(attributes.mig),
     mp = BASE_MP + dieValue(attributes.ins)
   for (const cl of classes) {
-    const gc = getClass(cl.classId)
+    const gc = catalog.find(definition => definition.id === cl.classId) || getClass(cl.classId)
     if (!gc) continue
-    hp += gc.hpPerLevel * cl.level
-    mp += gc.mpPerLevel * cl.level
+    hp += (Number(gc.hpPerLevel) || 0) * cl.level
+    mp += (Number(gc.mpPerLevel) || 0) * cl.level
   }
   return { maxHp: hp, maxMp: mp, maxIp: BASE_MAX_IP }
 }

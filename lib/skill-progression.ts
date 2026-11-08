@@ -97,9 +97,9 @@ export function reconcileGmFreeSkillRecords(
     const oldFree = Math.min(before, skillRank(existing?.value))
     const free = Math.min(after, Math.max(0, oldFree + after - before))
 
-    if (free === 0) {
-      if (markerIndex >= 0) modifiers.splice(markerIndex, 1)
-    } else if (markerIndex >= 0) {
+    // Um marcador explícito zero evita tratar ranks pagos de classes antigas
+    // como gratuitos no fallback legado da ficha.
+    if (markerIndex >= 0) {
       modifiers[markerIndex] = { ...existing, value: free }
     } else {
       modifiers.push({

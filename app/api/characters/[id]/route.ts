@@ -21,7 +21,8 @@ import {
 } from "@/lib/portrait-frames"
 import type { Character } from "@/lib/types"
 import { CLASSES, type GameClass } from "@/lib/game-data"
-import { isClassVisibleToUser } from "@/lib/class-audience"
+import { canPlayerAcquireClass } from "@/lib/class-visibility"
+import { validateCustomCheck } from "@/lib/custom-checks"
 
 class RequestError extends Error {
   constructor(message: string, public status = 400) {
@@ -63,9 +64,11 @@ export async function PATCH(
       const role = campaign && getMemberRole(campaign, user.id)
       if (!role || (current.ownerId !== user.id && role !== "gm"))
         throw new RequestError("Sem permissão para editar.", 403)
+      if (body.manualLevel !== undefined || body.classPointAdjustment !== undefined || body.level !== undefined || body.classPoints !== undefined)
+        throw new RequestError("Nível e pontos manuais só podem ser alterados pelo Mestre nos controles da ficha.", 403)
       if (
         (body.avatarUrl !== undefined || body.portraitCrop !== undefined) &&
-        current.ownerId !== user.id
+        current.ownerId !== user.id && role !== "gm"
       )
         throw new RequestError("Apenas o dono pode alterar o retrato.", 403)
 
@@ -152,7 +155,7 @@ export async function PATCH(
           for (const entry of next.classes || []) {
             const customClass = custom.find(definition => definition.id === entry.classId)
             if (customClass && Number(entry.level) > Number(previous.get(entry.classId) || 0) &&
-                !isClassVisibleToUser(customClass, user.id, current.id))
+                !canPlayerAcquireClass(customClass.id, custom, { userId: user.id, characterId: current.id }))
               throw new RequestError("Esta classe não está liberada para sua conta.", 403)
           }
         }
@@ -164,7 +167,7 @@ export async function PATCH(
             if (!(Number(rank) > previousRank)) continue
             const definition = bySkill.get(skillId)
             const customClass = custom.find(item => item.id === definition?.id)
-            if (customClass && !isClassVisibleToUser(customClass, user.id, current.id))
+            if (customClass && !canPlayerAcquireClass(customClass.id, custom, { userId: user.id, characterId: current.id }))
               throw new RequestError("Esta habilidade pertence a uma classe não liberada para sua conta.", 403)
           }
         }
@@ -173,10 +176,25 @@ export async function PATCH(
       if (
         !next.attributes ||
         !["dex", "ins", "mig", "wlp"].every((key) =>
-          /^d(6|8|10|12)$/.test((next.attributes as any)[key]),
+          /^d(4|6|8|10|12|14|16|18|20)$/.test((next.attributes as any)[key]),
         )
       )
         throw new RequestError("Dados de atributos inválidos.")
+
+      if (!Array.isArray(next.classes) || next.classes.some(entry => !entry || typeof entry.classId !== "string" || !Number.isSafeInteger(entry.level) || entry.level < 0 || entry.level > 1000))
+        throw new RequestError("Níveis de classe inválidos.")
+      if (Array.isArray(next.skills) || Object.values(next.skills).some(rank => !Number.isSafeInteger(rank) || rank < 0 || rank > 1000))
+        throw new RequestError("Níveis de habilidade inválidos.")
+      if (role === "gm" && body.skills !== undefined && Array.isArray(next.customModifiers)) {
+        next.customModifiers = next.customModifiers.map(modifier => typeof modifier.id === "string" && modifier.id.startsWith("free_skill:")
+          ? { ...modifier, value: Math.min(Math.max(0, Number(modifier.value) || 0), next.skills[modifier.id.slice("free_skill:".length)] || 0) }
+          : modifier)
+      }
+      if (body.npcChecks !== undefined) {
+        if (role !== "gm" || !next.isNpc) throw new RequestError("Apenas o Mestre pode editar testes do NPC.", 403)
+        if (!Array.isArray(body.npcChecks) || body.npcChecks.length > 100) throw new RequestError("Testes do NPC inválidos.")
+        next.npcChecks = body.npcChecks.map(validateCustomCheck).map((check: import("@/lib/custom-checks").CustomCheck) => ({ ...check, isPublic: false }))
+      }
 
       if (body.equipment !== undefined) {
         if (
@@ -208,6 +226,19 @@ export async function PATCH(
         )
           throw new RequestError("Zenit inválido.")
         next.zenit = body.zenit
+      }
+      // A autorização no início da transação permite apenas o dono ou o Mestre.
+      if (body.name !== undefined) {
+        if (typeof body.name !== "string" || !body.name.trim() || body.name.trim().length > 160)
+          throw new RequestError("Informe um nome de 1 a 160 caracteres.")
+        next.name = body.name.trim()
+      }
+      if (role === "gm") {
+        if (body.npcLevel !== undefined) {
+          if (!Number.isSafeInteger(body.npcLevel) || body.npcLevel < 1 || body.npcLevel > 1000) throw new RequestError("Nível de NPC inválido.")
+          next.npcLevel = body.npcLevel
+          next.isNpc = true
+        }
       }
       for (const key of ["origin", "identity", "theme"] as const)
         if (body[key] !== undefined)

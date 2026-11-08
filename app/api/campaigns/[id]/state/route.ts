@@ -25,8 +25,8 @@ async function getAccess(params: Promise<{ id: string }>) {
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await getAccess(params)
   if (access.error) return access.error
-  // A visão global não inclui classes concedidas só a uma ficha. O contexto
-  // opcional precisa ser validado antes de expor definições restritas.
+  // Classes publicadas são legíveis por todos; o contexto opcional de ficha
+  // continua sujeito à validação de propriedade.
   const requestedCharacterId = new URL(request.url).searchParams.get("characterId")
   const requestedCharacter = requestedCharacterId ? store.characters.get(requestedCharacterId) : null
   if (requestedCharacterId && (!requestedCharacter || requestedCharacter.campaignId !== access.campaignId ||

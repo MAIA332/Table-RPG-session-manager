@@ -34,13 +34,14 @@ interface GmBestiaryProps {
   isOpen: boolean
   onClose: () => void
   onSpawn: (creature: Creature) => void | Promise<void>
+  onConvertToNpc: (creature: Creature) => Promise<void>
   customCreatures: Creature[]
   onCreate: (creature: Creature) => void | Promise<void>
   onUpdate: (creature: Creature) => void | Promise<void>
   onDelete: (id: string) => void | Promise<void>
 }
 
-export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate, onUpdate, onDelete }: GmBestiaryProps) {
+export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCreatures, onCreate, onUpdate, onDelete }: GmBestiaryProps) {
   const [editingCreature, setEditingCreature] = useState<Creature | null>(null)
   const [saving, setSaving] = useState(false)
   const [spawning, setSpawning] = useState(false)
@@ -435,6 +436,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, customCreatures, onCreate
                       </div>
                     </div>
 
+                    <Button variant="outline" disabled={spawning || saving} onClick={async () => { setSpawning(true); setError(""); try { await onConvertToNpc(hoveredCreature); onClose() } catch (cause) { setError(cause instanceof Error ? cause.message : "Falha na conversão.") } finally { setSpawning(false) } }}>Converter em NPC do Berçário</Button>
                     <Button className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2 h-12 text-lg font-bold shadow-[0_0_15px_rgba(255,0,0,0.3)] mt-2" disabled={spawning || saving} onClick={() => void spawnSelected()}>
                       <Target className="size-5" /> {spawning ? "Invocando..." : "Invocar para a Mesa"}
                     </Button>

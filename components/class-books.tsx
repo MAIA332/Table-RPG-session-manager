@@ -18,6 +18,7 @@ interface ClassData {
   id: string
   name: string
   parentClassId?: string
+  canAcquire?: boolean
 }
 
 interface BooksResponse {
@@ -588,7 +589,7 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
                 </nav>}
                 {subclasses.length > 0 && <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
                   <p className="text-xs font-bold text-muted-foreground">Especialização</p>
-                  <div className="flex flex-wrap gap-2">{subclasses.map(sub => <button type="button" key={sub.id} disabled={busy}
+                  <div className="flex flex-wrap gap-2">{subclasses.map(sub => <button type="button" key={sub.id} disabled={busy || (!isGm && sub.canAcquire === false)} title={!isGm && sub.canAcquire === false ? "Visível para consulta. Aquisição restrita aos selecionados pelo Mestre." : undefined}
                     className={`rounded-full border px-3 py-2 text-xs font-bold transition ${progress?.subclassIds.includes(sub.id) ? "border-accent bg-accent/10 text-accent" : "border-border bg-background text-foreground hover:border-accent/40"}`}
                     onClick={async () => { setBusy(true); try { await call(campaignId, { action: "select-subclass", characterId: character.id, subclassId: sub.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Erro na especialização") } finally { setBusy(false) } }}>
                     {sub.name} {progress?.subclassIds.includes(sub.id) && <Check size={13} className="ml-1 inline" />}

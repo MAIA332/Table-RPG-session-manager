@@ -34,11 +34,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       /^https?:\/\//i.test(avatarUrl) ||
       /^data:image\/(png|jpe?g|webp|gif|avif);base64,/i.test(avatarUrl)
     // O avatar principal preserva os formatos do editor anterior.
-    // Os demais retratos são, obrigatoriamente, URLs HTTPS públicas.
+    // As alternativas também aceitam os uploads comprimidos validados acima.
     if (avatarUrl.length > 3_500_000 || !legacyAvatarAllowed)
       throw new PortraitRequestError("Imagem principal inválida ou muito grande.")
     if (portraitGallery.some(item => item.url === avatarUrl))
       throw new PortraitRequestError("A imagem principal não pode estar duplicada na galeria.")
+    if (avatarUrl.length + portraitGallery.reduce((sum, item) => sum + item.url.length, 0) > 10_000_000)
+      throw new PortraitRequestError("As imagens da galeria devem ocupar no máximo 10 MB no total. Reduza as imagens e tente novamente.")
 
     const updated = await transactStore(db => {
       const current = db.characters.get(id)

@@ -4,6 +4,8 @@ import type { PlayerSpecialAttack } from "./player-special-attacks"
 import { readElementalSelection, type ElementalAffinitySelection } from "./elemental-affinities"
 
 export interface ArchivedNpcDraft {
+  resources?: Character["resources"]
+  npcLevel?: number
   name: string
   avatarUrl: string
   origin: string
@@ -27,6 +29,8 @@ export function captureArchivedCharacter(character: Character): Character {
   // O retrato (frequentemente base64 com vários MB) já está em NPCDraft.avatarUrl.
   // Evita duplicá-lo no mesmo documento MongoDB; a invocação o repõe pelo draft.
   snapshot.avatarUrl = ""
+  // A galeria também fica no rascunho principal: evitar duplicar uploads no BSON.
+  if ("portraitGallery" in snapshot) (snapshot as Character & { portraitGallery?: AlternatePortrait[] }).portraitGallery = []
   return snapshot
 }
 
@@ -62,7 +66,8 @@ export function buildArchivedNpcPatch(draft: ArchivedNpcDraft, now = Date.now())
     skills: structuredClone(draft.skills),
     attributes: structuredClone(draft.attributes),
     equipment: structuredClone(draft.equipment),
-    resources: structuredClone(source.resources),
+    resources: structuredClone(draft.resources ?? source.resources),
+    ...(draft.npcLevel !== undefined ? { npcLevel: draft.npcLevel } : {}),
   }
 
   if (draft.avatarUrl) patch.avatarUrl = draft.avatarUrl
@@ -73,7 +78,10 @@ export function buildArchivedNpcPatch(draft: ArchivedNpcDraft, now = Date.now())
   const legacyBonds = Array.isArray(source.bonds) ? source.bonds : []
   if (extended.customModifiers !== undefined || legacyBonds.length > 0) {
     const resumed = resumeModifiers(extended.customModifiers ?? [], draft.archivedAt, now)
-    const modifiers: Record<string, unknown>[] = Array.isArray(resumed) ? resumed : []
+    const modifiers: Record<string, unknown>[] = Array.isArray(resumed) ? resumed.map(modifier => {
+      if (typeof modifier?.id !== "string" || !modifier.id.startsWith("free_skill:")) return modifier
+      return { ...modifier, value: Math.min(Math.max(0, Number(modifier.value) || 0), draft.skills[modifier.id.slice("free_skill:".length)] || 0) }
+    }) : []
 
     // A API PATCH persiste Laços em customModifiers. O campo raiz bonds é
     // legado e não é salvo pela rota: converte sem perder nem duplicar Laços.
@@ -145,6 +153,11 @@ export function missingRestoredFields(
   for (const key of Object.keys(expected)) {
     if (immutable.has(key)) continue
     if (key === "bonds") continue
+    if (key === "customModifiers") {
+      const comparable = (value: unknown) => Array.isArray(value) ? value.filter(modifier => modifier?.id !== "system:inventory-overweight").sort((a, b) => String(a.id).localeCompare(String(b.id))) : []
+      if (canonical(comparable(expected[key])) !== canonical(comparable(actual[key]))) missing.push(key)
+      continue
+    }
     if (key === "resources") {
       const saved = actual.resources as any
       const resource = expected.resources as Record<string, unknown> | undefined

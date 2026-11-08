@@ -1035,10 +1035,11 @@ export async function commandCombat(
         requireTrue(!crisisBlocksRoll(conditions), `${npc.name} está com Paralisia.`, 409)
         requireTrue(getMemberRole(campaign, npc.ownerId) === "gm",
           "Somente NPCs controlados pelo Mestre usam a rolagem privada", 403)
-        const checkName = text(command.label, "Nome do teste", 200)
+        const checkName = text(command.label, "Nome do teste", 400)
         requireTrue(typeof command.result === "number" && Number.isFinite(command.result)
           && Math.abs(command.result) <= 100000, "Resultado inválido")
-        const dice = Array.isArray(command.dice) && command.dice.length <= 10 &&
+        // Até quatro dados do teste-base e dez dados extras do golpe de NPC.
+        const dice = Array.isArray(command.dice) && command.dice.length <= 14 &&
           command.dice.every(die => typeof die === "string" && /^d\d{1,4}$/.test(die))
           ? (command.dice as string[]) : []
         const breakdown = command.breakdown === undefined

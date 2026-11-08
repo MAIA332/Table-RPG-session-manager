@@ -5,6 +5,8 @@ import { Disc3, GripHorizontal, ListMusic, Maximize2, Pause, Play, SkipBack, Ski
 import { SOUND_LIBRARY, normalizeSoundHotkeys, type ActiveSound, type SoundHotkey, type Track } from "@/lib/sound-config"
 import { readPendingHotkeys } from "@/lib/soundpad-local"
 import { createClientId } from "@/lib/client-id"
+import { musicSource } from "@/lib/music-sources"
+import { ExternalMusicPlayer } from "./external-music-player"
 
 type PlayingAudio = { element: HTMLAudioElement; url: string }
 type Stats = { id: string; current: number; duration: number }
@@ -168,7 +170,7 @@ export function SoundPlaybackEngine({
 
   useEffect(() => {
     const audible = activeSounds.filter(sound =>
-      isGm || sound.targetUserId == null || sound.targetUserId === currentUserId,
+      !musicSource(sound.url) && (isGm || sound.targetUserId == null || sound.targetUserId === currentUserId),
     )
     const next = new Map(audible.map(sound => [sound.id, sound]))
     currentSoundsRef.current = next
@@ -261,14 +263,19 @@ export function SoundPlaybackEngine({
     } finally { setCommandBusy(false) }
   }
 
-  if (!isGm || soundpadOpen || !featured) return null
+  const externalPlayers = <div className="fixed bottom-4 left-4 z-[12000] flex max-h-[75vh] flex-col gap-2 overflow-y-auto">{audible.filter(sound => musicSource(sound.url)).map(sound => <ExternalMusicPlayer key={sound.id} sound={sound} volume={sound.loop || sound.playlist ? musicVolume : effectsVolume} onEnded={latest => {
+    if (latest.playlist && !isGm) return
+    if (onEndedRef.current) onEndedRef.current(latest)
+    else if (campaignId) void postSound(campaignId, "ended", latest.id).catch(error => console.warn(error))
+  }} />)}</div>
+  if (!isGm || soundpadOpen || !featured) return externalPlayers
 
   const elapsed = stats?.id === featured.id ? stats.current : 0
   const duration = stats?.id === featured.id ? stats.duration : NaN
   const progress = Number.isFinite(duration) && duration > 0 ? Math.min(100, elapsed / duration * 100) : 0
   const title = tracks.find(track => track.id === featured.trackId)?.name || "Áudio em reprodução"
 
-  return (
+  return (<>{externalPlayers}
     <div className="fixed bottom-5 right-5 z-[80] w-[310px] max-w-[calc(100vw-24px)] select-none overflow-hidden rounded-2xl border border-amber-500/30 bg-[#17120fee] text-[#f0e5d4] shadow-[0_20px_60px_rgba(0,0,0,0.65)] backdrop-blur-xl"
       style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}>
       <div className="flex cursor-grab touch-none items-center justify-between border-b border-white/5 bg-gradient-to-r from-[#38271a] to-[#1b1510] px-3 py-2 active:cursor-grabbing"
@@ -317,6 +324,6 @@ export function SoundPlaybackEngine({
         {featured.playlist ? <button title="Próxima faixa" aria-label="Próxima faixa" disabled={commandBusy} onClick={() => void runCommand("playlist_next", featured)} className="text-stone-400 hover:text-white disabled:opacity-30"><SkipForward className="size-4" /></button> : <ListMusic className="size-4 text-stone-600" />}
       </div>
       {commandError && <p role="alert" className="px-3 pb-2 text-[10px] text-red-300">{commandError}</p>}
-    </div>
+    </div></>
   )
 }

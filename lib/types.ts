@@ -1,6 +1,6 @@
 // Tipos centrais do VTT de Fabula Ultima.
 export type Role = "gm" | "player"
-export type DieSize = "d6" | "d8" | "d10" | "d12"
+export type DieSize = "d4" | "d6" | "d8" | "d10" | "d12" | "d14" | "d16" | "d18" | "d20"
 export type AttributeKey = "dex" | "ins" | "mig" | "wlp"
 export interface StoreFolder {
   id: string
@@ -119,6 +119,12 @@ export interface PersonalFlowchart {
   updatedAt: number
 }
 export interface Character {
+  manualLevel?: number
+  classPointAdjustment?: number
+  isNpc?: boolean
+  npcLevel?: number
+  npcChecks?: import("./custom-checks").CustomCheck[]
+  bestiaryAffinities?: Creature["affinities"]
   customItems?: CustomItem[]
   id: string
   campaignId: string

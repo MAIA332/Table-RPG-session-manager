@@ -11,6 +11,7 @@ import {
   Music, Sparkles, PanelRight, List,
 } from "lucide-react"
 import { createClientId } from "@/lib/client-id"
+import { musicSource } from "@/lib/music-sources"
 import {
   readPendingFolders, readPendingHotkeys, savePendingPreference,
   clearPendingPreferenceIfMatches,
@@ -124,6 +125,8 @@ export function Soundpad({
   const [newPlaylistName, setNewPlaylistName] = useState("")
   const [newSoundName, setNewSoundName] = useState("")
   const [newSoundUrl, setNewSoundUrl] = useState("")
+  const [importingMusic, setImportingMusic] = useState(false)
+  const [importNotice, setImportNotice] = useState("")
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null)
   // Fechar nunca volta ao antigo modal compacto: o estúdio só existe em tela cheia.
   const [isVisible, setIsVisible] = useState(true)
@@ -419,8 +422,23 @@ export function Soundpad({
     } catch (err) { setError(errorMessage(err, "Não foi possível alterar a reprodução.")) }
   }
 
-  function addCustomSound() {
-    if (!newSoundName.trim() || !newSoundUrl.trim()) return
+  async function addCustomSound() {
+    if (!newSoundUrl.trim() || importingMusic) return
+    if (musicSource(newSoundUrl.trim())) {
+      setImportingMusic(true); setError(""); setImportNotice("")
+      try {
+        const result = await postJson(`${soundEndpoint}/import`, { url: newSoundUrl.trim() })
+        const imported = result.tracks as Track[]
+        const ids = new Set(customTracks.map(track => track.id))
+        const additions = [...new Map(imported.map(track => [track.id, track])).values()].filter(track => !ids.has(track.id))
+        onCustomTracksChange?.([...customTracks, ...additions])
+        setImportNotice(`${additions.length} música(s) importada(s).`)
+        setNewSoundUrl(""); setNewSoundName("")
+      } catch (cause) { setError(errorMessage(cause, "Não foi possível importar.")) }
+      finally { setImportingMusic(false) }
+      return
+    }
+    if (!newSoundName.trim()) { setError("Informe o nome do áudio."); return }
     try {
       const url = new URL(newSoundUrl.trim(), window.location.origin)
       if (!["https:", "http:"].includes(url.protocol)) throw new Error("URL inválida.")
@@ -941,8 +959,10 @@ export function Soundpad({
               <div className="mb-3 flex items-center gap-2"><Plus className="size-4 text-primary" /><h4 className="text-xs font-extrabold">Adicionar áudio</h4></div>
               <div className="space-y-2.5">
                 <input aria-label="Nome do novo áudio" value={newSoundName} onChange={event => setNewSoundName(event.target.value)} placeholder="Nome do áudio" className={inputClass} />
-                <input aria-label="URL do novo áudio" value={newSoundUrl} onChange={event => setNewSoundUrl(event.target.value)} placeholder="URL direta do arquivo MP3" className={inputClass} />
-                <button type="button" onClick={addCustomSound} disabled={!newSoundName.trim() || !newSoundUrl.trim()} className={`${buttonClass} w-full`}><Save className="size-4" /> Salvar áudio</button>
+                <input aria-label="URL do novo áudio" value={newSoundUrl} onChange={event => setNewSoundUrl(event.target.value)} placeholder="Link do YouTube, Spotify ou MP3" className={inputClass} />
+                <button type="button" onClick={() => void addCustomSound()} disabled={importingMusic || !newSoundUrl.trim()} className={`${buttonClass} w-full`}><Save className="size-4" /> {importingMusic ? "Importando..." : musicSource(newSoundUrl.trim()) ? "Importar automaticamente" : "Salvar áudio"}</button>
+                {importNotice && <p role="status" className="text-xs text-primary">{importNotice}</p>}
+                <p className="text-[11px] text-muted-foreground">YouTube e Spotify usam os players oficiais. O Spotify pode solicitar login e limitar a reprodução conforme a conta.</p>
               </div>
             </div>
           </>}

@@ -3,6 +3,7 @@
  * Novas classes devem ser criadas pelo mestre com playerVisible: false.
  */
 import { CLASSES, type GameClass } from "./game-data"
+import { canAcquireClass, allowedPlayerIds, allowedCharacterIds } from "./class-audience"
 
 export type CustomClassVisibility = GameClass & { playerVisible?: boolean }
 
@@ -43,9 +44,26 @@ export function canPlayerUpgradeClass(
   definition: { id: string; parentClassId?: string },
   customClasses: readonly CustomClassVisibility[],
   selectedSubclassIds: readonly string[] = [],
+  viewer?: { userId: string; characterId?: string },
 ): boolean {
-  return isClassAvailableToPlayers(definition.id, customClasses) &&
+  return canPlayerAcquireClass(definition.id, customClasses, viewer) &&
     (!definition.parentClassId || selectedSubclassIds.includes(definition.id))
+}
+
+/** Inclui as permissões da classe-mãe, sem confundir leitura com aquisição. */
+export function canPlayerAcquireClass(classId: string, customClasses: readonly CustomClassVisibility[], viewer?: { userId: string; characterId?: string }): boolean {
+  if (!isClassAvailableToPlayers(classId, customClasses)) return false
+  const visited = new Set<string>()
+  let current = customClasses.find(cls => cls.id === classId)
+  while (current) {
+    if (visited.has(current.id)) return false
+    visited.add(current.id)
+    if (!isClassPublished(current)) return false
+    const restricted = allowedPlayerIds(current) !== null || allowedCharacterIds(current) !== null
+    if (restricted && (!viewer || !canAcquireClass(current, viewer.userId, viewer.characterId))) return false
+    current = current.parentClassId ? customClasses.find(cls => cls.id === current!.parentClassId) : undefined
+  }
+  return true
 }
 
 /** Guard para executar na rota PATCH de personagens após autenticar o ator.

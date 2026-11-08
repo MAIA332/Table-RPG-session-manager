@@ -74,8 +74,8 @@ export function ClassAudienceEditor({ cls, members, characters, onSave, onClose 
             <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-primary/30 bg-primary/10 text-primary"><Users className="size-5" /></span>
             <div className="min-w-0">
               <p className="text-[10px] font-black uppercase tracking-[.19em] text-primary">Grimório do Mestre · Permissões</p>
-              <h2 className="truncate font-serif text-xl font-bold">Quem pode ver {cls.name}?</h2>
-              <p className="mt-1 text-[11px] text-muted-foreground">Libere para uma conta inteira, uma ficha específica ou ambas.</p>
+              <h2 className="truncate font-serif text-xl font-bold">Quem pode adquirir {cls.name}?</h2>
+              <p className="mt-1 text-[11px] text-muted-foreground">Classes publicadas podem ser consultadas por todos. Restrinja a aquisição por conta ou ficha.</p>
             </div>
           </div>
           <button type="button" onClick={onClose} disabled={busy} aria-label="Fechar permissões" className="grid size-9 shrink-0 place-items-center rounded-lg border border-border/70 hover:border-primary/50"><X className="size-4" /></button>
@@ -84,8 +84,8 @@ export function ClassAudienceEditor({ cls, members, characters, onSave, onClose 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
           <div role="radiogroup" aria-label="Modo de visibilidade" className="grid gap-2 sm:grid-cols-3">
             {([
-              { id: "all" as const, icon: Globe2, label: "Todos", description: "Todas as contas e fichas." },
-              { id: "selected" as const, icon: Users, label: "Selecionados", description: "Jogadores e/ou personagens." },
+              { id: "all" as const, icon: Globe2, label: "Todos", description: "Todos podem ver e adquirir." },
+              { id: "selected" as const, icon: Users, label: "Selecionados", description: "Todos podem ver; só os selecionados podem adquirir." },
               { id: "hidden" as const, icon: EyeOff, label: "Oculta", description: "Apenas o Mestre." },
             ]).map(option => {
               const Icon = option.icon

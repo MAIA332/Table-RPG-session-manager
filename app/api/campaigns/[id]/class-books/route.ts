@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { CLASSES, type GameClass } from "@/lib/game-data"
 import { getCampaignClassCatalog } from "@/lib/class-catalog"
-import { isClassAvailableToPlayers, playerVisibleClassCatalog, type CustomClassVisibility } from "@/lib/class-visibility"
-import { canViewClassDefinition, isClassVisibleToUser } from "@/lib/class-audience"
+import { canPlayerAcquireClass, isClassAvailableToPlayers, playerVisibleClassCatalog, type CustomClassVisibility } from "@/lib/class-visibility"
+import { canViewClassDefinition } from "@/lib/class-audience"
 import {
   accessibleClassIds,
   canAccessBook,
@@ -196,7 +196,7 @@ export async function GET(request: Request, context: RouteContext) {
     ...(character ? { characterClassLevels: {
       [character.id]: Object.fromEntries(accessibleDefinitions.map(def => [def.id, characterBookClassLevel(character, def.id, progress, definitions)])),
     } } : {}),
-    classes: gm ? definitions : playerVisibleClassCatalog(accessibleDefinitions, customDefinitions(id)),
+    classes: gm ? definitions : playerVisibleClassCatalog(accessibleDefinitions, customDefinitions(id)).map(def => ({ ...def, canAcquire: canPlayerAcquireClass(def.id, customDefinitions(id), { userId: user.id, characterId: character?.id }) })),
     // O progresso privado pode conter IDs de cartas ainda acima do nível.
     // O jogador recebe apenas concessões que já constam dos livros filtrados.
     progress: { subclassIds: gm ? progress.subclassIds : progress.subclassIds.filter(subId => canViewClass(id, subId, user.id, false, character?.id)), granted: character
@@ -502,7 +502,7 @@ export async function POST(request: Request, context: RouteContext) {
         const subclasses = customDefinitions(id)
         const subclass = subclasses.find((item) => item.id === body.subclassId && item.parentClassId)
         if (!gm && (!subclass || !isClassAvailableToPlayers(body.subclassId, subclasses) ||
-          !isClassVisibleToUser(subclass, user.id, characterId)))
+          !canPlayerAcquireClass(subclass.id, subclasses, { userId: user.id, characterId })))
           throw new Error("Subclasse ainda não liberada pelo mestre.")
         if (!subclass?.parentClassId || !characterClassIds(character).includes(subclass.parentClassId))
           throw new Error("A subclasse não pertence às classes desse personagem.")

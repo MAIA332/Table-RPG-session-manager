@@ -32,6 +32,12 @@ export function publicPortraitUrl(value: string): boolean {
   } catch { return false }
 }
 
+export function validPortraitImage(value: string): boolean {
+  return publicPortraitUrl(value) || (typeof value === "string" && value.length <= 3_500_000 &&
+    /^data:image\/(?:png|jpeg|jpg|webp|gif|avif);base64,[a-z0-9+/]+={0,2}$/i.test(value)) ||
+    (typeof value === "string" && /^\/(?!\/)[a-z0-9_./%-]+$/i.test(value) && !value.includes(".."))
+}
+
 /** Leitura tolerante de fichas legadas; não modifica o banco. */
 export function getDisplayPortraits(character: CharacterPortraitCollection): DisplayPortrait[] {
   const primary: DisplayPortrait = {
@@ -44,7 +50,7 @@ export function getDisplayPortraits(character: CharacterPortraitCollection): Dis
   const extras = (Array.isArray(character.portraitGallery) ? character.portraitGallery : [])
     .filter((item): item is AlternatePortrait => Boolean(item && typeof item === "object" &&
       typeof item.id === "string" && typeof item.url === "string" &&
-      typeof item.label === "string" && publicPortraitUrl(item.url)))
+      typeof item.label === "string" && validPortraitImage(item.url)))
     .filter(item => {
       if (found.has(item.id) || item.url === primary.url) return false
       found.add(item.id)
@@ -55,7 +61,7 @@ export function getDisplayPortraits(character: CharacterPortraitCollection): Dis
   return [primary, ...extras]
 }
 
-/** Validação estrita para gravação (somente URLs públicas, sem base64 nem arquivos locais). */
+/** Validação estrita para gravação de uploads comprimidos e URLs públicas. */
 export function validateAlternatePortraits(raw: unknown): AlternatePortrait[] {
   if (!Array.isArray(raw) || raw.length > MAX_ALTERNATE_PORTRAITS) {
     throw new Error(`Você pode cadastrar até ${MAX_CHARACTER_PORTRAITS} retratos, incluindo o principal.`)
@@ -73,7 +79,7 @@ export function validateAlternatePortraits(raw: unknown): AlternatePortrait[] {
     if (!/^[a-zA-Z0-9:_-]{1,90}$/.test(id) || id === "__primary__" || ids.has(id))
       throw new Error(`Identificador do retrato ${index + 2} inválido ou repetido.`)
     if (!label || label.length > 60) throw new Error(`A legenda do retrato ${index + 2} deve ter de 1 a 60 caracteres.`)
-    if (!publicPortraitUrl(url)) throw new Error(`O retrato ${index + 2} precisa de uma URL HTTPS pública.`)
+    if (!validPortraitImage(url)) throw new Error(`O retrato ${index + 2} precisa de uma imagem enviada ou de uma URL HTTPS pública.`)
     if (urls.has(url)) throw new Error("Não repita a mesma imagem entre os retratos alternativos.")
     ids.add(id)
     urls.add(url)

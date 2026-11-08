@@ -7,17 +7,8 @@ import { QTE_CHECKS } from "./combat-checks"
 import { ATTRIBUTES, type Attack, type Attribute } from "./combat-model"
 import type { Character } from "./types"
 export const random = () => randomInt(0, 0x100000000) / 0x100000000
-export const CHECK_MINIMUMS: Record<string, number> = {
-  c1: 9,
-  c2: 13,
-  c3: 6,
-  c20: 12,
-  c22: 11,
-  c23: 12,
-  c27: 9,
-  c28: 10,
-  c29: 10,
-}
+import { CHECK_MINIMUMS, hasCheckMinimums } from "./check-minimums"
+export { CHECK_MINIMUMS } from "./check-minimums"
 /** Base manual + bônus dos itens ativos. Não persiste o bônus na base. */
 export function characterDefense(character: Character, magical: boolean, customEquipment: any[] = []) {
   const mods = (character as any).customModifiers || []
@@ -74,8 +65,7 @@ export function characterRoll(
     return +m[1]
   })
   const minimum =
-    normalized.name === "Kael Veyr" &&
-    ownerName === "Mateus Lopes de Deus" &&
+    hasCheckMinimums(normalized) &&
     checkId ? CHECK_MINIMUMS[checkId] : undefined
   let rolls = sizes.map(size => randomInt(1, size + 1))
   // Mantém a regra de mínimo condicional sem enumerar combinações completas.

@@ -1,8 +1,7 @@
 import type { GameClass } from "@/lib/game-data"
-import { isClassPublished } from "@/lib/class-visibility"
 
 /**
- * Publicação por conta OU por personagem. As duas listas são unidas (OR).
+ * Aquisição por conta OU por personagem. As duas listas são unidas (OR).
  * Compatibilidade: ambas ausentes/null + playerVisible = público para todos.
  * Listas vazias não são equivalentes a null: significam audiência restrita.
  */
@@ -25,23 +24,28 @@ export function allowedCharacterIds(cls: GameClass): string[] | null {
   return audienceIds((cls as ClassAudience).allowedCharacterIds)
 }
 
+/** Selecionados restringe aquisição; a definição publicada é legível por todos. */
+export function isClassVisibleToUser(cls: GameClass, userId: string, _characterId?: string): boolean {
+  return Boolean(userId) && (cls as ClassAudience).playerVisible !== false
+}
+
 /** Uma permissão de personagem NUNCA libera todas as fichas do dono. */
-export function isClassVisibleToUser(cls: GameClass, userId: string, characterId?: string): boolean {
-  if (!userId || !isClassPublished(cls)) return false
+export function canAcquireClass(cls: GameClass, userId: string, characterId?: string): boolean {
+  if (!isClassVisibleToUser(cls, userId)) return false
   const players = allowedPlayerIds(cls)
   const characters = allowedCharacterIds(cls)
   if (players === null && characters === null) return true
   return Boolean(players?.includes(userId) || (characterId && characters?.includes(characterId)))
 }
 
-/** Para cada usuário, somente definições publicadas para sua conta/ficha. */
+/** Mantém classes selecionadas legíveis, sem expor classes ocultas. */
 export function visibleCustomClassesForUser<T extends GameClass>(
   definitions: readonly T[], userId: string, isGm = false, characterId?: string,
 ): T[] {
   return isGm ? [...definitions] : definitions.filter(cls => isClassVisibleToUser(cls, userId, characterId))
 }
 
-/** Definição do sistema ou homebrew autorizada para esta conta/ficha. */
+/** Leitura da definição do sistema ou homebrew, independente da aquisição. */
 export function canViewClassDefinition(
   classId: string, systemIds: ReadonlySet<string>, definitions: readonly GameClass[],
   userId: string, isGm = false, characterId?: string,

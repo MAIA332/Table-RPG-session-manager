@@ -7,7 +7,7 @@ import { CharacterPortrait } from "@/components/character-portrait"
 import { Button } from "@/components/ui/button"
 import { createClientId } from "@/lib/client-id"
 import { DEFAULT_PORTRAIT_CROP, normalizePortraitCrop, type PortraitCrop, type PortraitFrameId } from "@/lib/portrait-frames"
-import { MAX_ALTERNATE_PORTRAITS, MAX_CHARACTER_PORTRAITS, publicPortraitUrl, validateAlternatePortraits, type AlternatePortrait } from "@/lib/portrait-gallery"
+import { MAX_ALTERNATE_PORTRAITS, MAX_CHARACTER_PORTRAITS, validPortraitImage, validateAlternatePortraits, type AlternatePortrait } from "@/lib/portrait-gallery"
 
 interface PortraitEditorProps {
   name: string
@@ -114,11 +114,11 @@ export function PortraitEditor({ name, avatarUrl, frame, crop, portraitLabel, po
   /** Troca entre imagem principal e alternativa, mantendo cinco caixas no máximo. */
   function makePrimary(id: string) {
     const chosen = extras.find(item => item.id === id)
-    if (!chosen || !publicPortraitUrl(chosen.url)) {
-      setError("Insira primeiro um link HTTPS público válido para esta expressão.")
+    if (!chosen || !validPortraitImage(chosen.url)) {
+      setError("Envie uma imagem ou insira um link HTTPS para esta expressão.")
       return
     }
-    if (!publicPortraitUrl(currentUrl)) {
+    if (!validPortraitImage(currentUrl)) {
       setError("Para preservar o avatar atual como alternativa, ele também precisa ter uma URL HTTPS pública. Substitua o avatar principal por um link antes de alternar.")
       return
     }
@@ -165,7 +165,7 @@ export function PortraitEditor({ name, avatarUrl, frame, crop, portraitLabel, po
               <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase tracking-widest text-primary">Imagem principal</span><input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" className="hidden" onChange={event => void selectFile(event.target.files?.[0])} /></div>
               <div className="flex gap-2"><label className="flex min-w-0 flex-1 items-center gap-2 border border-border/60 bg-background/60 px-3 focus-within:border-primary/50"><Link2 className="size-4 shrink-0 text-muted-foreground" /><input value={urlDraft} onChange={event => setUrlDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter") applyUrl() }} placeholder="Link da imagem" className="h-10 min-w-0 flex-1 bg-transparent text-xs outline-none sm:text-sm" /></label><Button type="button" variant="outline" size="sm" onClick={applyUrl}>Aplicar</Button></div>
               <Button variant="outline" disabled={saving || preparing} onClick={() => fileInputRef.current?.click()} className="w-full gap-2 text-xs">{preparing ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Escolher arquivo para avatar principal</Button>
-              <p className="text-[11px] text-muted-foreground">O upload original permanece disponível somente para o avatar principal. As expressões alternativas aceitam apenas links públicos HTTPS.</p>
+              <p className="text-[11px] text-muted-foreground">O avatar e as expressões aceitam upload local ou links HTTPS.</p>
             </div>
             <div className="mt-5 space-y-3 border-t border-primary/10 pt-4">
               <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase tracking-widest text-primary">Enquadramento</span><button type="button" onClick={() => setCurrentCrop(DEFAULT_PORTRAIT_CROP)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"><RotateCcw className="size-3.5" /> Redefinir</button></div>
@@ -180,8 +180,17 @@ export function PortraitEditor({ name, avatarUrl, frame, crop, portraitLabel, po
               {extras.map((portrait, index) => (
                 <div key={portrait.id} className="group min-w-0 space-y-3 rounded-sm border border-border/60 bg-card/25 p-3 transition hover:border-primary/35">
                   <div className="flex items-center justify-between gap-2"><span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">Retrato {String(index + 2).padStart(2, "0")}</span><button type="button" title="Remover este retrato" aria-label={`Remover ${portrait.label}`} onClick={() => setExtras(value => value.filter(item => item.id !== portrait.id))} className="grid size-7 place-items-center text-muted-foreground hover:text-destructive"><Trash2 className="size-4" /></button></div>
-                  <div className="flex min-w-0 items-center gap-3"><div className="grid size-20 shrink-0 place-items-center overflow-hidden border border-primary/20 bg-background/70"><img src={publicPortraitUrl(portrait.url) ? portrait.url : "/mystic-adventurer-portrait.png"} alt="" className="size-full object-cover" /></div><label className="min-w-0 flex-1 space-y-1"><span className="text-[10px] font-bold uppercase text-muted-foreground">Legenda</span><input value={portrait.label} maxLength={60} onChange={event => updatePortrait(portrait.id, { label: event.target.value })} placeholder="Ex.: Cansado" className="w-full border border-border/60 bg-background/60 px-2 py-2 text-xs outline-none focus:border-primary/60" /></label></div>
-                  <label className="block space-y-1"><span className="text-[10px] font-bold uppercase text-muted-foreground">Link HTTPS público</span><input value={portrait.url} onChange={event => updatePortrait(portrait.id, { url: event.target.value })} placeholder="https://exemplo.com/retrato.png" className="w-full border border-border/60 bg-background/60 px-2 py-2 text-xs outline-none focus:border-primary/60" /></label>
+                  <div className="flex min-w-0 items-center gap-3"><div className="grid size-20 shrink-0 place-items-center overflow-hidden border border-primary/20 bg-background/70"><img src={validPortraitImage(portrait.url) ? portrait.url : "/mystic-adventurer-portrait.png"} alt="" className="size-full object-cover" /></div><label className="min-w-0 flex-1 space-y-1"><span className="text-[10px] font-bold uppercase text-muted-foreground">Legenda</span><input value={portrait.label} maxLength={60} onChange={event => updatePortrait(portrait.id, { label: event.target.value })} placeholder="Ex.: Cansado" className="w-full border border-border/60 bg-background/60 px-2 py-2 text-xs outline-none focus:border-primary/60" /></label></div>
+                  <label className="flex cursor-pointer items-center justify-center gap-2 border border-primary/30 p-2 text-xs text-primary"><Upload className="size-4" /> Enviar imagem local<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" disabled={saving || preparing} className="hidden" onChange={async event => {
+                    const input = event.currentTarget
+                    const file = input.files?.[0]
+                    if (!file) return
+                    setPreparing(true); setError("")
+                    try { updatePortrait(portrait.id, { url: await prepareImage(file) }) }
+                    catch (error) { setError(error instanceof Error ? error.message : "Falha ao preparar imagem.") }
+                    finally { setPreparing(false); input.value = "" }
+                  }} /></label>
+                  <label className="block space-y-1"><span className="text-[10px] font-bold uppercase text-muted-foreground">Link HTTPS (opcional com upload)</span><input value={portrait.url.startsWith("data:") ? "" : portrait.url} onChange={event => updatePortrait(portrait.id, { url: event.target.value })} placeholder={portrait.url.startsWith("data:") ? "Imagem local carregada" : "https://exemplo.com/retrato.png"} className="w-full border border-border/60 bg-background/60 px-2 py-2 text-xs outline-none focus:border-primary/60" /></label>
                   <button type="button" onClick={() => makePrimary(portrait.id)} className="flex w-full items-center justify-center gap-1.5 border border-primary/25 bg-primary/5 px-3 py-2 text-[11px] font-semibold text-primary transition hover:border-primary/60 hover:bg-primary/10"><ArrowUpRight className="size-3.5" /> Definir como avatar principal</button>
                 </div>
               ))}

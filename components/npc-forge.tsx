@@ -84,6 +84,7 @@ export function NPCForge({ onCreated, onCancel, initialNpc, customClasses = [], 
   const [skillsEdited, setSkillsEdited] = useState(false)
   const [attributes, setAttributes] = useState<Record<AttributeKey, DieSize>>({ ...DEFAULT_DICE, ...(initialNpc?.attributes || {}) })
   const [equipment, setEquipment] = useState<string[]>([...(initialNpc?.equipment || [])])
+  const [resourceOverride, setResourceOverride] = useState(initialNpc?.resources ?? initialNpc?.archivedSnapshot?.resources)
   const inheritedSpecialAttacks = initialNpc?.specialAttacks ?? (initialNpc?.archivedSnapshot as (Character & PlayerSpecialAttackCharacter) | undefined)?.specialAttacks ?? []
   const [specialAttacks, setSpecialAttacks] = useState<PlayerSpecialAttack[]>([...inheritedSpecialAttacks])
   const oldAffinity = readElementalSelection(initialNpc?.elementalAffinities ?? (initialNpc?.archivedSnapshot as (Character & { elementalAffinities?: unknown }) | undefined)?.elementalAffinities)
@@ -137,10 +138,8 @@ export function NPCForge({ onCreated, onCancel, initialNpc, customClasses = [], 
   const shownPortrait = portraitChoices.find(item => item.id === selectedPortraitId) || portraitChoices[0]
   const shownUrl = shownPortrait.url && (shownPortrait.url.startsWith("/") || shownPortrait.url.startsWith("data:image/") || publicPortraitUrl(shownPortrait.url)) ? shownPortrait.url : "/mystic-adventurer-portrait.png"
   const preview = useMemo(() => {
-    // computeMaxResources depende do catálogo oficial. Evite inventar HP/MP de classes homebrew.
-    if (!classesPayload.every(entry => CLASSES.some(cls => cls.id === entry.classId))) return null
-    try { return computeMaxResources(classesPayload, attributes) } catch { return null }
-  }, [classesPayload, attributes])
+    try { return computeMaxResources(classesPayload, attributes, classes) } catch { return null }
+  }, [classesPayload, attributes, classes])
   const archivedResources = initialNpc?.archivedSnapshot?.resources
   const existingAttackTemplates = useMemo<NpcAttackTemplate[]>(() => {
     const templates: NpcAttackTemplate[] = []
@@ -193,6 +192,8 @@ export function NPCForge({ onCreated, onCancel, initialNpc, customClasses = [], 
         id: initialNpc?.id || `npc-${newNpcId()}`,
         name: name.trim(), avatarUrl: avatarUrl.trim(), origin, identity, theme,
         classes: classesPayload, skills: skillLevels, attributes, equipment, specialAttacks: savedAttacks,
+        npcLevel: initialNpc?.sourceBestiaryId && !skillsEdited ? initialNpc.npcLevel : Math.max(1, classesPayload.reduce((sum, entry) => sum + entry.level, 0)),
+        resources: resourceOverride,
         portraitLabel: portraitLabel.trim(), portraitGallery: savedGallery,
         ...(hasAffinity
           ? { elementalAffinities: { primary: selectedPrimary, secondary: selectedSecondary, locked: true } }
@@ -227,6 +228,11 @@ export function NPCForge({ onCreated, onCancel, initialNpc, customClasses = [], 
           {step === 0 && <><EssenceStep name={name} setName={setName} avatarUrl={avatarUrl} setAvatarUrl={setAvatarUrl} origin={origin} setOrigin={setOrigin} identity={identity} setIdentity={setIdentity} theme={theme} setTheme={setTheme} immersive /><CreatorPortraitSlots avatarUrl={avatarUrl} onAvatarUrl={setAvatarUrl} portraitLabel={portraitLabel} onPortraitLabel={setPortraitLabel} portraits={portraitGallery} onPortraits={setPortraitGallery} selectedId={selectedPortraitId} onSelect={setSelectedPortraitId} />{portraitError && <p role="alert" className="mt-3 border border-destructive/35 bg-destructive/10 p-3 text-xs text-destructive">{portraitError}</p>}</>}
           {step === 1 && <ClassesStep classes={classes} skillLevels={skillLevels} setSkillLvl={updateSkill} classLevels={classLevels} totalLevels={totalLevels} chosenCount={classesPayload.length} isNpc immersive onPreviewSkill={(skill: EvolutionSkill, className: string, level: number) => setEvolution({ skill, className, level })} />}
           {step === 2 && <NpcAttributes attributes={attributes} onChange={setAttributes} />}
+          {step === 2 && <div className="mt-5 space-y-3 rounded border border-primary/30 p-3"><p className="text-xs text-primary">Recursos na invocação (HP e MP)</p><div className="grid grid-cols-2 gap-3">{(["maxHp", "maxMp"] as const).map(key => <label key={key} className="text-xs">{key === "maxHp" ? "Vida máxima" : "Mana máxima"}<input type="number" min={key === "maxHp" ? 1 : 0} value={resourceOverride?.[key] ?? preview?.[key] ?? 0} onChange={event => {
+            const value = Number(event.target.value)
+            const base = resourceOverride ?? { hp: preview?.maxHp ?? 1, maxHp: preview?.maxHp ?? 1, mp: preview?.maxMp ?? 0, maxMp: preview?.maxMp ?? 0, ip: 6, maxIp: 6, xp: 0, fp: 0 }
+            setResourceOverride({ ...base, [key]: value, [key === "maxHp" ? "hp" : "mp"]: value })
+          }} className="mt-1 w-full border border-border/60 bg-background p-2" /></label>)}</div><Button variant="outline" size="sm" onClick={() => setResourceOverride(undefined)}>Recalcular pelas classes</Button></div>}
           {step === 3 && (selectedClasses.length ? <CreatorAffinityStep classes={selectedClasses} primary={selectedPrimary} secondary={selectedSecondary} onPrimary={setPrimary} onSecondary={setSecondary} /> : <div className="border border-dashed border-border/70 bg-card/30 p-5 text-sm leading-relaxed text-muted-foreground">Nenhuma classe com nível foi escolhida. Este NPC poderá permanecer sem afinidade e receberá dano neutro (1×). Você também pode voltar e distribuir níveis.</div>)}
           {step === 4 && <NpcSpecialAttacksStep attacks={specialAttacks} onChange={setSpecialAttacks} templates={existingAttackTemplates} />}
           {step === 5 && <EquipmentStep equipment={equipment} toggle={toggleEquipment} remaining={STARTING_ZENIT - spent} spent={spent} isNpc immersive extraEquipment={customEquipment} />}

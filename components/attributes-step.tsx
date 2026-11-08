@@ -71,7 +71,7 @@ const DETAILED_EXPLANATIONS: Record<AttributeKey, { title: string; text: string[
   }
 }
 
-const DIE_POINTS: Record<DieSize, number> = { d6: 1, d8: 2, d10: 3, d12: 4 }
+const DIE_POINTS: Record<DieSize, number> = { d4: 0, d6: 1, d8: 2, d10: 3, d12: 4, d14: 5, d16: 6, d18: 7, d20: 8 }
 const POINTS_TO_DIE: Record<number, DieSize> = { 1: "d6", 2: "d8", 3: "d10", 4: "d12" }
 
 interface Props {

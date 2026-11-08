@@ -2,7 +2,7 @@
 
 import { ImagePlus, Images, Link2, Plus, Sparkles, Trash2, Check, AlertCircle, ArrowUpRight } from "lucide-react"
 import { createClientId } from "@/lib/client-id"
-import { MAX_ALTERNATE_PORTRAITS, MAX_CHARACTER_PORTRAITS, publicPortraitUrl, type AlternatePortrait } from "@/lib/portrait-gallery"
+import { MAX_ALTERNATE_PORTRAITS, MAX_CHARACTER_PORTRAITS, validPortraitImage as publicPortraitUrl, type AlternatePortrait } from "@/lib/portrait-gallery"
 
 type Props = {
   avatarUrl: string

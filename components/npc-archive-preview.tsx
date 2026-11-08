@@ -11,6 +11,7 @@ import { ELEMENT_NAMES, availableClassElements, classElement, readElementalSelec
 import type { Character } from "@/lib/types"
 import type { NPCDraft } from "./character-sheet"
 import { playerAttackCheckLabel, playerAttackDefenseLabel } from "@/lib/player-special-attacks"
+import { npcAttackDescription, readNpcExtraDice } from "@/lib/npc-special-dice"
 
 type Gear = { id: string; name: string; detail?: string; cost?: number; category?: string }
 type Props = { npc: NPCDraft; classes: GameClass[]; customEquipment?: Gear[] }
@@ -51,7 +52,7 @@ export function NpcArchivePreview({ npc, classes, customEquipment = [] }: Props)
     ...savedGallery.filter(item => !!item && typeof item.url === "string"),
   ]
   const activePortrait = gallery[Math.min(activeImage, gallery.length - 1)] || gallery[0]
-  const resources = snapshot?.resources
+  const resources = npc.resources ?? snapshot?.resources
   const effects = Array.isArray(extended?.customModifiers) ? extended.customModifiers as Array<Record<string, unknown>> : []
   const customItems = Array.isArray(snapshot?.customItems) ? snapshot.customItems : []
   const worn = snapshot as unknown as Record<string, unknown> | undefined
@@ -77,7 +78,7 @@ export function NpcArchivePreview({ npc, classes, customEquipment = [] }: Props)
           <span className="absolute bottom-3 left-3 rounded-md border border-primary/25 bg-background/85 px-2 py-1 text-[10px] font-bold text-primary">{activePortrait.label}</span>
         </div>
         <div className="relative flex min-w-0 flex-col justify-between gap-4 p-5 sm:p-6">
-          <div><div className="mb-2 flex flex-wrap items-center gap-2"><span className="text-[10px] font-black uppercase tracking-[.2em] text-primary">{isArchived ? "Ficha integral arquivada" : "Criado no Berçário"}</span><span className={tag}>{npcClasses.reduce((n, cls) => n + cls.level, 0)} níveis</span></div><h2 className="break-words font-serif text-3xl font-black leading-tight sm:text-4xl">{npc.name}</h2><p className="mt-2 text-sm italic leading-relaxed text-muted-foreground">{npc.identity || npc.origin || "Sem identidade definida"}</p></div>
+          <div><div className="mb-2 flex flex-wrap items-center gap-2"><span className="text-[10px] font-black uppercase tracking-[.2em] text-primary">{isArchived ? "Ficha integral arquivada" : "Criado no Berçário"}</span><span className={tag}>Nv. {npc.npcLevel ?? Math.max(1, npcClasses.reduce((n, cls) => n + cls.level, 0))}</span></div><h2 className="break-words font-serif text-3xl font-black leading-tight sm:text-4xl">{npc.name}</h2><p className="mt-2 text-sm italic leading-relaxed text-muted-foreground">{npc.identity || npc.origin || "Sem identidade definida"}</p></div>
           <div className="flex flex-wrap gap-1.5">{activeClasses.map(cls => <span key={cls.classId} className={tag}>{cls.definition?.name || cls.classId} · Nv. {cls.level}</span>)}{activeClasses.length === 0 && <span className={nil}>Nenhuma classe associada</span>}</div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><Images className="size-4 text-primary" /> {gallery.length} retrato(s) <span className="mx-1 text-border">•</span> {npcEquipment.length} itens <span className="mx-1 text-border">•</span> {assignedSkills.length} perícias <span className="mx-1 text-border">•</span> {specialAttacks.length} golpes especiais</div>
           {gallery.length > 1 && <div className="flex flex-wrap gap-2" aria-label="Retratos arquivados">{gallery.map((portrait, i) => <button key={portrait.id || i} type="button" onClick={() => setActiveImage(i)} aria-pressed={i === activeImage} title={portrait.label} className={`size-11 overflow-hidden border p-0.5 ${i === activeImage ? "border-primary bg-primary/20" : "border-border/70 hover:border-primary/50"}`}>{getSafePhoto(portrait.url) ? <img src={portrait.url} alt={portrait.label} className="size-full object-cover" /> : <span className="text-xs text-muted-foreground">{i + 1}</span>}</button>)}</div>}
@@ -85,7 +86,7 @@ export function NpcArchivePreview({ npc, classes, customEquipment = [] }: Props)
       </div>
     </div>
 
-    {isArchived ? <section className={panel}><h3 className={panelTitle}><Heart className="size-4" /> Recursos no instante do arquivamento</h3><div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+    {resources ? <section className={panel}><h3 className={panelTitle}><Heart className="size-4" /> Recursos preservados para invocação</h3><div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
       <ResourceTile label="HP" value={`${resources?.hp ?? "—"}/${resources?.maxHp ?? "—"}`} tone="text-[color:var(--hp)]" />
       <ResourceTile label="MP" value={`${resources?.mp ?? "—"}/${resources?.maxMp ?? "—"}`} tone="text-[color:var(--mp)]" />
       <ResourceTile label="IP" value={`${resources?.ip ?? "—"}/${resources?.maxIp ?? "—"}`} tone="text-[color:var(--ip)]" />
@@ -109,7 +110,9 @@ export function NpcArchivePreview({ npc, classes, customEquipment = [] }: Props)
         const target = attack.targetDefense === "magical" || attack.targetDefense === "physical" ? attack.targetDefense : null
         const image = typeof attack.previewImageUrl === "string" ? attack.previewImageUrl : ""
         const formula = Array.isArray(attack.attributes) ? attack.attributes.join(" + ").toUpperCase() : ""
-        const description = typeof special.description === "string" ? special.description : typeof attack.description === "string" ? attack.description : ""
+        const rawDescription = typeof special.description === "string" ? special.description : typeof attack.description === "string" ? attack.description : ""
+        const description = npcAttackDescription(rawDescription)
+        const extraDice = readNpcExtraDice(rawDescription)
         return <article key={String(special.id || index)} className="min-w-0 overflow-hidden rounded-lg border border-primary/20 bg-background/55">
           {image && getSafePhoto(image) && <div className="relative h-36 overflow-hidden border-b border-primary/20 bg-black/45"><img src={image} alt={`Ilustração do golpe ${name}`} className="size-full object-contain" /></div>}
           <div className="space-y-2 p-3">
@@ -117,6 +120,7 @@ export function NpcArchivePreview({ npc, classes, customEquipment = [] }: Props)
             {target ? <><p className="text-[11px] font-semibold text-primary">{playerAttackDefenseLabel(target)}</p><p className="text-[10px] text-muted-foreground">Teste de acerto: {playerAttackCheckLabel(target)}</p></> : null}
             {attack.damage != null && <p className="text-xs font-semibold text-primary">Dano: {String(attack.damage)} {formula && `· ${formula}`}</p>}
             {description && <p className="whitespace-pre-wrap break-words text-[11px] leading-relaxed text-muted-foreground">{description}</p>}
+            {extraDice.length > 0 && <p className="text-[11px] text-primary">Dados extras: {extraDice.join(" + ").toUpperCase()}</p>}
             {image && Number(attack.previewDurationSeconds) > 0 && <p className="text-[10px] text-muted-foreground">Imagem exibida por {Number(attack.previewDurationSeconds)} segundo(s) ao usar o golpe.</p>}
           </div>
         </article>
