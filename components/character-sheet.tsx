@@ -38,6 +38,9 @@ import { crisisBlocksRoll, crisisModifierLabel, crisisRollModifier, type CrisisE
 import { activeClassBookModifiers, isExpiredClassBookModifier } from "@/lib/class-books"
 import { createClientId } from "@/lib/client-id"
 import { InventoryEquipment, ItemDamageShelf, WornEquipmentSummary } from "./inventory-equipment"
+import { EquipmentMannequin } from "./equipment-mannequin"
+import { MannequinInventoryPositions } from "./mannequin-inventory-positions"
+import { mannequinItems, type MannequinItem } from "@/lib/equipment-mannequin"
 import {
   equippedItemBonuses,
   isItemState,
@@ -93,6 +96,7 @@ import {
   Heart,
   Zap,
   Backpack,
+  PersonStanding,
   Sparkles,
   Minus,
   Plus,
@@ -2002,6 +2006,9 @@ export function CharacterSheet({
   const [skillSaveSuccess, setSkillSaveSuccess] = useState<string | null>(null)
   const skillWriteRef = useRef(false)
   const [showInventory, setShowInventory] = useState(false)
+  const [showMannequin, setShowMannequin] = useState(false)
+  const [mannequinFocusedItem, setMannequinFocusedItem] = useState<MannequinItem | null>(null)
+  const inventoryListRef = useRef<HTMLDivElement | null>(null)
   const [showStore, setShowStore] = useState(false)
   const [showCrisisDetails, setShowCrisisDetails] = useState(false)
   const [selectedCrisisEffectId, setSelectedCrisisEffectId] = useState("")
@@ -2221,6 +2228,33 @@ export function CharacterSheet({
     onClearInventoryRequest?.()
   }, [shouldOpenInventory, onClearInventoryRequest, canExpand])
 
+  // "Ver na mochila" abre a mochila e tenta posicionar a rolagem na peça exata.
+  // O componente legado não oferece prop focusItemId: o aviso selecionado é sempre
+  // mostrado, inclusive quando duas cópias têm a mesma etiqueta no inventário.
+  useEffect(() => {
+    if (!showInventory || !mannequinFocusedItem) return
+    const root = inventoryListRef.current
+    if (!root) return
+    let highlighted: HTMLElement | null = null
+    const find = () => {
+      const item = mannequinFocusedItem
+      const byId = Array.from(root.querySelectorAll<HTMLElement>("[data-item-id]"))
+        .find(element => element.dataset.itemId === item.itemId)
+      const labels = Array.from(root.querySelectorAll<HTMLElement>("button, strong, h3, h4, span, p"))
+      const label = labels.find(element => element.textContent?.trim() === item.name)
+      const target = byId || label?.closest<HTMLElement>("article, li, [data-item-id], [data-equipment-id], button") || label
+      if (!target || target === highlighted) return
+      if (highlighted) highlighted.removeAttribute("data-mannequin-focused")
+      highlighted = target
+      target.setAttribute("data-mannequin-focused", "true")
+      target.scrollIntoView({ block: "center", behavior: "smooth" })
+    }
+    find()
+    const observer = new MutationObserver(find)
+    observer.observe(root, { childList: true, subtree: true })
+    return () => { observer.disconnect(); highlighted?.removeAttribute("data-mannequin-focused") }
+  }, [showInventory, mannequinFocusedItem])
+
   const totalXp = displayResources?.xp || 0
   const { charLevel: xpBudgetLevel, currentLevelXp, xpRequired } = getLevelInfo(totalXp)
   const npcOwned = character.isNpc || campaignMembers.some((member: Member) => member.userId === character.ownerId && member.role === "gm")
@@ -2231,6 +2265,13 @@ export function CharacterSheet({
       (base) => !customEquipment.some((item: any) => item.id === base.id),
     ),
   ]
+  // Fonte visual: somente ocorrências de equipamentos que a mochila considera em uso.
+  // Duplicatas recebem chaves próprias; nenhuma regra de bônus muda no Manequim.
+  const mannequinEquippedItems = useMemo(
+    () => mannequinItems(character, itemCatalog),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [character, customEquipment],
+  )
   const activeItemBonuses = equippedItemBonuses(character, itemCatalog)
   const resolvedItemStats = itemResolvedStats(character, itemCatalog, modifierClock || Date.now())
   const compactDefenses = showCompactDefenses
@@ -3660,6 +3701,22 @@ export function CharacterSheet({
               getEquipment={getEquipment}
             />
 
+            {showMannequin && (
+              <EquipmentMannequin
+                key={character.id}
+                characterId={character.id}
+                characterName={character.name}
+                items={mannequinEquippedItems}
+                editable={editable || isGm}
+                onClose={() => setShowMannequin(false)}
+                onOpenInventory={(item) => {
+                  setMannequinFocusedItem(item)
+                  setShowMannequin(false)
+                  setShowInventory(true)
+                }}
+              />
+            )}
+
             {/* Demais modais seguem em ordem: Inventory, ViewingItem, Transfer, Archive, Gallery, Lore... */}
             <AnimatePresence>
               {showInventory && (
@@ -3676,6 +3733,7 @@ export function CharacterSheet({
                     className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden border border-primary/30 bg-zinc-950 shadow-2xl"
                     onClick={(event) => event.stopPropagation()}
                   >
+                    <style>{`[data-mannequin-focused="true"] { outline: 2px solid var(--primary, #d5a45d); outline-offset: 3px; border-radius: 9px; }`}</style>
                     <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/40 shrink-0">
                       <h4 className="font-serif text-2xl md:text-3xl font-black text-[#eee3cf] flex items-center gap-3">
                         <Package className="size-6 text-primary md:size-8" />{" "}
@@ -3688,8 +3746,14 @@ export function CharacterSheet({
                         <X className="size-5 md:size-6 text-muted-foreground hover:text-white" />
                       </button>
                     </div>
+                    {mannequinFocusedItem && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/35 bg-primary/10 px-5 py-3 text-xs text-foreground">
+                        <span className="font-semibold"><PersonStanding className="mr-2 inline size-4 text-primary"/>Do Manequim: <span className="text-primary">{mannequinFocusedItem.name}</span></span>
+                        <button type="button" onClick={() => setMannequinFocusedItem(null)} className="font-bold text-primary hover:underline">Limpar foco</button>
+                      </div>
+                    )}
                     <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6 custom-scrollbar-sepia">
-                      <section className="flex-1 space-y-4">
+                      <section ref={inventoryListRef} className="flex-1 space-y-4">
                         <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground border-b border-white/10 pb-2">
                           Equipamento Atual
                         </h5>
@@ -3860,6 +3924,15 @@ export function CharacterSheet({
                           )}
                         </div>
                         <WornEquipmentSummary character={character} catalog={itemCatalog} />
+                        <MannequinInventoryPositions
+                          characterId={character.id}
+                          items={mannequinEquippedItems}
+                          onOpenMannequin={() => {
+                            setMannequinFocusedItem(null)
+                            setShowInventory(false)
+                            setShowMannequin(true)
+                          }}
+                        />
                       </section>
                     </div>
                   </motion.div>
@@ -5116,12 +5189,12 @@ export function CharacterSheet({
                         </div>
                       </div>
 
-                      <div className="w-full flex gap-2">
+                      <div className="flex w-full flex-wrap gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1 h-auto py-2.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors"
-                          onClick={() => setShowInventory(true)}
+                          className="min-w-[115px] flex-1 h-auto py-2.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors"
+                          onClick={() => { setMannequinFocusedItem(null); setShowInventory(true) }}
                         >
                           <Package className="size-4 mr-2 shrink-0" />{" "}
                           <span className="text-[#eee3cf]">Mochila</span>
@@ -5130,7 +5203,17 @@ export function CharacterSheet({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1 h-auto py-2.5 border-accent/30 bg-accent/5 text-accent hover:bg-accent/20 hover:border-accent/50 transition-colors"
+                          className="min-w-[115px] flex-1 h-auto py-2.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors"
+                          onClick={() => setShowMannequin(true)}
+                        >
+                          <PersonStanding className="mr-2 size-4 shrink-0" />
+                          <span className="text-foreground">Manequim</span>
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="min-w-[115px] flex-1 h-auto py-2.5 border-accent/30 bg-accent/5 text-accent hover:bg-accent/20 hover:border-accent/50 transition-colors"
                           onClick={() => setShowStore(true)}
                         >
                           <Store className="size-4 mr-2 shrink-0" />{" "}
@@ -5140,7 +5223,7 @@ export function CharacterSheet({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1 h-auto py-2.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors"
+                          className="min-w-[115px] flex-1 h-auto py-2.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors"
                           onClick={() => setShowBondsModal(true)}
                         >
                           <Link2 className="size-4 mr-2 shrink-0" />{" "}
