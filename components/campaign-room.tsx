@@ -50,6 +50,10 @@ import {
   GmDifficultyGuide,
   type DiceRollResult,
 } from "@/components/gm-difficulty-guide"
+import {
+  DEFAULT_DIFFICULTY_SETTINGS, readDifficultySettings, dicePoolFromEvent,
+  type DifficultySettings,
+} from "@/lib/dynamic-difficulty"
 
 import { GmBestiary } from "./gm-bestiary"
 import { GmPanel } from "./gm-panel"
@@ -570,10 +574,99 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   // Painel de Loot (GmPanel)
   const [showGmPanel, setShowGmPanel] = useState(false)
 
+  // Dificuldade adaptativa: a API autenticada do MongoDB é a única fonte de verdade.
+  // O registro de rolagem recebe um snapshot desses valores: edições do Mestre
+  // aplicam-se nas próximas rolagens e não reclassificam testes anteriores.
+  const [difficultySettings, setDifficultySettings] = useState<DifficultySettings>({ ...DEFAULT_DIFFICULTY_SETTINGS })
+  const [difficultyRevision, setDifficultyRevision] = useState(0)
+  const [difficultyLoading, setDifficultyLoading] = useState(true)
+  const [difficultyError, setDifficultyError] = useState("")
+  const difficultySettingsRef = useRef<DifficultySettings>({ ...DEFAULT_DIFFICULTY_SETTINGS })
+  const difficultyRevisionRef = useRef(0)
+  const difficultyLoadedRef = useRef(false)
+  const difficultyRequestVersion = useRef(0)
+  const refreshDifficultySettings = useCallback(async () => {
+    const version = ++difficultyRequestVersion.current
+    try {
+      const answer = await apiFetch<{ success: boolean; settings: DifficultySettings; revision: number }>(
+        `/api/campaigns/${encodeURIComponent(data.campaign.id)}/difficulty`, { cache: "no-store" },
+      )
+      if (version !== difficultyRequestVersion.current) return
+      if (answer.success !== true || !Number.isSafeInteger(answer.revision))
+        throw new Error("A API não confirmou a configuração de dificuldade.")
+      const received = readDifficultySettings(answer.settings)
+      if (answer.revision < difficultyRevisionRef.current) return
+      difficultySettingsRef.current = received
+      difficultyRevisionRef.current = answer.revision
+      difficultyLoadedRef.current = true
+      setDifficultySettings(received)
+      setDifficultyRevision(answer.revision)
+      setDifficultyError("")
+    } catch (error) {
+      if (version === difficultyRequestVersion.current) {
+        setDifficultyError(error instanceof Error ? error.message : "Não foi possível sincronizar a dificuldade.")
+      }
+      throw error
+    } finally {
+      if (version === difficultyRequestVersion.current) setDifficultyLoading(false)
+    }
+  }, [data.campaign.id])
+  useEffect(() => {
+    difficultySettingsRef.current = { ...DEFAULT_DIFFICULTY_SETTINGS }
+    difficultyRevisionRef.current = 0
+    difficultyLoadedRef.current = false
+    setDifficultySettings({ ...DEFAULT_DIFFICULTY_SETTINGS })
+    setDifficultyRevision(0)
+    setDifficultyLoading(true)
+    setDifficultyError("")
+    void refreshDifficultySettings().catch(() => undefined)
+    const check = () => { if (document.visibilityState === "visible") void refreshDifficultySettings().catch(() => undefined) }
+    const timer = window.setInterval(check, 15_000)
+    window.addEventListener("focus", check)
+    return () => { ++difficultyRequestVersion.current; window.clearInterval(timer); window.removeEventListener("focus", check) }
+  }, [refreshDifficultySettings])
+  const saveDifficultySettings = useCallback(async (requested: DifficultySettings) => {
+    if (data.role !== "gm") throw new Error("Somente o Mestre pode alterar os parâmetros.")
+    if (!difficultyLoadedRef.current) throw new Error("Aguarde a sincronização das configurações.")
+    // Invalida consultas iniciadas antes deste salvamento; a revisão é atômica.
+    ++difficultyRequestVersion.current
+    const result = await apiFetch<{ success: boolean; settings: DifficultySettings; revision: number }>(
+      `/api/campaigns/${encodeURIComponent(data.campaign.id)}/difficulty`, {
+        method: "PUT",
+        body: JSON.stringify({ expectedRevision: difficultyRevisionRef.current, settings: requested }),
+      },
+    ).catch(async error => {
+      await refreshDifficultySettings().catch(() => undefined)
+      throw error
+    })
+    if (result.success !== true || !Number.isSafeInteger(result.revision))
+      throw new Error("O MongoDB não confirmou os novos parâmetros.")
+    const confirmed = readDifficultySettings(result.settings)
+    difficultySettingsRef.current = confirmed
+    difficultyRevisionRef.current = result.revision
+    difficultyLoadedRef.current = true
+    setDifficultySettings(confirmed)
+    setDifficultyRevision(result.revision)
+    setDifficultyError("")
+    setDifficultyLoading(false)
+  }, [data.campaign.id, data.role, refreshDifficultySettings])
+
   // ESTADO DA ÚLTIMA ROLAGEM LIDA PARA O MESTRE
   const [latestDiceRoll, setLatestDiceRoll] = useState<DiceRollResult | null>(
     null,
   )
+  // A visão do jogador acompanha apenas as próprias fichas, não a última
+  // rolagem pública de outro integrante da mesa.
+  const [latestPlayerDiceRoll, setLatestPlayerDiceRoll] = useState<DiceRollResult | null>(null)
+  const ownDiceCharactersRef = useRef({ ids: new Set<string>(), names: new Set<string>() })
+  ownDiceCharactersRef.current = {
+    ids: new Set(characters.filter(c => c.ownerId === data.me.id).map(c => c.id)),
+    names: new Set(characters.filter(c => c.ownerId === data.me.id).map(c => c.name)),
+  }
+  useEffect(() => {
+    setLatestDiceRoll(null)
+    setLatestPlayerDiceRoll(null)
+  }, [data.campaign.id, data.me.id])
 
   // Criador de Itens Úteis (Handouts)
   const [itemNotification, setItemNotification] = useState<string | null>(null)
@@ -1979,6 +2072,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         void refreshPlayerAttackPreviews().catch(console.error)
         return
       }
+      if (event.type === "difficulty:settings:updated") {
+        void refreshDifficultySettings().catch(() => undefined)
+        return
+      }
       if (event.type === "custom-checks:updated") {
         void refreshCustomChecks().catch(console.error)
         return
@@ -2444,13 +2541,33 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         // Mensagens e descrições nunca são exibidas no painel numérico de dados.
         if (hasNumericResult && !isItemUse && !event.replay) {
           playDiceRollSound(effectsVolumeRef.current)
-          const diceMatches = [...attr.matchAll(/(\d*)d(\d+)/gi)]
-          const diceCount =
-            diceMatches.reduce(
-              (sum, match) => sum + Number(match[1] || 1),
-              0,
-            ) || 2
-          setLatestDiceRoll({ diceCount, result: numericResult, id: effectId })
+          // O Guia necessita das faces reais. Não usar fallback 2d8 quando
+          // a rolagem não informa os dados: isso fabricaria uma dificuldade.
+          const diceSides = dicePoolFromEvent({
+            attribute: attr,
+            dice: event.dice,
+            breakdown: event.breakdown,
+          })
+          const rollForGuide: DiceRollResult = {
+            id: effectId,
+            diceCount: diceSides.length,
+            diceSides,
+            result: numericResult, // total publicado JÁ inclui bônus e penalidades
+            characterName: String(event.characterName || "Rolagem"),
+            playerName: String(event.playerName || ""),
+            attribute: cleanAttribute,
+            // Uma rolagem guarda os parâmetros que estavam confirmados ao recebê-la.
+            ...(difficultyLoadedRef.current ? { difficultySettings: { ...difficultySettingsRef.current } } : {}),
+          }
+          setLatestDiceRoll(rollForGuide)
+          const claimedCharacterId = typeof event.rollContext?.characterId === "string"
+            ? event.rollContext.characterId : String(event.characterId || "")
+          const owned = ownDiceCharactersRef.current
+          const fromMyCharacter = owned.ids.has(claimedCharacterId) ||
+            ((claimedCharacterId === "sys" || !claimedCharacterId) &&
+              owned.names.has(String(event.characterName || "")) &&
+              String(event.playerName || "") === data.me.name)
+          if (fromMyCharacter) setLatestPlayerDiceRoll(rollForGuide)
           const presentation: DicePresentation = {
             id: effectId,
             characterName: event.characterName || "Rolagem",
@@ -2586,7 +2703,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         }
       })
     },
-    [data.campaign.id, data.me.id, data.role, refreshGallery, refreshSounds, refreshMaps, combatController.refresh, refreshOwnedInventory, refreshCustomChecks, refreshPlayerAttackPreviews],
+    [data.campaign.id, data.me.id, data.role, refreshGallery, refreshSounds, refreshMaps, combatController.refresh, refreshOwnedInventory, refreshCustomChecks, refreshPlayerAttackPreviews, refreshDifficultySettings],
   )
 
   useEffect(() => {
@@ -5980,7 +6097,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     </div>
                   </div>
 
-                  <GmDifficultyGuide latestRoll={latestDiceRoll} />
+                  <GmDifficultyGuide latestRoll={latestDiceRoll} viewer="gm"
+                    settings={difficultySettings} settingsRevision={difficultyRevision}
+                    settingsLoading={difficultyLoading} settingsError={difficultyError}
+                    onSaveSettings={saveDifficultySettings} />
 
                   {/* Clima Dinâmico */}
                   <div className="rpg-gm-section mt-4 pt-4">
@@ -6118,6 +6238,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 </div>
               </div>
             )}
+
+            {!isGm && <GmDifficultyGuide latestRoll={latestPlayerDiceRoll} viewer="player"
+              settings={difficultySettings} settingsRevision={difficultyRevision}
+              settingsLoading={difficultyLoading} settingsError={difficultyError} />}
 
             <div className="rpg-cartography rpg-history-panel flex min-h-[300px] flex-1 flex-col overflow-hidden">
               <div className="rpg-history-heading shrink-0 p-4">
