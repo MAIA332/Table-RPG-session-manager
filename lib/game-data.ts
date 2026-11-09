@@ -1209,12 +1209,23 @@ export const CLASSES: GameClass[] = [
         name: "Forma Monstruosa",
         maxLevel: 1,
         description:
-          "Uma vez por cena, gaste 20 PM para assumir sua forma monstruosa por 3 rodadas ou uma cena livre. Você recebe +2 de Precisão, +2 de Defesa e causa +10 de dano em ataques físicos. Ao terminar, fica Enfraquecido.",
-        // Rodadas/cenas não têm duração fixa em segundos. O jogador encerra
-        // manualmente a forma no momento correto, disparando Enfraquecido.
-        action: { cost: 20, resource: "mp",
-          checkBonuses: [{ target: "Precisão", value: 2 }],
-          aftermath: { name: "Enfraquecido", trigger: "end", target: "all", value: 0, durationSeconds: null },
+          "Uma vez por cena, gaste 20 PM para assumir sua forma monstruosa por 10 minutos. Durante a transformação, você recebe +2 de Precisão, +2 de Defesa e causa +10 de dano em ataques físicos. Ao término dos 10 minutos, fica Enfraquecido até que o Mestre remova a condição.",
+        action: {
+          cost: 20,
+          resource: "mp",
+          durationSeconds: 600, // 10 minutos; o revés só começa ao terminar.
+          checkBonuses: [
+            { target: "Precisão", value: 2 },
+            { target: "Defesa", value: 2 },
+            { target: "Dano Físico", value: 10 },
+          ],
+          aftermath: {
+            name: "Enfraquecido",
+            trigger: "end",
+            target: "all",
+            value: 0,
+            durationSeconds: null, // Permanente até remoção manual pelo Mestre.
+          },
         },
       },
     ],
