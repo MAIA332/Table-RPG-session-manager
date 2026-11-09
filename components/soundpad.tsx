@@ -13,7 +13,7 @@ import {
 import { createClientId } from "@/lib/client-id"
 import { musicSource } from "@/lib/music-sources"
 import {
-  readPendingFolders, readPendingHotkeys, savePendingPreference,
+  readPendingFolderRecord, readPendingHotkeyRecord, savePendingPreference,
   clearPendingPreferenceIfMatches,
 } from "@/lib/soundpad-local"
 import {
@@ -75,34 +75,42 @@ function samePreference(kind: SoundPreferenceKind, received: unknown, expected: 
   return JSON.stringify(normalize(received)) === JSON.stringify(normalize(expected))
 }
 
+/** O servidor MongoDB devolve revisões independentes para pastas e atalhos. */
+function readRevision(payload: any, kind: SoundPreferenceKind): number {
+  const value = payload?.revisions?.[kind]
+  return Number.isSafeInteger(value) && value >= 0 ? value : 0
+}
+
 /**
- * Se a resposta do POST falhar depois de uma gravação concluída, verifica no GET
- * o dado efetivamente persistido. Nunca usa localStorage como prova de sucesso.
+ * A resposta do POST pode ser perdida depois do commit. Verificamos o GET
+ * autoritativo do MongoDB, e nunca tratamos um backup local como confirmação.
  */
 async function saveConfirmedPreference(
-  endpoint: string,
-  kind: SoundPreferenceKind,
-  value: SoundFolder[] | SoundHotkey[],
-): Promise<void> {
+  endpoint: string, kind: SoundPreferenceKind,
+  value: SoundFolder[] | SoundHotkey[], expectedRevision: number,
+): Promise<number> {
   let originalError: unknown
   try {
-    const result = await postJson(endpoint, { [kind]: value })
-    if (result?.success === true && Array.isArray(result[kind]) && samePreference(kind, result[kind], value)) return
-    throw new Error("O servidor não confirmou os dados gravados.")
-  } catch (error) {
-    originalError = error
-  }
+    const result = await postJson(endpoint, { [kind]: value, expectedRevision })
+    if (result?.success === true && result?.source === "mongodb" &&
+        Array.isArray(result[kind]) && samePreference(kind, result[kind], value)) {
+      return readRevision(result, kind)
+    }
+    throw new Error("O MongoDB não confirmou as preferências sonoras.")
+  } catch (error) { originalError = error }
 
-  // Resposta de erro não implica necessariamente que o arquivo deixou de ser gravado.
   try {
     const response = await fetch(endpoint, { cache: "no-store" })
     if (response.ok) {
       const result = await response.json()
       const storedKind = kind === "soundFolders" ? "folders" : "hotkeys"
-      if (result?.success === true && result?.stored?.[storedKind] === true &&
-          Array.isArray(result[kind]) && samePreference(kind, result[kind], value)) return
+      if (result?.success === true && result?.source === "mongodb" &&
+          result?.stored?.[storedKind] === true && Array.isArray(result[kind]) &&
+          samePreference(kind, result[kind], value)) {
+        return readRevision(result, kind)
+      }
     }
-  } catch { /* Conservar o erro original do POST. */ }
+  } catch { /* Preservar o erro original. */ }
   throw originalError
 }
 
@@ -146,11 +154,12 @@ export function Soundpad({
   const foldersRef = useRef<SoundFolder[]>([])
   const hotkeysRef = useRef<SoundHotkey[]>([])
   const stateQueue = useRef<Promise<void>>(Promise.resolve())
+  const revisionsRef = useRef<Record<SoundPreferenceKind, number>>({ soundFolders: 0, soundHotkeys: 0 })
+  const [localConflict, setLocalConflict] = useState(false)
 
   const allTracks = useMemo(() => [...SOUND_LIBRARY, ...customTracks], [customTracks])
   const trackMap = useMemo(() => new Map(allTracks.map(track => [track.id, track])), [allTracks])
   const soundEndpoint = `/api/campaigns/${encodeURIComponent(campaignId)}/sound`
-  const stateEndpoint = `/api/campaigns/${encodeURIComponent(campaignId)}/state`
   const preferencesEndpoint = `/api/campaigns/${encodeURIComponent(campaignId)}/sound/preferences`
 
   useEffect(() => {
@@ -158,72 +167,74 @@ export function Soundpad({
     const abort = new AbortController()
     setLoaded(false)
     setPendingWrites(0)
+    setLocalConflict(false)
     setError("")
     setFolders([])
     setHotkeys([])
     foldersRef.current = []
     hotkeysRef.current = []
+    revisionsRef.current = { soundFolders: 0, soundHotkeys: 0 }
     setActiveFolder("all")
     setSelectedPlaylistId(null)
     if (!isGm) return () => { abort.abort(); generation.current++ }
 
-    // A rota /sound/preferences devolve também os dados legados de /state
-    // quando ainda não existe arquivo. Só buscar /state se aquela rota falhar.
     void Promise.all([
-      fetch(preferencesEndpoint, { cache: "no-store", signal: abort.signal }).catch(() => null),
+      fetch(preferencesEndpoint, { cache: "no-store", signal: abort.signal }),
       fetch(soundEndpoint, { cache: "no-store", signal: abort.signal }),
     ]).then(async ([preferencesResponse, soundResponse]) => {
-      const soundData = await soundResponse.json()
+      const soundData = await soundResponse.json().catch(() => ({}))
       if (!soundResponse.ok) throw new Error(soundData.error || "Não foi possível obter os recursos de áudio.")
-      const preferences = preferencesResponse?.ok ? await preferencesResponse.json().catch(() => null) : null
-      let legacy: { state?: { soundFolders?: unknown; soundHotkeys?: unknown } } | null = null
-      if (!preferences?.success || (
-        preferences.legacyIncluded !== true &&
-        (preferences.stored?.folders !== true || preferences.stored?.hotkeys !== true)
-      )) {
-        const stateResponse = await fetch(stateEndpoint, { cache: "no-store", signal: abort.signal }).catch(() => null)
-        legacy = stateResponse?.ok ? await stateResponse.json().catch(() => null) : null
+      const preferences = await preferencesResponse.json().catch(() => null)
+      if (!preferencesResponse.ok || preferences?.success !== true || preferences?.source !== "mongodb") {
+        throw new Error(preferences?.error || "As configurações de áudio não foram confirmadas no MongoDB. Edite apenas quando a conexão estiver disponível.")
       }
       if (version !== generation.current || abort.signal.aborted) return
 
-      const storedFolders = preferences?.success && (preferences.legacyIncluded === true || preferences.stored?.folders === true)
-        ? normalizeSoundFolders(preferences.soundFolders)
-        : normalizeSoundFolders(legacy?.state?.soundFolders)
-      const storedKeys = preferences?.success && (preferences.legacyIncluded === true || preferences.stored?.hotkeys === true)
-        ? normalizeSoundHotkeys(preferences.soundHotkeys)
-        : normalizeSoundHotkeys(legacy?.state?.soundHotkeys)
+      const storedFolders = normalizeSoundFolders(preferences.soundFolders)
+      const storedKeys = normalizeSoundHotkeys(preferences.soundHotkeys)
+      const foldersRevision = readRevision(preferences, "soundFolders")
+      const hotkeysRevision = readRevision(preferences, "soundHotkeys")
+      revisionsRef.current = { soundFolders: foldersRevision, soundHotkeys: hotkeysRevision }
 
-      // Recupera alterações pendentes sem confundi-las com confirmação do servidor.
-      const pendingFolders = readPendingFolders(campaignId)
-      const pendingHotkeys = readPendingHotkeys(campaignId)
-      if (pendingFolders && preferences?.stored?.folders === true &&
-          samePreference("soundFolders", preferences.soundFolders, pendingFolders)) {
-        clearPendingPreferenceIfMatches(campaignId, "soundFolders", pendingFolders)
+      const pendingFolders = readPendingFolderRecord(campaignId)
+      const pendingHotkeys = readPendingHotkeyRecord(campaignId)
+      if (pendingFolders && samePreference("soundFolders", storedFolders, pendingFolders.value)) {
+        clearPendingPreferenceIfMatches(campaignId, "soundFolders", pendingFolders.value)
       }
-      if (pendingHotkeys && preferences?.stored?.hotkeys === true &&
-          samePreference("soundHotkeys", preferences.soundHotkeys, pendingHotkeys)) {
-        clearPendingPreferenceIfMatches(campaignId, "soundHotkeys", pendingHotkeys)
+      if (pendingHotkeys && samePreference("soundHotkeys", storedKeys, pendingHotkeys.value)) {
+        clearPendingPreferenceIfMatches(campaignId, "soundHotkeys", pendingHotkeys.value)
       }
-      const nextFolders = pendingFolders ?? storedFolders
-      const nextHotkeys = pendingHotkeys ?? storedKeys
+      const folderRecovery = !!pendingFolders &&
+        !samePreference("soundFolders", storedFolders, pendingFolders.value) &&
+        pendingFolders.baseRevision === foldersRevision
+      const keyRecovery = !!pendingHotkeys &&
+        !samePreference("soundHotkeys", storedKeys, pendingHotkeys.value) &&
+        pendingHotkeys.baseRevision === hotkeysRevision
+      const conflict = (!!pendingFolders &&
+        !samePreference("soundFolders", storedFolders, pendingFolders.value) && !folderRecovery) ||
+        (!!pendingHotkeys && !samePreference("soundHotkeys", storedKeys, pendingHotkeys.value) && !keyRecovery)
+      // Uma revisão diferente significa que o servidor recebeu mudanças mais
+      // recentes. Nunca substituí-las automaticamente por um backup antigo.
+      const nextFolders = folderRecovery ? pendingFolders!.value : storedFolders
+      const nextHotkeys = keyRecovery ? pendingHotkeys!.value : storedKeys
       foldersRef.current = nextFolders
       hotkeysRef.current = nextHotkeys
       setFolders(nextFolders)
       setHotkeys(nextHotkeys)
+      setLocalConflict(conflict)
       window.dispatchEvent(new CustomEvent("rpg:sound-hotkeys-updated", { detail: nextHotkeys }))
       setTargetingReady(soundData.capabilities?.targetedSound === true)
       setLoaded(true)
 
-      if (!preferences?.success) {
-        setError("O armazenamento de configurações do Soundpad não respondeu. As alterações ficarão salvas neste navegador até que o servidor esteja disponível.")
-      }
+      if (conflict) setError("Existe um backup local de outra revisão. A versão do MongoDB foi preservada. Escolha 'Resolver backup' para decidir se quer restaurá-lo.")
+      else if (folderRecovery || keyRecovery) setError("Há alterações locais ainda não confirmadas no MongoDB. Use 'Tentar salvar novamente' para sincronizar.")
     }).catch(err => {
       if (version === generation.current && !abort.signal.aborted) {
         setError(errorMessage(err, "Erro ao carregar o arquivo sonoro."))
       }
     })
     return () => { abort.abort(); generation.current++ }
-  }, [preferencesEndpoint, stateEndpoint, soundEndpoint, campaignId, isGm, reload])
+  }, [preferencesEndpoint, soundEndpoint, campaignId, isGm, reload])
 
   const canPlay = isGm && loaded && (!targetUserId || (targetingReady && players.some(p => p.userId === targetUserId)))
   const isSaving = pendingWrites > 0
@@ -239,18 +250,23 @@ export function Soundpad({
 
   // Filas independentes por recurso: uma atualização de atalhos não apaga pastas,
   // e várias edições rápidas da mesma playlist são gravadas na ordem correta.
-  async function persistFolders(next: SoundFolder[]): Promise<boolean> {
+  async function persistFolders(next: SoundFolder[], recovering = false): Promise<boolean> {
     if (!isGm || !loaded) return false
+    if (localConflict && !recovering) {
+      setError("Resolva ou descarte o backup local antes de editar; seus dados não foram alterados.")
+      return false
+    }
     foldersRef.current = next
     setFolders(next)
-    savePendingPreference(campaignId, "soundFolders", next)
+    savePendingPreference(campaignId, "soundFolders", next, revisionsRef.current.soundFolders)
     setPendingWrites(v => v + 1)
     const version = generation.current
     const job = stateQueue.current.then(async () => {
       if (version !== generation.current) return false
       // Ignorar versões intermediárias substituídas enquanto aguardavam a fila.
       if (next !== foldersRef.current) return false
-      await saveConfirmedPreference(preferencesEndpoint, "soundFolders", next)
+      const revision = await saveConfirmedPreference(preferencesEndpoint, "soundFolders", next, revisionsRef.current.soundFolders)
+      revisionsRef.current.soundFolders = revision
       clearPendingPreferenceIfMatches(campaignId, "soundFolders", next)
       return true
     })
@@ -267,11 +283,15 @@ export function Soundpad({
     }
   }
 
-  async function persistHotkeys(next: SoundHotkey[]): Promise<boolean> {
+  async function persistHotkeys(next: SoundHotkey[], recovering = false): Promise<boolean> {
     if (!isGm || !loaded) return false
+    if (localConflict && !recovering) {
+      setError("Resolva ou descarte o backup local antes de editar; seus dados não foram alterados.")
+      return false
+    }
     hotkeysRef.current = next
     setHotkeys(next)
-    savePendingPreference(campaignId, "soundHotkeys", next)
+    savePendingPreference(campaignId, "soundHotkeys", next, revisionsRef.current.soundHotkeys)
     // Atualizar o motor de reprodução de imediato (mesmo se o servidor falhar).
     window.dispatchEvent(new CustomEvent("rpg:sound-hotkeys-updated", { detail: next }))
     setPendingWrites(v => v + 1)
@@ -279,7 +299,8 @@ export function Soundpad({
     const job = stateQueue.current.then(async () => {
       if (version !== generation.current) return false
       if (next !== hotkeysRef.current) return false
-      await saveConfirmedPreference(preferencesEndpoint, "soundHotkeys", next)
+      const revision = await saveConfirmedPreference(preferencesEndpoint, "soundHotkeys", next, revisionsRef.current.soundHotkeys)
+      revisionsRef.current.soundHotkeys = revision
       clearPendingPreferenceIfMatches(campaignId, "soundHotkeys", next)
       return true
     })
@@ -297,14 +318,57 @@ export function Soundpad({
   }
 
   async function retryPendingChanges() {
-    const pendingFolders = readPendingFolders(campaignId)
-    const pendingHotkeys = readPendingHotkeys(campaignId)
-    if (pendingFolders) await persistFolders(pendingFolders)
-    if (pendingHotkeys) await persistHotkeys(pendingHotkeys)
-    if (!pendingFolders && !pendingHotkeys) setReload(value => value + 1)
+    // Reconsultar o servidor antes de qualquer recuperação. Abas e deploys
+    // diferentes podem ter gravado uma revisão enquanto o painel estava aberto.
+    try {
+      const response = await fetch(preferencesEndpoint, { cache: "no-store" })
+      const remote = await response.json().catch(() => null)
+      if (!response.ok || remote?.source !== "mongodb" || remote?.success !== true) {
+        throw new Error(remote?.error || "MongoDB indisponível. O backup local foi preservado.")
+      }
+      const pendingFolders = readPendingFolderRecord(campaignId)
+      const pendingHotkeys = readPendingHotkeyRecord(campaignId)
+      const revisions = {
+        soundFolders: readRevision(remote, "soundFolders"),
+        soundHotkeys: readRevision(remote, "soundHotkeys"),
+      }
+      const pending = [
+        { kind: "soundFolders" as const, data: pendingFolders, stored: remote.soundFolders },
+        { kind: "soundHotkeys" as const, data: pendingHotkeys, stored: remote.soundHotkeys },
+      ].filter(entry => entry.data && !samePreference(entry.kind, entry.stored, entry.data.value))
+      if (pending.some(entry => entry.data!.baseRevision !== revisions[entry.kind])) {
+        if (!window.confirm("O MongoDB contém uma versão diferente deste backup local. Restaurar o backup SUBSTITUIRÁ as pastas/playlists ou atalhos correspondentes salvos no servidor. Deseja continuar?")) {
+          setError("A versão atual do MongoDB foi mantida. Seu backup local não foi apagado.")
+          return
+        }
+      }
+      revisionsRef.current = revisions
+      setLocalConflict(false)
+      if (pendingFolders && !samePreference("soundFolders", remote.soundFolders, pendingFolders.value)) {
+        await persistFolders(pendingFolders.value, true)
+      } else if (pendingFolders) clearPendingPreferenceIfMatches(campaignId, "soundFolders", pendingFolders.value)
+      if (pendingHotkeys && !samePreference("soundHotkeys", remote.soundHotkeys, pendingHotkeys.value)) {
+        await persistHotkeys(pendingHotkeys.value, true)
+      } else if (pendingHotkeys) clearPendingPreferenceIfMatches(campaignId, "soundHotkeys", pendingHotkeys.value)
+      if (!pendingFolders && !pendingHotkeys) setReload(value => value + 1)
+    } catch (err) {
+      setError(errorMessage(err, "Não foi possível recuperar o backup do Soundpad."))
+    }
+  }
+
+  function discardLocalBackup() {
+    if (!window.confirm("Descartar definitivamente os backups locais de pastas/playlists e atalhos? O conteúdo atual do MongoDB será mantido.")) return
+    const localFolders = readPendingFolderRecord(campaignId)
+    const localHotkeys = readPendingHotkeyRecord(campaignId)
+    if (localFolders) clearPendingPreferenceIfMatches(campaignId, "soundFolders", localFolders.value)
+    if (localHotkeys) clearPendingPreferenceIfMatches(campaignId, "soundHotkeys", localHotkeys.value)
+    setLocalConflict(false)
+    setError("")
+    setReload(value => value + 1)
   }
 
   async function createFolder() {
+    if (localConflict) { setError("Resolva o backup local antes de criar pastas."); return }
     const name = newFolderName.trim()
     if (!name) return
     const id = createId("sound-folder")
@@ -332,6 +396,7 @@ export function Soundpad({
   }
 
   async function createPlaylist() {
+    if (localConflict) { setError("Resolva o backup local antes de criar playlists."); return }
     if (!activeFolderObject || !newPlaylistName.trim()) return
     const folderId = activeFolderObject.id
     const playlist: SoundPlaylist = { id: createId("sound-playlist"), name: newPlaylistName.trim(), items: [] }
@@ -1006,7 +1071,7 @@ export function Soundpad({
       </footer>
       {(isSaving || error || !loaded) && isGm && (
         <div className="pointer-events-none absolute bottom-[87px] left-1/2 z-50 w-[min(90vw,500px)] -translate-x-1/2 rounded-xl border border-border/60 bg-background/90 px-4 py-3 text-center text-xs text-foreground shadow-2xl backdrop-blur-xl">
-          {!loaded && !error ? "Carregando biblioteca..." : isSaving ? "Salvando alterações..." : <span role="alert" className="pointer-events-auto text-destructive">{error} <button type="button" className="ml-2 underline" onClick={() => void retryPendingChanges()}>{loaded ? "Tentar salvar novamente" : "Recarregar"}</button></span>}
+          {!loaded && !error ? "Carregando biblioteca..." : isSaving ? "Salvando alterações..." : <span role="alert" className="pointer-events-auto text-destructive">{error} <button type="button" className="ml-2 underline" onClick={() => void retryPendingChanges()}>{loaded ? (localConflict ? "Resolver backup" : "Tentar salvar novamente") : "Recarregar"}</button>{localConflict && <button type="button" className="ml-2 underline" onClick={discardLocalBackup}>Descartar backup</button>}</span>}
         </div>
       )}
     </div>

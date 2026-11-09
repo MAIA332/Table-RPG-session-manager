@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Disc3, GripHorizontal, ListMusic, Maximize2, Pause, Play, SkipBack, SkipForward, Square, Volume2 } from "lucide-react"
 import { SOUND_LIBRARY, normalizeSoundHotkeys, type ActiveSound, type SoundHotkey, type Track } from "@/lib/sound-config"
-import { readPendingHotkeys } from "@/lib/soundpad-local"
+import { readPendingHotkeyRecord, clearPendingPreferenceIfMatches } from "@/lib/soundpad-local"
 import { createClientId } from "@/lib/client-id"
 import { musicSource } from "@/lib/music-sources"
 import { ExternalMusicPlayer } from "./external-music-player"
@@ -103,35 +103,33 @@ export function SoundPlaybackEngine({
     return () => window.removeEventListener("rpg:soundpad-visibility", visibility)
   }, [campaignId])
 
-  // Atalhos pertencem ao motor permanente, não à existência do painel.
+  // O motor permanece montado quando o Soundpad é fechado, mas sua fonte
+  // inicial de atalhos é SEMPRE a revisão confirmada no MongoDB.
   useEffect(() => {
+    keysRef.current = []
     if (!isGm || !campaignId) return
     const abort = new AbortController()
     let updatedDuringFetch = false
-    keysRef.current = readPendingHotkeys(campaignId) ?? []
     const preferencesUrl = `/api/campaigns/${encodeURIComponent(campaignId)}/sound/preferences`
-    const legacyUrl = `/api/campaigns/${encodeURIComponent(campaignId)}/state`
     void fetch(preferencesUrl, { cache: "no-store", signal: abort.signal })
       .then(async response => {
-        const preferences = response.ok ? await response.json().catch(() => null) : null
-        // A nova rota inclui legado. Compatibilidade com o backend anterior:
-        // /state só é consultado quando a rota falha ou não devolve legado.
-        const needsLegacy = !preferences?.success ||
-          (preferences?.stored?.hotkeys !== true && preferences?.legacyIncluded !== true)
-        let legacy: { state?: { soundHotkeys?: unknown } } | null = null
-        if (needsLegacy) {
-          const legacyResponse = await fetch(legacyUrl, {
-            cache: "no-store", signal: abort.signal,
-          }).catch(() => null)
-          legacy = legacyResponse?.ok ? await legacyResponse.json().catch(() => null) : null
+        const remote = response.ok ? await response.json().catch(() => null) : null
+        if (abort.signal.aborted || updatedDuringFetch || remote?.success !== true || remote?.source !== "mongodb") return
+        const storedHotkeys = normalizeSoundHotkeys(remote.soundHotkeys)
+        const rev = remote.revisions?.soundHotkeys
+        const revision = Number.isSafeInteger(rev) && rev >= 0 ? rev : 0
+        const pending = readPendingHotkeyRecord(campaignId)
+        if (pending && JSON.stringify(pending.value) === JSON.stringify(storedHotkeys)) {
+          clearPendingPreferenceIfMatches(campaignId, "soundHotkeys", pending.value)
         }
-        if (abort.signal.aborted || updatedDuringFetch) return
-        const storedHotkeys = preferences?.success &&
-          (preferences.legacyIncluded === true || preferences.stored?.hotkeys === true)
-          ? normalizeSoundHotkeys(preferences.soundHotkeys)
-          : normalizeSoundHotkeys(legacy?.state?.soundHotkeys)
-        keysRef.current = readPendingHotkeys(campaignId) ?? storedHotkeys
-      }).catch(() => {})
+        // Um backup antigo (inclusive do formato sem revisão) não pode
+        // sobrescrever o banco; só uma edição ainda pendente da MESMA revisão
+        // pode permanecer ativa localmente até o Mestre confirmar o salvamento.
+        keysRef.current = pending && pending.baseRevision === revision ? pending.value : storedHotkeys
+      }).catch(() => {
+        // Sem confirmação do servidor, não habilitar atalhos possivelmente
+        // obsoletos que disparariam áudios diferentes dos configurados.
+      })
     const updated = (event: Event) => {
       updatedDuringFetch = true
       keysRef.current = normalizeSoundHotkeys((event as CustomEvent).detail)

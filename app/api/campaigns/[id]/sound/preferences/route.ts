@@ -1,22 +1,22 @@
 /**
- * Substitua: app/api/campaigns/[id]/sound/preferences/route.ts
+ * Preferências do estúdio: MongoDB é a única fonte de verdade.
  *
- * O cargo de mestre e a permissao de escrita do SO sao verificacoes diferentes.
- * Corrige EVERIFY: alguns projetos anunciam soundFolders/soundHotkeys em
- * CAMPAIGN_STATE_ARRAY_FIELDS, mas updateCampaignState nao os confirma.
- * Nesse caso, usar o arquivo persistente e ler este arquivo com prioridade.
- * Nao confundir dados locais/estado legado com gravação confirmada.
+ * NÃO persistir novas preferências em diretórios locais (.soundpad-data,
+ * ~/.local/share, SOUNDPAD_CONFIG_DIR), que podem desaparecer num redeploy.
+ * Os arquivos antigos servem APENAS para uma migração única quando ainda
+ * não existe o registro desta campanha no MongoDB.
+ *
+ * Uma coleção exclusiva impede que um POST /state feito por outra tela da
+ * campanha sobrescreva pastas, playlists ou atalhos. Revisões independentes
+ * e compare-and-swap evitam perder alterações de abas/instâncias concorrentes.
  */
-import { randomUUID } from "node:crypto"
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
+import { readFile, stat } from "node:fs/promises"
 import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import {
-  CAMPAIGN_STATE_ARRAY_FIELDS, getCampaignState, updateCampaignState,
-} from "@/lib/campaign-state"
 import { getMemberRole, store } from "@/lib/store"
+import { getMongoDb } from "@/lib/mongodb"
 import {
   normalizeSoundFolders, normalizeSoundHotkeys,
   type SoundFolder, type SoundHotkey,
@@ -26,26 +26,27 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 const MAX_BYTES = 1024 * 1024
-const stateFields = new Set<string>(CAMPAIGN_STATE_ARRAY_FIELDS)
-const configuredDir = process.env.SOUNDPAD_CONFIG_DIR?.trim()
-const legacyDir = resolve(process.cwd(), ".soundpad-data")
-const userDir = resolve(homedir(), ".local", "share", "rpg-soundpad")
-
-// A configuracao explicita tem prioridade absoluta; nunca a ignoramos.
-// Sem configuracao, um diretorio pertencente ao usuario evita EACCES na raiz do projeto.
-const dirs = configuredDir
-  ? [resolve(configuredDir)]
-  : [...new Set([userDir, legacyDir])]
-
+const COLLECTION = "vtt_sound_preferences"
 type Params = { params: Promise<{ id: string }> }
 type Kind = "soundFolders" | "soundHotkeys"
 type Preferences = SoundFolder[] | SoundHotkey[]
-type Result = { value: Preferences; stored: boolean }
+type Revisions = Record<Kind, number>
 
-// Serializa alteracoes da mesma campanha dentro de uma instancia Next.js.
-const queues = new Map<string, Promise<void>>()
-// Evita tentar repetidamente o caminho de /state quando ele ja falhou.
-const unsupportedStateKinds = new Set<string>()
+type SoundPreferencesDocument = {
+  _id: string
+  soundFolders?: SoundFolder[]
+  soundHotkeys?: SoundHotkey[]
+  folderRevision: number
+  hotkeyRevision: number
+  createdAt?: number
+  updatedAt?: number
+}
+
+const revisionField: Record<Kind, "folderRevision" | "hotkeyRevision"> = {
+  soundFolders: "folderRevision", soundHotkeys: "hotkeyRevision",
+}
+
+class RevisionConflict extends Error {}
 
 async function authorized(params: Params["params"]) {
   const user = await getCurrentUser()
@@ -54,7 +55,7 @@ async function authorized(params: Params["params"]) {
   const campaign = store.campaigns.get(id)
   if (!campaign) return { error: NextResponse.json({ error: "Campanha não encontrada." }, { status: 404 }) }
   if (getMemberRole(campaign, user.id) !== "gm") {
-    return { error: NextResponse.json({ error: "Apenas o mestre pode configurar a biblioteca sonora." }, { status: 403 }) }
+    return { error: NextResponse.json({ error: "Apenas o Mestre pode configurar os áudios." }, { status: 403 }) }
   }
   return { id }
 }
@@ -62,183 +63,163 @@ async function authorized(params: Params["params"]) {
 function normalize(kind: Kind, value: unknown): Preferences {
   return kind === "soundFolders" ? normalizeSoundFolders(value) : normalizeSoundHotkeys(value)
 }
-
-function matches(kind: Kind, left: unknown, right: unknown): boolean {
-  return JSON.stringify(normalize(kind, left)) === JSON.stringify(normalize(kind, right))
+function same(kind: Kind, a: unknown, b: unknown): boolean {
+  return JSON.stringify(normalize(kind, a)) === JSON.stringify(normalize(kind, b))
+}
+function getRevisions(record: SoundPreferencesDocument | null): Revisions {
+  const revision = (value: unknown) => Number.isSafeInteger(value) && Number(value) >= 0 ? Number(value) : 0
+  return { soundFolders: revision(record?.folderRevision), soundHotkeys: revision(record?.hotkeyRevision) }
+}
+function responseData(record: SoundPreferencesDocument | null) {
+  return {
+    success: true,
+    soundFolders: normalizeSoundFolders(record?.soundFolders),
+    soundHotkeys: normalizeSoundHotkeys(record?.soundHotkeys),
+    stored: { folders: Array.isArray(record?.soundFolders), hotkeys: Array.isArray(record?.soundHotkeys) },
+    revisions: getRevisions(record),
+    legacyIncluded: true, // Compatibilidade com clientes que já esperam este sinal.
+    source: "mongodb",
+  }
+}
+function json(data: unknown, status = 200) {
+  return NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store" } })
+}
+async function collection() {
+  const db = await getMongoDb()
+  return db.collection<SoundPreferencesDocument>(COLLECTION)
 }
 
-function pathFor(dir: string, id: string, kind: Kind): string {
-  // ID da URL nunca vira caminho diretamente.
-  return join(dir, `${Buffer.from(id).toString("hex")}.${kind}.json`)
-}
+// Apenas LEITURA de arquivos deixados pela rota antiga; nenhum write aqui.
+const configuredDir = process.env.SOUNDPAD_CONFIG_DIR?.trim()
+const legacyDirs = [...new Set([
+  ...(configuredDir ? [resolve(configuredDir)] : []),
+  resolve(homedir(), ".local", "share", "rpg-soundpad"),
+  resolve(process.cwd(), ".soundpad-data"),
+])]
 
-async function readFromDisk(id: string, kind: Kind): Promise<Result> {
-  for (const dir of dirs) {
+async function legacyFile(campaignId: string, kind: Kind): Promise<Preferences | null> {
+  for (const dir of legacyDirs) {
+    const file = join(dir, `${Buffer.from(campaignId).toString("hex")}.${kind}.json`)
     try {
-      const parsed: unknown = JSON.parse(await readFile(pathFor(dir, id, kind), "utf8"))
-      if (!Array.isArray(parsed)) throw new Error(`Arquivo ${kind} inválido no servidor.`)
-      return { value: normalize(kind, parsed), stored: true }
+      if ((await stat(file)).size > MAX_BYTES) {
+        console.warn("[sound/preferences] Arquivo legado excede o limite e não será migrado.", { campaignId, kind })
+        continue
+      }
+      const parsed: unknown = JSON.parse(await readFile(file, "utf8"))
+      if (Array.isArray(parsed)) return normalize(kind, parsed)
+      console.warn("[sound/preferences] Arquivo legado inválido.", { campaignId, kind })
     } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code
-      if (code === "ENOENT" || (!configuredDir && ["EACCES", "EPERM", "EROFS", "ENOTDIR"].includes(code ?? ""))) continue
-      throw error
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        console.warn("[sound/preferences] Não foi possível ler arquivo legado.", { campaignId, kind, error })
+      }
     }
   }
-  return { value: [], stored: false }
+  return null
 }
 
-function readState(id: string, kind: Kind): Preferences | null {
-  const data: unknown = Reflect.get(getCampaignState(id), kind)
-  return Array.isArray(data) ? normalize(kind, data) : null
-}
+/**
+ * Não sobrescreve NUNCA um documento Mongo existente, mesmo que nele existam
+ * listas vazias. Em um deploy anterior o dado talvez estivesse em /state ou
+ * em arquivo; migra esses dados apenas se o documento ainda não existe.
+ */
+async function getOrMigrate(campaignId: string): Promise<SoundPreferencesDocument | null> {
+  const col = await collection()
+  const existing = await col.findOne({ _id: campaignId })
+  if (existing) return existing
 
-async function readPreference(id: string, kind: Kind): Promise<Result> {
-  // IMPORTANTISSIMO: apos um POST que fez fallback para arquivo, /state pode
-  // continuar devolvendo o valor anterior. O arquivo deve vencer o legado.
-  const file = await readFromDisk(id, kind)
-  if (file.stored) return file
+  const [diskFolders, diskHotkeys] = await Promise.all([
+    legacyFile(campaignId, "soundFolders"), legacyFile(campaignId, "soundHotkeys"),
+  ])
+  const state = store.campaignState.get(campaignId)
+  const stateFolders = Array.isArray(state?.soundFolders) ? normalizeSoundFolders(state.soundFolders) : null
+  const stateHotkeys = Array.isArray(state?.soundHotkeys) ? normalizeSoundHotkeys(state.soundHotkeys) : null
+  const folders = diskFolders ?? stateFolders
+  const hotkeys = diskHotkeys ?? stateHotkeys
+  if (folders === null && hotkeys === null) return null
 
-  // Dados de /state sao legado enquanto nao ha arquivo; nunca marcar
-  // "stored: true" sem conseguir comprovar o armazenamento definitivo.
-  return { value: readState(id, kind) ?? [], stored: false }
-}
-
-async function writeToDisk(id: string, kind: Kind, value: Preferences): Promise<void> {
-  let lastError: unknown
-  for (const dir of dirs) {
-    let temp: string | undefined
-    try {
-      await mkdir(dir, { recursive: true, mode: 0o700 })
-      const destination = pathFor(dir, id, kind)
-      temp = `${destination}.${randomUUID()}.tmp`
-      await writeFile(temp, JSON.stringify(value), { encoding: "utf8", flag: "wx", mode: 0o600 })
-      await rename(temp, destination)
-      // Verificar pela mesma prioridade usada pelo GET. Assim um arquivo
-      // antigo em outro diretorio nao oculta o novo salvamento.
-      const persisted = await readFromDisk(id, kind)
-      if (!persisted.stored || !matches(kind, persisted.value, value)) {
-        const error = new Error("Não foi possível confirmar os dados gravados.") as NodeJS.ErrnoException
-        error.code = "EVERIFY"
-        throw error
-      }
-      return
-    } catch (error) {
-      lastError = error
-      const code = (error as NodeJS.ErrnoException).code
-      if (configuredDir || !["EACCES", "EPERM", "EROFS", "ENOTDIR", "ENOENT"].includes(code ?? "")) {
-        throw error
-      }
-    } finally {
-      if (temp) await rm(temp, { force: true }).catch(() => {})
-    }
+  const migrated: SoundPreferencesDocument = {
+    _id: campaignId,
+    folderRevision: folders !== null ? 1 : 0,
+    hotkeyRevision: hotkeys !== null ? 1 : 0,
+    ...(folders !== null ? { soundFolders: folders as SoundFolder[] } : {}),
+    ...(hotkeys !== null ? { soundHotkeys: hotkeys as SoundHotkey[] } : {}),
+    createdAt: Date.now(), updatedAt: Date.now(),
   }
-  throw lastError ?? new Error("Nenhum diretório gravável disponível.")
-}
-
-async function savePreference(id: string, kind: Kind, value: Preferences): Promise<void> {
-  // Quem ja possui arquivo deve continuar no arquivo: evita gravar em /state
-  // enquanto GET le um arquivo antigo com prioridade.
-  const existingFile = await readFromDisk(id, kind)
-  if (existingFile.stored) {
-    await writeToDisk(id, kind, value)
-    return
-  }
-
-  const stateKey = `${id}:${kind}`
-  if (stateFields.has(kind) && !unsupportedStateKinds.has(stateKey)) {
-    // Suporte declarado em CAMPAIGN_STATE_ARRAY_FIELDS nao garante que
-    // updateCampaignState realmente persista o campo nesta instalacao.
-    const patch = { [kind]: value } as unknown as Parameters<typeof updateCampaignState>[1]
-    await updateCampaignState(id, patch)
-    const confirmed = readState(id, kind)
-    if (confirmed !== null && matches(kind, confirmed, value)) return
-
-    // EVERIFY significa que /state NAO confirmou esta alteracao. Em vez de
-    // retornar erro prematuramente, persistir no arquivo dedicado.
-    unsupportedStateKinds.add(stateKey)
-    console.warn(`[sound/preferences] /state não confirmou ${kind}; usando armazenamento em arquivo.`)
-  }
-
-  // Se SOUNDPAD_CONFIG_DIR nao for gravavel, a API deve retornar erro real:
-  // nao declarar sucesso apenas porque o navegador possui backup local.
-  await writeToDisk(id, kind, value)
-}
-
-function serialize(id: string, job: () => Promise<void>): Promise<void> {
-  const previous = queues.get(id) ?? Promise.resolve()
-  const current = previous.then(job)
-  const settled = current.then(() => {}, () => {})
-  queues.set(id, settled)
-  void settled.then(() => { if (queues.get(id) === settled) queues.delete(id) })
-  return current
-}
-
-function failure(error: unknown) {
-  const code = (error as NodeJS.ErrnoException).code ?? "EUNKNOWN"
-  if (["EACCES", "EPERM", "EROFS"].includes(code)) return {
-    code, status: 503,
-    error: "O processo do Next.js não pode gravar as configurações. Configure SOUNDPAD_CONFIG_DIR com um diretório persistente gravável pelo usuário do servidor (ou habilite soundFolders/soundHotkeys no armazenamento de /state).",
-  }
-  if (["ENOSPC", "EDQUOT"].includes(code)) return {
-    code, status: 507, error: "O armazenamento de configurações está sem espaço.",
-  }
-  if (code === "EVERIFY") return {
-    code, status: 503, error: "Não foi possível confirmar a persistência dos dados no servidor.",
-  }
-  return { code, status: 500, error: "Falha ao salvar as preferências sonoras no servidor." }
+  // Um POST ou outra instância pode ter criado o documento entre o GET e a
+  // migração. $setOnInsert garante que o dado mais recente sempre prevaleça.
+  await col.updateOne({ _id: campaignId }, { $setOnInsert: migrated }, { upsert: true })
+  return col.findOne({ _id: campaignId })
 }
 
 export async function GET(_request: Request, { params }: Params) {
   const access = await authorized(params)
   if ("error" in access) return access.error
   try {
-    const [folders, hotkeys] = await Promise.all([
-      readPreference(access.id, "soundFolders"),
-      readPreference(access.id, "soundHotkeys"),
-    ])
-    return NextResponse.json({
-      success: true,
-      soundFolders: folders.value, soundHotkeys: hotkeys.value,
-      stored: { folders: folders.stored, hotkeys: hotkeys.stored },
-      legacyIncluded: true,
-    }, { headers: { "Cache-Control": "private, no-store" } })
+    const record = await getOrMigrate(access.id)
+    return json(responseData(record))
   } catch (error) {
-    console.error("[sound/preferences] GET:", error)
-    return NextResponse.json({ error: "Não foi possível ler as preferências sonoras." }, { status: 500 })
+    console.error("[sound/preferences] MongoDB GET falhou:", error)
+    return json({ success: false, error: "Não foi possível consultar as preferências no MongoDB. Nenhum dado local foi usado como confirmação." }, 503)
   }
 }
 
 export async function POST(request: Request, { params }: Params) {
   const access = await authorized(params)
   if ("error" in access) return access.error
-  const length = Number(request.headers.get("content-length") ?? "0")
-  if (length > MAX_BYTES) return NextResponse.json({ error: "Configuração grande demais." }, { status: 413 })
+  const contentLength = Number(request.headers.get("content-length") || 0)
+  if (contentLength > MAX_BYTES) return json({ error: "Configuração grande demais." }, 413)
   const raw = await request.text().catch(() => "")
-  if (Buffer.byteLength(raw, "utf8") > MAX_BYTES) {
-    return NextResponse.json({ error: "Configuração grande demais." }, { status: 413 })
-  }
+  if (Buffer.byteLength(raw, "utf8") > MAX_BYTES) return json({ error: "Configuração grande demais." }, 413)
+
   let body: Record<string, unknown> | null = null
   try {
-    const value: unknown = JSON.parse(raw)
-    if (value && typeof value === "object" && !Array.isArray(value)) body = value as Record<string, unknown>
-  } catch { /* JSON inválido */ }
+    const parsed: unknown = JSON.parse(raw)
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) body = parsed as Record<string, unknown>
+  } catch {}
   const keys = body ? Object.keys(body) : []
-  const kind: Kind | null = keys.length === 1 && (keys[0] === "soundFolders" || keys[0] === "soundHotkeys")
-    ? keys[0] : null
-  if (!kind || !Array.isArray(body?.[kind])) {
-    return NextResponse.json({ error: "Envie apenas soundFolders ou soundHotkeys como uma lista." }, { status: 400 })
+  const kind = (keys.includes("soundFolders") ? "soundFolders" : keys.includes("soundHotkeys") ? "soundHotkeys" : null) as Kind | null
+  if (!kind || keys.length !== 2 || !keys.includes("expectedRevision") || !Array.isArray(body?.[kind])) {
+    return json({ error: "Envie uma lista soundFolders ou soundHotkeys e expectedRevision. Atualize a página para usar a versão nova do Soundpad." }, 400)
   }
-  const normalized = normalize(kind, body[kind])
+  const expectedRevision = body?.expectedRevision
+  if (!Number.isSafeInteger(expectedRevision) || Number(expectedRevision) < 0) {
+    return json({ error: "Revisão inválida. Recarregue a biblioteca sonora." }, 400)
+  }
+  const normalized = normalize(kind, body![kind])
+
   try {
-    await serialize(access.id, () => savePreference(access.id, kind, normalized))
-    return NextResponse.json({ success: true, [kind]: normalized }, {
-      headers: { "Cache-Control": "private, no-store" },
-    })
+    const col = await collection()
+    let current = await getOrMigrate(access.id)
+    if (!current) {
+      // Cria apenas os metadados. Campos não informados continuam ausentes.
+      await col.updateOne({ _id: access.id }, { $setOnInsert: {
+        _id: access.id, folderRevision: 0, hotkeyRevision: 0, createdAt: Date.now(),
+      } }, { upsert: true })
+      current = await col.findOne({ _id: access.id })
+    }
+    if (!current) throw new Error("Não foi possível inicializar as preferências.")
+    const revision = getRevisions(current)[kind]
+
+    // Reenvio idempotente de uma gravação que foi concluída mas cuja resposta
+    // caiu na rede. A confirmação sempre usa os dados atuais do banco.
+    if (Array.isArray(current[kind]) && same(kind, current[kind], normalized)) {
+      return json({ ...responseData(current), revision })
+    }
+    if (revision !== expectedRevision) throw new RevisionConflict("As preferências mudaram em outra aba ou instância. Recarregue antes de sobrescrever.")
+
+    const updated = await col.findOneAndUpdate(
+      { _id: access.id, [revisionField[kind]]: expectedRevision },
+      { $set: { [kind]: normalized, updatedAt: Date.now() }, $inc: { [revisionField[kind]]: 1 } },
+      { returnDocument: "after" },
+    )
+    if (!updated) throw new RevisionConflict("Outra sessão modificou as preferências. Recarregue para evitar perda de dados.")
+    if (!same(kind, updated[kind], normalized)) throw new Error("O MongoDB não confirmou os dados gravados.")
+    return json({ ...responseData(updated), revision: getRevisions(updated)[kind] })
   } catch (error) {
-    const info = failure(error)
-    console.error("[sound/preferences] POST:", { campaignId: access.id, kind, code: info.code, error })
-    return NextResponse.json({ success: false, error: info.error, code: info.code }, {
-      status: info.status, headers: { "Cache-Control": "private, no-store" },
-    })
+    if (error instanceof RevisionConflict) {
+      return json({ success: false, code: "CONFLICT", error: error.message }, 409)
+    }
+    console.error("[sound/preferences] MongoDB POST falhou:", { campaignId: access.id, kind, error })
+    return json({ success: false, error: "Falha ao salvar preferências no MongoDB. A alteração não foi confirmada; ela permanece no backup do navegador.", code: "MONGO_UNAVAILABLE" }, 503)
   }
 }
