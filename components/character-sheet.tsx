@@ -25,6 +25,8 @@ import { baseGameClasses, getCampaignClassCatalog } from "@/lib/class-catalog"
 import { canPlayerAcquireClass, canPlayerUpgradeClass, playerVisibleClassCatalog, type CustomClassVisibility } from "@/lib/class-visibility"
 import { CharacterBookShelf } from "./class-books"
 import { ClassTimerProgress } from "./class-timer-progress"
+import { ClassSkillInline, ClassSkillSummary } from "./class-skill-runtime"
+import { advanceSkillModifiers, passiveSkillRollModifier, skillRollModifier, skillRuntime } from "@/lib/class-skill-effects"
 import { CharacterTraining, TrainingCompactBar } from "./character-training"
 import { SkillEvolutionTree, hasEvolutionBonuses, type EvolutionSkill } from "./skill-evolution-tree"
 import { PlayerSpecialAttacks } from "./player-special-attacks"
@@ -1956,10 +1958,10 @@ export function CharacterSheet({
   const allMods: any[] = (character as any).customModifiers || []
   const [modifierClock, setModifierClock] = useState(0)
   const timedModifierKey = allMods
-    .filter((mod: any) => ["class_book_effect", "item_attribute_inversion", "training_fatigue"].includes(mod.type) && typeof mod.expiresAt === "number")
+    .filter((mod: any) => (["class_book_effect", "item_attribute_inversion", "training_fatigue", "class_skill_duration", "class_skill_cooldown", "class_skill_aftermath", "class_skill_bonus"].includes(mod.type)) && typeof mod.expiresAt === "number")
     .map((mod: any) => `${mod.id}:${mod.expiresAt}`)
     .join("|")
-  const activeMods = activeClassBookModifiers(allMods, modifierClock || 0)
+  const activeMods = advanceSkillModifiers(activeClassBookModifiers(allMods, modifierClock || Date.now()), modifierClock || Date.now())
   const bondsFromMods: Bond[] = allMods
     .filter((m: any) => m.type === "bond")
     .map((m: any) => ({
@@ -1983,7 +1985,8 @@ export function CharacterSheet({
       !isFreeSkillRecord(m) &&
       !isItemState(m) &&
       !isManualDefenseRecord(m) &&
-      !isItemActionRuntimeMarker(m),
+      !isItemActionRuntimeMarker(m) &&
+      (!String(m.type || "").startsWith("class_skill_") || m.type === "class_skill_aftermath"),
   )
   // --- FIM SOLUÇÃO PERSISTENCIA LAÇOS ---
 
@@ -2074,6 +2077,24 @@ export function CharacterSheet({
   // Executa no vencimento, sem confiar num temporizador de aba ativa.
   }, [modifierClock, timedModifierKey, character.campaignId, character.id])
 
+
+  const skillUseRequestIdsRef = useRef<Record<string, string>>({})
+  const skillExpiryBusyRef = useRef(false)
+  const skillExpiryRetryRef = useRef(0)
+  useEffect(() => {
+    if (!allMods.some(mod => String(mod.type || "").startsWith("class_skill_") &&
+        mod.type !== "class_skill_receipt" && typeof mod.expiresAt === "number" && mod.expiresAt <= (modifierClock || Date.now()))) return
+    if (skillExpiryBusyRef.current || Date.now() < skillExpiryRetryRef.current ||
+        resourceWriteCountRef.current > 0 || itemCommitRef.current) return
+    skillExpiryBusyRef.current = true
+    skillExpiryRetryRef.current = Date.now() + 5000
+    void apiFetch<{ character: Character }>(`/api/campaigns/${encodeURIComponent(character.campaignId)}/skills`, {
+      method: "POST", body: JSON.stringify({ action: "expire", characterId: character.id }),
+    }).then(result => {
+      if (result.character && resourceWriteCountRef.current === 0) onOptimistic(result.character)
+    }).catch(() => { skillExpiryRetryRef.current = Date.now() + 7000 })
+      .finally(() => { skillExpiryBusyRef.current = false })
+  }, [modifierClock, timedModifierKey, character.campaignId, character.id])
 
   const [expandedContentMounted, setExpandedContentMounted] =
     useState(defaultExpanded)
@@ -3146,9 +3167,11 @@ export function CharacterSheet({
       const bonusTargets = [attr, ATTRIBUTE_META[attr].label]
       const itemBonus = sumItemRollBonus(activeItemBonuses, bonusTargets)
       let modTotal = itemBonus
+      modTotal += skillRollModifier(allMods, bonusTargets, Date.now())
+      modTotal += passiveSkillRollModifier(character.skills, allClasses, bonusTargets, true)
       const mods = (character as any).customModifiers || []
       activeClassBookModifiers(mods, Date.now()).forEach((m: any) => {
-        if (m.type === "training_fatigue") return // Aplicado uma única vez abaixo.
+        if (m.type === "training_fatigue" || String(m.type || "").startsWith("class_skill_")) return // Efeitos de habilidade contados separadamente.
         if (m.target === "all" || m.target === attr) {
           modTotal += m.value
         }
@@ -3208,9 +3231,11 @@ export function CharacterSheet({
       const bonusTargets = [check.id, check.name, ...allDice]
       const itemBonus = sumItemRollBonus(activeItemBonuses, bonusTargets)
       let modTotal = itemBonus
+      modTotal += skillRollModifier(allMods, bonusTargets, Date.now())
+      modTotal += passiveSkillRollModifier(character.skills, allClasses, bonusTargets)
       const mods = (character as any).customModifiers || []
       activeClassBookModifiers(mods, Date.now()).forEach((m: any) => {
-        if (m.type === "training_fatigue") return
+        if (m.type === "training_fatigue" || String(m.type || "").startsWith("class_skill_")) return
         if (
           m.target === "all" ||
           allDice.includes(m.target) ||
@@ -3267,8 +3292,10 @@ export function CharacterSheet({
       const bonusTargets = [check.id, check.name, ...attributes]
       const itemBonus = sumItemRollBonus(activeItemBonuses, bonusTargets)
       let modifier = itemBonus
+      modifier += skillRollModifier(allMods, bonusTargets, Date.now())
+      modifier += passiveSkillRollModifier(character.skills, allClasses, bonusTargets)
       activeClassBookModifiers((character as any).customModifiers || [], Date.now()).forEach((mod: any) => {
-        if (mod.type === "training_fatigue") return
+        if (mod.type === "training_fatigue" || String(mod.type || "").startsWith("class_skill_")) return
         if (mod.target === "all" || mod.target === check.name || attributes.includes(mod.target)) modifier += mod.value
       })
       if (attributes.includes("dex")) modifier -= trainingDexPenalty
@@ -3309,20 +3336,37 @@ export function CharacterSheet({
     }
   }
 
-  function useSkill(skill: any) {
-    if (!skill.action || !editable) return
-    if (skill.action.resource === "ip") {
-      alert(
-        "Esta habilidade usa a regra antiga de IP. Cadastre seu custo como um item consumível; IP agora mede kg livres.",
+  async function useSkill(skill: any) {
+    if (!skill.action || !editable || pending || resourceWriteCountRef.current > 0) return
+    const state = skillRuntime(allMods, skill.id, Date.now())
+    if (state.duration && typeof state.duration.expiresAt === "number" || !state.duration && state.cooldown) return
+    const finishing = Boolean(state.duration)
+    const requestId = skillUseRequestIdsRef.current[skill.id] || `skill_${createClientId()}`
+    if (!finishing) skillUseRequestIdsRef.current[skill.id] = requestId
+    setPending(true)
+    try {
+      const response = await apiFetch<{ character: Character }>(
+        `/api/campaigns/${encodeURIComponent(character.campaignId)}/skills`,
+        { method: "POST", body: JSON.stringify({ action: finishing ? "finish" : "activate", characterId: character.id, skillId: skill.id, ...(!finishing ? { requestId } : {}) }) },
       )
-      return
-    }
-    if (character.resources[skill.action.resource] < skill.action.cost) {
-      alert(`Você não tem ${skill.action.resource.toUpperCase()} suficiente!`)
-      return
-    }
-    patchResource(skill.action.resource, -skill.action.cost)
-    setExpandedSkillId(null)
+      if (response.character) onOptimistic(response.character)
+      if (!finishing) delete skillUseRequestIdsRef.current[skill.id]
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Falha ao usar a habilidade.")
+    } finally { setPending(false) }
+  }
+
+  async function removeSkillAftermath(modifierId: string) {
+    if (!isGm || !confirm("Remover este revés da ficha?")) return
+    setPending(true)
+    try {
+      const response = await apiFetch<{ character: Character }>(
+        `/api/campaigns/${encodeURIComponent(character.campaignId)}/skills`,
+        { method: "POST", body: JSON.stringify({ action: "remove-aftermath", characterId: character.id, modifierId }) },
+      )
+      if (response.character) onOptimistic(response.character)
+    } catch (error) { alert(error instanceof Error ? error.message : "Não foi possível remover o revés.") }
+    finally { setPending(false) }
   }
 
   function useInventoryItem(_actionId: string) {
@@ -4396,6 +4440,8 @@ export function CharacterSheet({
           document.body,
         )}
 
+      <ClassSkillSummary modifiers={allMods} />
+
       {/* HEADER COMPACTO/EXPANDIDO DA FICHA */}
       <div className="relative z-50 flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
@@ -5351,20 +5397,21 @@ export function CharacterSheet({
                                           <div className="mt-3 flex justify-end">
                                             <Button
                                               size="sm"
-                                              onClick={() => useSkill(skill)}
+                                              disabled={pending || Boolean((skillRuntime(allMods, skill.id, modifierClock || Date.now()).duration?.expiresAt) || (!skillRuntime(allMods, skill.id, modifierClock || Date.now()).duration && skillRuntime(allMods, skill.id, modifierClock || Date.now()).cooldown))}
+                                              onClick={() => void useSkill(skill)}
                                               className="h-8 gap-1.5 text-xs font-bold"
                                             >
-                                              <Zap className="size-3" /> Usar (-
-                                              {skill.action.cost}{" "}
-                                              {String(
-                                                skill.action.resource,
-                                              ).toUpperCase()}
-                                              )
+                                              <Zap className="size-3" />
+                                              {skillRuntime(allMods, skill.id, modifierClock || Date.now()).duration ? (skillRuntime(allMods, skill.id, modifierClock || Date.now()).duration?.expiresAt ? "Ativa" : "Encerrar habilidade") :
+                                                skillRuntime(allMods, skill.id, modifierClock || Date.now()).cooldown ? "Em recarga" :
+                                                !skill.action.cost || skill.action.resource === "none" ? "Ativar (sem custo)" :
+                                                  `Ativar (-${skill.action.cost} ${skill.action.resource === "hp" ? "PV" : "PM"})`}
                                             </Button>
                                           </div>
                                         )}
                                       </div>
                                     )}
+                                    <ClassSkillInline modifiers={allMods} skillId={skill.id} />
                                   </div>
                                 )
                               })}
@@ -5555,6 +5602,7 @@ export function CharacterSheet({
                               <div className="flex gap-2 items-center shrink-0">
                                 {!isGm &&
                                   mod.type !== "class_book_effect" &&
+                                  mod.type !== "class_skill_aftermath" &&
                                   mod.type !== "training_fatigue" &&
                                   ((displayResources as any).lp || 0) > 0 &&
                                   editable && (
@@ -5575,7 +5623,7 @@ export function CharacterSheet({
                                   )}
                                 {isGm && (
                                   <>
-                                    {mod.type !== "class_book_effect" && mod.type !== "training_fatigue" && <Button
+                                    {mod.type !== "class_book_effect" && mod.type !== "class_skill_aftermath" && mod.type !== "training_fatigue" && <Button
                                       size="sm"
                                       variant="ghost"
                                       className="h-8 w-8 p-0 text-muted-foreground hover:text-white"
@@ -5591,13 +5639,11 @@ export function CharacterSheet({
                                       variant="ghost"
                                       className="h-8 w-8 p-0 text-destructive hover:bg-destructive/20 hover:text-destructive"
                                       onClick={() => {
-                                        if (confirm("Remover condição?")) {
+                                        if (mod.type === "class_skill_aftermath") {
+                                          void removeSkillAftermath(mod.id)
+                                        } else if (confirm("Remover condição?")) {
                                           updateModifiers(
-                                            (
-                                              character as any
-                                            ).customModifiers.filter(
-                                              (m: any) => m.id !== mod.id,
-                                            ),
+                                            (character as any).customModifiers.filter((m: any) => m.id !== mod.id),
                                           )
                                         }
                                       }}
@@ -5613,6 +5659,11 @@ export function CharacterSheet({
                             typeof mod.expiresAt === "number" && typeof mod.startedAt === "number"
                               ? <ClassTimerProgress label="Bônus mágico ativo" startedAt={mod.startedAt} endsAt={mod.expiresAt} compact />
                               : <p className="mt-2 text-[11px] text-violet-300">Duração ilimitada</p>
+                          )}
+                          {mod.type === "class_skill_aftermath" && (
+                            typeof mod.expiresAt === "number" && typeof mod.startedAt === "number"
+                              ? <ClassTimerProgress label="Revés da habilidade" startedAt={mod.startedAt} endsAt={mod.expiresAt} compact />
+                              : <p className="mt-2 text-[11px] text-rose-300">Condição permanente · somente o Mestre remove</p>
                           )}
                           {mod.type === "training_fatigue" && typeof mod.expiresAt === "number" && typeof mod.startedAt === "number" && (
                             <ClassTimerProgress label="Cansado · recuperação de DEX" startedAt={mod.startedAt} endsAt={mod.expiresAt} compact />
@@ -5747,3 +5798,4 @@ export function CharacterSheet({
     </div>
   )
 }
+  

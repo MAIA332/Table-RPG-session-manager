@@ -478,7 +478,7 @@ export async function POST(request: Request, context: RouteContext) {
           throw new Error("Pontos de Lore insuficientes.")
         const modifiers = readCharacterModifiers(character)
         const target = modifiers.find(mod => mod.id === body.modifierId)
-        if (!target || target.type === "class_book_effect" || target.type === "bond" ||
+        if (!target || target.type === "class_book_effect" || String(target.type || "").startsWith("class_skill_") || target.type === "bond" ||
             target.target === "sheet_defense_hidden" ||
             target.id?.startsWith("free_skill:") ||
             typeof target.value !== "number" || !Number.isSafeInteger(target.value) || target.value >= 1000)

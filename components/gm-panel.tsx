@@ -9,6 +9,7 @@ import { isClassPublished, type CustomClassVisibility } from "@/lib/class-visibi
 import { allowedPlayerIds, allowedCharacterIds, type ClassAudience } from "@/lib/class-audience"
 import { ClassAudienceEditor, type AudienceMode } from "./class-audience-editor"
 import { CLASSES } from "@/lib/game-data"
+import { PRESET_CHECKS } from "@/lib/combat-checks"
 import { ELEMENTS, ELEMENT_NAMES, classElement, type ElementId } from "@/lib/elemental-affinities"
 
 import { useState } from "react"
@@ -135,6 +136,7 @@ function SkillForgeCard({
   onUpdate,
   onRemove,
   setClassDraft,
+  customChecks,
 }: {
   skill: GameSkill
   expanded: boolean
@@ -142,8 +144,25 @@ function SkillForgeCard({
   onUpdate: (updates: Partial<GameSkill>) => void
   onRemove: () => void
   setClassDraft: React.Dispatch<React.SetStateAction<GameClass>>
+  customChecks: CustomCheck[]
 }) {
   const levels = Array.from({ length: skill.maxLevel }, (_, index) => index + 1)
+  const checkTargets = [
+    { value: "all", label: "Todos os testes" },
+    { value: "dex", label: "Destreza (DEX)" },
+    { value: "ins", label: "Intuição (INS)" },
+    { value: "mig", label: "Vigor (MIG)" },
+    { value: "wlp", label: "Vontade (WLP)" },
+    ...PRESET_CHECKS.map(check => ({ value: check.name, label: `Sistema: ${check.name}` })),
+    ...customChecks.map(check => ({ value: check.name, label: `Customizado: ${check.name}` })),
+  ]
+  const action = skill.action
+  const updateAction = (updates: Partial<NonNullable<GameSkill["action"]>>) =>
+    onUpdate({ action: { cost: 0, resource: "none", ...action, ...updates } })
+  const secondValue = (value: number | null | undefined) => value ?? 0
+  const setCheckBonus = (index: number, updates: Record<string, unknown>) =>
+    updateAction({ checkBonuses: (action?.checkBonuses || []).map((bonus, i) => i === index ? { ...bonus, ...updates } : bonus) })
+
 
   function toggleSkillAction(skillId: string) {
     setClassDraft((prev) => ({
@@ -156,8 +175,8 @@ function SkillForgeCard({
           action: skill.action
             ? undefined
             : {
-              cost: 5,
-              resource: "mp",
+              cost: 0,
+              resource: "none",
             },
         }
       }),
@@ -181,7 +200,7 @@ function SkillForgeCard({
               }
               : {
                 cost: 0,
-                resource: "mp",
+                resource: "none",
                 ...updates,
               },
           }
@@ -445,15 +464,9 @@ function SkillForgeCard({
                       <input
                         type="number"
                         min={0}
-                        value={skill.action.cost}
-                        onChange={(e) =>
-                          onUpdate({
-                            action: {
-                              ...skill.action!,
-                              cost: Number(e.target.value),
-                            },
-                          })
-                        }
+                        value={skill.action.resource === "none" ? 0 : skill.action.cost}
+                        disabled={skill.action.resource === "none"}
+                        onChange={(e) => updateAction({ cost: Math.max(0, Number(e.target.value)) })}
                         className="bg-background/80 border border-border/80 rounded-lg px-3 py-2 text-sm font-mono outline-none"
                       />
                     </label>
@@ -465,21 +478,99 @@ function SkillForgeCard({
 
                       <select
                         value={skill.action.resource}
-                        onChange={(e) =>
-                          onUpdate({
-                            action: {
-                              ...skill.action!,
-                              resource: e.target.value as "mp" | "hp" | "ip",
-                            },
-                          })
-                        }
+                        onChange={(e) => updateAction({
+                          resource: e.target.value as "none" | "mp" | "hp",
+                          ...(e.target.value === "none" ? { cost: 0 } : {}),
+                        })}
                         className="bg-background/80 border border-border/80 rounded-lg px-3 py-2 text-sm outline-none"
                       >
+                        <option value="none">Sem custo — botão de ativar disponível</option>
                         <option value="mp">PM — Pontos de Mente</option>
                         <option value="hp">PV — Pontos de Vida</option>
-                        <option value="ip">PI — Pontos de Inventário</option>
                       </select>
                     </label>
+                  </div>
+                )}
+                {action && (
+                  <div className="space-y-4 border-t border-blue-500/15 p-3 pt-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="flex flex-col gap-1 text-[10px] text-muted-foreground">
+                        Duração ativa (segundos; 0 = sem limite)
+                        <input type="number" min={0} max={604800} value={secondValue(action.durationSeconds)}
+                          onChange={e => updateAction({ durationSeconds: Math.max(0, Number(e.target.value)) || null })}
+                          className="rounded-md border border-border bg-background px-2 py-2 font-mono text-xs text-foreground" />
+                      </label>
+                      <label className="flex flex-col gap-1 text-[10px] text-muted-foreground">
+                        Recarga / cooldown (segundos; 0 = nenhuma)
+                        <input type="number" min={0} max={604800} value={secondValue(action.cooldownSeconds)}
+                          onChange={e => updateAction({ cooldownSeconds: Math.max(0, Number(e.target.value)) || null })}
+                          className="rounded-md border border-border bg-background px-2 py-2 font-mono text-xs text-foreground" />
+                      </label>
+                    </div>
+                    <div className="space-y-2 rounded-md border border-sky-500/15 bg-sky-500/[0.03] p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400">Bônus em testes enquanto ativa</span>
+                        <button type="button" className="text-[10px] font-semibold text-sky-300 hover:underline"
+                          onClick={() => updateAction({ checkBonuses: [...(action.checkBonuses || []), { target: "all", value: 1 }] })}>+ Bônus</button>
+                      </div>
+                      {(action.checkBonuses || []).map((bonus, index) => (
+                        <div key={index} className="flex flex-wrap items-end gap-2">
+                          <label className="min-w-[135px] flex-1 text-[10px] text-muted-foreground">Teste afetado
+                            <select value={bonus.target} onChange={e => setCheckBonus(index, { target: e.target.value })}
+                              className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground">
+                              {!checkTargets.some(opt => opt.value === bonus.target) && <option value={bonus.target}>{bonus.target}</option>}
+                              {checkTargets.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                            </select>
+                          </label>
+                          <label className="w-20 text-[10px] text-muted-foreground">Bônus / debuff
+                            <input type="number" value={bonus.value} onChange={e => setCheckBonus(index, { value: Number(e.target.value) })}
+                              className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
+                          </label>
+                          <label className="flex items-center gap-1 pb-1 text-[10px] text-muted-foreground" title="Multiplicar pelo nível aprendido">
+                            <input type="checkbox" checked={Boolean(bonus.perLevel)} onChange={e => setCheckBonus(index, { perLevel: e.target.checked })} />× Nível
+                          </label>
+                          <button type="button" aria-label="Remover bônus" className="pb-1 text-rose-400" onClick={() => updateAction({ checkBonuses: action.checkBonuses?.filter((_, i) => i !== index) })}><Trash2 className="size-3.5" /></button>
+                        </div>
+                      ))}
+                      <p className="text-[10px] text-muted-foreground">Os valores são somados automaticamente ao resultado final; testes customizados também são aceitos.</p>
+                    </div>
+                    <div className="space-y-2 rounded-md border border-rose-500/15 bg-rose-500/[0.03] p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-rose-300">Revés / condição após usar</span>
+                        <button type="button" className="text-[10px] text-rose-300 hover:underline" onClick={() => updateAction({ aftermath: action.aftermath ? undefined : { name: "Cansado", trigger: "end", target: "all", value: -1, durationSeconds: null } })}>{action.aftermath ? "Remover revés" : "+ Configurar revés"}</button>
+                      </div>
+                      {action.aftermath && <>
+                        <label className="block text-[10px] text-muted-foreground">Nome da condição
+                          <input value={action.aftermath.name} onChange={e => updateAction({ aftermath: { ...action.aftermath!, name: e.target.value } })}
+                            className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <label className="text-[10px] text-muted-foreground">Quando aplicar
+                            <select value={action.aftermath.trigger} onChange={e => updateAction({ aftermath: { ...action.aftermath!, trigger: e.target.value as "use" | "end" } })}
+                              className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground">
+                              <option value="use">Ao ativar</option><option value="end">Ao terminar duração</option>
+                            </select>
+                          </label>
+                          <label className="text-[10px] text-muted-foreground">Duração do revés (seg; 0 = permanente)
+                            <input type="number" min={0} max={604800} value={secondValue(action.aftermath.durationSeconds)}
+                              onChange={e => updateAction({ aftermath: { ...action.aftermath!, durationSeconds: Math.max(0, Number(e.target.value)) || null } })}
+                              className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
+                          </label>
+                          <label className="text-[10px] text-muted-foreground">Teste afetado
+                            <select value={action.aftermath.target} onChange={e => updateAction({ aftermath: { ...action.aftermath!, target: e.target.value } })}
+                              className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground">
+                              {!checkTargets.some(opt => opt.value === action.aftermath?.target) && <option value={action.aftermath.target}>{action.aftermath.target}</option>}
+                              {checkTargets.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                            </select>
+                          </label>
+                          <label className="text-[10px] text-muted-foreground">Modificador (+ ou −; 0 = apenas condição)
+                            <input type="number" value={action.aftermath.value} onChange={e => updateAction({ aftermath: { ...action.aftermath!, value: Number(e.target.value) } })}
+                              className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
+                          </label>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">Reveses permanentes só podem ser removidos pelo Mestre. Sem duração ativa, o gatilho “ao terminar” ocorre no uso.</p>
+                      </>}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1441,7 +1532,8 @@ export function GmPanel({
         ...(skill.action
           ? {
             action: {
-              cost: Number(skill.action.cost),
+              ...skill.action,
+              cost: skill.action.resource === "none" ? 0 : Number(skill.action.cost),
               resource: skill.action.resource,
             },
           }
@@ -2476,6 +2568,7 @@ export function GmPanel({
                                 }
                                 onRemove={() => removeSkill(skill.id)}
                                 setClassDraft={setClassDraft}
+                                customChecks={customChecks}
                               />
                             ))}
                           </div>

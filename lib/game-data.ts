@@ -64,15 +64,42 @@ export interface GameSkillBonus {
   description: string
 }
 
+/** Bônus de rolagem por alvo: "all", atributo, nome ou ID de teste. */
+export interface GameSkillCheckBonus {
+  target: string
+  value: number
+  /** Se verdadeiro, multiplica pelo nível aprendido da habilidade. */
+  perLevel?: boolean
+  /** Apenas rolagens do atributo isolado (para passivas oficiais). */
+  attributeOnly?: boolean
+}
+
+export interface GameSkillAftermath {
+  name: string
+  trigger: "use" | "end"
+  target: string
+  value: number
+  /** Nulo/ausente: permanente até remoção pelo Mestre. */
+  durationSeconds?: number | null
+}
+
+export interface GameSkillAction {
+  cost: number
+  resource: "mp" | "hp" | "ip" | "none"
+  durationSeconds?: number | null
+  cooldownSeconds?: number | null
+  checkBonuses?: GameSkillCheckBonus[]
+  aftermath?: GameSkillAftermath
+}
+
 export interface GameSkill {
   id: string
   name: string
   maxLevel: number
   description: string
-  action?: {
-    cost: number
-    resource: "mp" | "hp" | "ip"
-  }
+  action?: GameSkillAction
+  /** Bônus sempre ativos ao aprender a habilidade, sem gastar recursos. */
+  passiveBonuses?: GameSkillCheckBonus[]
   bonuses?: Record<number, GameSkillBonus[]>
 }
 
@@ -142,6 +169,7 @@ export const CLASSES: GameClass[] = [
         maxLevel: 4,
         description:
           "Você ganha um bônus igual a [Nível da Perícia] em todos os Testes de Precisão corporais.",
+        passiveBonuses: [{ target: "Precisão Corporal", value: 1, perLevel: true }],
       },
     ],
   },
@@ -319,6 +347,7 @@ export const CLASSES: GameClass[] = [
         description:
           "Gaste 5 PM para aumentar seus PM totais em [Nível x 2]. Ganha bônus +2 ao realizar Testes Abertos de Intuição pura.",
         action: { cost: 5, resource: "mp" },
+        passiveBonuses: [{ target: "ins", value: 2, attributeOnly: true }],
       },
       {
         id: "lo-knowledge",
@@ -375,6 +404,7 @@ export const CLASSES: GameClass[] = [
         maxLevel: 1,
         description:
           "Gaste 10 PV reativamente para criar resistência natural contra danos mágicos que te feriram.",
+        action: { cost: 10, resource: "hp" },
       },
       {
         id: "mu-geno",
@@ -683,6 +713,7 @@ export const CLASSES: GameClass[] = [
         maxLevel: 4,
         description:
           "Quando um aliado falhar em um teste que você possa perceber, gaste 5 PM para permitir que ele repita a rolagem. O novo resultado deve ser usado.",
+        action: { cost: 5, resource: "mp" },
       },
       {
         id: "pr-apocalypse",
@@ -734,6 +765,7 @@ export const CLASSES: GameClass[] = [
         maxLevel: 5,
         description:
           "Gaste 5 PM para remover [Nível da Perícia] condições sobrenaturais de uma criatura ou reduzir uma possessão, corrupção ou maldição em um estágio.",
+        action: { cost: 5, resource: "mp" },
       },
       {
         id: "ex-you-dont-belong",
@@ -763,6 +795,7 @@ export const CLASSES: GameClass[] = [
         maxLevel: 5,
         description:
           "Gaste 5 PM para conectar um Fio a uma criatura que você possa ver. Você pode manter [Nível da Perícia] Fios simultaneamente.",
+        action: { cost: 5, resource: "mp" },
       },
       {
         id: "pu-pull",
@@ -770,6 +803,7 @@ export const CLASSES: GameClass[] = [
         maxLevel: 5,
         description:
           "Enquanto possuir um Fio conectado, gaste 5 PM para mover o alvo até [Nível da Perícia x 2] metros, se ele falhar em um teste de MIG ou DES.",
+        action: { cost: 5, resource: "mp" },
       },
       {
         id: "pu-hands",
@@ -777,6 +811,7 @@ export const CLASSES: GameClass[] = [
         maxLevel: 4,
         description:
           "Gaste 5 PM para manipular remotamente um objeto conectado ou realizar uma tarefa física simples através de um Fio.",
+        action: { cost: 5, resource: "mp" },
       },
       {
         id: "pu-dance",
@@ -1175,7 +1210,12 @@ export const CLASSES: GameClass[] = [
         maxLevel: 1,
         description:
           "Uma vez por cena, gaste 20 PM para assumir sua forma monstruosa por 3 rodadas ou uma cena livre. Você recebe +2 de Precisão, +2 de Defesa e causa +10 de dano em ataques físicos. Ao terminar, fica Enfraquecido.",
-        action: { cost: 20, resource: "mp" },
+        // Rodadas/cenas não têm duração fixa em segundos. O jogador encerra
+        // manualmente a forma no momento correto, disparando Enfraquecido.
+        action: { cost: 20, resource: "mp",
+          checkBonuses: [{ target: "Precisão", value: 2 }],
+          aftermath: { name: "Enfraquecido", trigger: "end", target: "all", value: 0, durationSeconds: null },
+        },
       },
     ],
   },
