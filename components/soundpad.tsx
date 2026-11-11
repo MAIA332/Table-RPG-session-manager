@@ -1,5 +1,11 @@
 "use client"
 import { controllerConfirm } from '@/lib/input/dialogs'
+import { useController } from '@/components/controller/controller-provider'
+import { useControllerActions } from '@/lib/input/use-controller-actions'
+import { controllerFocus, focusControllerElement } from '@/lib/input/focus'
+import { SOUND_ACTION_LABELS } from '@/lib/input/soundpad-commands'
+import { ControllerGlyph } from '@/components/controller/controller-glyph'
+
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
@@ -125,6 +131,7 @@ export function Soundpad({
   onCustomTracksChange, onMusicVolumeChange, onEffectsVolumeChange,
   onPlaySound, onStopSound, onStopAll, onClose,
 }: SoundpadProps) {
+  const {active: controllerActive, settings: controllerSettings} = useController()
   const [targetingReady, setTargetingReady] = useState(false)
   const [folders, setFolders] = useState<SoundFolder[]>([])
   const [hotkeys, setHotkeys] = useState<SoundHotkey[]>([])
@@ -645,9 +652,41 @@ export function Soundpad({
     : featuredSound?.loop ? "Repetição contínua" : featuredSound ? "Reprodução avulsa" : "Escolha uma faixa para começar"
   const selectedFolderName = activeFolderObject?.name || (activeFolder === "unfiled" ? "Sem pasta" : "Sua biblioteca")
 
+  // The whole fullscreen studio is a gamepad layer. Capture every command
+  // before CampaignRoom handlers, even if there is no playable track yet.
+  // A/B and D-pad are always navigation; the modal's dedicated audio mapping
+  // is translated by ControllerProvider only while this portal exists.
+  useControllerActions({
+    'ui.up': () => controllerFocus('ui.up', dialogRef.current),
+    'ui.down': () => controllerFocus('ui.down', dialogRef.current),
+    'ui.left': () => controllerFocus('ui.left', dialogRef.current),
+    'ui.right': () => controllerFocus('ui.right', dialogRef.current),
+    'ui.confirm': () => controllerFocus('ui.confirm', dialogRef.current),
+    'ui.back': () => { closeStudio(); return true },
+    'ui.settings': () => { closeStudio(); return true },
+    'audio.play': () => { if (isGm && featuredSound?.paused) void setPaused(featuredSound); else if (isGm && !featuredSound && focusedPlaylist) void playPlaylist(focusedPlaylist); return true },
+    'audio.pause': () => { if (isGm && featuredSound && !featuredSound.paused) void setPaused(featuredSound); return true },
+    'audio.toggle': () => { if (isGm && featuredSound) void setPaused(featuredSound); return true },
+    'audio.stop': () => { if (isGm && featuredSound) { if (onStopSound) onStopSound(featuredSound.id); else void postJson(soundEndpoint,{action:'stop',id:featuredSound.id}).catch(error => setError(errorMessage(error,'Não foi possível parar o áudio.'))) }; return true },
+    'audio.previous': () => { if (isGm && featuredSound?.playlist) void skipPlaylist(featuredSound.id,'previous'); return true },
+    'audio.next': () => { if (isGm && featuredSound?.playlist) void skipPlaylist(featuredSound.id,'next'); return true },
+  }, { enabled: portalReady && isVisible, priority: 550, captureAll: true })
+
+  useEffect(() => {
+    if (!controllerActive || !portalReady || !isVisible) return
+    const frame = requestAnimationFrame(() => {
+      const modal = dialogRef.current
+      const playerControl = modal?.querySelector<HTMLButtonElement>('footer[data-soundpad-transport="toolbar"] button[aria-label="Pausar"]:not(:disabled),footer[data-soundpad-transport="toolbar"] button[aria-label="Retomar"]:not(:disabled)')
+      const search = modal?.querySelector<HTMLInputElement>('input[aria-label="Pesquisar sons"]')
+      focusControllerElement(playerControl || search)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [controllerActive, portalReady, isVisible])
+
   const studio = (
     <div
       ref={dialogRef}
+      data-controller-scroll-root="soundpad"
       tabIndex={-1}
       role="dialog"
       aria-modal={true}
@@ -721,7 +760,7 @@ export function Soundpad({
         {isGm ? (
           <>
             {/* SIDEBAR · coleção e pastas, visual próximo ao Spotify. */}
-            <aside className="z-10 flex max-h-[220px] w-full shrink-0 flex-col gap-4 overflow-y-auto border-b border-border/45 bg-card/20 p-4 backdrop-blur-xl lg:max-h-none lg:w-[255px] lg:border-b-0 lg:border-r lg:p-5">
+            <aside data-controller-scrollport="true" className="z-10 flex max-h-[220px] w-full shrink-0 flex-col gap-4 overflow-y-auto border-b border-border/45 bg-card/20 p-4 backdrop-blur-xl lg:max-h-none lg:w-[255px] lg:border-b-0 lg:border-r lg:p-5">
               <div>
                 <div className="mb-3 flex items-center justify-between px-2">
                   <span className="text-[10px] font-black uppercase tracking-[.22em] text-muted-foreground">Sua coleção</span>
@@ -777,7 +816,7 @@ export function Soundpad({
             </aside>
 
             {/* MAIN · hero, capas de playlists, tabela de faixas. */}
-            <main className="soundpad-scroll min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-10 pt-5 sm:px-6 lg:px-8 lg:pt-7">
+            <main data-controller-scrollport="true" className="soundpad-scroll min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-10 pt-5 sm:px-6 lg:px-8 lg:pt-7">
               {targetUserId && !players.some(player => player.userId === targetUserId) && <p className="mb-4 rounded-xl border border-destructive/35 bg-destructive/10 p-3 text-xs text-destructive">O destinatário selecionado não participa mais da mesa.</p>}
               <div className="mb-4 flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
                 <div className="flex min-w-0 items-center gap-1.5"><span className="truncate">Biblioteca</span><ChevronRight className="size-3" /><span className="truncate font-semibold text-foreground">{selectedFolderName}</span></div>
@@ -987,7 +1026,7 @@ export function Soundpad({
 
         {/* Painel do inspetor; em telas pequenas aparece como drawer sobre a biblioteca. */}
         {mobileInspector && <button type="button" aria-label="Fechar painel de controle" className="absolute inset-0 z-20 bg-background/60 backdrop-blur-sm xl:hidden" onClick={() => setMobileInspector(false)} />}
-        <aside className={`${mobileInspector ? "absolute inset-y-0 right-0 z-30 flex w-[min(92vw,360px)]" : "hidden"} min-h-0 shrink-0 flex-col overflow-y-auto border-l border-border/50 bg-card/55 p-5 shadow-[-12px_0_60px_rgba(0,0,0,.12)] backdrop-blur-2xl xl:relative xl:z-10 xl:flex xl:w-[320px] 2xl:w-[352px]`}>
+        <aside data-controller-scrollport="true" className={`${mobileInspector ? "absolute inset-y-0 right-0 z-30 flex w-[min(92vw,360px)]" : "hidden"} min-h-0 shrink-0 flex-col overflow-y-auto border-l border-border/50 bg-card/55 p-5 shadow-[-12px_0_60px_rgba(0,0,0,.12)] backdrop-blur-2xl xl:relative xl:z-10 xl:flex xl:w-[320px] 2xl:w-[352px]`}>
           <div className="mb-5 flex items-center justify-between gap-3">
             <div><p className="text-[10px] font-bold uppercase tracking-[.22em] text-primary/75">Monitor de áudio</p><h3 className="mt-1 text-[17px] font-extrabold">Tocando agora</h3></div>
             <div className="flex items-center gap-2">
@@ -1048,7 +1087,7 @@ export function Soundpad({
       </div>
 
       {/* PLAYER DO ESTÚDIO: fixa os controles sem recriar elementos de áudio. */}
-      <footer className="relative z-40 flex min-h-[78px] shrink-0 items-center gap-3 border-t border-border/50 bg-card/65 px-3 py-3 shadow-[0_-14px_50px_rgba(0,0,0,.16)] backdrop-blur-2xl sm:gap-5 sm:px-6 lg:px-8">
+      <footer data-soundpad-transport="toolbar" className="relative z-40 flex min-h-[78px] shrink-0 items-center gap-3 border-t border-border/50 bg-card/65 px-3 py-3 shadow-[0_-14px_50px_rgba(0,0,0,.16)] backdrop-blur-2xl sm:gap-5 sm:px-6 lg:px-8">
         <div className="flex min-w-0 flex-1 items-center gap-3 lg:max-w-[34%]">
           <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-primary/25 bg-gradient-to-br from-primary/35 via-primary/10 to-background text-primary shadow-sm sm:size-12"><Disc3 className="size-6" /></div>
           <div className="min-w-0"><p className="truncate text-xs font-bold sm:text-sm" title={featuredName}>{featuredName}</p><p className="mt-0.5 truncate text-[10px] text-muted-foreground sm:text-[11px]">{featuredSubline}</p></div>
@@ -1070,6 +1109,10 @@ export function Soundpad({
           <span className="ml-3 flex items-center gap-1.5 rounded-full border border-border/50 bg-background/35 px-3 py-1.5 text-[10px] text-muted-foreground"><Radio className="size-3.5 text-primary" /> {targetUserId ? "Individual" : "Mesa"}</span>
         </div>
       </footer>
+      {controllerActive && isGm && <div className="pointer-events-none absolute bottom-[88px] left-1/2 z-40 flex max-w-[90vw] -translate-x-1/2 flex-wrap justify-center gap-2 rounded-lg border border-primary/30 bg-background/95 px-3 py-1.5 text-center text-[11px] font-semibold text-primary shadow-lg" aria-label="Comandos do controle no Soundpad">
+        {Object.entries(controllerSettings.soundpadBindings).filter(([,action]) => action && action in SOUND_ACTION_LABELS).slice(0,6).map(([button,action]) => <span key={button} className="inline-flex items-center gap-1 whitespace-nowrap"><ControllerGlyph button={button as import('@/lib/input/actions').GamepadButtonName | `LT+${import('@/lib/input/actions').GamepadButtonName}`} small />{SOUND_ACTION_LABELS[action as keyof typeof SOUND_ACTION_LABELS]}</span>)}
+        <span>A Selecionar · B Fechar</span>
+      </div>}
       {(isSaving || error || !loaded) && isGm && (
         <div className="pointer-events-none absolute bottom-[87px] left-1/2 z-50 w-[min(90vw,500px)] -translate-x-1/2 rounded-xl border border-border/60 bg-background/90 px-4 py-3 text-center text-xs text-foreground shadow-2xl backdrop-blur-xl">
           {!loaded && !error ? "Carregando biblioteca..." : isSaving ? "Salvando alterações..." : <span role="alert" className="pointer-events-auto text-destructive">{error} <button type="button" className="ml-2 underline" onClick={() => void retryPendingChanges()}>{loaded ? (localConflict ? "Resolver backup" : "Tentar salvar novamente") : "Recarregar"}</button>{localConflict && <button type="button" className="ml-2 underline" onClick={discardLocalBackup}>Descartar backup</button>}</span>}
@@ -1084,7 +1127,7 @@ export function Soundpad({
       <div
         data-soundpad-fullscreen
         className="pointer-events-auto fixed inset-0 isolate h-[100dvh] w-screen overflow-hidden"
-        style={{ zIndex: 2147483000 }}
+        style={{ zIndex: 15000 }}
       >
         {studio}
       </div>,

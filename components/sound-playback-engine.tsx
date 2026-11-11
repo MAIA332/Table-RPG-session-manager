@@ -7,6 +7,10 @@ import { readPendingHotkeyRecord, clearPendingPreferenceIfMatches } from "@/lib/
 import { createClientId } from "@/lib/client-id"
 import { musicSource } from "@/lib/music-sources"
 import { ExternalMusicPlayer } from "./external-music-player"
+import { useController } from '@/components/controller/controller-provider'
+import { useControllerActions } from '@/lib/input/use-controller-actions'
+import { floatingAudioHints, SOUND_ACTION_LABELS } from '@/lib/input/soundpad-commands'
+import { ControllerGlyph } from '@/components/controller/controller-glyph' 
 
 type PlayingAudio = { element: HTMLAudioElement; url: string }
 type Stats = { id: string; current: number; duration: number }
@@ -66,6 +70,7 @@ export function SoundPlaybackEngine({
   campaignId, isSoundpadOpen, onOpenSoundpad,
   customTracks = [], onPlaySound, onStopSound, hotkeyTargetUserId = null,
 }: SoundPlaybackEngineProps) {
+  const {active: controllerActive, settings: controllerSettings, page: controllerPage} = useController()
   const playingRef = useRef<Map<string, PlayingAudio>>(new Map())
   const currentSoundsRef = useRef<Map<string, ActiveSound>>(new Map())
   const completedRef = useRef<Set<string>>(new Set())
@@ -261,6 +266,18 @@ export function SoundPlaybackEngine({
     } finally { setCommandBusy(false) }
   }
 
+  // Floating player uses the REGULAR profile. When the studio is open, its
+  // dedicated profile takes priority and this handler is disabled.
+  useControllerActions({
+    'audio.play': () => { if (featured?.paused) void runCommand('resume',featured); return true },
+    'audio.pause': () => { if (featured && !featured.paused) void runCommand('pause',featured); return true },
+    'audio.toggle': () => { if (featured) void runCommand(featured.paused ? 'resume' : 'pause',featured); return true },
+    'audio.stop': () => { if (featured) void runCommand('stop',featured); return true },
+    'audio.previous': () => { if (featured?.playlist) void runCommand('playlist_previous',featured); return true },
+    'audio.next': () => { if (featured?.playlist) void runCommand('playlist_next',featured); return true },
+  }, {enabled: isGm && !soundpadOpen && !!featured, priority: 15})
+  const controllerHints = floatingAudioHints(controllerSettings, controllerPage)
+
   const externalPlayers = <div className="fixed bottom-4 left-4 z-[12000] flex max-h-[75vh] flex-col gap-2 overflow-y-auto">{audible.filter(sound => musicSource(sound.url)).map(sound => <ExternalMusicPlayer key={sound.id} sound={sound} volume={sound.loop || sound.playlist ? musicVolume : effectsVolume} onEnded={latest => {
     if (latest.playlist && !isGm) return
     if (onEndedRef.current) onEndedRef.current(latest)
@@ -274,7 +291,7 @@ export function SoundPlaybackEngine({
   const title = tracks.find(track => track.id === featured.trackId)?.name || "Áudio em reprodução"
 
   return (<>{externalPlayers}
-    <div className="fixed bottom-5 right-5 z-[80] w-[310px] max-w-[calc(100vw-24px)] select-none overflow-hidden rounded-2xl border border-amber-500/30 bg-[#17120fee] text-[#f0e5d4] shadow-[0_20px_60px_rgba(0,0,0,0.65)] backdrop-blur-xl"
+    <div className="fixed right-5 top-24 z-[80] w-[310px] max-w-[calc(100vw-24px)] select-none overflow-hidden rounded-2xl border border-amber-500/30 bg-[#17120fee] text-[#f0e5d4] shadow-[0_20px_60px_rgba(0,0,0,0.65)] backdrop-blur-xl"
       style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}>
       <div className="flex cursor-grab touch-none items-center justify-between border-b border-white/5 bg-gradient-to-r from-[#38271a] to-[#1b1510] px-3 py-2 active:cursor-grabbing"
         onPointerDown={event => {
@@ -286,8 +303,10 @@ export function SoundPlaybackEngine({
           const drag = dragRef.current
           if (!drag) return
           setOffset({
-            x: Math.min(16, Math.max(310 - window.innerWidth, drag.x + event.clientX - drag.startX)),
-            y: Math.min(16, Math.max(155 - window.innerHeight, drag.y + event.clientY - drag.startY)),
+            x: Math.max(12 - ((event.currentTarget.parentElement?.getBoundingClientRect().left ?? 0) - offset.x),
+                 Math.min(window.innerWidth - 12 - ((event.currentTarget.parentElement?.getBoundingClientRect().right ?? 0) - offset.x), drag.x + event.clientX - drag.startX)),
+            y: Math.max(12 - ((event.currentTarget.parentElement?.getBoundingClientRect().top ?? 0) - offset.y),
+                 Math.min(window.innerHeight - 12 - ((event.currentTarget.parentElement?.getBoundingClientRect().bottom ?? 0) - offset.y), drag.y + event.clientY - drag.startY)),
           })
         }}
         onPointerUp={() => { dragRef.current = null }}
@@ -321,6 +340,14 @@ export function SoundPlaybackEngine({
         <button title="Parar" aria-label="Parar áudio" disabled={commandBusy} onClick={() => void runCommand("stop", featured)} className="text-stone-400 hover:text-red-400 disabled:opacity-30"><Square className="size-4 fill-current" /></button>
         {featured.playlist ? <button title="Próxima faixa" aria-label="Próxima faixa" disabled={commandBusy} onClick={() => void runCommand("playlist_next", featured)} className="text-stone-400 hover:text-white disabled:opacity-30"><SkipForward className="size-4" /></button> : <ListMusic className="size-4 text-stone-600" />}
       </div>
+      {controllerActive && <div className="border-t border-amber-500/20 px-3 pb-3 pt-2" aria-label="Atalhos de controle do miniplayer">
+        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">Atalhos do controle</p>
+        {controllerHints.length ? <div className="flex flex-wrap gap-x-3 gap-y-2">
+          {controllerHints.map(({button,action},index) => <span key={`${button}:${action}:${index}`} className="inline-flex items-center gap-1 text-[10px] text-stone-300">
+            <ControllerGlyph button={button as import('@/lib/input/actions').GamepadButtonName | `LT+${import('@/lib/input/actions').GamepadButtonName}`} small /> {SOUND_ACTION_LABELS[action]}
+          </span>)}
+        </div> : <p className="text-[10px] leading-relaxed text-stone-400">Configure Play/Pause, Parar e faixas em Menu Start → Comandos ou Atalhos LT.</p>}
+      </div>}
       {commandError && <p role="alert" className="px-3 pb-2 text-[10px] text-red-300">{commandError}</p>}
     </div></>
   )

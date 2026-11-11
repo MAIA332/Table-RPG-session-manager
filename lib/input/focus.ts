@@ -97,7 +97,7 @@ function handleSelectDialog(action: InputAction) {
  * o comportamento atual do foco.
  */
 function scrollFocusedIntoView(el: HTMLElement) {
-  const root = el.closest<HTMLElement>('[data-controller-scroll-root="special-attacks"], [data-controller-scroll-root="character-creator"]')
+  const root = el.closest<HTMLElement>('[data-controller-scroll-root="special-attacks"], [data-controller-scroll-root="character-creator"], [data-controller-scroll-root="soundpad"]')
   if (!root) {
     el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
     return

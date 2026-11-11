@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen, Gamepad2, LayoutGrid, SlidersHorizontal, X, Keyboard, CircleHelp, RotateCcw } from 'lucide-react'
+import { BookOpen, Gamepad2, LayoutGrid, SlidersHorizontal, X, Keyboard, CircleHelp, RotateCcw, Disc3 } from 'lucide-react'
 import { BASE_COMMANDS, DEFAULT_BINDINGS, DEFAULT_SETTINGS, REMAPPABLE_BUTTONS, REMAPPABLE_LT_BUTTONS, MAX_SKILL_PAGES, SETTABLE_COMMANDS, type GamepadButtonName, type InputAction, type InputSettings } from '@/lib/input/actions'
 import { ACTION_LABELS } from '@/lib/input/labels'
 import { ControllerGlyph } from './controller-glyph'
@@ -8,10 +8,12 @@ import { ControllerWheel } from './controller-wheel'
 import { ControllerActionPicker } from './controller-action-picker'
 import type { ControllerTarget } from '@/lib/input/targeted-actions'
 import { listPanelCommands, labelForPanelAction, type PanelCommand } from '@/lib/input/panel-actions'
+import { SOUND_ACTIONS, SOUND_ACTION_LABELS, SOUNDPAD_BUTTONS, DEFAULT_SOUNDPAD_BINDINGS, type SoundAction } from '@/lib/input/soundpad-commands'
 
 const TABS = [
   { key: 'bindings', name: 'Comandos', icon: Gamepad2 },
   { key: 'wheel', name: 'Atalhos LT', icon: LayoutGrid },
+  { key: 'soundpad', name: 'Soundpad', icon: Disc3 },
   { key: 'options', name: 'Acessibilidade', icon: SlidersHorizontal },
   { key: 'help', name: 'Ajuda', icon: BookOpen },
 ] as const
@@ -112,6 +114,24 @@ export function ControllerStartMenu({ settings, update, onClose, page, skillName
             <p className="otms-start-note">Habilidades e golpes são filtrados pelo personagem que você controla. Ao escolher uma dessas ações, o segundo seletor indica o alvo específico. Selecionar habilidade abre sua ficha para confirmação. O radial nunca consome MP automaticamente.</p>
             <button className="otms-start-secondary" onClick={() => update({slots: DEFAULT_SETTINGS.slots.map(row=>[...row])})}><RotateCcw size={16}/> Restaurar conjuntos</button>
           </>}
+          {menuTab === 'soundpad' && <>
+            <div className="otms-start-section-header"><h3>CONTROLES DO SOUND STUDIO</h3><span>Perfil exclusivo da tela cheia</span></div>
+            <p className="otms-start-description">Enquanto o Arquivo Sonoro estiver aberto, estes botões substituem os atalhos da campanha. Ao fechar o estúdio, os mapeamentos normais voltam automaticamente. A, B, MENU e o direcional continuam reservados à navegação.</p>
+            <div className="otms-start-mappings">
+              {[...SOUNDPAD_BUTTONS, ...availableButtons.filter(button => /^BTN(?:1[6-9]|[2-5]\d|6[0-3])$/.test(button))].map(button => (
+                <label key={button} className="otms-start-mapping-row">
+                  <span className="otms-start-binding-button"><ControllerGlyph button={button as GamepadButtonName | `LT+${GamepadButtonName}`} /><strong>{button.replace('LS', 'L3').replace('RS', 'R3')}</strong></span>
+                  <select aria-label={`Comando de áudio para ${button}`} value={settings.soundpadBindings[button as keyof typeof settings.soundpadBindings] || ''}
+                    onChange={event => update({soundpadBindings:{...settings.soundpadBindings,[button]:event.target.value as SoundAction | ''}})}>
+                    <option value="">Sem ação</option>
+                    {SOUND_ACTIONS.map(action => <option key={action} value={action}>{SOUND_ACTION_LABELS[action]}</option>)}
+                  </select>
+                </label>
+              ))}
+            </div>
+            <p className="otms-start-note">Padrão: X = Play/Pause · Y = Parar · LB/RB = faixa anterior/próxima · RT = Reproduzir · Select = Pausar. Alterações não afetam mouse/teclado. Fora do Soundpad, configure comandos de áudio na aba Comandos ou em Atalhos LT; o miniplayer mostrará os botões escolhidos.</p>
+            <button type="button" className="otms-start-secondary" onClick={() => update({soundpadBindings:{...DEFAULT_SOUNDPAD_BINDINGS}})}><RotateCcw size={16}/> Restaurar botões do Soundpad</button>
+          </>}
           {menuTab === 'options' && <>
             <div className="otms-start-section-header"><h3>ACESSIBILIDADE</h3><span>Preferências neste dispositivo</span></div>
             <div className="otms-start-options">
@@ -141,6 +161,7 @@ export function ControllerStartMenu({ settings, update, onClose, page, skillName
               <p><ControllerGlyph button="LT"/> Segurar para exibir a roda de atalhos</p>
               <p><ControllerGlyph button="LT"/> + <ControllerGlyph button="RB"/> Próximo conjunto de habilidades</p>
               <p><ControllerGlyph button="LS"/> / <ControllerGlyph button="RS"/> Ações personalizadas, inclusive segurando LT</p>
+              <p>Arquivo Sonoro aberto: perfil próprio na aba Soundpad (X Play/Pause, Y Parar, LB/RB navegar faixas). No miniplayer valem somente os atalhos configurados em Comandos/Atalhos LT.</p>
               <p><ControllerGlyph button="VIEW"/> Select: personalizável; se houver uma imagem de golpe ativa para o Mestre, encerra primeiro a imagem.</p>
               <p>Maximizar vida e mana: use o segundo seletor para escolher um personagem seu quando houver mais de um.</p>
               <p>Analógico direito: rolar verticalmente a página ou painel ativo</p>

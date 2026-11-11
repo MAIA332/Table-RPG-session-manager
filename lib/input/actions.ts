@@ -1,4 +1,5 @@
 import { isTargetAction } from './targeted-actions'
+import { sanitizeSoundpadBindings, type SoundpadBindings } from './soundpad-commands'
 /** Ações semânticas: dispositivos não executam regras de jogo diretamente. */
 export type InputAction =
   | 'ui.confirm' | 'ui.back' | 'ui.up' | 'ui.down' | 'ui.left' | 'ui.right'
@@ -15,6 +16,7 @@ export type InputAction =
   | `panel.${string}`
   | 'special.manager' | 'character.training' | 'character.affinities' | 'character.bonds' | 'character.store' | 'character.mannequin' | 'player.theme'
   | `skill.open.${string}` | `special.open.${string}`
+  | 'audio.play' | 'audio.pause' | 'audio.toggle' | 'audio.stop' | 'audio.previous' | 'audio.next'
   | 'qte.react'
 
 export type GamepadButtonName = 'A' | 'B' | 'X' | 'Y' | 'LB' | 'RB' | 'LT' | 'RT' |
@@ -55,6 +57,7 @@ export const SETTABLE_COMMANDS: readonly InputAction[] = [
   'gm.scenes', 'gm.poll', 'gm.custom', 'gm.loots', 'gm.battleGrid',
   'gm.crisis', 'gm.mapImporter', 'gm.weather', 'gm.difficulty',
   'player.hand', 'player.notes', 'player.mixer', 'player.gallery', 'player.maps',
+  'audio.play', 'audio.pause', 'audio.toggle', 'audio.stop', 'audio.previous', 'audio.next',
   'character.sheet', 'character.inventory', 'character.restore', 'map.open', 'world.lore',
   'special.manager', 'character.training', 'character.affinities', 'character.bonds', 'character.store', 'character.mannequin', 'player.theme',
   'combat.focus', 'gm.panel', 'gm.soundpad', 'gm.bestiary', 'gallery.open', 'ui.settings',
@@ -71,6 +74,7 @@ export const BASE_COMMANDS: readonly InputAction[] = [
   'ui.settings', 'special.manager', 'character.training', 'character.affinities', 'character.bonds', 'character.store', 'character.mannequin', 'player.theme', 'gm.scenes', 'gm.poll', 'gm.custom', 'gm.loots', 'gm.battleGrid',
   'gm.crisis', 'gm.mapImporter', 'gm.weather', 'gm.difficulty',
   'player.hand', 'player.notes', 'player.mixer', 'player.gallery', 'player.maps',
+  'audio.play', 'audio.pause', 'audio.toggle', 'audio.stop', 'audio.previous', 'audio.next',
 ]
 export function getBindings(settings: InputSettings): Readonly<Record<string, InputAction>> {
   return { ...DEFAULT_BINDINGS, ...settings.buttonBindings }
@@ -87,6 +91,7 @@ export type InputSettings = {
   slots: InputAction[][]
   // Includes direct buttons and dedicated LT+L3/LT+R3 chords.
   buttonBindings: Partial<Record<GamepadButtonName | `LT+${GamepadButtonName}`, InputAction>>
+  soundpadBindings: SoundpadBindings
 }
 export const DEFAULT_SETTINGS: InputSettings = {
   preference: 'auto', deadzone: 0.65, repeatMs: 235, vibration: true,
@@ -97,6 +102,7 @@ export const DEFAULT_SETTINGS: InputSettings = {
     ['world.lore', 'character.inventory', 'gm.soundpad', 'gm.panel'],
   ],
   buttonBindings: {},
+  soundpadBindings: sanitizeSoundpadBindings(undefined),
 }
 export const STORAGE_KEY = 'otms-controller-settings-v1'
 export function sanitizeSettings(raw: unknown): InputSettings {
@@ -115,6 +121,7 @@ export function sanitizeSettings(raw: unknown): InputSettings {
     soundClick: value.soundClick !== false,
     tvScale: value.tvScale !== false,
     slots: safeSlots.map(page => [...page]),
+    soundpadBindings: sanitizeSoundpadBindings(value.soundpadBindings),
     buttonBindings: Object.fromEntries(Object.entries(value.buttonBindings ?? {})
       .filter(([button, action]) => (isRemappableButton(button) || (REMAPPABLE_LT_BUTTONS as readonly string[]).includes(button)) &&
         (BASE_COMMANDS.includes(action as InputAction) || isTargetAction(action) || (typeof action==='string' && /^panel\.[a-z0-9-]+\.\d+$/.test(action))))) as InputSettings['buttonBindings'],

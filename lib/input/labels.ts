@@ -23,6 +23,9 @@ export const ACTION_LABELS: Record<string, string> = {
   'character.affinities': 'Gerenciar afinidades', 'character.bonds': 'Laços',
   'character.store': 'Loja / Mercado & Forja', 'character.mannequin': 'Manequim',
   'player.theme': 'Seletor de temas',
+  'audio.play': 'Som: reproduzir / retomar', 'audio.pause': 'Som: pausar',
+  'audio.toggle': 'Som: play/pause', 'audio.stop': 'Som: parar',
+  'audio.previous': 'Som: faixa anterior', 'audio.next': 'Som: próxima faixa',
   'qte.react': 'Reação rápida', 'skill.ability1': 'Habilidade 1', 'skill.ability2': 'Habilidade 2',
   'skill.ability3': 'Habilidade 3', 'skill.ability4': 'Habilidade 4',
 }

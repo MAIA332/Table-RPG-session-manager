@@ -20,6 +20,7 @@ import { ControllerWheel } from './controller-wheel'
 import { createControllerSounds } from '@/lib/input/controller-sounds'
 import { recordControllerPointerOrigin, recordControllerCommandOrigin, captureControllerOpener, restoreControllerOpener } from '@/lib/input/focus-origin'
 import type { ControllerTarget } from '@/lib/input/targeted-actions'
+import { soundpadRuntimeBindings } from '@/lib/input/soundpad-commands'
 
 interface ControllerContextValue {
   active: boolean
@@ -243,12 +244,17 @@ export function ControllerProvider({children}: {children:ReactNode}) {
         scrolled=scrollControllerContent(Math.sign(axisY)*Math.pow(Math.abs(axisY),1.3)*Math.max(5,elapsed*1.3))
       }
       lastScrollAt=now
-      const bindings=getBindings(settingsRef.current)
+      // Soundpad fullscreen owns its gamepad profile. It cannot execute ordinary
+      // campaign shortcuts, and closing it restores the user's normal profile.
+      const soundpadFocused = !settingsOpenRef.current && !!document.querySelector('[data-soundpad-fullscreen]')
+      const bindings = soundpadFocused
+        ? soundpadRuntimeBindings(settingsRef.current.soundpadBindings)
+        : getBindings(settingsRef.current)
       const actions=collectActions(buttons,previous,now,times,settingsRef.current.repeatMs,bindings)
       // SELECT/VIEW pode ser remapeado normalmente. Apenas uma foto de golpe
       // ativa do Mestre tem prioridade sobre o atalho configurado.
       const cancelablePreviews = [...document.querySelectorAll<HTMLElement>('[data-controller-preview-cancelable="true"]')]
-      if (newlyPressed.includes('VIEW') && settingsRef.current.preference !== 'desktop' && cancelablePreviews.length) {
+      if (!soundpadFocused && newlyPressed.includes('VIEW') && settingsRef.current.preference !== 'desktop' && cancelablePreviews.length) {
         const mapped = actionForButton('VIEW', buttons, bindings)
         const index = mapped ? actions.indexOf(mapped) : -1
         if (index >= 0) actions.splice(index, 1)
@@ -257,7 +263,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       }
       // Na loja, LB/RB alternam entre mochila, vitrine e inspeção mesmo que
       // os comandos globais tenham sido personalizados. Fora da loja não mudam.
-      if((newlyPressed.includes('LB') || newlyPressed.includes('RB')) && !settingsOpenRef.current &&
+      if(!soundpadFocused && (newlyPressed.includes('LB') || newlyPressed.includes('RB')) && !settingsOpenRef.current &&
         !buttons.has('LT') && document.querySelector('[data-controller-store="active"]')) {
         for(const [button,nav] of [['LB','ui.previous'],['RB','ui.next']] as const){
           if(!newlyPressed.includes(button)) continue
@@ -270,7 +276,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       // Na Forja do Viajante, LB/RB são sempre etapas, não atalhos globais.
       // O modificador LT continua separado. Fora da Forja, os mapeamentos
       // personalizados permanecem inalterados.
-      if (!settingsOpenRef.current && !buttons.has('LT') &&
+      if (!soundpadFocused && !settingsOpenRef.current && !buttons.has('LT') &&
           document.querySelector('[data-controller-creator="active"]')) {
         for (const [button, nav] of [['LB','ui.previous'], ['RB','ui.next']] as const) {
           if (!newlyPressed.includes(button)) continue
