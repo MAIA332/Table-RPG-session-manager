@@ -1,4 +1,5 @@
 "use client"
+import { controllerConfirm } from '@/lib/input/dialogs'
 
 import { useEffect, useState } from "react"
 import { Dices, Eye, EyeOff, Plus, Trash2, Save, Pencil, Loader2, ShieldCheck } from "lucide-react"
@@ -115,7 +116,7 @@ export function CustomChecksWorkbench({ campaignId, checks, revision, onRefresh 
             </div>
             <label className="flex items-center gap-3 rounded-xl border border-border/70 bg-background/60 p-3"><input type="checkbox" className="size-4 accent-[var(--accent)]" checked={draft.isPublic} onChange={event => setDraft(prev => prev && { ...prev, isPublic: event.target.checked })}/><span className="flex-1 text-xs text-foreground"><strong>Revelar aos jogadores</strong><span className="mt-1 block text-muted-foreground">Desmarcado: o teste fica oculto inclusive na API dos jogadores.</span></span>{draft.isPublic ? <Eye className="size-4 text-accent"/> : <EyeOff className="size-4 text-muted-foreground"/>}</label>
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-4">
-              <div>{current && <button type="button" disabled={saving} onClick={() => { if (window.confirm(`Excluir permanentemente o teste ${current.name}?`)) void mutate({ action: "delete", id: current.id }).then(ok => { if (ok) setDraft(null) }) }} className="inline-flex items-center gap-2 rounded-xl border border-destructive/30 px-3 py-2 text-xs text-destructive hover:bg-destructive/10"><Trash2 className="size-4"/> Excluir</button>}</div>
+              <div>{current && <button type="button" disabled={saving} onClick={async () => { if (await controllerConfirm(`Excluir permanentemente o teste ${current.name}?`)) void mutate({ action: "delete", id: current.id }).then(ok => { if (ok) setDraft(null) }) }} className="inline-flex items-center gap-2 rounded-xl border border-destructive/30 px-3 py-2 text-xs text-destructive hover:bg-destructive/10"><Trash2 className="size-4"/> Excluir</button>}</div>
               <button type="button" disabled={saving || !draft.name.trim() || draft.dice.length === 0 || draft.dice.length > CUSTOM_CHECK_DICE_LIMIT || draft.dice.some(d => d.kind === "fixed" && (!Number.isSafeInteger(d.sides) || d.sides < 2 || d.sides > 1000))} onClick={() => void mutate({ action: "save", check: draft }).then(ok => { if (ok) setDraft(null) })} className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-xs font-black text-accent-foreground transition hover:bg-accent/90 disabled:opacity-40">{saving ? <Loader2 className="size-4 animate-spin"/> : <Save className="size-4"/>} Salvar teste</button>
             </div>
           </div>}

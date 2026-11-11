@@ -1,4 +1,6 @@
 "use client"
+import { controllerConfirm } from '@/lib/input/dialogs'
+import { useControllerActions } from "@/lib/input/use-controller-actions"
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
@@ -83,6 +85,12 @@ export function PersonalNotes({ campaignId }: PersonalNotesProps) {
       window.removeEventListener("scroll", updatePosition, true)
     }
   }, [open])
+
+  useControllerActions({ "ui.back": () => {
+    if (showNoteList) setShowNoteList(false)
+    else void closeNotes()
+    return true
+  } }, { enabled: open, priority: 220 })
 
   async function saveCurrent() {
     if (!selected || !dirty) return true
@@ -193,7 +201,7 @@ export function PersonalNotes({ campaignId }: PersonalNotesProps) {
   }
 
   async function deleteCurrent() {
-    if (!selected || saving || !confirm(`Excluir "${selected.title}"?`)) return
+    if (!selected || saving || !await controllerConfirm(`Excluir "${selected.title}"?`)) return
     setSaving(true)
     setShowNoteList(false)
     setError("")

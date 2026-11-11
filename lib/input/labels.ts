@@ -1,0 +1,28 @@
+import type { InputAction } from './actions'
+
+/** Rótulos de UI: sem dependência dos componentes de campanha. */
+export const ACTION_LABELS: Record<string, string> = {
+  'ui.confirm': 'Confirmar', 'ui.back': 'Voltar', 'ui.up': 'Cima', 'ui.down': 'Baixo',
+  'ui.left': 'Esquerda', 'ui.right': 'Direita', 'ui.previous': 'Aba anterior', 'ui.next': 'Próxima aba',
+  'ui.settings': 'Menu Start', 'character.sheet': 'Ficha', 'character.inventory': 'Inventário',
+  'character.restore': 'Maximizar vida e mana',
+  'map.open': 'Mapa', 'map.mode': 'Modo do mapa', 'map.select': 'Selecionar no mapa',
+  'map.panUp': 'Câmera ↑', 'map.panDown': 'Câmera ↓', 'map.panLeft': 'Câmera ←',
+  'map.panRight': 'Câmera →', 'map.zoomIn': 'Zoom +', 'map.zoomOut': 'Zoom −',
+  'world.lore': 'Diário do mundo', 'gm.panel': 'Painel do Mestre', 'gm.soundpad': 'Soundpad',
+  'gm.bestiary': 'Bestiário (Mestre)', 'gallery.open': 'Galeria arcana',
+  'combat.focus': 'Combate', 'skill.slot1': 'Atalho A', 'skill.slot2': 'Atalho B',
+  'skill.slot3': 'Atalho X', 'skill.slot4': 'Atalho Y', 'skill.nextPage': 'Próximo conjunto LT',
+  'gm.scenes': 'Cenas', 'gm.poll': 'Criar enquete', 'gm.custom': 'Customizáveis',
+  'gm.loots': 'Gerenciar loots', 'gm.battleGrid': 'Grade de batalha',
+  'gm.crisis': 'Central de desgaste', 'gm.mapImporter': 'Importar mapa',
+  'gm.weather': 'Clima dinâmico', 'gm.difficulty': 'Dificuldade',
+  'player.hand': 'Levantar a mão', 'player.notes': 'Anotações',
+  'player.mixer': 'Mixer de áudio', 'player.gallery': 'Galeria', 'player.maps': 'Mapas da campanha',
+  'special.manager': 'Arsenal / Golpes especiais', 'character.training': 'Central de treinamento',
+  'character.affinities': 'Gerenciar afinidades', 'character.bonds': 'Laços',
+  'character.store': 'Loja / Mercado & Forja', 'character.mannequin': 'Manequim',
+  'player.theme': 'Seletor de temas',
+  'qte.react': 'Reação rápida', 'skill.ability1': 'Habilidade 1', 'skill.ability2': 'Habilidade 2',
+  'skill.ability3': 'Habilidade 3', 'skill.ability4': 'Habilidade 4',
+}

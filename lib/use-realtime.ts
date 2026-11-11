@@ -64,69 +64,61 @@ export function useRealtime(
 
     setStatus("connecting")
 
-    const connectionId = createConnectionId()
+    // Um EventSource é reconectado automaticamente pelo navegador, mas após
+    // restauração de uma página pelo BFCache a conexão anterior pode ter sido
+    // finalizada por pagehide. Reabrimos com um novo connectionId.
+    let stream: EventSource | null = null
+    let currentUrl = ''
+    let disposed = false
 
-    const url =
-      `/api/realtime/${campaignId}` +
-      `?connectionId=${encodeURIComponent(connectionId)}`
-
-    const source = new EventSource(url)
-
-    let released = false
-
-    const release = () => {
-      if (released) return
-
-      released = true
-
-      source.close()
-
-      void fetch(url, {
-        method: "DELETE",
-        keepalive: true,
-      }).catch(() => {})
-    }
-
-    source.onopen = () => {
-      if (released) return
-
-      setStatus("live")
-    }
-
-    source.onmessage = (e) => {
-      if (released) return
-
-      try {
-        const data = JSON.parse(e.data)
-
-        if (
-          data &&
-          typeof data.type === "string" &&
-          data.type !== "ready" &&
-          data.type !== "combat:invalidate"
-        ) {
-          callback.current(data as RealtimeEvent)
-        }
-      } catch {
-        // Ignora mensagens inválidas sem interromper o SSE.
+    const connect = () => {
+      if (disposed || stream) return
+      const connectionId = createConnectionId()
+      currentUrl = `/api/realtime/${encodeURIComponent(campaignId)}` +
+        `?connectionId=${encodeURIComponent(connectionId)}`
+      const next = new EventSource(currentUrl)
+      stream = next
+      setStatus('connecting')
+      next.onopen = () => { if (!disposed && stream === next) setStatus('live') }
+      next.onmessage = (event) => {
+        if (disposed || stream !== next) return
+        try {
+          const data = JSON.parse(event.data)
+          if (data && typeof data.type === 'string' &&
+              data.type !== 'ready' && data.type !== 'combat:invalidate') {
+            callback.current(data as RealtimeEvent)
+          }
+        } catch { /* evento malformado não derruba SSE */ }
+      }
+      next.onerror = () => {
+        if (disposed || stream !== next) return
+        setStatus(current => current === 'live' ? 'reconnecting' : 'connecting')
       }
     }
-
-    source.onerror = () => {
-      if (released) return
-
-      setStatus((current) =>
-        current === "live"
-          ? "reconnecting"
-          : "connecting",
-      )
+    const disconnect = () => {
+      if (!stream) return
+      stream.close()
+      stream = null
+      // DELETE libera a presença antiga no servidor, até em navegação normal.
+      void fetch(currentUrl, {method: 'DELETE', keepalive: true}).catch(() => {})
     }
-
-    window.addEventListener("pagehide", release)
-
+    const onPageHide = () => disconnect()
+    const onPageShow = () => connect()
+    const onOnline = () => {
+      if (!stream || stream.readyState === EventSource.CLOSED) {
+        disconnect(); connect()
+      }
+    }
+    connect()
+    window.addEventListener('pagehide', onPageHide)
+    window.addEventListener('pageshow', onPageShow)
+    window.addEventListener('online', onOnline)
     return () => {
-      window.removeEventListener("pagehide", release)
-      release()
+      disposed = true
+      window.removeEventListener('pagehide', onPageHide)
+      window.removeEventListener('pageshow', onPageShow)
+      window.removeEventListener('online', onOnline)
+      disconnect()
     }
   }, [campaignId])
 

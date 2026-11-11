@@ -1,4 +1,5 @@
 "use client"
+import { controllerConfirm } from '@/lib/input/dialogs'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
@@ -346,7 +347,7 @@ export function ClassBooksWorkbench({ campaignId, characters, refreshToken = 0 }
         </div>}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/15 pt-3">
           <div className="flex gap-2"><button disabled={saving} className={ghost} onClick={() => { setDraft(null); setSelectedEntry(null) }}>Cancelar</button>
-            {data.books.some(b => b.id === draft.id) && <button disabled={saving} className="rounded-lg border border-red-500/35 px-3 py-2 text-xs text-red-300" onClick={() => { if (window.confirm(`Excluir ${draft.name} e todos os seus projetos?`)) void mutate({ action: "delete-book", bookId: draft.id, revision: data.revision }).then(ok => { if (ok) setDraft(null) }) }}><Trash2 size={13} className="inline" /> Excluir</button>}</div>
+            {data.books.some(b => b.id === draft.id) && <button disabled={saving} className="rounded-lg border border-red-500/35 px-3 py-2 text-xs text-red-300" onClick={async () => { if (await controllerConfirm(`Excluir ${draft.name} e todos os seus projetos?`)) void mutate({ action: "delete-book", bookId: draft.id, revision: data.revision }).then(ok => { if (ok) setDraft(null) }) }}><Trash2 size={13} className="inline" /> Excluir</button>}</div>
           <button disabled={saving} className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-black disabled:opacity-60" onClick={() => void save()}><Save size={14} className="mr-1 inline" /> {saving ? "Salvando..." : "Salvar no MongoDB"}</button>
         </div>
       </div>}
@@ -517,7 +518,7 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
   const learnCard = async () => {
     if (!activeBook || activeBook.kind !== "spellbook" || activeBook.unlockMode !== "learn" || busy ||
         !Number.isSafeInteger(lorePoints) || (lorePoints ?? 0) < 1 || availableToLearn < 1) return
-    if (!window.confirm("Gastar 1 Ponto de Lore (LP) para aprender uma carta aleatória deste grimório?")) return
+    if (!await controllerConfirm("Gastar 1 Ponto de Lore (LP) para aprender uma carta aleatória deste grimório?")) return
     setBusy(true); setError("")
     const bookKey = activeBook.id
     const requestId = pendingLearningIds.current[bookKey] || id("learn")
@@ -640,7 +641,7 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
                             </button>
                             {(isGm || activeBook.allowPlayerReset === true || hasCooldown) && <button type="button" disabled={busy || !canRestart}
                               className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-bold text-foreground hover:border-accent/40 disabled:opacity-40"
-                              onClick={async () => { if (!window.confirm("Reunir a mão e descarte, e embaralhar o deck novamente?")) return; setBusy(true); try { await call(campaignId, { action: "reset-deck", characterId: character.id, bookId: activeBook.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Erro ao embaralhar") } finally { setBusy(false) } }}>
+                              onClick={async () => { if (!await controllerConfirm("Reunir a mão e descarte, e embaralhar o deck novamente?")) return; setBusy(true); try { await call(campaignId, { action: "reset-deck", characterId: character.id, bookId: activeBook.id }); await load() } catch(e) { setError(e instanceof Error ? e.message : "Erro ao embaralhar") } finally { setBusy(false) } }}>
                               <RefreshCw size={14}/> {hasCooldown ? "Reiniciar após recarga" : "Embaralhar / Reiniciar"}
                             </button>}
                           </div>

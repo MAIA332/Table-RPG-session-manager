@@ -1,4 +1,5 @@
 "use client"
+import { controllerConfirm } from '@/lib/input/dialogs'
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { apiFetch } from "@/lib/client"
 import { EQUIPMENT, CLASSES } from "@/lib/game-data"
@@ -66,7 +67,7 @@ export function DeathTokenWorkbench({ campaignId, members, customClasses, custom
     finally { setBusy(false) }
   }
   async function revoke(id: string) {
-    if (busy || !window.confirm("Revogar este token ainda não utilizado?")) return
+    if (busy || !await controllerConfirm("Revogar este token ainda não utilizado?")) return
     setBusy(true); setError(""); setMessage("")
     try {
       await apiFetch(`/api/campaigns/${encodeURIComponent(campaignId)}/death-tokens`, { method: "DELETE", body: JSON.stringify({ tokenId: id }) })

@@ -1,4 +1,5 @@
 "use client"
+import { controllerConfirm } from '@/lib/input/dialogs'
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
@@ -613,7 +614,7 @@ export function Imagepad({
 
   async function deleteFolder(folder: GalleryFolder) {
     if (!mayEditFolder(folder)) return
-    if (!window.confirm(`Excluir a pasta "${folder.name}"? As imagens serão movidas para ${isPrivatePlayerFolder(folder) ? "sua pasta pessoal" : "Todas as imagens"}.`)) return
+    if (!await controllerConfirm(`Excluir a pasta "${folder.name}"? As imagens serão movidas para ${isPrivatePlayerFolder(folder) ? "sua pasta pessoal" : "Todas as imagens"}.`)) return
     const saved = await runAction(`folder:${folder.id}`, "delete-folder", { folderId: folder.id })
     if (saved) setActiveFolderId("root")
   }
@@ -684,8 +685,8 @@ export function Imagepad({
           <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{privacyEnabled ? "Ativo: somente os donos abrem conteúdos não liberados, inclusive perante o Mestre." : "Desligado: o Mestre pode acessar e editar todas as pastas; demais jogadores continuam vendo apenas imagens liberadas."}</p></div>
         </div>
         <button role="switch" type="button" aria-label="Habilitar pastas privadas" aria-checked={privacyEnabled} disabled={!!busyKey}
-          onClick={() => {
-            if (privacyEnabled && !window.confirm("Desativar pastas privadas? O Mestre terá acesso imediato a TODAS as imagens e poderá editar e excluir conteúdos antes protegidos. Outros jogadores continuarão vendo só as imagens liberadas. Deseja continuar?")) return
+          onClick={async () => {
+            if (privacyEnabled && !await controllerConfirm("Desativar pastas privadas? O Mestre terá acesso imediato a TODAS as imagens e poderá editar e excluir conteúdos antes protegidos. Outros jogadores continuarão vendo só as imagens liberadas. Deseja continuar?")) return
             void runAction("privacy-toggle", "set-private-folders", { enabled: !privacyEnabled, confirmed: true })
           }}
           className={`relative h-7 w-14 shrink-0 rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${privacyEnabled ? "border-primary bg-primary/80" : "border-border bg-muted"}`}>

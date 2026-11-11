@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { store, genId, saveToDisk } from "@/lib/store"
 import type { User } from "@/lib/types"
+import { allowAuthAttempt, authClientKey } from "@/lib/auth-rate-limit"
 import {
   createSession,
   hashPassword,
@@ -14,9 +15,12 @@ export async function POST(request: Request) {
   const email = String(body?.email ?? "").trim().toLowerCase()
   const password = String(body?.password ?? "")
 
-  if (!name || !email || password.length < 4) {
+  if (!allowAuthAttempt(`register:${authClientKey(request,email)}`, 5)) {
+    return NextResponse.json({error:'Muitas tentativas. Tente novamente mais tarde.'},{status:429})
+  }
+  if (!name || !email || password.length < 8 || password.length > 512) {
     return NextResponse.json(
-      { error: "Preencha nome, e-mail e uma senha de ao menos 4 caracteres." },
+      { error: "Preencha nome, e-mail e uma senha de 8 a 512 caracteres." },
       { status: 400 },
     )
   }

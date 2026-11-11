@@ -1,4 +1,5 @@
 "use client"
+import { controllerConfirm } from '@/lib/input/dialogs'
 
 import { AbilityEditor } from "./creature-combat-editor"
 import { BestiaryAttackEditor } from "./bestiary-attack-editor"
@@ -7,6 +8,7 @@ import { createClientId } from "@/lib/client-id"
 import { defaultAttack, type Ability, type Attack, type CreatureCombat } from "@/lib/combat-model"
 
 import { useRef, useState } from "react"
+import { useControllerActions } from "@/lib/input/use-controller-actions"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { Skull, X, Search, Heart, Zap, Target, Plus, Save, Trash2, FolderOpen, ChevronDown } from "lucide-react"
@@ -50,9 +52,9 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
   const [affinities, setAffinities] = useState<Record<string, string>>(() => normalizeCreatureAffinities(null))
   const [equipmentText, setEquipmentText] = useState("")
   const [spellsText, setSpellsText] = useState("")
-  function closeEditor() {
+  async function closeEditor() {
     if (savingRef.current) return
-    if (isCreating && !confirm("Descartar as alterações não salvas?")) return
+    if (isCreating && !await controllerConfirm("Descartar as alterações não salvas?")) return
     setIsCreating(false)
     setError("")
     onClose()
@@ -61,6 +63,8 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
   const [hoveredCreature, setHoveredCreature] = useState<Creature | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set())
+  // B usa a mesma confirmação de descarte que o botão de fechar.
+  useControllerActions({'ui.back': () => { closeEditor(); return true }}, {enabled: isOpen, priority: 325})
 
   // Junta o bestiário fixo com as criaturas criadas pelo mestre
   const allCreatures = [...customCreatures, ...BESTIARY.filter(base => !customCreatures.some(custom => custom.id === base.id))]
@@ -110,9 +114,9 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
   const [attacks, setAttacks] = useState<Attack[]>([defaultAttack()])
   const [abilities, setAbilities] = useState<Ability[]>([])
 
-  function openEditor(creature?: Creature) {
+  async function openEditor(creature?: Creature) {
     if (savingRef.current) return
-    if (isCreating && !confirm("Descartar as alterações não salvas?")) return
+    if (isCreating && !await controllerConfirm("Descartar as alterações não salvas?")) return
     setError("")
     setEditingCreature(creature ? structuredClone(creature) : null)
     setDraft(creature ? {
@@ -181,7 +185,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
   }
 
   async function deleteSelected() {
-    if (!hoveredCreature || savingRef.current || !confirm("Excluir esta criatura do bestiário?")) return
+    if (!hoveredCreature || savingRef.current || !await controllerConfirm("Excluir esta criatura do bestiário?")) return
     savingRef.current = true
     setSaving(true)
     setError("")
@@ -196,7 +200,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
     <AnimatePresence>
       {isOpen && (
         <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden" onClick={closeEditor}>
-          <motion.div variants={modalVariants} className="rpg-modal relative flex h-full w-full max-w-6xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+          <motion.div variants={modalVariants} role="dialog" aria-modal="true" aria-label="Bestiário do mestre" className="rpg-modal relative flex h-full w-full max-w-6xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             
             <div className="flex justify-between items-center gap-4 p-6 border-b border-white/10 bg-black/40 shrink-0">
               <h4 className="font-serif text-2xl md:text-3xl font-black flex items-center gap-3">
@@ -204,7 +208,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
                 <span className="text-foreground">Bestiário do Mestre</span>
               </h4>
               <div className="flex shrink-0 items-center gap-2">
-                <button onClick={closeEditor} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors">
+                <button aria-label="Fechar bestiário" onClick={closeEditor} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors">
                   <X className="size-5 md:size-6 text-muted-foreground hover:text-white" />
                 </button>
               </div>
@@ -272,7 +276,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
                                 return (
                                   <button 
                                     key={c.id} 
-                                    onClick={() => { if (!savingRef.current && (!isCreating || confirm("Descartar as alterações não salvas?"))) { setHoveredCreature(c); setIsCreating(false); } }} 
+                                    onClick={async () => { if (!savingRef.current && (!isCreating || await controllerConfirm("Descartar as alterações não salvas?"))) { setHoveredCreature(c); setIsCreating(false); } }} 
                                     // IMPORTANTE: O shrink-0 previne o esmagamento dos botões como na imagem que você mandou
                                     className={`shrink-0 text-left p-3 rounded-lg border transition-colors relative overflow-hidden ${hoveredCreature?.id === c.id && !isCreating ? "bg-destructive/10 border-destructive/50 shadow-[0_0_10px_rgba(255,0,0,0.1)]" : "bg-card/40 border-border/30 hover:border-destructive/30"}`}
                                   >
@@ -299,7 +303,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
                   <fieldset disabled={saving} className="flex min-w-0 flex-col gap-6 animate-in fade-in slide-in-from-right-4 max-w-2xl mx-auto">
                     <div className="flex items-center justify-between border-b border-destructive/30 pb-4">
                       <h2 className="font-serif text-2xl font-black text-foreground flex items-center gap-2"><Plus className="size-5 text-destructive" /> {editingCreature ? "Editar Criatura" : "Forjar Nova Criatura"}</h2>
-                      <Button variant="ghost" size="sm" onClick={() => { if (confirm("Descartar as alterações não salvas?")) { setIsCreating(false); setError(""); } }}>Cancelar</Button>
+                      <Button variant="ghost" size="sm" onClick={async () => { if (await controllerConfirm("Descartar as alterações não salvas?")) { setIsCreating(false); setError(""); } }}>Cancelar</Button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

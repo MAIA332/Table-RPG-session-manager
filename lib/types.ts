@@ -254,6 +254,7 @@ export type RealtimeEvent =
   | { type: "hazard:stop"; hazardType: any }
   | { type: "poll:start"; poll: ActivePoll }
   | { type: "poll:vote"; pollId: string; userId: string; optionIndex: number }
+  | { type: "special-attack:lore-upgraded"; record: import("./special-attack-lore").LoreUpgradeRecord }
   | { type: "combat:invalidate"; revision: number }
   | { type: "gallery:changed" }
   | { type: "gallery:broadcast-requested"; requestId: string }

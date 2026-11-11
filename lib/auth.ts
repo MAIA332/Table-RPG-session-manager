@@ -1,26 +1,14 @@
 import { cookies } from "next/headers"
-import { createHash, randomBytes } from "crypto"
-import { genId, saveToDisk, store } from "./store"
+import { randomBytes } from "crypto"
+import { saveToDisk, store } from "./store"
 import type { User } from "./types"
 
 const COOKIE_NAME = "vtt_session"
 
-export function hashPassword(password: string): string {
-  // hash simples com salt (apenas para este VTT em memoria, nao para producao)
-  const salt = randomBytes(8).toString("hex")
-  const hash = createHash("sha256").update(salt + password).digest("hex")
-  return `${salt}:${hash}`
-}
-
-export function verifyPassword(password: string, stored: string): boolean {
-  const [salt, hash] = stored.split(":")
-  if (!salt || !hash) return false
-  const check = createHash("sha256").update(salt + password).digest("hex")
-  return check === hash
-}
+export { hashPassword, verifyPassword, passwordNeedsUpgrade } from "./passwords"
 
 export async function createSession(userId: string): Promise<string> {
-  const token = genId("sess")
+  const token = randomBytes(32).toString("base64url")
   store.sessions.set(token, { token, userId, createdAt: Date.now() })
   await saveToDisk(store)
   return token
@@ -30,6 +18,7 @@ export async function setSessionCookie(token: string): Promise<void> {
   const jar = await cookies()
   jar.set(COOKIE_NAME, token, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
@@ -47,6 +36,7 @@ export async function getCurrentUser(): Promise<User | null> {
   if (!token) return null
   const session = store.sessions.get(token)
   if (!session) return null
+  if (Date.now() - session.createdAt > 30 * 24 * 60 * 60 * 1000) return null
   return store.users.get(session.userId) ?? null
 }
 

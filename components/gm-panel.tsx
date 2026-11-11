@@ -1,4 +1,5 @@
 "use client"
+import { controllerConfirm, controllerAlert } from '@/lib/input/dialogs'
 import { normalizeStoreFolders } from "@/lib/store-folders"
 import { ClassBooksWorkbench } from "./class-books"
 import { DeathTokenWorkbench } from "./death-token-workbench"
@@ -13,6 +14,7 @@ import { PRESET_CHECKS } from "@/lib/combat-checks"
 import { ELEMENTS, ELEMENT_NAMES, classElement, type ElementId } from "@/lib/elemental-affinities"
 
 import { useState } from "react"
+import "./gm-panel-immersive.css"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   X,
@@ -44,6 +46,10 @@ import {
   Pencil,
   LayoutGrid,
   List,
+  Crown,
+  ArrowLeft,
+  Layers,
+  Compass,
   ArrowUpDown,
   CheckCircle2,
 } from "lucide-react"
@@ -858,11 +864,11 @@ function CreatedClassCard({
           <button type="button" onClick={onEdit} title="Editar classe ou subclasse" className="p-2 rounded-lg text-amber-300 hover:bg-amber-500/10"><Pencil className="size-4" /></button>
           <button
             type="button"
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation()
 
               if (
-                confirm(
+                await controllerConfirm(
                   `Excluir a classe "${cls.name}"? Esta ação não pode ser desfeita.`,
                 )
               ) {
@@ -1274,7 +1280,7 @@ export function GmPanel({
 
   // Função para criar pasta
   function handleCreateFolder() {
-    if (!newFolderName.trim()) return alert("Dê um nome para a pasta.")
+    if (!newFolderName.trim()) return controllerAlert("Dê um nome para a pasta.")
     onCreateFolder({
       id: "folder-" + Math.random().toString(36).substring(2, 9),
       name: newFolderName,
@@ -1328,7 +1334,7 @@ export function GmPanel({
   async function handleSaveSystemItem() {
     if (savingEquipment) return
     if (!sysDraft.name.trim() || !sysDraft.detail.trim())
-      return alert("Preencha o nome e a descrição do equipamento.")
+      return controllerAlert("Preencha o nome e a descrição do equipamento.")
 
     const isMisc = sysDraft.category === "misc"
     const actions = isMisc ? [] : Array.isArray(sysDraft.actions) ? sysDraft.actions : []
@@ -1336,7 +1342,7 @@ export function GmPanel({
       actions.forEach((action: any) => validateItemAction(action))
       if (!isMisc) itemDamageDefinition(sysDraft.damage)
     } catch (error) {
-      return alert(
+      return controllerAlert(
         error instanceof Error ? error.message : "Revise as ações do item.",
       )
     }
@@ -1344,7 +1350,7 @@ export function GmPanel({
     try {
       imageUrl = validateItemImageUrl(sysDraft.imageUrl)
     } catch (error) {
-      return alert(error instanceof Error ? error.message : "URL de imagem inválida.")
+      return controllerAlert(error instanceof Error ? error.message : "URL de imagem inválida.")
     }
 
     let parsedWeight: ItemWeight
@@ -1354,7 +1360,7 @@ export function GmPanel({
         sysDraft.weightUnit || "g",
       )
     } catch (error) {
-      return alert(error instanceof Error ? error.message : "Peso inválido.")
+      return controllerAlert(error instanceof Error ? error.message : "Peso inválido.")
     }
     const newEq = {
       ...sysDraft,
@@ -1403,14 +1409,14 @@ export function GmPanel({
         effect: "",
         actions: [],
       })
-      alert(
+      controllerAlert(
         sysDraft.id
           ? "Equipamento atualizado no catálogo e nas mochilas que usam este item."
           : "Equipamento forjado! Ele agora aparece no catálogo e na loja.",
       )
       setGmPanelTab("catalog")
     } catch (error) {
-      alert(
+      controllerAlert(
         error instanceof Error
           ? error.message
           : "Não foi possível salvar o equipamento.",
@@ -1427,16 +1433,23 @@ export function GmPanel({
     return matchesName && matchesFolder
   })
 
-  // Mesmas ações das abas originais, apresentadas em navegação temática unificada.
+  // Exatamente as mesmas sete seções e handlers: apenas identidade visual e navegação.
   const gmTabs = [
-    { id: "catalog", label: "Catálogo", icon: Package },
-    { id: "custom", label: "Forjar item", icon: Sword },
-    { id: "classes", label: "Classes", icon: GraduationCap },
-    { id: "checks", label: "Testes", icon: Dices },
-    { id: "zenits", label: "Zenits", icon: Coins },
-    { id: "hazards", label: "Ameaças", icon: Zap },
-    { id: "store-config", label: "Loja & Pastas", icon: FolderOpen },
+    { id: "catalog", label: "Catálogo", icon: Package, title: "Compêndio do mestre", desc: "Explore o catálogo e distribua os equipamentos da sua história.", kicker: "01 / INVENTÁRIO" },
+    { id: "custom", label: "Forjar item", icon: Sword, title: "Forja de relíquias", desc: "Crie equipamentos e artefatos com as regras já existentes.", kicker: "02 / CRIAÇÃO" },
+    { id: "classes", label: "Classes", icon: GraduationCap, title: "Academia de classes", desc: "Construa e administre classes, subclasses e habilidades.", kicker: "03 / PERSONAGENS" },
+    { id: "checks", label: "Testes", icon: Dices, title: "Testes da campanha", desc: "Configure os testes personalizados e seus desafios.", kicker: "04 / MECÂNICAS" },
+    { id: "zenits", label: "Zenits", icon: Coins, title: "Tesouro do mestre", desc: "Distribua recompensas monetárias para seus personagens.", kicker: "05 / RECOMPENSAS" },
+    { id: "hazards", label: "Ameaças", icon: Zap, title: "Controle de ameaças", desc: "Gerencie as condições e os perigos ativos da aventura.", kicker: "06 / ENCONTROS" },
+    { id: "store-config", label: "Loja & Pastas", icon: FolderOpen, title: "Arquivo mercantil", desc: "Organize os itens personalizados e a estrutura da loja.", kicker: "07 / ARQUIVO" },
   ] as const
+  const activeGmTab = gmTabs.find(tab => tab.id === gmPanelTab) ?? gmTabs[0]
+  const ActiveSectionIcon = activeGmTab.icon
+  function chooseGmSection(tabId: typeof gmPanelTab) {
+    setGmPanelTab(tabId)
+    setSelectedLoot(null)
+    document.getElementById("gm-panel-scroll")?.scrollTo({ top: 0, behavior: "auto" })
+  }
 
   function updateClass<K extends keyof GameClass>(key: K, value: GameClass[K]) {
     setClassDraft((prev) => ({
@@ -1479,7 +1492,7 @@ export function GmPanel({
       !classDraft.archetype.trim() ||
       !classDraft.description.trim()
     ) {
-      return alert("Preencha nome, arquétipo e descrição da classe.")
+      return controllerAlert("Preencha nome, arquétipo e descrição da classe.")
     }
 
     const validSkills = classDraft.skills.filter(
@@ -1489,11 +1502,11 @@ export function GmPanel({
     // Bases precisam de pelo menos uma habilidade para o criador distribuir níveis.
     // Subclasses podem existir somente para livros, sem pontos de perícia próprios.
     if (!classDraft.parentClassId && validSkills.length === 0) {
-      return alert("Classes base precisam de ao menos uma habilidade. Subclasses podem ter apenas Grimório/Blueprints.")
+      return controllerAlert("Classes base precisam de ao menos uma habilidade. Subclasses podem ter apenas Grimório/Blueprints.")
     }
     if (classDraft.parentClassId && !getCampaignClassCatalog(characters, customClasses).some(cls =>
       !cls.parentClassId && cls.id === classDraft.parentClassId)) {
-      return alert("A classe-mãe não existe no catálogo desta campanha.")
+      return controllerAlert("A classe-mãe não existe no catálogo desta campanha.")
     }
     const conflictingSkillIds = new Set(
       [...getCampaignClassCatalog(characters, customClasses)]
@@ -1501,7 +1514,7 @@ export function GmPanel({
         .flatMap(cls => cls.skills.map(skill => skill.id)),
     )
     if (validSkills.some(skill => conflictingSkillIds.has(skill.id))) {
-      return alert("Uma habilidade possui o mesmo ID de outra classe. Crie um novo identificador.")
+      return controllerAlert("Uma habilidade possui o mesmo ID de outra classe. Crie um novo identificador.")
     }
 
     const newClass: CustomClassVisibility & { affinity?: ElementId } = {
@@ -1551,7 +1564,7 @@ export function GmPanel({
     try {
       await onCreateClass(newClass)
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Não foi possível salvar a classe.")
+      controllerAlert(error instanceof Error ? error.message : "Não foi possível salvar a classe.")
       setSavingClass(false)
       return
     }
@@ -1572,11 +1585,11 @@ export function GmPanel({
 
     setExpandedSkillId(null)
 
-    alert("Classe / subclasse salva no banco de dados.")
+    controllerAlert("Classe / subclasse salva no banco de dados.")
   }
 
   async function handleGiveLoot() {
-    if (!selectedTargetCharId) return alert("Selecione um alvo.")
+    if (!selectedTargetCharId) return controllerAlert("Selecione um alvo.")
     const targetCharacter = characters.find(
       (c) => c.id === selectedTargetCharId,
     )
@@ -1586,14 +1599,14 @@ export function GmPanel({
       if (gmPanelTab === "zenits") {
         if (!zenitAmount || Number(zenitAmount) <= 0) {
           setSendingLoot(false)
-          return alert("Insira um valor válido de Zenits.")
+          return controllerAlert("Insira um valor válido de Zenits.")
         }
         await onGiveZenits(selectedTargetCharId, Number(zenitAmount))
         setZenitAmount("")
       } else if (gmPanelTab === "custom") {
         if (creationMode === "system") {
           setSendingLoot(false)
-          return alert(
+          return controllerAlert(
             "Para entregar um Equipamento de Sistema, forje-o primeiro e depois entregue via Catálogo.",
           )
         }
@@ -1602,13 +1615,13 @@ export function GmPanel({
           (!customItemContent && customItemType !== "app-blueprints")
         ) {
           setSendingLoot(false)
-          return alert("Preencha o nome e o conteúdo da Relíquia.")
+          return controllerAlert("Preencha o nome e o conteúdo da Relíquia.")
         }
         if (customItemType === "app-blueprints" && targetCharacter) {
           const gadgetsLevel = targetCharacter.skills["ti-gadgets"] || 0
           if (gadgetsLevel === 0) {
             setSendingLoot(false)
-            return alert(
+            return controllerAlert(
               `O personagem ${targetCharacter.name} não possui a perícia 'Aparelhos'.`,
             )
           }
@@ -1625,13 +1638,13 @@ export function GmPanel({
       } else if (gmPanelTab === "catalog") {
         if (!selectedLoot) {
           setSendingLoot(false)
-          return alert("Selecione um item do catálogo.")
+          return controllerAlert("Selecione um item do catálogo.")
         }
         await onGiveSystemItem(selectedTargetCharId, selectedLoot)
         setSelectedLoot(null)
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao enviar.")
+      controllerAlert(err instanceof Error ? err.message : "Erro ao enviar.")
     } finally {
       setSendingLoot(false)
     }
@@ -1639,80 +1652,114 @@ export function GmPanel({
 
   return (
     <>
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          variants={overlayVariants}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-2 backdrop-blur-md sm:p-5 overflow-hidden"
-        >
+      <AnimatePresence>
+        {isOpen && (
           <motion.div
-            variants={modalVariants}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Baú do mestre"
-            className="rpg-modal relative flex h-full max-h-[96dvh] w-full max-w-[1180px] flex-col overflow-hidden rounded-[26px] border border-border/80 bg-background text-foreground shadow-2xl sm:max-h-[92dvh]"
+            variants={overlayVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="gm-command-backdrop fixed inset-0 z-[100]"
           >
-            <div className="relative shrink-0 overflow-hidden border-b border-border/70 px-5 pb-5 pt-6 sm:px-8 sm:pb-6 sm:pt-7">
-              <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-accent" />
-              <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-24 size-72 rounded-full border-[38px] border-accent/[0.055]" />
-              <div className="relative flex items-start justify-between gap-5">
-                <div className="min-w-0">
-                  <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-accent">
-                    <span className="inline-block size-2 rounded-full bg-accent" />
-                    Painel de administração · Campanha
+            <motion.div
+              variants={modalVariants}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Central do Mestre"
+              className="gm-command-center relative h-[100dvh] w-full overflow-hidden"
+            >
+              <div aria-hidden="true" className="gm-command-ambient" />
+              <div className="gm-command-layout relative z-10 flex h-full min-h-0 flex-col lg:flex-row">
+                <aside className="gm-command-rail flex shrink-0 flex-col lg:w-[256px] xl:w-[294px]">
+                  <div className="gm-command-brand hidden lg:flex">
+                    <div className="gm-command-emblem"><Crown className="size-7" strokeWidth={1.45} /></div>
+                    <div>
+                      <span className="gm-command-overline">OVER THE MAGIC SCHOOL</span>
+                      <h2 className="gm-command-brand-title">MESTRE<span> / GM</span></h2>
+                      <span className="gm-command-brand-subtitle">CENTRAL DE OPERAÇÕES</span>
+                    </div>
                   </div>
-                  <h4 className="flex flex-wrap items-center gap-3 text-2xl font-black tracking-tight sm:text-[32px]">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-accent/25 bg-accent/10 text-accent">
-                      <Gift className="size-5" />
-                    </span>
-                    Baú do mestre<span className="text-accent">.</span>
-                  </h4>
-                  <p className="mt-2 max-w-xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
-                    Gerencie itens, classes, recompensas e a organização da sua loja em um só lugar.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  aria-label="Fechar Baú do Mestre"
-                  className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border/80 bg-foreground/[0.035] text-muted-foreground transition-colors hover:border-accent/30 hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                >
-                  <X className="size-4.5" />
-                </button>
-              </div>
-            </div>
 
-            <nav aria-label="Seções do Baú do Mestre" className="shrink-0 border-b border-border/70 bg-foreground/[0.015] px-3 py-3 sm:px-8">
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar-sepia sm:gap-2">
-                {gmTabs.map((tab) => {
-                  const TabIcon = tab.icon
-                  const active = gmPanelTab === tab.id
-                  return (
-                    <button
-                      type="button"
-                      key={tab.id}
-                      aria-pressed={active}
-                      onClick={() => {
-                        setGmPanelTab(tab.id)
-                        setSelectedLoot(null)
-                      }}
-                      className={`inline-flex min-h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border px-3 py-2 text-xs font-semibold transition-all duration-200 sm:px-4 ${active ? "border-accent/35 bg-accent/[0.12] text-accent shadow-sm" : "border-transparent text-muted-foreground hover:border-border/80 hover:bg-foreground/[0.055] hover:text-foreground"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
-                    >
-                      <TabIcon className="size-4 shrink-0" />
-                      {tab.label}
-                      {active && <span aria-hidden="true" className="size-1.5 rounded-full bg-accent" />}
-                    </button>
-                  )
-                })}
-              </div>
-            </nav>
+                  <div className="gm-command-nav-label hidden lg:flex">
+                    <span>ÁREAS DE COMANDO</span>
+                    <span>07 / 07</span>
+                  </div>
+                  <nav aria-label="Seções da Central do Mestre" className="gm-command-nav" role="tablist"
+                    onKeyDown={event => {
+                      if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return
+                      const focused = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-gm-tab]")
+                      if (!focused) return
+                      event.preventDefault()
+                      const current = gmTabs.findIndex(tab => tab.id === focused.dataset.gmTab)
+                      const next = event.key === "Home" ? 0 : event.key === "End" ? gmTabs.length - 1
+                        : (current + (event.key === "ArrowDown" || event.key === "ArrowRight" ? 1 : -1) + gmTabs.length) % gmTabs.length
+                      const nextTab = gmTabs[next]
+                      chooseGmSection(nextTab.id)
+                      event.currentTarget.querySelectorAll<HTMLButtonElement>("button[data-gm-tab]")[next]?.focus({ preventScroll: true })
+                    }}
+                  >
+                    {gmTabs.map((tab, index) => {
+                      const TabIcon = tab.icon
+                      const active = gmPanelTab === tab.id
+                      return (
+                        <button
+                          type="button"
+                          key={tab.id}
+                          data-gm-tab={tab.id}
+                          id={`gm-tab-${tab.id}`}
+                          role="tab"
+                          aria-controls="gm-panel-content"
+                          aria-selected={active}
+                          aria-label={`${tab.label}, seção ${index + 1} de ${gmTabs.length}`}
+                          onClick={() => chooseGmSection(tab.id)}
+                          className={`gm-command-nav-item ${active ? "is-active" : ""}`}
+                        >
+                          <span className="gm-command-nav-index">{String(index + 1).padStart(2, "0")}</span>
+                          <span className="gm-command-nav-icon"><TabIcon className="size-[19px]" strokeWidth={1.75} /></span>
+                          <span className="gm-command-nav-text">{tab.label}</span>
+                          <span aria-hidden="true" className="gm-command-nav-indicator">{active ? "◆" : "/"}</span>
+                        </button>
+                      )
+                    })}
+                  </nav>
+                  <div className="gm-command-rail-bottom hidden lg:block">
+                    <div className="gm-command-world-mark" aria-hidden="true"><Compass strokeWidth={0.75} /></div>
+                    <p className="gm-command-rail-stat-label">STATUS DA SESSÃO</p>
+                    <div className="gm-command-rail-stats">
+                      <span><strong>{characters.length}</strong> Personagens</span>
+                      <span><strong>{activeCreatures.length}</strong> Criaturas</span>
+                    </div>
+                    <p className="gm-command-rail-hint">A · Selecionar &nbsp; B · Voltar<br/>Analógico direito · Rolar</p>
+                  </div>
+                </aside>
 
+                <section className="gm-command-stage flex min-h-0 min-w-0 flex-1 flex-col" aria-label="Área de trabalho do mestre">
+                  <header className="gm-command-header shrink-0">
+                    <div className="gm-command-topline">
+                      <div className="gm-command-breadcrumb"><span className="gm-command-live-dot" /> ARQUIVO DA CAMPANHA <span>/</span> <strong>CENTRAL DO MESTRE</strong></div>
+                      <div className="gm-command-header-actions">
+                        <span className="gm-command-context hidden sm:inline-flex"><Layers className="size-3.5" /> {String(gmTabs.findIndex(tab => tab.id === gmPanelTab) + 1).padStart(2, "0")} / {String(gmTabs.length).padStart(2, "0")}</span>
+                        <button type="button" onClick={onClose} aria-label="Fechar Central do Mestre" title="Voltar à sessão" className="gm-command-close">
+                          <ArrowLeft className="size-4" /><span className="hidden sm:inline">Voltar à sessão</span><X className="size-4 sm:hidden" />
+                        </button>
+                      </div>
+                    </div>
+                    {/* Área reservada ao HUD: não sobrepõe controles nem ações da Central. */}
+                    <div id="gm-controller-hud-slot" className="gm-command-controller-dock" aria-label="Indicadores do controle" />
+                    <div className="gm-command-heading">
+                      <span className="gm-command-heading-glyph"><ActiveSectionIcon className="size-7 sm:size-8" strokeWidth={1.45}/></span>
+                      <div className="min-w-0 flex-1">
+                        <p className="gm-command-chapter">{activeGmTab.kicker}</p>
+                        <h1 className="gm-command-title">{activeGmTab.title}<span>.</span></h1>
+                        <p className="gm-command-description">{activeGmTab.desc}</p>
+                      </div>
+                      <div className="gm-command-header-id hidden xl:flex"><span>G M</span><span>•</span><span>0{gmTabs.findIndex(tab => tab.id === gmPanelTab) + 1}</span></div>
+                    </div>
+                  </header>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-7 overflow-y-auto px-4 py-6 custom-scrollbar-sepia sm:px-8 sm:py-7">
-              <div className="flex flex-col gap-6">
+                  <div id="gm-panel-scroll" className="gm-command-workspace custom-scrollbar-sepia min-h-0 flex-1 overflow-y-auto" data-gm-scroll>
+                    <div id="gm-panel-content" role="tabpanel" aria-labelledby={`gm-tab-${gmPanelTab}`} className="gm-command-workspace-inner mx-auto w-full max-w-[1580px] px-4 py-5 sm:px-7 sm:py-7 xl:px-10 xl:py-9">
+                      <div className="gm-command-content-stack flex flex-col gap-6">
                 {gmPanelTab === "checks" && (
                   <CustomChecksWorkbench campaignId={campaignId} checks={customChecks} revision={customChecksRevision} onRefresh={onRefreshCustomChecks} />
                 )}
@@ -2995,11 +3042,12 @@ export function GmPanel({
                     </div>
                   </section>
                 )}
-              </div>
-            </div>
+                      </div>
+                    </div>
+                  </div>
 
-            {/* FOOTER */}
-            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/70 bg-foreground/[0.015] px-5 py-3.5 sm:px-8 sm:py-4">
+                  {/* Comandos originais: mesma validação, mesmo envio e mesmo fechamento. */}
+                  <footer className="gm-command-footer flex shrink-0 items-center justify-between gap-3 px-4 py-3 sm:px-7 xl:px-10">
               <span className="hidden min-w-0 items-center gap-2 text-[11px] text-muted-foreground sm:flex">
                 <span className="size-1.5 shrink-0 rounded-full bg-accent" />
                 <span className="truncate">{gmPanelTab === "catalog"
@@ -3010,7 +3058,7 @@ export function GmPanel({
               </span>
               <Button
                 variant="ghost"
-                className="rounded-xl text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground"
+                className="gm-command-footer-back rounded-xl text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground"
                 onClick={onClose}
               >
                 Fechar painel
@@ -3018,7 +3066,7 @@ export function GmPanel({
               {(["catalog", "custom", "zenits"] as const).some((tab) => tab === gmPanelTab) && (
                 <Button
                   size="lg"
-                  className="gap-2 bg-accent text-black hover:bg-accent/90 font-bold px-8 shadow-[0_0_20px_rgba(var(--accent-rgb, 212,175,55),0.3)] transition-all disabled:opacity-50 disabled:shadow-none"
+                  className="gm-command-footer-primary gap-2 bg-accent text-black hover:bg-accent/90 font-bold px-8 transition-all disabled:opacity-50 disabled:shadow-none"
                   disabled={
                     (!selectedLoot && gmPanelTab === "catalog") ||
                     (!zenitAmount && gmPanelTab === "zenits") ||
@@ -3043,12 +3091,14 @@ export function GmPanel({
                   )}
                 </Button>
               )}
-            </div>
+                  </footer>
+                </section>
+              </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-    {audienceClass && <ClassAudienceEditor key={audienceClass.id} cls={audienceClass} members={members} characters={characters}
+        )}
+      </AnimatePresence>
+      {audienceClass && <ClassAudienceEditor key={audienceClass.id} cls={audienceClass} members={members} characters={characters}
       onSave={saveAudience} onClose={() => setAudienceClassId(null)} />}
     {showDeathTokens && <DeathTokenWorkbench campaignId={campaignId} members={members} customClasses={customClasses} customEquipment={customEquipment} onClose={() => setShowDeathTokens(false)} />}
     </>

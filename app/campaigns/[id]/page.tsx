@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
 import { getCampaignCharacters, getMemberRole, store } from "@/lib/store"
 import { CampaignRoom } from "@/components/campaign-room"
+import { ControllerBoundary } from "@/components/controller/controller-provider"
 
 export default async function CampaignRoomPage({
   params,
@@ -36,5 +37,5 @@ export default async function CampaignRoomPage({
     me: { id: user.id, name: user.name },
   }
 
-  return <CampaignRoom initial={initial} />
+  return <ControllerBoundary><CampaignRoom initial={initial} /></ControllerBoundary>
 }

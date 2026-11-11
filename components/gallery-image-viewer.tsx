@@ -5,6 +5,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent,
 } from "react"
 import { AnimatePresence, motion } from "framer-motion"
+import { useControllerActions } from "@/lib/input/use-controller-actions"
 import { Grip, Maximize2, Minimize2, X } from "lucide-react"
 
 type Position = { x: number; y: number }
@@ -26,6 +27,8 @@ export function GalleryImageViewer({ src, onClose }: { src: string; onClose: () 
   const [position, setPosition] = useState<Position | null>(null)
   const pipRef = useRef<HTMLElement | null>(null)
   const dragOrigin = useRef<DragOrigin | null>(null)
+  // Viewer flutuante ou tela cheia: B sai da imagem antes do painel ao fundo.
+  useControllerActions({'ui.back': () => {onClose();return true}}, {priority: 350})
 
   // A tela ampliada é modal; a janela flutuante NÃO bloqueia a mesa ao fundo.
   useEffect(() => {

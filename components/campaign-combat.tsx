@@ -1,6 +1,9 @@
 "use client"
+import { controllerConfirm } from '@/lib/input/dialogs'
 import { useEffect, useRef, useState } from "react"
 import { Swords, Wifi, WifiOff, X } from "lucide-react"
+import { useController } from "./controller/controller-provider"
+import { useControllerActions } from "@/lib/input/use-controller-actions"
 import { CreatureAbilitiesManager } from "./creature-abilities-manager"
 import { SpotlightPanel } from "./spotlight-panel"
 import { CreatureResourceControls, CreatureSheetDetails, CreatureAttackDetails, CreatureAbilityDetails } from "./combat-monster-card"
@@ -64,6 +67,35 @@ export function CampaignCombat({
   const [open, setOpen] = useState(false),
     [settings, setSettings] = useState(false)
   const [rosterDraft, setRosterDraft] = useState<string[] | null>(null)
+  const { active: controllerActive } = useController()
+  const focusRequestedRef = useRef(false)
+  const openFromController = () => {
+    focusRequestedRef.current = true
+    setOpen(true)
+  }
+  useControllerActions({
+    'combat.focus': () => { openFromController(); return true },
+    'ui.back': () => {
+      if (!open) return false
+      // More specific overlays keep their higher priority and close first.
+      setOpen(false)
+      return true
+    },
+  }, { enabled: controllerActive && (isGm || !!combat?.enabled), priority: 145 })
+  useEffect(() => {
+    if (!open || !focusRequestedRef.current) return
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(
+        '[data-controller-combat-root] [data-controller-combat-primary]:not([disabled]), [data-controller-combat-root] input[type="checkbox"]:not([disabled]), [data-controller-combat-root] button:not([disabled])'
+      )
+      if (target) {
+        target.focus({preventScroll:true})
+        target.scrollIntoView({block:'center',inline:'nearest'})
+        focusRequestedRef.current = false
+      }
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [open, combat?.enabled, settings])
   const [selectedCreature, setSelectedCreature] = useState("")
   const [editingAbilities, setEditingAbilities] = useState<string | null>(null)
   const [targetAttack, setTargetAttack] = useState<{
@@ -271,7 +303,7 @@ export function CampaignCombat({
       {(isGm || combat?.enabled) && (
         <button
           type="button"
-          className="rpg-combat-launcher fixed bottom-4 left-4 z-[70] flex min-w-48 items-center gap-3 overflow-hidden rounded-xl border border-primary/45 bg-background/95 px-4 py-3 text-left text-foreground shadow-2xl backdrop-blur-md transition hover:-translate-y-0.5 hover:border-primary/75"
+          data-controller-combat-launcher="true" aria-label="Abrir painel de combate" className="rpg-combat-launcher fixed bottom-4 left-4 z-[70] flex min-w-48 items-center gap-3 overflow-hidden rounded-xl border border-primary/45 bg-background/95 px-4 py-3 text-left text-foreground shadow-2xl backdrop-blur-md transition hover:-translate-y-0.5 hover:border-primary/75"
           onClick={() => setOpen(true)}
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-primary/35 bg-primary/15 text-primary shadow-inner">
@@ -327,7 +359,7 @@ export function CampaignCombat({
             if (e.key === "Escape") setOpen(false)
           }}
         >
-          <div className="rpg-combat-modal rpg-modal rpg-themed-workspace mx-auto max-w-5xl rounded-xl border border-primary/35 bg-background/95 p-4 pb-24 text-foreground shadow-2xl sm:p-6">
+          <div data-controller-combat-root tabIndex={-1} className="rpg-combat-modal rpg-modal rpg-themed-workspace mx-auto max-w-5xl rounded-xl border border-primary/35 bg-background/95 p-4 pb-24 text-foreground shadow-2xl sm:p-6">
             <header className="rpg-modal-header -mx-4 -mt-4 mb-5 flex items-center justify-between gap-3 border-b border-border/60 px-4 py-4 sm:-mx-6 sm:-mt-6 sm:px-6">
               <div className="flex items-center gap-3">
                 <span className="grid size-11 shrink-0 place-items-center rounded-lg border border-primary/35 bg-primary/15 text-primary"><Swords className="size-5" /></span>
@@ -386,9 +418,9 @@ export function CampaignCombat({
                       <button
                         className={button}
                         disabled={pending}
-                        onClick={() => {
+                        onClick={async () => {
                           if (
-                            confirm(
+                            await controllerConfirm(
                               "Encerrar o combate? Os tokens serão zerados; criaturas e ataques cadastrados serão preservados.",
                             )
                           )
@@ -427,6 +459,7 @@ export function CampaignCombat({
                       ))}
                     </div>
                     <button
+                      data-controller-combat-primary="true"
                       className={button}
                       disabled={pending || !chosen.length}
                       onClick={async () => {

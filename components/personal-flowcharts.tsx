@@ -1,4 +1,5 @@
 "use client"
+import { controllerConfirm } from '@/lib/input/dialogs'
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ArrowRight, Check, ChevronDown, GitBranch, Link2, Loader2, Minus, Plus, Trash2, Unlink, Workflow, X } from "lucide-react"
@@ -136,7 +137,7 @@ export function PersonalFlowcharts({ campaignId }: { campaignId: string }) {
   }
 
   async function deleteFlowchart() {
-    if (!chart || saving || !window.confirm(`Excluir o fluxograma "${chart.title}"?`)) return
+    if (!chart || saving || !await controllerConfirm(`Excluir o fluxograma "${chart.title}"?`)) return
     setSaving(true)
     try {
       await apiFetch(`/api/campaigns/${campaignId}/notes/flowcharts`, { method: "DELETE", body: JSON.stringify({ id: chart.id }) })

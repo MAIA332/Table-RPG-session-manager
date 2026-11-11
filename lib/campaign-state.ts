@@ -23,6 +23,8 @@ export interface CampaignState {
   customNPCs: unknown[]
   npcLoots: unknown[]
   draftPolls: unknown[]
+  /** Auditoria gravada exclusivamente pela API de evolução, nunca pelo PATCH genérico. */
+  loreUpgradeHistory: import('./special-attack-lore').LoreUpgradeRecord[]
   customSounds: unknown[]
   soundFolders: SoundFolder[]
   customCreatures: unknown[]
@@ -44,6 +46,7 @@ export function getCampaignState(campaignId: string): CampaignState {
     customNPCs: Array.isArray(raw.customNPCs) ? raw.customNPCs : [],
     npcLoots: Array.isArray(raw.npcLoots) ? raw.npcLoots : [],
     draftPolls: Array.isArray(raw.draftPolls) ? raw.draftPolls : [],
+    loreUpgradeHistory: Array.isArray(raw.loreUpgradeHistory) ? raw.loreUpgradeHistory.slice(0,50) as import('./special-attack-lore').LoreUpgradeRecord[] : [],
     customSounds: Array.isArray(raw.customSounds) ? raw.customSounds : [],
     soundFolders: normalizeSoundFolders(raw.soundFolders),
     customCreatures: Array.isArray(raw.customCreatures) ? raw.customCreatures : [],

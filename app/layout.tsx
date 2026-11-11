@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist_Mono, Cinzel, Kalam, Source_Sans_3, Source_Serif_4 } from 'next/font/google'
 import './globals.css'
+import { ControllerProvider } from '@/components/controller/controller-provider'
 
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 const cinzel = Cinzel({ subsets: ['latin'], variable: '--font-cinzel', weight: ['400', '600', '700', '900'] })
@@ -35,7 +36,7 @@ export default function RootLayout({
     >
       <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
       <body className="font-sans antialiased">
-        {children}
+        <ControllerProvider>{children}</ControllerProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

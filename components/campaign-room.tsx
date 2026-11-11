@@ -1,4 +1,5 @@
 "use client"
+import { controllerAlert, controllerConfirm } from '@/lib/input/dialogs'
 import {
   assertInventoryChange,
   assertInventoryFits,
@@ -15,6 +16,11 @@ import type { PlayerAttackPreview, PlayerSpecialAttack, PlayerSpecialAttackChara
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useControllerActions } from "@/lib/input/use-controller-actions"
+import { registerInputHandler } from "@/lib/input/dispatcher"
+import { targetOfAction, restoreTargetOfAction } from "@/lib/input/targeted-actions"
+import { skillRank } from "@/lib/skill-progression"
+import { loreBonusLabel, type LoreUpgradeRecord } from "@/lib/special-attack-lore"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
@@ -67,7 +73,7 @@ import {
 
 import { NpcNursery } from "./npc-nursery"
 
-import { ATTRIBUTE_META, BASE_MAX_IP, EQUIPMENT, BESTIARY, getEquipment } from "@/lib/game-data"
+import { ATTRIBUTE_META, BASE_MAX_IP, EQUIPMENT, BESTIARY, CLASSES, getEquipment } from "@/lib/game-data"
 
 import type {
   Character,
@@ -141,6 +147,7 @@ import { BattlemapEngine } from "./battlemap-engine"
 import { Soundpad, type ActiveSound, type Track } from "./soundpad"
 import { SoundPlaybackEngine } from "./sound-playback-engine"
 import { CutsceneManager } from "./cutscene-manager"
+import { useControllerModalReturnGroup } from "@/lib/input/modal-focus-return"
 import { DeathCheckOverlay } from "./death-check-overlay"
 import { CutscenePlayer } from "./cutscene-player"
 import type { Cutscene } from "./cutscene-types"
@@ -550,9 +557,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         method: "DELETE", body: JSON.stringify({ previewId }),
       })
       await refreshPlayerAttackPreviews()
-    } catch (error) { alert(error instanceof Error ? error.message : "Falha ao encerrar a imagem.") }
+    } catch (error) { controllerAlert(error instanceof Error ? error.message : "Falha ao encerrar a imagem.") }
   }
 
+  const [controllerFocusSkill, setControllerFocusSkill] = useState<number | string | null>(null)
+  const [controllerPanelRequest, setControllerPanelRequest] = useState<string | null>(null)
+  const restoringControllerVitals = useRef(new Set<string>())
   const [inventorySyncError, setInventorySyncError] = useState<string | null>(null)
   // Ignora respostas antigas se duas requisições forem iniciadas quase juntas.
   const ownedInventoryRequestVersion = useRef(0)
@@ -671,6 +681,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   // Criador de Itens Úteis (Handouts)
   const [itemNotification, setItemNotification] = useState<string | null>(null)
   const [inventoryToOpen, setInventoryToOpen] = useState<string | null>(null)
+  // A mochila acionada por atalho é uma tela independente, não uma ficha empilhada.
+  const [inventoryShortcutId, setInventoryShortcutId] = useState<string | null>(null)
   const [itemTransfers, setItemTransfers] = useState<ItemTransfer[]>([])
   const [resolvingTransferId, setResolvingTransferId] = useState<string | null>(
     null,
@@ -685,6 +697,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   // Enquete Ativa (Global da Sala)
   const [activePoll, setActivePoll] = useState<ActivePoll | null>(null)
+  const [pollMinimized, setPollMinimized] = useState(false)
+  useEffect(() => setPollMinimized(false), [activePoll?.id])
   const [now, setNow] = useState(Date.now())
 
   // Berçário de NPCs Customizados
@@ -1432,6 +1446,26 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     return () => clearInterval(int)
   }, [activePoll])
 
+  // Recupera enquetes ativas no banco, mesmo após perder um evento SSE ou recarregar.
+  useEffect(() => {
+    let cancelled = false
+    const refreshPoll = async () => {
+      try {
+        const state = await apiFetch<{activePoll:ActivePoll|null}>(`/api/campaigns/${data.campaign.id}/poll`,{cache:'no-store'})
+        if (!cancelled) setActivePoll(current => {
+          if (!state.activePoll) return null
+          if (current?.id === state.activePoll.id && Object.keys(current.votes).length > Object.keys(state.activePoll.votes).length) return current
+          return state.activePoll
+        })
+      } catch { /* estado anterior permanece até a reconexão */ }
+    }
+    void refreshPoll()
+    const timer = window.setInterval(()=>void refreshPoll(),15_000)
+    const onVisibility = () => {if (document.visibilityState === 'visible') void refreshPoll()}
+    document.addEventListener('visibilitychange',onVisibility)
+    return () => {cancelled=true;window.clearInterval(timer);document.removeEventListener('visibilitychange',onVisibility)}
+  }, [data.campaign.id])
+
   // Baixa os mapas via API e sincroniza com o localstorage
   useEffect(() => {
     apiFetch<{ state: Record<string, any>; persistedFields: string[] }>(
@@ -1441,6 +1475,19 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         if (!res?.state) return
         campaignStateLoadedFromApiRef.current = true
         const persisted = new Set(res.persistedFields || [])
+        if (isGm && Array.isArray(res.state.loreUpgradeHistory)) {
+          const records = res.state.loreUpgradeHistory as LoreUpgradeRecord[]
+          setHistory(previous => {
+            const added = records.filter(record => record && typeof record.id === 'string'
+              && !previous.some(entry=>entry.id===record.id)).map(record => ({
+                id:record.id,type:'poll' as const,title:`${record.characterName} · Lore investido`,
+                subtitle:'Golpe especial',detail:`${record.attackName} · ${record.cost} LP gastos`,
+                result:loreBonusLabel(record.newLevel),
+                time:new Date(record.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+              }))
+            return [...added,...previous].slice(0,50)
+          })
+        }
         const readArray = (key: string) => {
           try {
             const value = JSON.parse(localStorage.getItem(key) || "[]")
@@ -1813,7 +1860,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       const folder = storeFolders.find((f) => f.id === id)
 
       if (folder?.isSystem || id === "system" || id === "custom") {
-        alert("As pastas SISTEMA e CUSTOM não podem ser excluídas.")
+        controllerAlert("As pastas SISTEMA e CUSTOM não podem ser excluídas.")
         return
       }
 
@@ -1907,11 +1954,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
             `/api/campaigns/${data.campaign.id}/sound`,
           )
           if (response.capabilities?.targetedSound !== true) {
-            window.alert("O servidor ainda não permite áudio individual. Nenhum som foi enviado.")
+            controllerAlert("O servidor ainda não permite áudio individual. Nenhum som foi enviado.")
             return
           }
         } catch {
-          window.alert("Não foi possível confirmar o envio individual. Nenhum som foi enviado.")
+          controllerAlert("Não foi possível confirmar o envio individual. Nenhum som foi enviado.")
           return
         }
       }
@@ -2619,6 +2666,18 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         return
       }
 
+      if (event.type === "special-attack:lore-upgraded") {
+        const record = event.record
+        if (data.role === 'gm' || record.ownerId === data.me.id) {
+          setHistory(prev => prev.some(entry => entry.id === record.id) ? prev : [{
+            id:record.id,type:'poll' as const,title:`${record.characterName} · Lore investido`,
+            subtitle:'Golpe especial', detail:`${record.attackName} · ${record.cost} LP gastos`,
+            result:loreBonusLabel(record.newLevel),
+            time:new Date(record.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+          },...prev].slice(0,50))
+        }
+        return
+      }
       if (event.type === "poll:start") {
         setActivePoll(event.poll)
         return
@@ -2765,7 +2824,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       setShowMapImporter(false)
       await refreshMaps(newMap.id)
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Não foi possível criar o mapa.")
+      controllerAlert(error instanceof Error ? error.message : "Não foi possível criar o mapa.")
     }
   }
 
@@ -2780,7 +2839,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       })
       await refreshMaps(open ? mapId : undefined)
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Não foi possível alterar a visibilidade do mapa.")
+      controllerAlert(error instanceof Error ? error.message : "Não foi possível alterar a visibilidade do mapa.")
     } finally {
       mapActionBusy.current = false
       setMapActionPending(false)
@@ -2816,13 +2875,13 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       })
     } catch (err) {
       console.error("Erro ao renomear mapa", err)
-      alert("Falha ao renomear mapa.")
+      controllerAlert("Falha ao renomear mapa.")
     }
   }
 
   async function handleDeleteMap(mapId: string) {
     if (
-      !confirm(
+      !await controllerConfirm(
         "Tem certeza que deseja deletar este mapa? Ele será removido para todos.",
       )
     )
@@ -3079,10 +3138,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       }
       setCharacters(prev => prev.filter(c => c.id !== character.id))
       if (selectedCombatCharId === character.id) setSelectedCombatCharId(null)
-      alert(`${character.name} foi arquivado no Berçário sem duplicar o registro.`)
+      controllerAlert(`${character.name} foi arquivado no Berçário sem duplicar o registro.`)
     } catch (error) {
       console.error("Falha ao arquivar personagem", error)
-      alert(error instanceof Error ? error.message : "Não foi possível arquivar.")
+      controllerAlert(error instanceof Error ? error.message : "Não foi possível arquivar.")
     } finally {
       archivingCharacterIdsRef.current.delete(selectedCharacter.id)
     }
@@ -3366,7 +3425,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   async function handleKillNPC(character: Character) {
     if (
-      !confirm(
+      !await controllerConfirm(
         `Tem certeza que deseja declarar a morte de ${character.name}? Seus equipamentos (se houver) serão enviados ao Baú de Loots Caídos.`,
       )
     )
@@ -3380,7 +3439,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
     if (dropped.length > 0) {
       saveNpcLoots([...dropped, ...npcLoots])
-      alert(
+      controllerAlert(
         `${dropped.length} item(ns) foram movidos para a caixa de Loots de NPC!`,
       )
     }
@@ -3436,7 +3495,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       setSelectedDroppedLoot(null)
       setSelectedTargetCharId(null)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao enviar Loot.")
+      controllerAlert(err instanceof Error ? err.message : "Erro ao enviar Loot.")
     }
   }
 
@@ -3585,7 +3644,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   async function handleKillCreature(creature: ActiveCreature) {
     if (!isGm) return
     if (
-      !confirm(
+      !await controllerConfirm(
         `Confirmar a derrota de ${creature.name} e distribuir XP para o grupo?`,
       )
     )
@@ -3644,7 +3703,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   function handleSaveDraft() {
     const validOptions = pollOptions.filter((o) => o.trim() !== "")
     if (validOptions.length < 2 || !pollQuestion.trim())
-      return alert("Preencha a pergunta e pelo menos 2 opções.")
+      return controllerAlert("Preencha a pergunta e pelo menos 2 opções.")
 
     const newDraft: DraftPoll = {
       id: Math.random().toString(36).substring(7),
@@ -3662,19 +3721,21 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     saveDraftsToStorage(draftPolls.filter((d) => d.id !== id))
   }
 
-  function handleLaunchDraft(draft: DraftPoll) {
+  async function handleLaunchDraft(draft: DraftPoll) {
     const poll: ActivePoll = {
-      id: draft.id,
+      id: createClientId(),
       question: draft.question,
       options: draft.options,
       votes: {},
       expiresAt: Date.now() + draft.duration * 1000,
     }
-    apiFetch(`/api/campaigns/${data.campaign.id}/poll`, {
-      method: "POST",
-      body: JSON.stringify({ action: "start", poll }),
-    }).catch(console.error)
-    setShowPollModal(false)
+    try {
+      const result = await apiFetch<{activePoll:ActivePoll}>(`/api/campaigns/${data.campaign.id}/poll`, {
+        method: "POST",body: JSON.stringify({action:"start",poll}),
+      })
+      if (result.activePoll) setActivePoll(result.activePoll)
+      setShowPollModal(false)
+    } catch(error) { void controllerAlert(error instanceof Error ? error.message : "Enquete não lançada.") }
   }
   const handleLaunchHazard = useCallback(
     async (
@@ -3778,10 +3839,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     [data.campaign.id],
   )
 
-  function handleCreateAndLaunchPoll() {
+  async function handleCreateAndLaunchPoll() {
     const validOptions = pollOptions.filter((o) => o.trim() !== "")
     if (validOptions.length < 2 || !pollQuestion.trim())
-      return alert("Preencha a pergunta e pelo menos 2 opções.")
+      return controllerAlert("Preencha a pergunta e pelo menos 2 opções.")
 
     const poll: ActivePoll = {
       id: Math.random().toString(36).substring(7),
@@ -3791,27 +3852,26 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       expiresAt: Date.now() + pollDuration * 1000,
     }
 
-    apiFetch(`/api/campaigns/${data.campaign.id}/poll`, {
-      method: "POST",
-      body: JSON.stringify({ action: "start", poll }),
-    }).catch(console.error)
-
-    setShowPollModal(false)
-    setPollQuestion("")
-    setPollOptions(["", ""])
+    try {
+      const result = await apiFetch<{activePoll:ActivePoll}>(`/api/campaigns/${data.campaign.id}/poll`, {
+        method:"POST",body:JSON.stringify({action:"start",poll}),
+      })
+      if (result.activePoll) setActivePoll(result.activePoll)
+      setShowPollModal(false)
+      setPollQuestion("")
+      setPollOptions(["", ""])
+    } catch(error) { void controllerAlert(error instanceof Error ? error.message : "Não foi possível lançar a enquete.") }
   }
 
-  function handleVote(optionIndex: number) {
+  async function handleVote(optionIndex: number) {
     if (!activePoll) return
-    apiFetch(`/api/campaigns/${data.campaign.id}/poll`, {
-      method: "POST",
-      body: JSON.stringify({
-        action: "vote",
-        pollId: activePoll.id,
-        userId: data.me.id,
-        optionIndex,
-      }),
-    }).catch(console.error)
+    const currentId = activePoll.id
+    try {
+      const result = await apiFetch<{activePoll:ActivePoll}>(`/api/campaigns/${data.campaign.id}/poll`, {
+        method:"POST",body:JSON.stringify({action:"vote",pollId:currentId,optionIndex}),
+      })
+      if (result.activePoll) setActivePoll(poll=>poll?.id===currentId ? result.activePoll : poll)
+    } catch(error) { void controllerAlert(error instanceof Error ? error.message : "Voto não registrado.") }
   }
 
   async function spawnCreature(creature: Creature) {
@@ -3860,7 +3920,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   async function handleLeaveCampaign() {
     if (
-      !confirm(
+      !await controllerConfirm(
         isGm
           ? "Tem certeza que deseja encerrar e deletar esta campanha para todos?"
           : "Tem certeza que deseja abandonar esta mesa?",
@@ -3953,7 +4013,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         current.filter((item) => item.id !== transferId),
       )
     } catch (error) {
-      alert(
+      controllerAlert(
         error instanceof Error
           ? error.message
           : "Não foi possível concluir a transferência.",
@@ -3962,6 +4022,197 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       setResolvingTransferId(null)
     }
   }
+
+  const openControllerSkill = (index: number | string) => {
+    if (activeMap || showGmPanel) return false
+    const own = characters.find(c => c.ownerId === data.me.id) || (isGm ? characters[0] : undefined)
+    if (!own) return true
+    // Preserve a requisição até a ficha expandir e montar suas habilidades.
+    setControllerFocusSkill(index)
+    setControllerPanelRequest(null)
+    setSelectedCombatCharId(own.id)
+    return true
+  }
+
+  // Opções exibidas no menu Start: somente habilidades aprendidas das classes
+  // adquiridas por este jogador, e apenas seus próprios golpes cadastrados.
+  const ownControllerCharacter = characters.find(c => c.id === selectedCombatCharId && c.ownerId === data.me.id)
+    || characters.find(c => c.ownerId === data.me.id) || (isGm ? characters[0] : undefined)
+  const ownSkillIds = (ownControllerCharacter?.classes || []).map(cls => cls.classId)
+  const controllerSkillChoices = [...CLASSES, ...customClasses]
+    .filter(cls => ownSkillIds.includes(cls.id) || Boolean(cls.parentClassId && ownSkillIds.includes(cls.parentClassId)))
+    .flatMap(cls => cls.skills.filter((skill:any) => skill.action && skillRank(ownControllerCharacter?.skills?.[skill.id]) > 0)
+      .map((skill:any) => ({id:skill.id,name:`${skill.name} · ${cls.name}`})))
+    .filter((choice,index,array) => array.findIndex(candidate => candidate.id === choice.id) === index)
+  const controllerSpecialChoices = ((ownControllerCharacter as Character & PlayerSpecialAttackCharacter | undefined)?.specialAttacks || [])
+    .map(attack => ({id:attack.id,name:attack.name}))
+  const controllerCharacterChoices = characters.filter(c => c.ownerId === data.me.id)
+    .map(c => ({id:c.id,name:c.name}))
+  const choiceSignature = JSON.stringify({characterId:ownControllerCharacter?.id,skills:controllerSkillChoices,specials:controllerSpecialChoices,characters:controllerCharacterChoices})
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('otms.controller.skills',{detail:{
+      skills:controllerSkillChoices,specials:controllerSpecialChoices,characters:controllerCharacterChoices,
+    }}))
+  }, [choiceSignature])
+  // Ações com ID só são resolvidas após validar a posse no estado atual da ficha.
+  useEffect(() => registerInputHandler(action => {
+    // Restauração direta sem abrir a ficha. O servidor revalida proprietário e
+    // calcula os máximos no momento da transação; não confiar nos valores da UI.
+    const restoreId = restoreTargetOfAction(action)
+    if (action === 'character.restore' || restoreId) {
+      if (activeMap || showGmPanel) return false
+      const own = restoreId
+        ? characters.find(c => c.id === restoreId && c.ownerId === data.me.id)
+        : characters.find(c => c.ownerId === data.me.id)
+      if (!own) { controllerAlert('Selecione um personagem seu nas configurações do controle.'); return true }
+      if (restoringControllerVitals.current.has(own.id)) return true
+      restoringControllerVitals.current.add(own.id)
+      void apiFetch<{character: Character}>(`/api/characters/${encodeURIComponent(own.id)}/vitals`, {
+        method:'PATCH', body:JSON.stringify({changes:{hp:{mode:'max',amount:0},mp:{mode:'max',amount:0}}}),
+      }).then(result => {
+        if (!result.character?.id) throw new Error('O servidor não confirmou a recuperação.')
+        applyOptimistic(result.character)
+      }).catch(error => controllerAlert(error instanceof Error ? error.message : 'Não foi possível maximizar vida e mana.'))
+        .finally(() => restoringControllerVitals.current.delete(own.id))
+      return true
+    }
+    const target = targetOfAction(action)
+    if (!target || activeMap || showGmPanel) return false
+    if (target.kind === 'skill') {
+      if (!controllerSkillChoices.some(choice => choice.id === target.id)) return true
+      return openControllerSkill(target.id)
+    }
+    if (!controllerSpecialChoices.some(choice => choice.id === target.id)) return true
+    if (!ownControllerCharacter) return true
+    setControllerFocusSkill(null)
+    setControllerPanelRequest(action)
+    setSelectedCombatCharId(ownControllerCharacter.id)
+    return true
+  }, 155), [choiceSignature, activeMap, showGmPanel, selectedCombatCharId])
+  const openControllerSheetPanel = (panel: string) => {
+    if (activeMap || showGmPanel || !ownControllerCharacter) return false
+    setControllerFocusSkill(null)
+    setControllerPanelRequest(panel)
+    setSelectedCombatCharId(ownControllerCharacter.id)
+    return true
+  }
+
+  // Atalhos semânticos: reuse ações existentes e respeite permissões. Sem efeitos no desktop.
+  useControllerActions({
+    "skill.ability1": () => openControllerSkill(0),
+    "skill.ability2": () => openControllerSkill(1),
+    "skill.ability3": () => openControllerSkill(2),
+    "skill.ability4": () => openControllerSkill(3),
+    "special.manager": () => openControllerSheetPanel('special.manager'),
+    "character.training": () => openControllerSheetPanel('training'),
+    "character.affinities": () => openControllerSheetPanel('affinities'),
+    "character.bonds": () => openControllerSheetPanel('bonds'),
+    "character.store": () => openControllerSheetPanel('store'),
+    "character.mannequin": () => openControllerSheetPanel('mannequin'),
+    "player.theme": () => {
+      if (activeMap) return false
+      document.querySelector<HTMLButtonElement>('[data-controller-target="player.theme"] button')?.click()
+      return true
+    },
+    "character.sheet": () => {
+      if (selectedCombatCharId || showGmPanel || activeMap) return false
+      const own = characters.find(c => c.ownerId === data.me.id) || (isGm ? characters[0] : undefined)
+      if (!own) return true
+      setSelectedCombatCharId(own.id)
+      return true
+    },
+    "character.inventory": () => {
+      if (activeMap || showGmPanel) return false
+      const own = characters.find(c => c.ownerId === data.me.id) || (isGm ? characters[0] : undefined)
+      if (!own) return true
+      setInventoryShortcutId(own.id)
+      setInventoryToOpen(own.id)
+      setSelectedCombatCharId(own.id)
+      return true
+    },
+    "map.open": () => {
+      if (selectedCombatCharId || showGmPanel) return false
+      if (activeMap) setActiveMap(null)
+      else setActiveMap(savedMaps.find(map => isGm || map.isPublic === true) || null)
+      return true
+    },
+    "gallery.open": () => {
+      if (activeMap || showGmPanel) return false
+      setShowImagepad(true); return true
+    },
+    "gm.bestiary": () => {
+      if (!isGm || activeMap || showGmPanel) return false
+      setShowBestiary(true); return true
+    },
+    "world.lore": () => { if (activeMap) return false; setShowLorebook(true); return true },
+    "gm.panel": () => { if (!isGm || activeMap) return false; setShowGmPanel(true); return true },
+    "gm.soundpad": () => { if (!isGm || activeMap) return false; setShowSoundpad(true); return true },
+    "gm.scenes": () => { if (!isGm || activeMap) return false; setShowCutsceneManager(true); return true },
+    "gm.poll": () => { if (!isGm || activeMap) return false; setShowPollModal(true); return true },
+    "gm.custom": () => { if (!isGm || activeMap) return false; setShowGmPanel(true); return true },
+    "gm.loots": () => { if (!isGm || activeMap) return false; setShowDroppedLoots(true); return true },
+    "gm.battleGrid": () => { if (!isGm || activeMap) return false; setShowBattleGrid(v=>!v); return true },
+    "gm.crisis": () => { if (!isGm || activeMap) return false; window.dispatchEvent(new Event('otms.gm.open-crisis')); return true },
+    "gm.mapImporter": () => { if (!isGm || activeMap) return false; setShowMapImporter(true); return true },
+    "gm.weather": () => { if (!isGm || activeMap) return false; const target=document.querySelector<HTMLElement>('[data-controller-target="gm.weather"] button'); target?.scrollIntoView({block:'center'}); target?.focus({preventScroll:true}); return true },
+    "gm.difficulty": () => { if (!isGm || activeMap) return false; const target=document.querySelector<HTMLElement>('[data-controller-target="gm.difficulty"] button'); target?.scrollIntoView({block:'center'}); target?.focus({preventScroll:true}); return true },
+    "player.gallery": () => { if (activeMap) return false; setShowImagepad(true); return true },
+    "player.maps": () => { if (activeMap) return false; setShowPlayerMaps(value=>!value); return true },
+    "player.mixer": () => { if (activeMap) return false; setShowVolumeMixer(v=>!v); return true },
+    "player.notes": () => {
+      if (activeMap) return false
+      const button = document.querySelector<HTMLElement>('[data-controller-target="player.notes"] button')
+      if (button) {button.click(); return true}
+      return false
+    },
+    "player.hand": () => { if (isGm || handRaiseCooldown || activeMap) return false; handleRaiseHand(); return true },
+    "combat.focus": () => {
+      if (activeMap) return false
+      const launcher = document.querySelector<HTMLButtonElement>('[data-controller-combat-launcher]')
+      if (launcher) {launcher.click(); return true}
+      const target = document.querySelector<HTMLButtonElement>('[data-controller-combat-start]')
+      if (target && !target.disabled) {target.focus({preventScroll:true});target.scrollIntoView({block:'center'});return true}
+      return false
+    },
+  }, {priority: 20})
+
+  // Restaura o foco ao botão exato que abriu cada camada da sala.
+  // O Diário e as Cenas gerenciam suas próprias raízes e não entram nesta lista.
+  useControllerModalReturnGroup({
+    gm: showGmPanel,
+    bestiary: showBestiary,
+    soundpad: showSoundpad,
+    gallery: showImagepad,
+    poll: showPollModal,
+    nursery: showNursery,
+    drops: showDroppedLoots,
+    importer: showMapImporter,
+    mixer: showVolumeMixer,
+    portrait: !!portraitGalleryCharacterId,
+  })
+
+  // Fechamento contextual com B: modais da sala antes da navegação da página.
+  // Handlers de modais internos da ficha e do mapa têm prioridade maior.
+  useControllerActions({
+    'ui.back': () => {
+      if (activeFullscreenImage) { setActiveFullscreenImage(null); return true }
+      if (showImagepad) { setShowImagepad(false); return true }
+      if (showBestiary) { setShowBestiary(false); return true }
+      if (showLorebook) { setShowLorebook(false); return true }
+      if (showGmPanel) { setShowGmPanel(false); return true }
+      if (showSoundpad) { setShowSoundpad(false); return true }
+      if (showVolumeMixer) { setShowVolumeMixer(false); return true }
+      if (showPollModal) { setShowPollModal(false); return true }
+      if (showNursery) { setShowNursery(false); return true }
+      if (showDroppedLoots) { setShowDroppedLoots(false); return true }
+      if (showCutsceneManager) { setShowCutsceneManager(false); return true }
+      if (showMapImporter) { setShowMapImporter(false); return true }
+      if (portraitGalleryCharacterId) { setPortraitGalleryCharacterId(null); return true }
+      if (selectedCombatCharId) { setSelectedCombatCharId(null); setInventoryToOpen(null); setInventoryShortcutId(null); setControllerPanelRequest(null); setControllerFocusSkill(null); return true }
+      if (expandedCharacterId) { setExpandedCharacterId(null); return true }
+      return false
+    },
+  }, {priority: 125})
 
   return (
     <div className="rpg-page mx-auto flex min-h-dvh max-w-[1680px] flex-col px-3 py-4 sm:px-4 md:h-screen md:px-6 md:py-6">
@@ -4180,6 +4431,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   onClick={() => setShowMapImporter(false)}
                 >
                   <div
+                    role="dialog" aria-modal="true" aria-label="Importar mapa"
                     className="relative w-full max-w-4xl"
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -4271,6 +4523,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 >
                   <motion.div
                     variants={modalVariants}
+                    role="dialog" aria-modal="true" aria-label="Gerenciar enquetes"
                     className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-lg flex-col border border-primary/50 bg-zinc-950 shadow-2xl"
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -4489,7 +4742,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     throw new Error("Antes de excluir, desvincule os livros e especializações dos personagens.")
                   }
                   await saveCustomClassesToStorage(customClasses.filter((cls: any) => cls.id !== id))
-                })().catch(error => alert(error instanceof Error ? error.message : "Falha ao excluir classe."))
+                })().catch(error => controllerAlert(error instanceof Error ? error.message : "Falha ao excluir classe."))
               }}
               onGiveZenits={handleGiveZenits}
               onGiveCustomItem={handleGiveCustomItem}
@@ -4516,6 +4769,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 >
                   <motion.div
                     variants={modalVariants}
+                    role="dialog" aria-modal="true" aria-label="Loot dos NPCs"
                     className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-3xl flex-col border border-accent/50 bg-zinc-950 shadow-2xl"
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -4753,15 +5007,17 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   initial="hidden"
                   animate="visible"
                   exit="exit"
+                  data-controller-layer="active"
                   className="combat-character-sheet-overlay fixed inset-0 z-[90] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-y-auto"
-                  onClick={() => setSelectedCombatCharId(null)}
+                  onClick={() => { setSelectedCombatCharId(null); setInventoryShortcutId(null); setInventoryToOpen(null) }}
                 >
                   <div
                     className="relative w-full max-w-4xl mx-auto my-auto pt-10 pb-10"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <button
-                      onClick={() => setSelectedCombatCharId(null)}
+                      aria-label="Fechar ficha do personagem"
+                      onClick={() => { setSelectedCombatCharId(null); setInventoryShortcutId(null); setInventoryToOpen(null) }}
                       className="absolute top-0 right-0 p-2 bg-white/10 hover:bg-white/20 rounded-full z-10"
                     >
                       <X className="size-6 text-white" />
@@ -4802,9 +5058,19 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           ) => handleCombatSheetRoll(c, attr, res, details)}
                           onKill={isGm ? handleKillNPC : undefined}
                           shouldOpenInventory={inventoryToOpen === c.id}
-                          onClearInventoryRequest={() =>
-                            setInventoryToOpen(null)
-                          }
+                          controllerFocusSkill={controllerFocusSkill}
+                          onControllerSkillFocused={() => setControllerFocusSkill(null)}
+                          controllerPanelRequest={controllerPanelRequest}
+                          onControllerPanelOpened={() => setControllerPanelRequest(null)}
+                          onClearInventoryRequest={() => setInventoryToOpen(null)}
+                          inventoryStandalone={inventoryShortcutId === c.id}
+                          onInventoryClosed={() => {
+                            if (inventoryShortcutId === c.id) {
+                              setInventoryShortcutId(null)
+                              setInventoryToOpen(null)
+                              setSelectedCombatCharId(null)
+                            }
+                          }}
                           onArchive={isGm ? handleArchiveCharacter : undefined}
                           storeFolders={storeFolders}
                         />
@@ -4842,7 +5108,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 >
                   <motion.div
                     variants={modalVariants}
-                    className="rpg-modal rpg-media-modal relative w-full max-w-6xl h-[85vh] min-h-[600px] flex flex-col bg-transparent"
+                    role="dialog" aria-modal="true" aria-label="Galeria arcana"
+                  className="rpg-modal rpg-media-modal relative w-full max-w-6xl h-[85vh] min-h-[600px] flex flex-col bg-transparent"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <div className="rpg-media-modal-frame flex-1 w-full h-full overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/10">
@@ -5058,8 +5325,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <PersonalNotes campaignId={data.campaign.id} />
-          <ThemeSwitcher />
+          <div data-controller-target="player.notes"><PersonalNotes campaignId={data.campaign.id} /></div>
+          <div data-controller-target="player.theme"><ThemeSwitcher /></div>
           <div className="relative" ref={volumeMixerRef}>
             <Button
               variant="outline"
@@ -5232,7 +5499,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                                       runCombat({
                                         type: "gm-spend",
                                         amount: 1,
-                                      }).catch((e) => alert(e.message))
+                                      }).catch((e) => controllerAlert(e.message))
                                     }
                                     className="bg-red-500/20 hover:bg-red-500/40 text-red-300 rounded-full size-4 flex items-center justify-center text-xs leading-none"
                                     title="Gastar 1 Token"
@@ -5250,6 +5517,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           <div className="flex gap-2">
                             {!combatController.combat?.enabled && (
                               <Button
+                                data-controller-combat-start="true"
                                 className="bg-amber-500 text-black hover:bg-amber-400 font-bold gap-2 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
                                 onClick={() =>
                                   openCombatAction(
@@ -5524,8 +5792,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                             onConfigure={() =>
                               setEditingCreatureAbilities(creature.instanceId)
                             }
-                            onRemove={() => {
-                              if (confirm(`Remover ${creature.name} da cena?`))
+                            onRemove={async () => {
+                              if (await controllerConfirm(`Remover ${creature.name} da cena?`))
                                 void runCombat({
                                   type: "remove-creature",
                                   instanceId: creature.instanceId,
@@ -5742,7 +6010,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                                               isGm: false,
                                             })
                                           } else {
-                                            alert(
+                                            controllerAlert(
                                               "Não há ameaças ativas para atacar!",
                                             )
                                           }
@@ -5854,10 +6122,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                             details?: DiceRollDetails,
                           ) => handleCombatSheetRoll(c, attr, res, details)}
                           onKill={isGm ? handleKillNPC : undefined}
-                          shouldOpenInventory={inventoryToOpen === c.id}
-                          onClearInventoryRequest={() =>
-                            setInventoryToOpen(null)
-                          }
                           onArchive={isGm ? handleArchiveCharacter : undefined}
                           expanded={expandedCharacterId === c.id}
                           onExpandedChange={(next: boolean) =>
@@ -5913,10 +6177,6 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                             details?: DiceRollDetails,
                           ) => handleCombatSheetRoll(c, attr, res, details)}
                           onKill={isGm ? handleKillNPC : undefined}
-                          shouldOpenInventory={inventoryToOpen === c.id}
-                          onClearInventoryRequest={() =>
-                            setInventoryToOpen(null)
-                          }
                           onArchive={isGm ? handleArchiveCharacter : undefined}
                           expanded={expandedCharacterId === c.id}
                           onExpandedChange={(next: boolean) =>
@@ -5934,7 +6194,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
           </div>
 
           {/* COLUNA DIREITA: PAINEL DO MESTRE & HISTÓRICO */}
-          <aside className="rpg-session-sidebar flex h-full min-h-0 flex-col gap-4 overflow-y-auto pb-4 pr-1 custom-scrollbar-sepia">
+          <aside data-controller-bindable-panel="session" className="rpg-session-sidebar flex h-full min-h-0 flex-col gap-4 overflow-y-auto pb-4 pr-1 custom-scrollbar-sepia">
             {isGm && (
               <>
                 <div className="panel rpg-gm-tools shrink-0 border border-accent/40 p-4">
@@ -6097,13 +6357,13 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     </div>
                   </div>
 
-                  <GmDifficultyGuide latestRoll={latestDiceRoll} viewer="gm"
+                  <div data-controller-target="gm.difficulty"><GmDifficultyGuide latestRoll={latestDiceRoll} viewer="gm"
                     settings={difficultySettings} settingsRevision={difficultyRevision}
                     settingsLoading={difficultyLoading} settingsError={difficultyError}
-                    onSaveSettings={saveDifficultySettings} />
+                    onSaveSettings={saveDifficultySettings} /></div>
 
                   {/* Clima Dinâmico */}
-                  <div className="rpg-gm-section mt-4 pt-4">
+                  <div data-controller-target="gm.weather" className="rpg-gm-section mt-4 pt-4">
                     <div className="flex items-center justify-between mb-2">
                       <p className="rpg-weather-heading whitespace-nowrap font-bold uppercase tracking-widest">
                         Clima Dinâmico
@@ -6250,7 +6510,30 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 </h2>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar-sepia">
-                {history.length === 0 ? (
+                {activePoll && now < activePoll.expiresAt && <section aria-label="Enquete disponível para votar" className="sticky top-0 z-10 max-h-[min(66vh,560px)] overflow-y-auto rounded-lg border border-[#aa7e40] bg-[#f3e5c9] p-3 text-[#352516] shadow-[0_12px_32px_rgba(0,0,0,.2)] sm:p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-xs uppercase tracking-wider text-[#6c471a]">Enquete ao vivo · vote aqui</strong>
+                    <div className="flex items-center gap-2"><span className="font-mono text-xs">{Math.max(0,Math.ceil((activePoll.expiresAt-now)/1000))}s</span>
+                      <button type="button" aria-expanded={!pollMinimized} aria-controls="otms-poll-voting-options"
+                        onClick={() => setPollMinimized(value=>!value)}
+                        className="rounded-md border border-[#aa7e40] bg-white/65 px-3 py-1.5 text-xs font-semibold text-[#553514] hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#995e1d]">
+                        {pollMinimized ? 'Expandir enquete' : 'Minimizar enquete'}
+                      </button>
+                    </div>
+                  </div>
+                  {!pollMinimized && <div id="otms-poll-voting-options">
+                  <p className="mt-2 text-sm font-bold text-[#352516]">{activePoll.question}</p>
+                  <div className="mt-3 flex flex-col gap-2">{activePoll.options.map((option,index)=>{
+                    const selected = activePoll.votes[data.me.id] === index
+                    const votes = Object.values(activePoll.votes).filter(vote=>vote===index).length
+                    return <button key={`${activePoll.id}-${index}`} type="button" aria-pressed={selected} onClick={()=>void handleVote(index)}
+                      className={`flex min-h-11 items-center justify-between gap-3 rounded-md border px-3 py-2 text-left text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${selected ? 'border-[#885212] bg-[#e5c48c] text-[#34200b]' : 'border-[#bba077] bg-[#fff9ec] text-[#352516] hover:border-[#996527] hover:bg-white'}`}>
+                      <span>{String.fromCharCode(65+index)} · {option}</span><span className="shrink-0 text-[10px] text-muted-foreground">{votes} voto(s)</span>
+                    </button>
+                  })}</div><p className="mt-2 text-[10px] text-[#654b2d]">{activePoll.votes[data.me.id] === undefined ? 'Selecione uma resposta com A ou clique.' : 'Seu voto foi registrado. Você pode alterá-lo até o término.'}</p></div>}
+                  {pollMinimized && <p className="mt-2 truncate text-xs text-[#664b2c]">{activePoll.question} · Expandir para votar</p>}
+                </section>}
+                {history.length === 0 && !activePoll ? (
                   <p className="text-xs text-muted-foreground text-center italic mt-4">
                     Nenhum evento registrado ainda.
                   </p>

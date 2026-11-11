@@ -1,6 +1,8 @@
 "use client"
+import { controllerConfirm, controllerAlert } from '@/lib/input/dialogs'
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
+import { useControllerModalNavigation } from "@/lib/input/modal-focus-return"
 import { motion, AnimatePresence, type Variants } from "framer-motion"
 import {
     BookOpen, X, Plus, Edit3, Trash2, Eye, EyeOff,
@@ -51,6 +53,8 @@ export function Lorebook({
     entries,
     onSaveEntries
 }: LorebookProps) {
+    const modalRef = useRef<HTMLDivElement>(null)
+    useControllerModalNavigation(isOpen, modalRef, onClose)
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
     const [isEditing, setIsEditing] = useState(false)
@@ -110,8 +114,8 @@ export function Lorebook({
         setIsEditing(true);
     }
 
-    const handleDelete = (id: string) => {
-        if (!confirm("O Mestre deseja apagar este fragmento de Lore para sempre?")) return;
+    const handleDelete = async (id: string) => {
+        if (!await controllerConfirm("O Mestre deseja apagar este fragmento de Lore para sempre?")) return;
         const newEntries = entries.filter(e => e.id !== id);
         onSaveEntries(newEntries);
         if (selectedId === id) setSelectedId(null);
@@ -119,7 +123,7 @@ export function Lorebook({
 
     const handleSaveDraft = () => {
         if (!draft.title || !draft.content) {
-            alert("O título e o conteúdo são obrigatórios.");
+            controllerAlert("O título e o conteúdo são obrigatórios.");
             return;
         }
 
@@ -171,6 +175,8 @@ export function Lorebook({
                 >
                     <motion.div
                         key="lorebook-modal"
+                        ref={modalRef}
+                        role="dialog" aria-modal="true" aria-label="Diário do Mundo" data-controller-layer="active"
                         variants={modalVariants}
                         initial="hidden"
                         animate="visible"
@@ -191,7 +197,7 @@ export function Lorebook({
                                         <Plus className="size-4" /> Escrever Lore
                                     </Button>
                                 )}
-                                <button onClick={onClose} className="p-2 text-zinc-500 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full">
+                                <button type="button" onClick={onClose} aria-label="Fechar Diário do Mundo" className="p-2 text-zinc-500 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full">
                                     <X className="size-5" />
                                 </button>
                             </div>
@@ -206,6 +212,8 @@ export function Lorebook({
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-600" />
                                         <input
+                                            data-controller-initial="true"
+                                            aria-label="Pesquisar no Diário do Mundo"
                                             type="text"
                                             placeholder="Pesquisar registro..."
                                             value={searchQuery}
@@ -226,6 +234,7 @@ export function Lorebook({
                                                     {items.map(entry => (
                                                         <li key={entry.id}>
                                                             <button
+                                                                aria-label={`Ler registro ${entry.title}`}
                                                                 onClick={() => { setSelectedId(entry.id); setIsEditing(false); }}
                                                                 className={`w-full text-left px-6 py-2.5 transition-all flex justify-between items-center ${selectedId === entry.id
                                                                         ? 'bg-white/10 text-white font-bold border-l-2 border-accent'

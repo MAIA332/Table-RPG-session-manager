@@ -1,4 +1,5 @@
 "use client"
+import { controllerConfirm } from '@/lib/input/dialogs'
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Check, ChevronLeft, ChevronRight, CircleHelp, Layers3, Loader2, Package, Rotate3D, Save, Search, Shield, Shirt, Sword, X } from "lucide-react"
@@ -91,9 +92,9 @@ export function EquipmentMannequin({ characterId, characterName, items, editable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemSignature, loaded])
 
-  function safelyClose() {
+  async function safelyClose() {
     if (saving) return
-    if (dirty && !window.confirm("As mudanças no Manequim ainda não foram salvas. Deseja sair sem salvar?")) return
+    if (dirty && !await controllerConfirm("As mudanças no Manequim ainda não foram salvas. Deseja sair sem salvar?")) return
     onClose()
   }
   useEffect(() => {
@@ -149,9 +150,9 @@ export function EquipmentMannequin({ characterId, characterName, items, editable
     finally {setSaving(false)}
   }
 
-  function goToInventory(item: MannequinItem) {
+  async function goToInventory(item: MannequinItem) {
     if (saving) return
-    if (dirty && !window.confirm("Abrir a mochila sem salvar as mudanças de posição?")) return
+    if (dirty && !await controllerConfirm("Abrir a mochila sem salvar as mudanças de posição?")) return
     onOpenInventory(item)
   }
   return <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="mannequin-title"
@@ -177,7 +178,7 @@ export function EquipmentMannequin({ characterId, characterName, items, editable
     </header>
     {(error || notice || loading) && <div className={`relative z-10 shrink-0 border-b px-5 py-2.5 text-xs ${error ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-primary/20 bg-primary/10 text-primary"}`} role={error ? "alert" : "status"}>
       {loading ? "Carregando posições do MongoDB..." : error || notice}
-      {error && <button type="button" onClick={()=>{if(!dirty||window.confirm("Descartar as posições locais e recarregar o MongoDB?")) void load()}} className="ml-3 font-bold underline">Recarregar do banco</button>}
+      {error && <button type="button" onClick={async ()=>{if(!dirty||await controllerConfirm("Descartar as posições locais e recarregar o MongoDB?")) void load()}} className="ml-3 font-bold underline">Recarregar do banco</button>}
     </div>}
     <div className="relative z-0 grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(225px,.85fr)_minmax(340px,1.6fr)_minmax(265px,.95fr)] lg:overflow-hidden">
       <aside className="order-2 min-h-0 border-t border-border/50 bg-card/25 p-4 backdrop-blur-xl lg:order-1 lg:overflow-y-auto lg:border-r lg:border-t-0 lg:p-6">

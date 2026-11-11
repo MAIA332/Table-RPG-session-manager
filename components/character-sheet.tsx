@@ -1,4 +1,5 @@
 "use client"
+import { controllerAlert, controllerConfirm } from '@/lib/input/dialogs'
 
 import {
   inventoryStatus,
@@ -40,6 +41,7 @@ import { crisisBlocksRoll, crisisModifierLabel, crisisRollModifier, type CrisisE
 import { activeClassBookModifiers, isExpiredClassBookModifier } from "@/lib/class-books"
 import { createClientId } from "@/lib/client-id"
 import { InventoryEquipment, ItemDamageShelf, WornEquipmentSummary } from "./inventory-equipment"
+import { TravelerInventoryBoard } from "./traveler-inventory-board"
 import { EquipmentMannequin } from "./equipment-mannequin"
 import { MannequinInventoryPositions } from "./mannequin-inventory-positions"
 import { mannequinItems, type MannequinItem } from "@/lib/equipment-mannequin"
@@ -55,6 +57,9 @@ import {
   getItemActions,
 } from "@/lib/item-mechanics"
 import { ResourceBar } from "@/components/resource-bar"
+import { useControllerActions } from "@/lib/input/use-controller-actions"
+import { useControllerModalReturnGroup } from "@/lib/input/modal-focus-return"
+import { useController } from "@/components/controller/controller-provider"
 import { Button } from "@/components/ui/button"
 import { CharacterPortrait } from "@/components/character-portrait"
 import { PortraitEditor } from "@/components/portrait-editor"
@@ -78,7 +83,8 @@ import {
 } from "@/lib/game-data"
 import { applyInventoryRules, computeMaxResources } from "@/lib/character"
 import { characterSkillLevel, deriveSkillClassLevels, progressionResourceDelta } from "@/lib/skill-progression"
-import { readNpcExtraDice } from "@/lib/npc-special-dice"
+import { readNpcExtraDice, readNpcFixedDice } from "@/lib/npc-special-dice"
+import { loreBonusDice } from "@/lib/special-attack-lore"
 import {
   formatSkillDescription,
   EssenceStep,
@@ -579,7 +585,7 @@ export function CreatureSheet({
     if (!act) return
 
     if (currentIp < act.cost) {
-      alert("Pontos de Inventário (IP) insuficientes na mochila da criatura!")
+      controllerAlert("Pontos de Inventário (IP) insuficientes na mochila da criatura!")
       return
     }
     const updates: any = { currentIp: currentIp - act.cost }
@@ -617,7 +623,8 @@ export function CreatureSheet({
           >
             <motion.div
               variants={modalVariants}
-              className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl"
+              role="dialog" aria-modal="true" aria-label="Mochila do herói"
+                    className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/40 shrink-0">
@@ -1905,6 +1912,14 @@ function mergeVitalEdit(previous: VitalEdit | undefined, incoming: VitalEdit): V
   return { ...previous, amount: previous.amount + incoming.amount }
 }
 
+/** Renderiza a mochila diretamente no body só quando veio de um atalho.
+ * Assim a ficha hospedeira não cria uma segunda camada interativa. */
+function InventoryPortal({standalone, children}: {standalone: boolean; children: React.ReactNode}) {
+  return standalone && typeof document !== 'undefined'
+    ? createPortal(children, document.body)
+    : <>{children}</>
+}
+
 export function CharacterSheet({
   character: rawCharacter,
   editable,
@@ -1922,6 +1937,12 @@ export function CharacterSheet({
   onRoll,
   onKill,
   shouldOpenInventory,
+  inventoryStandalone = false,
+  onInventoryClosed,
+  controllerFocusSkill,
+  onControllerSkillFocused,
+  controllerPanelRequest,
+  onControllerPanelOpened,
   onClearInventoryRequest,
   onArchive,
   spotlightActive = false,
@@ -2008,7 +2029,25 @@ export function CharacterSheet({
   const [skillSaveError, setSkillSaveError] = useState<string | null>(null)
   const [skillSaveSuccess, setSkillSaveSuccess] = useState<string | null>(null)
   const skillWriteRef = useRef(false)
-  const [showInventory, setShowInventory] = useState(false)
+  const [showInventory, setShowInventory] = useState(() => Boolean(shouldOpenInventory && canExpand))
+  // Apenas o atalho direto fecha também a ficha hospedeira após sair da mochila.
+  const closeInventory = () => {
+    setShowInventory(false)
+    onInventoryClosed?.()
+  }
+  const [inventoryView, setInventoryView] = useState<'grid'|'manage'>('grid')
+  const [manageItemIndex, setManageItemIndex] = useState<number|null>(null)
+  useEffect(()=>{if(!showInventory){setInventoryView('grid');setManageItemIndex(null)}},[showInventory])
+  useEffect(()=>{
+    if(!showInventory || inventoryView !== 'manage' || manageItemIndex === null) return
+    const frame=window.requestAnimationFrame(()=>{
+      const target=inventoryListRef.current?.querySelector<HTMLElement>(`[data-inventory-index="${manageItemIndex}"]`)
+      target?.scrollIntoView({block:'center',behavior:'smooth'})
+      const control=target?.querySelector<HTMLElement>('button:not([disabled]),select:not([disabled])')
+      ;(control||target)?.focus({preventScroll:true})
+    })
+    return ()=>window.cancelAnimationFrame(frame)
+  },[showInventory,inventoryView,manageItemIndex])
   const [showMannequin, setShowMannequin] = useState(false)
   const [mannequinFocusedItem, setMannequinFocusedItem] = useState<MannequinItem | null>(null)
   const inventoryListRef = useRef<HTMLDivElement | null>(null)
@@ -2030,6 +2069,23 @@ export function CharacterSheet({
   const [zenitDraft, setZenitDraft] = useState("")
   const zenitInputRef = useRef<HTMLInputElement | null>(null)
   const sheetRef = useRef<HTMLDivElement | null>(null)
+  const {active: controllerActive} = useController()
+  useEffect(() => {
+    if (!controllerActive || !isExpanded || !controllerPanelRequest) return
+    if (controllerPanelRequest.startsWith('special.') || controllerPanelRequest === 'training') {
+      setSheetTab('main')
+      return // O componente filho confirma somente depois de montar seu próprio modal.
+    }
+    switch (controllerPanelRequest) {
+      case 'bonds': setShowBondsModal(true); break
+      case 'affinities': setShowElementalAffinities(true); break
+      case 'store': setShowStore(true); break
+      case 'mannequin': setShowMannequin(true); break
+      default: return
+    }
+    onControllerPanelOpened?.()
+  }, [controllerPanelRequest, controllerActive, isExpanded])
+
   const scrollFrameRef = useRef<number | null>(null)
   const previousExpandedRef = useRef(isExpanded)
   const resourceDraftRef = useRef<CharacterResources>(character.resources)
@@ -2097,12 +2153,112 @@ export function CharacterSheet({
   }, [modifierClock, timedModifierKey, character.campaignId, character.id])
 
   const [expandedContentMounted, setExpandedContentMounted] =
-    useState(defaultExpanded)
+    useState(defaultExpanded || Boolean(shouldOpenInventory || controllerPanelRequest || controllerFocusSkill != null))
   const [expansionVisible, setExpansionVisible] = useState(defaultExpanded)
 
   const [sheetTab, setSheetTab] = useState<"main" | "checks" | "modifiers">(
     "main",
   )
+  // Prioridade superior à sala: B fecha primeiro o painel mais interno da ficha.
+  useControllerActions({
+    'ui.back': () => {
+      // Outra ficha não deve capturar B enquanto uma mochila direta está aberta.
+      if (document.querySelector('[data-controller-inventory-standalone="true"]') && !inventoryStandalone) return false
+      // Modais portais (arsenal, treinamento, editor) ficam fora da árvore da ficha.
+      // B sempre fecha o modal superior antes de fechar a própria ficha.
+      const dialogs = [...document.querySelectorAll<HTMLElement>('[role="dialog"],[aria-modal="true"]')]
+        .filter(el => el.getBoundingClientRect().width > 0 && getComputedStyle(el).visibility !== 'hidden')
+      const topDialog = dialogs.at(-1)
+      if (topDialog && sheetRef.current && !topDialog.contains(sheetRef.current)) {
+        const closer = topDialog.querySelector<HTMLButtonElement>('button[aria-label*="Fechar"],button[aria-label*="Voltar"],button[aria-label*="Cancelar"]')
+        if (closer) { closer.click(); return true }
+      }
+      if (viewingItem) { setViewingItem(null); return true }
+      if (evolutionView) { setEvolutionView(null); return true }
+      if (selectedStoreItem) { setSelectedStoreItem(null); return true }
+      if (showArchiveConfirm) { setShowArchiveConfirm(false); return true }
+      if (showTransferModal) { setShowTransferModal(false); return true }
+      if (showPortraitGallery) { setShowPortraitGallery(false); return true }
+      if (showPortraitEditor) { setShowPortraitEditor(false); return true }
+      if (showFrameGallery) { setShowFrameGallery(false); return true }
+      if (showBondsModal) { setShowBondsModal(false); return true }
+      if (showCrisisDetails) { setShowCrisisDetails(false); return true }
+      if (showStore) { setShowStore(false); return true }
+      if (showMannequin) { setShowMannequin(false); return true }
+      if (showInventory) { closeInventory(); return true }
+      if (showLevelUp) { setShowLevelUp(false); return true }
+      if (showElementalAffinities) { setShowElementalAffinities(false); return true }
+      if (showLore) { setShowLore(false); return true }
+      // Não recolhe outras fichas nem interfere nos controles da campanha.
+      return false
+    },
+  }, {enabled: controllerActive && (isExpanded || showInventory || showMannequin || showStore || showPortraitGallery || showPortraitEditor || showFrameGallery || showBondsModal || showLore), priority: 180})
+  // LB/RB percorrem as abas da ficha que possui o foco, sem capturar outras fichas.
+  useControllerActions({
+    'ui.next': () => {
+      if (!sheetRef.current?.contains(document.activeElement)) return false
+      setSheetTab(current => current === 'main' ? 'checks' : current === 'checks' ? 'modifiers' : 'main')
+      return true
+    },
+    'ui.previous': () => {
+      if (!sheetRef.current?.contains(document.activeElement)) return false
+      setSheetTab(current => current === 'main' ? 'modifiers' : current === 'modifiers' ? 'checks' : 'main')
+      return true
+    },
+  }, {enabled: controllerActive && isExpanded, priority: 70})
+  const delayedTimers = useRef<number[]>([])
+  useEffect(() => {
+    if (!controllerActive || !isExpanded || controllerFocusSkill == null) return
+    delayedTimers.current.forEach(window.clearTimeout); delayedTimers.current=[]
+    setSheetTab('main')
+    // A aba e o acordeão têm animação; tentamos novamente até a montagem terminar.
+    let attempts = 0
+    const timer = window.setInterval(() => {
+      attempts++
+      const buttons = [...(sheetRef.current?.querySelectorAll<HTMLButtonElement>('[data-controller-usable-skill="true"]') || [])]
+      const chosen = typeof controllerFocusSkill === 'string'
+        ? buttons.find(button => button.dataset.controllerSkillId === controllerFocusSkill)
+        : buttons[controllerFocusSkill]
+      if (chosen) {
+        if (chosen.getAttribute("aria-expanded") !== "true") chosen.click() // Não consome recursos.
+        // O card expande com Motion; medir e rolar ANTES de limpar o pedido.
+        // Um único scrollIntoView ocorre cedo demais, antes da altura final.
+        const card = chosen.closest<HTMLElement>('[data-controller-usable-skill-card]') || chosen.parentElement?.parentElement || chosen
+        const moveIntoView = () => {
+          if (!chosen.isConnected) return
+          const scrollContainers: HTMLElement[] = []
+          const boundary = chosen.closest<HTMLElement>('.combat-character-sheet-overlay, [role="dialog"]')
+          let node: HTMLElement | null = chosen.parentElement
+          while (node) {
+            const overflow = getComputedStyle(node).overflowY
+            if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight + 8) scrollContainers.push(node)
+            if (node === boundary) break
+            node = node.parentElement
+          }
+          // Começar nos painéis internos evita rolar a campanha que está por trás.
+          scrollContainers.forEach(scroller => {
+            const parentBox = scroller.getBoundingClientRect()
+            const targetBox = (card as HTMLElement).getBoundingClientRect()
+            const delta = (targetBox.top + targetBox.bottom) / 2 - (parentBox.top + parentBox.bottom) / 2
+            if (Math.abs(delta) > 14) scroller.scrollTo({top:scroller.scrollTop + delta,behavior:'smooth'})
+          })
+          if (!scrollContainers.length) chosen.scrollIntoView({block:'center',inline:'nearest',behavior:'smooth'})
+        }
+        window.clearInterval(timer)
+        // 3 medições acompanham a expansão e posicionam corretamente o botão Usar.
+        requestAnimationFrame(moveIntoView)
+        const second = window.setTimeout(moveIntoView, 220)
+        const third = window.setTimeout(() => {
+          const activation = (card as HTMLElement).querySelector<HTMLButtonElement>('[data-controller-skill-activate]')
+          ;(activation || chosen).focus({preventScroll:true})
+          moveIntoView()
+          onControllerSkillFocused?.()
+        }, 520)
+        delayedTimers.current.push(second, third)
+      } else if (attempts > 65) { window.clearInterval(timer); onControllerSkillFocused?.() }
+    }, 110)
+    return () => { window.clearInterval(timer); delayedTimers.current.forEach(window.clearTimeout); delayedTimers.current=[] }
+  }, [controllerFocusSkill, controllerActive, isExpanded, expandedContentMounted])
   const [viewingItem, setViewingItem] = useState<any | null>(null)
   const [customTransferTarget, setCustomTransferTarget] = useState("")
   const [showTransferModal, setShowTransferModal] = useState(false)
@@ -2447,6 +2603,20 @@ export function CharacterSheet({
       }
     })
     .filter((group: any) => group.learnedSkills.length > 0)
+  const controllerSkillLabels = learnedSkillGroups.flatMap((group: any) => group.learnedSkills)
+    .filter((skill: any) => !!skill.action)
+    .map((skill: any) => String(skill.name || 'Habilidade'))
+    .slice(0,4)
+  const controllerLabelsKey = controllerSkillLabels.join('|')
+  useEffect(():any => {
+    if (!isExpanded || !editable) return
+    window.dispatchEvent(new CustomEvent('otms.controller.skills', {
+      detail: {characterId: character.id, names: controllerSkillLabels},
+    }))
+    return () => window.dispatchEvent(new CustomEvent('otms.controller.skills-gone', {
+      detail: {characterId: character.id},
+    }))
+  }, [isExpanded, editable, character.id, controllerLabelsKey])
   const unresolvedSkills = Object.entries(skillsObj).filter(
     ([id, level]) =>
       skillRank(level) > 0 &&
@@ -2458,6 +2628,28 @@ export function CharacterSheet({
   const [gmEditError, setGmEditError] = useState<string | null>(null)
   const [gmEditBusy, setGmEditBusy] = useState(false)
   const [gmEditOpen, setGmEditOpen] = useState(false)
+  // Devolve o foco ao controle que abriu o painel, em vez de perder o cursor
+  // na ficha ao pressionar B. O Arsenal tem seu retorno próprio.
+  useControllerModalReturnGroup({
+    inventory: showInventory,
+    mannequin: showMannequin,
+    store: showStore,
+    bonds: showBondsModal,
+    lore: showLore,
+    affinities: showElementalAffinities,
+    crisis: showCrisisDetails,
+    portraitEditor: showPortraitEditor,
+    portraitGallery: showPortraitGallery,
+    frameGallery: showFrameGallery,
+    levelUp: showLevelUp,
+    transfer: showTransferModal,
+    archive: showArchiveConfirm,
+    gmEdit: gmEditOpen,
+    evolution: !!evolutionView,
+    viewingItem: !!viewingItem,
+    selectedStoreItem: !!selectedStoreItem,
+  })
+
   async function gmSaveSheet(updates: { skills?: Record<string, number>; attributes?: Character["attributes"]; classes?: Character["classes"] }) {
     if (!isGm || !editable || gmEditBusy || pending) return
     setGmEditBusy(true); setGmEditError(null)
@@ -2659,7 +2851,7 @@ export function CharacterSheet({
       setDisplayResources(updated.resources)
       onOptimistic(updated)
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Não foi possível salvar os Pontos de Lore.")
+      controllerAlert(error instanceof Error ? error.message : "Não foi possível salvar os Pontos de Lore.")
     } finally {
       loreBusyRef.current = false
       setLoreBusy(false)
@@ -2691,7 +2883,7 @@ export function CharacterSheet({
       setDisplayResources(updated.resources)
       onOptimistic(updated)
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Não foi possível utilizar Lore.")
+      controllerAlert(error instanceof Error ? error.message : "Não foi possível utilizar Lore.")
     } finally {
       loreBusyRef.current = false
       setLoreBusy(false)
@@ -2839,7 +3031,7 @@ export function CharacterSheet({
       return
     }
     if (key === "ip") {
-      alert("IP representa kg livres e é recalculado pelo peso dos itens.")
+      controllerAlert("IP representa kg livres e é recalculado pelo peso dos itens.")
       return
     }
     if (!editable || itemCommitRef.current || loreBusyRef.current) return
@@ -3078,7 +3270,7 @@ export function CharacterSheet({
     const item = itemCatalog.find((e) => e.id === itemId)
     if (!item) return
     if (currentZenit < item.cost) {
-      alert("Zênit insuficiente!")
+      controllerAlert("Zênit insuficiente!")
       return
     }
     try {
@@ -3087,7 +3279,7 @@ export function CharacterSheet({
         zenit: currentZenit - item.cost,
       })
     } catch (error) {
-      alert(
+      controllerAlert(
         error instanceof Error
           ? error.message
           : "Não foi possível comprar o item.",
@@ -3128,7 +3320,7 @@ export function CharacterSheet({
   async function removeEquipmentItem(index: number) {
     if (!isGm) return
     if (
-      !confirm(
+      !await controllerConfirm(
         "Tem certeza que deseja remover este item da mochila do jogador?",
       )
     )
@@ -3227,6 +3419,12 @@ export function CharacterSheet({
         dieSizes.push(dieSize)
         diceLabels.push(dieLabel)
       })
+      if (specialAttack) {
+        const extra = (npcOnly || npcOwned) && isGm
+          ? readNpcFixedDice(specialAttack.description)
+          : loreBonusDice(specialAttack.loreBonusLevel)
+        for (const sides of extra) { dieSizes.push(sides); diceLabels.push(`d${sides}`) }
+      }
 
       const bonusTargets = [check.id, check.name, ...allDice]
       const itemBonus = sumItemRollBonus(activeItemBonuses, bonusTargets)
@@ -3352,12 +3550,12 @@ export function CharacterSheet({
       if (response.character) onOptimistic(response.character)
       if (!finishing) delete skillUseRequestIdsRef.current[skill.id]
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Falha ao usar a habilidade.")
+      controllerAlert(error instanceof Error ? error.message : "Falha ao usar a habilidade.")
     } finally { setPending(false) }
   }
 
   async function removeSkillAftermath(modifierId: string) {
-    if (!isGm || !confirm("Remover este revés da ficha?")) return
+    if (!isGm || !await controllerConfirm("Remover este revés da ficha?")) return
     setPending(true)
     try {
       const response = await apiFetch<{ character: Character }>(
@@ -3365,12 +3563,12 @@ export function CharacterSheet({
         { method: "POST", body: JSON.stringify({ action: "remove-aftermath", characterId: character.id, modifierId }) },
       )
       if (response.character) onOptimistic(response.character)
-    } catch (error) { alert(error instanceof Error ? error.message : "Não foi possível remover o revés.") }
+    } catch (error) { controllerAlert(error instanceof Error ? error.message : "Não foi possível remover o revés.") }
     finally { setPending(false) }
   }
 
   function useInventoryItem(_actionId: string) {
-    alert("IP agora mede kg livres. Use um consumível cadastrado na mochila.")
+    controllerAlert("IP agora mede kg livres. Use um consumível cadastrado na mochila.")
   }
 
   const characterHazards = activeHazards.filter(
@@ -3381,7 +3579,7 @@ export function CharacterSheet({
 
   async function deleteCustomItem(id: string) {
     if (!editable && !isGm) return
-    if (!confirm("Destruir este item para sempre?")) return
+    if (!await controllerConfirm("Destruir este item para sempre?")) return
     const newItems = customItems.filter((i: any) => i.id !== id)
     onOptimistic({ ...character, customItems: newItems } as any)
     setViewingItem(null)
@@ -3442,9 +3640,9 @@ export function CharacterSheet({
   }
 
   async function handleTransferOwnership() {
-    if (!transferUserId) return alert("Selecione um jogador na lista.")
+    if (!transferUserId) return controllerAlert("Selecione um jogador na lista.")
     if (
-      !confirm(
+      !await controllerConfirm(
         `Deseja transferir o controle permanente desta ficha para este jogador?`,
       )
     )
@@ -3462,7 +3660,7 @@ export function CharacterSheet({
       onOptimistic(updated)
       setShowTransferModal(false)
     } catch (err) {
-      alert(
+      controllerAlert(
         "Erro ao transferir personagem. Verifique se a rota API de transferência existe.",
       )
     } finally {
@@ -3543,6 +3741,7 @@ export function CharacterSheet({
                 >
                   <motion.div
                     variants={modalVariants}
+                    role="dialog" aria-modal="true" aria-label="Laços e conexões"
                     className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-2xl flex-col border border-primary/30 bg-zinc-950 shadow-2xl"
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -3612,9 +3811,9 @@ export function CharacterSheet({
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => {
+                                      onClick={async () => {
                                         if (
-                                          confirm(
+                                          await controllerConfirm(
                                             "Cortar este laço para sempre?",
                                           )
                                         )
@@ -3706,7 +3905,7 @@ export function CharacterSheet({
                               className="mt-2 w-full"
                               onClick={() => {
                                 if (!bondDraft.target?.trim())
-                                  return alert("Dê um nome ao alvo do laço.")
+                                  return controllerAlert("Dê um nome ao alvo do laço.")
                                 const newBond: Bond = {
                                   id: Math.random().toString(36).substring(7),
                                   target: bondDraft.target,
@@ -3756,6 +3955,7 @@ export function CharacterSheet({
                 onOpenInventory={(item) => {
                   setMannequinFocusedItem(item)
                   setShowMannequin(false)
+                  setInventoryView('manage')
                   setShowInventory(true)
                 }}
               />
@@ -3764,27 +3964,33 @@ export function CharacterSheet({
             {/* Demais modais seguem em ordem: Inventory, ViewingItem, Transfer, Archive, Gallery, Lore... */}
             <AnimatePresence>
               {showInventory && (
+                <InventoryPortal standalone={inventoryStandalone}>
                 <motion.div
+                  data-controller-inventory-standalone={inventoryStandalone ? 'true' : undefined}
+                  data-controller-layer="active"
                   variants={overlayVariants}
                   initial="hidden"
                   animate="visible"
                   exit="exit"
-                  className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden"
-                  onClick={() => setShowInventory(false)}
+                  role="presentation"
+                  className="otms-inventory-overlay fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md overflow-hidden"
+                  onClick={closeInventory}
                 >
                   <motion.div
                     variants={modalVariants}
-                    className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden border border-primary/30 bg-zinc-950 shadow-2xl"
+                    role="dialog" aria-modal="true" aria-label="Mochila do Viajante"
+                    className="rpg-modal otms-inventory-modal relative flex h-full w-full flex-col overflow-hidden border border-primary/30 bg-zinc-950 shadow-2xl"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <style>{`[data-mannequin-focused="true"] { outline: 2px solid var(--primary, #d5a45d); outline-offset: 3px; border-radius: 9px; }`}</style>
-                    <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/40 shrink-0">
+                    <div className="otms-inventory-header flex justify-between items-center p-6 border-b border-white/10 bg-black/40 shrink-0">
                       <h4 className="font-serif text-2xl md:text-3xl font-black text-[#eee3cf] flex items-center gap-3">
                         <Package className="size-6 text-primary md:size-8" />{" "}
-                        Mochila do Herói
+                        Mochila do Viajante <span className="otms-inventory-hero-label">{character.name}</span>
                       </h4>
                       <button
-                        onClick={() => setShowInventory(false)}
+                        aria-label="Fechar mochila"
+                        onClick={closeInventory}
                         className="rounded-full p-2 bg-white/5 hover:bg-white/10"
                       >
                         <X className="size-5 md:size-6 text-muted-foreground hover:text-white" />
@@ -3796,7 +4002,17 @@ export function CharacterSheet({
                         <button type="button" onClick={() => setMannequinFocusedItem(null)} className="font-bold text-primary hover:underline">Limpar foco</button>
                       </div>
                     )}
-                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6 custom-scrollbar-sepia">
+                    <nav className="otms-inventory-tabs" role="tablist" aria-label="Áreas da mochila">
+                      <button type="button" role="tab" aria-selected={inventoryView==='grid'} data-selected={inventoryView==='grid'} onClick={()=>setInventoryView('grid')}>Grade de itens</button>
+                      <button type="button" role="tab" aria-selected={inventoryView==='manage'} data-selected={inventoryView==='manage'} onClick={()=>{setInventoryView('manage');setManageItemIndex(null)}}>Equipar · usar · transferir</button>
+                      <span>Organize visualmente os slots sem alterar o inventário no servidor.</span>
+                    </nav>
+                    {inventoryView === 'grid' && <TravelerInventoryBoard
+                      characterId={character.id} campaignId={character.campaignId}
+                      equipment={character.equipment||[]} catalog={itemCatalog}
+                      freeKg={weightStatus.freePoints} maxKg={Number(displayResources.maxIp)||0}
+                      onManage={(index)=>{setManageItemIndex(index);setInventoryView('manage')}} />}
+                    {inventoryView === 'manage' && <div className="otms-inventory-management flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6 custom-scrollbar-sepia">
                       <section ref={inventoryListRef} className="flex-1 space-y-4">
                         <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground border-b border-white/10 pb-2">
                           Equipamento Atual
@@ -3934,7 +4150,7 @@ export function CharacterSheet({
                                       resources: { maxIp: value },
                                     })
                                   } catch (error) {
-                                    alert(
+                                    controllerAlert(
                                       error instanceof Error
                                         ? error.message
                                         : "Capacidade inválida.",
@@ -3978,9 +4194,10 @@ export function CharacterSheet({
                           }}
                         />
                       </section>
-                    </div>
+                    </div>}
                   </motion.div>
                 </motion.div>
+                </InventoryPortal>
               )}
             </AnimatePresence>
 
@@ -3996,6 +4213,7 @@ export function CharacterSheet({
                 >
                   <motion.div
                     variants={modalVariants}
+                    role="dialog" aria-modal="true" aria-label="Visualizar item"
                     className={`relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden shadow-2xl ${viewingItem.type === "text" ? "rpg-paper text-black border-2 border-[#d4af37]" : "rpg-modal bg-zinc-950 border border-primary/50"}`}
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -4134,6 +4352,7 @@ export function CharacterSheet({
                 >
                   <motion.div
                     variants={modalVariants}
+                    role="dialog" aria-modal="true" aria-label="Transferência de item"
                     className="rpg-modal relative min-h-[440px] w-full max-w-md border border-primary/50 bg-zinc-950 p-6 py-8 shadow-2xl"
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -4208,6 +4427,7 @@ export function CharacterSheet({
                 >
                   <motion.div
                     variants={modalVariants}
+                    role="dialog" aria-modal="true" aria-label="Confirmar arquivamento de personagem"
                     className="rpg-modal relative w-full max-w-md border border-destructive/50 bg-zinc-950 p-6 shadow-2xl"
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -4277,6 +4497,7 @@ export function CharacterSheet({
                 >
                   <motion.div
                     variants={modalVariants}
+                    role="dialog" aria-modal="true" aria-label="Detalhes da ficha"
                     className="rpg-modal max-h-[92vh] w-full max-w-3xl overflow-y-auto border p-6 custom-scrollbar-sepia sm:p-8"
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -4771,8 +4992,8 @@ export function CharacterSheet({
                                     ...character.skills, [rankToReduce]: Math.max(0, skillRank(character.skills[rankToReduce]) - 1),
                                   } })}>−1</button>
                                 <button type="button" disabled={gmEditBusy} title="Remover a classe e seus níveis da ficha" aria-label={`Remover classe ${definition?.name || owned.classId}`}
-                                  className="rounded border border-destructive/40 px-2 py-1 text-destructive disabled:opacity-40" onClick={() => {
-                                    if (!window.confirm(`Remover ${definition?.name || owned.classId} e todos os níveis das habilidades associadas?`)) return
+                                  className="rounded border border-destructive/40 px-2 py-1 text-destructive disabled:opacity-40" onClick={async () => {
+                                    if (!await controllerConfirm(`Remover ${definition?.name || owned.classId} e todos os níveis das habilidades associadas?`)) return
                                     const remaining = { ...character.skills }
                                     ids.forEach(id => { remaining[id] = 0 })
                                     void gmSaveSheet({ classes: character.classes.filter((cls:any) => cls.classId !== owned.classId), skills: remaining })
@@ -4894,6 +5115,8 @@ export function CharacterSheet({
                     </div>
 
                     <CharacterTraining
+                      openRequested={controllerPanelRequest === 'training'}
+                      onRequestHandled={onControllerPanelOpened}
                       character={character as any}
                       isGm={isGm}
                       isOwner={isOwned}
@@ -4901,6 +5124,8 @@ export function CharacterSheet({
                     />
 
                     <PlayerSpecialAttacks
+                      externalOpenRequest={typeof controllerPanelRequest === 'string' && controllerPanelRequest.startsWith('special.') ? controllerPanelRequest : null}
+                      onExternalOpened={onControllerPanelOpened}
                       character={character as any}
                       isGm={isGm}
                       npcOnly={Boolean((npcOnly || npcOwned) && isGm)}
@@ -5339,12 +5564,15 @@ export function CharacterSheet({
                                 return (
                                   <div
                                     key={skill.id}
+                                    data-controller-usable-skill-card="true"
                                     className={`overflow-hidden rounded-lg border transition-colors ${skillExpanded ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background/30 hover:border-primary/25"}`}
                                   >
                                     <div className="flex items-center gap-1 sm:gap-2">
                                     <button
                                       type="button"
                                       aria-expanded={skillExpanded}
+                                      data-controller-usable-skill={skill.action && lvl > 0 ? 'true' : undefined}
+                                      data-controller-skill-id={skill.action && lvl > 0 ? skill.id : undefined}
                                       onClick={() =>
                                         setExpandedSkillId(
                                           skillExpanded ? null : skillKey,
@@ -5398,6 +5626,7 @@ export function CharacterSheet({
                                             <Button
                                               size="sm"
                                               disabled={pending || Boolean((skillRuntime(allMods, skill.id, modifierClock || Date.now()).duration?.expiresAt) || (!skillRuntime(allMods, skill.id, modifierClock || Date.now()).duration && skillRuntime(allMods, skill.id, modifierClock || Date.now()).cooldown))}
+                                              data-controller-skill-activate="true"
                                               onClick={() => void useSkill(skill)}
                                               className="h-8 gap-1.5 text-xs font-bold"
                                             >
@@ -5611,8 +5840,8 @@ export function CharacterSheet({
                                       variant="outline"
                                       className="h-8 border-purple-500/50 text-purple-400 hover:bg-purple-500/20"
                                       disabled={loreBusy || pending}
-                                      onClick={() => {
-                                        if (confirm(`Gastar 1 Ponto de Lore (LP) para melhorar a condição "${mod.name}" em +1?`)) {
+                                      onClick={async () => {
+                                        if (await controllerConfirm(`Gastar 1 Ponto de Lore (LP) para melhorar a condição "${mod.name}" em +1?`)) {
                                           void upgradeModifierWithLore(mod.id)
                                         }
                                       }}
@@ -5638,10 +5867,10 @@ export function CharacterSheet({
                                       size="sm"
                                       variant="ghost"
                                       className="h-8 w-8 p-0 text-destructive hover:bg-destructive/20 hover:text-destructive"
-                                      onClick={() => {
+                                      onClick={async () => {
                                         if (mod.type === "class_skill_aftermath") {
                                           void removeSkillAftermath(mod.id)
-                                        } else if (confirm("Remover condição?")) {
+                                        } else if (await controllerConfirm("Remover condição?")) {
                                           updateModifiers(
                                             (character as any).customModifiers.filter((m: any) => m.id !== mod.id),
                                           )

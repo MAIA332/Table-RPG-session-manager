@@ -5,6 +5,7 @@ import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import { Check, Palette, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useControllerActions } from "@/lib/input/use-controller-actions"
 
 type ThemeId = "archive" | "aether" | "crimson"
 
@@ -42,6 +43,7 @@ export function ThemeSwitcher() {
   const [mounted, setMounted] = useState(false)
   const [open, setOpen] = useState(false)
   const [theme, setTheme] = useState<ThemeId>("archive")
+  useControllerActions({ "ui.back": () => { setOpen(false); return true } }, { enabled: open, priority: 240 })
 
   useEffect(() => {
     const current = document.documentElement.dataset.theme
@@ -67,7 +69,7 @@ export function ThemeSwitcher() {
         <AnimatePresence>
           {open && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[600] flex items-center justify-center bg-black/85 p-3 backdrop-blur-md sm:p-6" onClick={() => setOpen(false)}>
-              <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} transition={{ duration: 0.22 }} className="rpg-modal max-h-[92vh] w-full max-w-4xl overflow-y-auto border p-6 custom-scrollbar-sepia sm:p-8" onClick={(event) => event.stopPropagation()}>
+              <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} transition={{ duration: 0.22 }} role="dialog" aria-modal="true" aria-label="Escolher tema" className="rpg-modal max-h-[92vh] w-full max-w-4xl overflow-y-auto border p-6 custom-scrollbar-sepia sm:p-8" onClick={(event) => event.stopPropagation()}>
                 <div className="mb-6 flex items-center justify-between gap-5">
                   <h2 className="rpg-title text-2xl font-bold text-foreground sm:text-3xl">Tema da interface</h2>
                   <button type="button" onClick={() => setOpen(false)} className="rounded-sm p-2.5 text-muted-foreground hover:bg-white/10 hover:text-foreground" aria-label="Fechar temas"><X className="size-6" /></button>

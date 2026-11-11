@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ChevronDown, Rotate3D, Shirt, UserRound } from "lucide-react"
+import { useController } from '@/components/controller/controller-provider'
+import { registerRightStickHandler } from '@/lib/input/right-stick'
+import { stepMannequinOrbit } from '@/lib/input/mannequin-orbit'
 import { MANNEQUIN_ZONES, type MannequinItem, type MannequinPlacement, type MannequinZone } from "@/lib/equipment-mannequin"
 
 /**
@@ -135,6 +138,7 @@ export function MannequinModel3D({placements,items,selected,selectedKey,activeLa
   onZone: (zone:MannequinZone)=>void
   onSelectItem: (key:string)=>void
 }) {
+  const {active: controllerActive}=useController()
   const canvas=useRef<HTMLCanvasElement>(null)
   const root=useRef<HTMLDivElement>(null)
   const orbit=useRef({yaw:-.26,pitch:.07,zoom:1})
@@ -242,6 +246,21 @@ export function MannequinModel3D({placements,items,selected,selectedKey,activeLa
   },[])
   useEffect(()=>{schedule()},[drawNow,schedule])
   useEffect(()=>{
+    if(!controllerActive) return
+    // Só este componente consome o analógico direito. Em um diálogo superior,
+    // o controle volta a operar a interface do diálogo.
+    return registerRightStickHandler((x,y,elapsedMs)=>{
+      const element=root.current
+      if(!element?.isConnected)return false
+      const dialogs=[...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')]
+        .filter(dialog=>{const rect=dialog.getBoundingClientRect();return rect.width>0&&rect.height>0})
+      if(dialogs.length && !dialogs.at(-1)?.contains(element))return false
+      orbit.current=stepMannequinOrbit(orbit.current,x,y,elapsedMs)
+      schedule()
+      return true
+    },500)
+  },[controllerActive,schedule])
+  useEffect(()=>{
     const element=canvas.current
     if(!element) return
     const observer=new ResizeObserver(()=>schedule())
@@ -328,6 +347,6 @@ export function MannequinModel3D({placements,items,selected,selectedKey,activeLa
       <button type="button" className="rounded-md px-2.5 py-1.5 text-[10px] font-bold hover:bg-primary/15" onClick={()=>reset(0)}>Frente</button>
       <button type="button" className="rounded-md px-2.5 py-1.5 text-[10px] font-bold hover:bg-primary/15" onClick={()=>reset(Math.PI)}>Costas</button>
     </div>
-    <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1.5 rounded-lg bg-background/70 px-2 py-1 text-[10px] text-muted-foreground"><Rotate3D className="size-3"/>Arraste para girar · roda para zoom</div>
+    <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1.5 rounded-lg bg-background/70 px-2 py-1 text-[10px] text-muted-foreground"><Rotate3D className="size-3"/>Arraste para girar · roda para zoom{controllerActive ? " · Analógico direito: girar / zoom" : ""}</div>
   </div>
 }

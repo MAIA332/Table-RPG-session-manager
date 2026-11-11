@@ -1,7 +1,12 @@
 "use client"
+import { controllerAlert } from '@/lib/input/dialogs'
 import { normalizeStoreFolders } from "@/lib/store-folders"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useController } from "@/components/controller/controller-provider"
+import { ControllerGlyph } from "@/components/controller/controller-glyph"
+import { useControllerActions } from "@/lib/input/use-controller-actions"
+import { controllerFocus } from "@/lib/input/focus"
 import {
   Store,
   Coins,
@@ -69,6 +74,119 @@ export function StoreModal({
   const [storeSearch, setStoreSearch] = useState("")
   const [storeCategory, setStoreCategory] = useState("all")
   const [selectedStoreItem, setSelectedStoreItem] = useState<any | null>(null)
+  const { active: controllerActive } = useController()
+  const marketRef = useRef<HTMLDivElement>(null)
+  const focusedZone = useRef<'bag' | 'catalog' | 'inspect'>('catalog')
+  const lastFocusedByZone = useRef<Partial<Record<'bag' | 'catalog' | 'inspect', HTMLElement>>>({})
+
+  /** Muda entre as áreas sem perder o cursor no catálogo ao inspecionar um item. */
+  const focusZone = (zone: 'bag' | 'catalog' | 'inspect'): boolean => {
+    const root = marketRef.current
+    if (!root) return false
+    const visible = (el: HTMLElement) => {
+      const bounds = el.getBoundingClientRect()
+      return bounds.width > 0 && bounds.height > 0 && !el.matches(':disabled')
+    }
+    const last = lastFocusedByZone.current[zone]
+    const candidates = [...root.querySelectorAll<HTMLElement>(`[data-store-zone="${zone}"]`)].filter(visible)
+    const preferred = zone === 'catalog'
+      ? root.querySelector<HTMLElement>('[data-store-card]')
+      : zone === 'inspect' ? root.querySelector<HTMLElement>('[data-store-buy]') : null
+    const target = last?.isConnected && visible(last) && candidates.includes(last)
+      ? last : preferred && visible(preferred) ? preferred : candidates[0]
+    if (!target) return false
+    focusedZone.current = zone
+    target.focus({preventScroll: true})
+    target.scrollIntoView({block:'nearest',inline:'nearest'})
+    return true
+  }
+  const focusVisibleCatalogCard = (id?: string) => {
+    const root = marketRef.current
+    const card = [...(root?.querySelectorAll<HTMLElement>('[data-store-card]') ?? [])]
+      .find(el => !!id && el.dataset.storeItemId === id)
+    if (card) {
+      card.focus({preventScroll:true})
+      card.scrollIntoView({block:'nearest',inline:'nearest'})
+      focusedZone.current='catalog'
+      return true
+    }
+    return focusZone('catalog')
+  }
+  useEffect(() => {
+    if (!isOpen || !controllerActive) return
+    const frame = requestAnimationFrame(() => {focusVisibleCatalogCard()})
+    return () => cancelAnimationFrame(frame)
+    // Apenas quando o modal abre ou o usuário começa a usar controle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, controllerActive])
+  useEffect(() => {
+    if (!isOpen) return
+    const listener = (event: FocusEvent) => {
+      if (!(event.target instanceof HTMLElement) || !marketRef.current?.contains(event.target)) return
+      const zone = event.target.dataset.storeZone as 'bag' | 'catalog' | 'inspect' | undefined
+      if (zone && ['bag','catalog','inspect'].includes(zone)) {
+        focusedZone.current = zone
+        lastFocusedByZone.current[zone] = event.target
+      }
+    }
+    document.addEventListener('focusin',listener)
+    return () => document.removeEventListener('focusin',listener)
+  }, [isOpen])
+  // Após uma venda, o botão que estava em foco pode ser removido pelo React.
+  // Recupera o foco na mochila sem roubar o foco de diálogos de confirmação.
+  const inventorySignature = character.equipment.join('|')
+  useEffect(() => {
+    if (!isOpen || !controllerActive || focusedZone.current !== 'bag') return
+    const frame=requestAnimationFrame(()=>{
+      const root=marketRef.current
+      if(!root)return
+      const dialogs=[...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')]
+        .filter(el=>{const bounds=el.getBoundingClientRect();return bounds.width>0&&bounds.height>0})
+      if(dialogs.at(-1)!==root)return
+      if(!root.contains(document.activeElement)) focusZone('bag') || focusZone('catalog')
+    })
+    return ()=>cancelAnimationFrame(frame)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[inventorySignature,isOpen,controllerActive])
+
+  const focusAdjacentZone = (offset: number) => {
+    const zones: Array<'bag' | 'catalog' | 'inspect'> = ['bag', 'catalog', 'inspect']
+    const active = document.activeElement as HTMLElement | null
+    const present = active?.dataset.storeZone as typeof zones[number] | undefined
+    const starting = zones.indexOf(present && zones.includes(present) ? present : focusedZone.current)
+    for (let step=1;step<=zones.length;step++) {
+      const zone=zones[(starting+offset*step+zones.length*2)%zones.length]
+      if(focusZone(zone))return true
+    }
+    return true
+  }
+  // Captura o foco apenas enquanto a loja está aberta: comandos mapeados para
+  // outras partes da campanha não executam por trás de uma compra/venda.
+  useControllerActions({
+    'ui.confirm': () => {
+      if (!marketRef.current?.contains(document.activeElement)) return focusVisibleCatalogCard()
+      return controllerFocus('ui.confirm')
+    },
+    'ui.back': () => {
+      // Uma imagem ampliada ou outro diálogo filho deve receber B primeiro.
+      const dialogs=[...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')]
+        .filter(el=>{const rect=el.getBoundingClientRect();return rect.width>0&&rect.height>0})
+      if(dialogs.at(-1) !== marketRef.current) return controllerFocus('ui.back')
+      if (selectedStoreItem) {
+        const id = selectedStoreItem.id as string
+        setSelectedStoreItem(null)
+        requestAnimationFrame(()=>focusVisibleCatalogCard(id))
+      } else onClose()
+      return true
+    },
+    'ui.previous': () => focusAdjacentZone(-1),
+    'ui.next': () => focusAdjacentZone(1),
+    'ui.up': () => controllerFocus('ui.up'),
+    'ui.down': () => controllerFocus('ui.down'),
+    'ui.left': () => controllerFocus('ui.left'),
+    'ui.right': () => controllerFocus('ui.right'),
+    'ui.settings': () => false, // MENU ainda abre as preferências gerais.
+  }, {enabled:isOpen, priority:350, captureAll:true})
 
   const weightStatus = inventoryStatus(character, customEquipment)
   const purchase = (id: string) => {
@@ -79,8 +197,10 @@ export function StoreModal({
         customEquipment,
       )
       buyItem(id)
+      return true
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Mochila sem capacidade.")
+      controllerAlert(e instanceof Error ? e.message : "Mochila sem capacidade.")
+      return false
     }
   }
   const visibleFolders = normalizeStoreFolders(storeFolders).filter(folder => folder.isVisible)
@@ -148,6 +268,12 @@ export function StoreModal({
         >
           <motion.div
             variants={modalVariants}
+            ref={marketRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Mercado e Forja"
+            data-controller-layer={controllerActive ? 'active' : undefined}
+            data-controller-store="active"
             className="rpg-modal relative flex h-full max-h-[95vh] w-full max-w-7xl flex-col overflow-hidden border border-accent/30 bg-zinc-950 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -180,6 +306,7 @@ export function StoreModal({
                 </div>
                 <button
                   onClick={onClose}
+                  aria-label="Fechar Mercado e Forja"
                   className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"
                 >
                   <X className="size-5 text-muted-foreground hover:text-white" />
@@ -187,10 +314,18 @@ export function StoreModal({
               </div>
             </div>
 
+            {controllerActive && <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2 border-b border-accent/20 bg-accent/[.07] px-5 py-2.5 text-[11px] text-foreground/90" aria-label="Comandos de controle do Mercado e Forja">
+              <span className="font-bold tracking-wide text-accent">Mercado / controle</span>
+              <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="LB" small/><ControllerGlyph button="RB" small/> Trocar área</span>
+              <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="A" small/> Examinar / comprar / vender</span>
+              <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="B" small/> Voltar / fechar</span>
+              <span className="text-muted-foreground">Analógico direito: rolar lista</span>
+            </div>}
+
             {/* Corpo da Loja */}
             <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
               {/* Mochila (Sidebar Esquerda) */}
-              <aside className="lg:w-[260px] xl:w-[300px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20 flex flex-col">
+              <aside className="max-h-[25dvh] lg:max-h-none lg:w-[260px] xl:w-[300px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20 flex flex-col">
                 <div className="p-4 border-b border-white/10 flex items-center justify-between">
                   <div>
                     <h5 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -242,6 +377,8 @@ export function StoreModal({
                               size="sm"
                               variant="ghost"
                               disabled={!editable}
+                              data-store-zone="bag"
+                              aria-label={`Vender ${item.name} por ${sellPrice} Zenits`}
                               className="text-accent hover:bg-accent/10 shrink-0 px-2"
                               onClick={() => sellItem(item.id, index)}
                             >
@@ -263,6 +400,7 @@ export function StoreModal({
                     {visibleFolders.map((folder) => (
                       <button
                         key={folder.id}
+                        data-store-zone="catalog"
                         onClick={() => {
                           setActiveFolderId(folder.id)
                           setSelectedStoreItem(null)
@@ -281,6 +419,8 @@ export function StoreModal({
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                       <input
                         type="text"
+                        data-store-zone="catalog"
+                        aria-label="Pesquisar itens do mercado"
                         value={storeSearch}
                         onChange={(e) => setStoreSearch(e.target.value)}
                         placeholder="Pesquisar nesta pasta..."
@@ -298,6 +438,7 @@ export function StoreModal({
                       ].map(([id, label]) => (
                         <button
                           key={id}
+                          data-store-zone="catalog"
                           onClick={() => setStoreCategory(id)}
                           className={`px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider font-bold whitespace-nowrap border transition-all ${storeCategory === id ? "bg-accent text-accent-foreground border-accent" : "bg-white/5 text-muted-foreground border-white/10 hover:border-accent/30 hover:text-foreground"}`}
                         >
@@ -330,6 +471,7 @@ export function StoreModal({
                         Nenhum item encontrado nesta pasta/filtro.
                       </p>
                       <button
+                        data-store-zone="catalog"
                         onClick={() => {
                           setStoreSearch("")
                           setStoreCategory("all")
@@ -348,7 +490,17 @@ export function StoreModal({
                           <motion.button
                             layout
                             key={item.id}
-                            onClick={() => setSelectedStoreItem(item)}
+                            data-store-zone="catalog"
+                            data-store-card="true"
+                            data-store-item-id={item.id}
+                            aria-label={`Examinar ${item.name}, custo ${item.cost} Zenits`}
+                            onClick={(event) => {
+                              setSelectedStoreItem(item)
+                              // No controle, A entra na inspeção; um clique de mouse
+                              // apenas seleciona o cartão, como já fazia antes.
+                              if (controllerActive && event.detail === 0)
+                                requestAnimationFrame(()=>focusZone('inspect'))
+                            }}
                             className={`text-left group relative p-4 rounded-xl border transition-all duration-200 ${selected ? "border-accent bg-accent/10 shadow-lg shadow-accent/5" : canAfford ? "border-border/60 bg-card/50 hover:border-accent/40 hover:bg-card" : "border-destructive/20 bg-destructive/5 opacity-60"}`}
                           >
                             <div className="absolute top-3 right-3">
@@ -417,6 +569,8 @@ export function StoreModal({
                         </div>
                         <button
                           onClick={() => setSelectedStoreItem(null)}
+                          data-store-zone="inspect"
+                          aria-label="Voltar à vitrine"
                           className="p-1.5 rounded-md hover:bg-white/10"
                         >
                           <X className="size-4 text-muted-foreground" />
@@ -479,9 +633,14 @@ export function StoreModal({
                       {currentZenit >= selectedStoreItem.cost ? (
                         <Button
                           disabled={!editable}
+                          data-store-zone="inspect"
+                          data-store-buy="true"
                           onClick={() => {
-                            purchase(selectedStoreItem.id)
-                            setSelectedStoreItem(null)
+                            const id=selectedStoreItem.id as string
+                            if (purchase(id)) {
+                              setSelectedStoreItem(null)
+                              if (controllerActive) requestAnimationFrame(()=>focusVisibleCatalogCard(id))
+                            }
                           }}
                           className="w-full h-11 bg-accent text-accent-foreground hover:bg-accent/90 font-bold"
                         >

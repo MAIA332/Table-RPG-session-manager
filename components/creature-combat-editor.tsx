@@ -1,4 +1,5 @@
 "use client"
+import { controllerAlert, controllerConfirm } from '@/lib/input/dialogs'
 import { useEffect, useState, type ReactNode } from "react"
 import {
   ATTRIBUTES,
@@ -71,7 +72,7 @@ function AttackPreviewFields({
               if (encoded.length > 650_000) throw new Error("Imagem ainda muito grande. Use uma URL HTTPS para preservar a qualidade.")
               onChange({ ...value, previewImageUrl: encoded })
             } catch (error) {
-              window.alert(error instanceof Error ? error.message : "Falha ao processar imagem.")
+              controllerAlert(error instanceof Error ? error.message : "Falha ao processar imagem.")
             }
           }}
         />
@@ -307,8 +308,8 @@ export function AbilityEditor({
               type="button"
               aria-label={`Remover ${a.name}`}
               className="p-2 text-sm text-red-300"
-              onClick={() => {
-                if (window.confirm(`Remover ${a.name}?`))
+              onClick={async () => {
+                if (await controllerConfirm(`Remover ${a.name}?`))
                   onChange(value.filter((item) => item.id !== a.id))
               }}
             >
@@ -321,10 +322,10 @@ export function AbilityEditor({
                 <select
                   className={input}
                   value={a.kind}
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const kind = e.target.value as Ability["kind"]
                     if (
-                      window.confirm(
+                      await controllerConfirm(
                         "Trocar o tipo redefine os campos específicos desta habilidade. Continuar?",
                       )
                     )

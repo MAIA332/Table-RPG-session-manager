@@ -1,4 +1,10 @@
 "use client"
+import { controllerAlert } from '@/lib/input/dialogs'
+import { useController } from '@/components/controller/controller-provider'
+import { useControllerActions } from '@/lib/input/use-controller-actions'
+import { controllerFocus, focusControllerElement } from '@/lib/input/focus'
+import { useControllerModalReturn } from '@/lib/input/modal-focus-return'
+import { creatorStepTransition } from '@/lib/input/creator-step-navigation' 
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
@@ -63,7 +69,12 @@ export function CharacterCreator({ campaignId, campaignCharacters = [], customCl
   const [selectedPortraitId, setSelectedPortraitId] = useState("__primary__")
   const [evolutionView, setEvolutionView] = useState<{ skill: EvolutionSkill; className: string; level: number } | null>(null)
   const [mounted, setMounted] = useState(false)
+  const { active: controllerActive } = useController()
+  const creatorRef = useRef<HTMLDivElement>(null)
   const dialogRef = useRef<HTMLElement>(null)
+  const footerCancelRef = useRef<HTMLButtonElement>(null)
+  const footerNextRef = useRef<HTMLButtonElement>(null)
+  useControllerModalReturn(mounted)
 
   useEffect(() => {
     setMounted(true)
@@ -180,6 +191,69 @@ export function CharacterCreator({ campaignId, campaignCharacters = [], customCl
     (step === 4 && remaining >= 0)
   )
 
+  // A Forja é uma única camada fullscreen. Seu rodapé precisa participar
+  // do MESMO foco que o cabeçalho e os formulários, inclusive pelo controle.
+  const activeCreatorLayer = () => evolutionView
+    ? document.querySelector<HTMLElement>('[aria-labelledby="skill-evolution-title"]')
+    : creatorRef.current
+
+  function changeCreatorStep(direction: -1 | 1) {
+    if (saving) return
+    const next = creatorStepTransition(step, direction, canNext, STEPS.length)
+    if (next !== step) {
+      setStep(next)
+      return
+    }
+    // Se ainda falta preencher algum requisito, o avanço permanece desabilitado,
+    // mas o botão do rodapé continua descobrível pelo direcional.
+    focusControllerElement(direction > 0 ? footerNextRef.current : footerCancelRef.current)
+  }
+
+  useControllerActions({
+    'ui.up': () => controllerFocus('ui.up', activeCreatorLayer()),
+    'ui.down': () => {
+      const before = document.activeElement
+      const handled = controllerFocus('ui.down', activeCreatorLayer())
+      if (!evolutionView && before === document.activeElement &&
+          creatorRef.current?.contains(before)) {
+        focusControllerElement(footerNextRef.current?.disabled ? footerCancelRef.current : footerNextRef.current)
+      }
+      return handled
+    },
+    'ui.left': () => controllerFocus('ui.left', activeCreatorLayer()),
+    'ui.right': () => controllerFocus('ui.right', activeCreatorLayer()),
+    'ui.confirm': () => controllerFocus('ui.confirm', activeCreatorLayer()),
+    'ui.previous': () => {
+      if (evolutionView) return controllerFocus('ui.left', activeCreatorLayer())
+      changeCreatorStep(-1)
+      return true
+    },
+    'ui.next': () => {
+      if (evolutionView) return controllerFocus('ui.right', activeCreatorLayer())
+      changeCreatorStep(1)
+      return true
+    },
+    'ui.back': () => {
+      if (evolutionView) { setEvolutionView(null); return true }
+      if (!saving) onCancel()
+      return true
+    },
+  }, { enabled: controllerActive && mounted, priority: 360, captureAll: true })
+
+  useEffect(() => {
+    if (!controllerActive || !mounted || evolutionView) return
+    // Na troca de etapa, iniciar na primeira escolha real daquela etapa,
+    // em vez de perder o foco em um botão desmontado da etapa anterior.
+    const frame = requestAnimationFrame(() => {
+      const container = creatorRef.current?.querySelector<HTMLElement>('[data-creator-step-content]')
+      const first = container?.querySelector<HTMLElement>(
+        'input:not([disabled]):not([type="hidden"]),button:not([disabled]),select:not([disabled]),textarea:not([disabled])',
+      )
+      if (first) focusControllerElement(first)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [step, controllerActive, mounted, evolutionView])
+
   async function submit() {
     if (!canNext || saving) return
     setSaving(true)
@@ -245,13 +319,13 @@ export function CharacterCreator({ campaignId, campaignCharacters = [], customCl
         } catch (cause) { warnings.push(`Subclasse ${subclassId}: ${cause instanceof Error ? cause.message : "erro"}`) }
       }
       onCreated(created)
-      if (warnings.length) window.alert(`O personagem foi criado e salvo, mas alguns detalhes não foram concluídos. Não crie outra ficha.\n${warnings.join("\n")}`)
+      if (warnings.length) controllerAlert(`O personagem foi criado e salvo, mas alguns detalhes não foram concluídos. Não crie outra ficha.\n${warnings.join("\n")}`)
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Erro ao criar personagem.") }
     finally { setSaving(false) }
   }
 
   const ui = (
-    <div className="fixed inset-0 z-[11000] flex h-[100dvh] w-screen flex-col overflow-hidden bg-background text-foreground" style={{ backgroundImage: "radial-gradient(ellipse at 53% 38%, color-mix(in srgb, var(--primary) 10%, transparent), transparent 62%), linear-gradient(color-mix(in srgb, var(--foreground) 3%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--foreground) 3%, transparent) 1px, transparent 1px)", backgroundSize: "auto, 52px 52px, 52px 52px" }}>
+    <div ref={creatorRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Forja de personagem" data-controller-creator="active" data-controller-scroll-root="character-creator" className="fixed inset-0 z-[11000] flex h-[100dvh] w-screen flex-col overflow-clip bg-background text-foreground" style={{ backgroundImage: "radial-gradient(ellipse at 53% 38%, color-mix(in srgb, var(--primary) 10%, transparent), transparent 62%), linear-gradient(color-mix(in srgb, var(--foreground) 3%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--foreground) 3%, transparent) 1px, transparent 1px)", backgroundSize: "auto, 52px 52px, 52px 52px" }}>
       <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-r from-background/80 via-transparent to-background/80" />
       <header className="relative z-10 shrink-0 border-b border-primary/25 bg-background/90 px-3 py-3 shadow-lg backdrop-blur-xl sm:px-6 xl:px-10">
         <div className="mx-auto flex max-w-[1750px] items-center justify-between gap-3">
@@ -275,10 +349,10 @@ export function CharacterCreator({ campaignId, campaignCharacters = [], customCl
         </div>
       </header>
 
-      <main ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Forja de personagem" className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain outline-none xl:overflow-hidden">
+      <main ref={dialogRef} tabIndex={-1} data-controller-scrollport="true" className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain outline-none xl:overflow-hidden">
         <div className="mx-auto grid min-h-full w-full max-w-[1750px] grid-cols-1 xl:h-full xl:min-h-0 xl:grid-cols-[minmax(330px,500px)_minmax(330px,1fr)_minmax(240px,315px)]">
           {/* Todas as escolhas originais permanecem no painel à esquerda. */}
-          <section className="relative min-w-0 border-b border-primary/15 bg-card/35 px-4 py-6 sm:px-7 xl:min-h-0 xl:overflow-y-auto xl:border-b-0 xl:border-r xl:px-8 xl:py-8" aria-label={`Configuração: ${STEPS[step]}`}>
+          <section data-creator-step-content="true" data-controller-scrollport="true" className="relative min-w-0 border-b border-primary/15 bg-card/35 px-4 py-6 sm:px-7 xl:min-h-0 xl:overflow-y-auto xl:border-b-0 xl:border-r xl:px-8 xl:py-8" aria-label={`Configuração: ${STEPS[step]}`}>
             {deathTokens.length > 0 && <div className={`mb-5 overflow-hidden rounded-xl border p-4 ${activeToken ? "border-primary/70 bg-primary/[.14]" : "border-primary/45 bg-primary/[.065]"}`} aria-label="Tokens de morte disponíveis">
               <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-lg border border-primary/50 bg-primary/15 text-primary"><Skull className="size-5" /></span><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[.2em] text-primary">Renascimento concedido</p><h3 className="mt-1 font-serif text-lg font-bold">Você tem um token de morte</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{activeToken ? `${activeToken.maxLevels} níveis · ${activeToken.startingZenit} Zenits · ${activeToken.startingItemIds.length + (activeToken.startingRelics?.length || 0)} presentes` : `${deathTokens.length} token(s) disponível(is) nesta campanha`}</p></div></div>
               {deathTokens.length > 1 && <label className="mt-3 block text-[11px] font-semibold">Escolha o token<select value={activeTokenId || ""} onChange={event => selectDeathToken(event.target.value || null)} className="mt-1 w-full rounded-md border border-primary/30 bg-background p-2 text-xs text-foreground"><option value="">Criação normal</option>{deathTokens.map(token => <option key={token.id} value={token.id}>{token.maxLevels} níveis · {token.startingZenit} Zenits · {new Date(token.createdAt).toLocaleDateString("pt-BR")}</option>)}</select></label>}
@@ -333,7 +407,7 @@ export function CharacterCreator({ campaignId, campaignCharacters = [], customCl
           </section>
 
           {/* Resumo dinâmico: apresenta dados existentes sem alterar cálculos. */}
-          <aside className="min-w-0 bg-card/25 px-4 py-6 sm:px-7 xl:min-h-0 xl:overflow-y-auto xl:px-6 xl:py-8" aria-label="Resumo do personagem">
+          <aside data-controller-scrollport="true" className="min-w-0 bg-card/25 px-4 py-6 sm:px-7 xl:min-h-0 xl:overflow-y-auto xl:px-6 xl:py-8" aria-label="Resumo do personagem">
             <div className="flex items-center gap-3 border-b border-primary/25 pb-4"><span className="grid size-10 place-items-center border border-primary/35 bg-primary/10 text-primary"><BookOpenText className="size-5" /></span><div><p className="text-[9px] font-black uppercase tracking-[.22em] text-primary">Códice do herói</p><h3 className="font-serif text-lg font-bold">Sua jornada</h3></div></div>
             <div className="mt-5 space-y-5">
               <div><p className="text-[10px] font-black uppercase tracking-[.18em] text-muted-foreground">Identidade</p><p className="mt-1 break-words font-serif text-xl font-bold">{name.trim() || "Desconhecido"}</p><p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{origin.trim() || "Origem não definida"}</p></div>
@@ -381,11 +455,14 @@ export function CharacterCreator({ campaignId, campaignCharacters = [], customCl
       <footer className="relative z-10 shrink-0 border-t border-primary/25 bg-background/95 px-4 py-3 backdrop-blur-xl sm:px-7 xl:px-10">
         <div className="mx-auto flex max-w-[1750px] flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[.21em] text-primary">Passo {step + 1} de {STEPS.length} · {STEPS[step]}</p><p className="mt-1 text-xs text-muted-foreground">{step === 0 ? `${actualPortraitCount} retrato(s) preparados` : step === 1 ? `${totalLevels} de ${maxInitialLevels} níveis · ${chosenClassCount} classe(s)` : step === 2 ? (profileId === "custom" ? `${customPoints} de 8 pontos atribuídos` : "Perfil de atributos selecionado") : step === 3 ? `Principal: ${validPrimaryElement ? ELEMENT_NAMES[validPrimaryElement] : "Não definido"} · Secundária: ${validSecondaryElement ? ELEMENT_NAMES[validSecondaryElement] : "Não definido"}` : `${remaining} zenit disponíveis`}</p></div>
-          <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-3"><Button type="button" variant="outline" onClick={() => step === 0 ? onCancel() : setStep(step - 1)} disabled={saving} className="h-11 min-w-0 flex-1 gap-2 border-border/70 bg-card/40 text-xs sm:flex-none sm:px-5"><ArrowLeft className="size-4" /> {step === 0 ? "Cancelar" : "Voltar"}</Button>
-            {step < STEPS.length - 1 ? <Button type="button" onClick={() => setStep(step + 1)} disabled={!canNext} className="h-11 min-w-0 flex-[2] gap-2 rounded-sm px-5 text-xs font-black uppercase tracking-wider sm:flex-none sm:px-7">Avançar <ArrowRight className="size-4" /></Button> :
-              <Button type="button" onClick={() => void submit()} disabled={saving || !canNext} className="h-11 min-w-0 flex-[2] gap-2 rounded-sm px-5 text-xs font-black uppercase tracking-wider sm:flex-none sm:px-7">{saving ? <Loader2 className="size-4 animate-spin" /> : <Crown className="size-4" />} {saving ? "Forjando..." : activeToken ? "Forjar com token" : "Forjar herói"}</Button>}
+          <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-3"><Button ref={footerCancelRef} type="button" variant="outline" onClick={() => step === 0 ? onCancel() : setStep(step - 1)} disabled={saving} className="h-11 min-w-0 flex-1 gap-2 border-border/70 bg-card/40 text-xs sm:flex-none sm:px-5"><ArrowLeft className="size-4" /> {step === 0 ? "Cancelar" : "Voltar"}</Button>
+            {step < STEPS.length - 1 ? <Button ref={footerNextRef} type="button" onClick={() => setStep(step + 1)} disabled={!canNext} className="h-11 min-w-0 flex-[2] gap-2 rounded-sm px-5 text-xs font-black uppercase tracking-wider sm:flex-none sm:px-7">Avançar <ArrowRight className="size-4" /></Button> :
+              <Button ref={footerNextRef} type="button" onClick={() => void submit()} disabled={saving || !canNext} className="h-11 min-w-0 flex-[2] gap-2 rounded-sm px-5 text-xs font-black uppercase tracking-wider sm:flex-none sm:px-7">{saving ? <Loader2 className="size-4 animate-spin" /> : <Crown className="size-4" />} {saving ? "Forjando..." : activeToken ? "Forjar com token" : "Forjar herói"}</Button>}
           </div>
         </div>
+        {controllerActive && <p className="mx-auto mt-2 max-w-[1750px] text-[10px] font-semibold text-primary/85" aria-live="off">
+          LB: etapa anterior · RB: próxima etapa (quando disponível) · A: selecionar · B: fechar a Forja
+        </p>}
         {error && <p role="alert" className="mx-auto mt-2 max-w-[1750px] border border-destructive/35 bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p>}
       </footer>
       {evolutionView && <SkillEvolutionTree

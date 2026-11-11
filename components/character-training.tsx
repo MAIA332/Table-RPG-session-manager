@@ -1,4 +1,6 @@
 "use client"
+import { controllerConfirm } from '@/lib/input/dialogs'
+import { useControllerActions } from "@/lib/input/use-controller-actions"
 
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
@@ -80,13 +82,21 @@ export function TrainingCompactBar({ character }: { character: TrainedCharacter 
   )
 }
 
-export function CharacterTraining({ character, isGm, isOwner, onUpdated }: {
+export function CharacterTraining({ character, isGm, isOwner, onUpdated, openRequested = false, onRequestHandled }: {
   character: TrainedCharacter
+  openRequested?: boolean
+  onRequestHandled?: () => void
   isGm: boolean
   isOwner: boolean
   onUpdated: (character: Character) => void
 }) {
   const [open, setOpen] = useState(false)
+  useControllerActions({ "ui.back": () => { setOpen(false); return true } }, { enabled: open, priority: 225 })
+  useEffect(() => {
+    if (!openRequested) return
+    setOpen(true)
+    onRequestHandled?.()
+  }, [openRequested])
   const [attribute, setAttribute] = useState<TrainingAttribute>("mig")
   const [hours, setHours] = useState<TrainingHours>(12)
   const [gmAmount, setGmAmount] = useState(0.5)
@@ -299,8 +309,8 @@ export function CharacterTraining({ character, isGm, isOwner, onUpdated }: {
       <ClassTimerProgress startedAt={active.startedAt} endsAt={active.endsAt} label="Tempo real restante" />
       {isGm && !completedInBackground && <div className="mt-2 flex flex-wrap gap-2">
         <Button disabled={busy} onClick={() => void execute("finish")} size="sm" variant="outline" className="border-amber-500/40 text-xs">Concluir treinamento agora</Button>
-        <Button disabled={busy} onClick={() => {
-          if (window.confirm(`Cancelar o treinamento de ${LABELS[active.attribute]}? Nenhum ponto será concedido e o personagem não ficará Cansado.`)) void execute("cancel")
+        <Button disabled={busy} onClick={async () => {
+          if (await controllerConfirm(`Cancelar o treinamento de ${LABELS[active.attribute]}? Nenhum ponto será concedido e o personagem não ficará Cansado.`)) void execute("cancel")
         }} size="sm" variant="outline" className="border-rose-500/40 text-xs text-rose-300 hover:bg-rose-950/30 hover:text-rose-200"><X className="mr-1 size-3" /> Cancelar sem recompensa</Button>
       </div>}
     </div>}

@@ -3,6 +3,8 @@ import { validSpecialAttackPreviewUrl, DEFAULT_SPECIAL_ATTACK_PREVIEW_SECONDS, M
 
 export type PlayerAttackDefense = "physical" | "magical"
 export type PlayerSpecialAttack = {
+  /** Progressão paga em Lore. Somente a operação transacional upgrade-lore pode modificar. */
+  loreBonusLevel?: number
   id: string
   name: string
   targetDefense: PlayerAttackDefense
@@ -86,7 +88,10 @@ export function validatePlayerSpecialAttacks(input: unknown, now = Date.now()): 
     if (!Number.isSafeInteger(seconds) || seconds < 1 || seconds > MAX_SPECIAL_ATTACK_PREVIEW_SECONDS) {
       throw new Error("Duração da imagem inválida (1 a 86400 segundos).")
     }
+    const loreBonusLevel = entry.loreBonusLevel === undefined ? 0 : Number(entry.loreBonusLevel)
+    if (!Number.isSafeInteger(loreBonusLevel) || loreBonusLevel < 0 || loreBonusLevel > 14) throw new Error("Nível de dado bônus inválido.")
     return {
+      loreBonusLevel,
       id: entry.id,
       name,
       targetDefense,

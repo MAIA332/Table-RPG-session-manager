@@ -5,6 +5,7 @@ import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import { Clock3, Eye, ImageIcon, X } from "lucide-react"
 import type { MonsterAttackPreview } from "@/lib/combat-types"
+import { useController } from "@/components/controller/controller-provider"
 
 function clock(milliseconds: number): string {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000))
@@ -33,6 +34,7 @@ export function MonsterAttackPreviewShelf({
   onCancel?: (previewId: string) => void
   position?: "left" | "right"
 }) {
+  const { active: controllerActive, connected: controllerConnected } = useController()
   const [now, setNow] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -49,6 +51,16 @@ export function MonsterAttackPreviewShelf({
     : []
   const selected = active.find(preview => preview.id === selectedId)
   const canShow = Boolean(selected)
+  const cancelId = selected?.id || active[0]?.id
+  useEffect(() => {
+    if (!onCancel || !cancelId) return
+    const close = (event: Event) => {
+      if ((event as CustomEvent<{previewId:string}>).detail?.previewId !== cancelId) return
+      onCancel(cancelId); setSelectedId(null)
+    }
+    window.addEventListener('otms.controller.close-special-preview', close)
+    return () => window.removeEventListener('otms.controller.close-special-preview', close)
+  }, [onCancel, cancelId])
 
   useEffect(() => {
     if (!canShow) return
@@ -70,7 +82,9 @@ export function MonsterAttackPreviewShelf({
 
   return <>
     {active.length > 0 && (
-      <aside className={`pointer-events-none fixed top-[5.5rem] z-[10005] flex max-h-[45vh] w-[min(260px,calc(100vw-24px))] flex-col gap-2 overflow-y-auto ${position === "left" ? "left-3 sm:left-5" : "right-3 sm:right-5"}`}
+      <aside data-controller-preview-cancelable={controllerConnected && onCancel ? "true" : undefined}
+        data-controller-preview-id={cancelId}
+        data-controller-preview-started={active.find(item=>item.id===cancelId)?.startedAt || 0} className={`pointer-events-none fixed top-[5.5rem] z-[10005] flex max-h-[45vh] w-[min(260px,calc(100vw-24px))] flex-col gap-2 overflow-y-auto ${position === "left" ? "left-3 sm:left-5" : "right-3 sm:right-5"}`}
         aria-label="Imagens temporárias dos golpes especiais">
         {active.map(preview => {
           const remaining = Math.max(0, preview.expiresAt - serverNow)
@@ -91,6 +105,7 @@ export function MonsterAttackPreviewShelf({
                 </span>
               </span>
             </span>
+            {onCancel && controllerActive && <span className="mt-2 block text-center text-[10px] font-semibold text-primary">Aperte Select para fechar a foto</span>}
             <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 bg-primary/10">
               <span className="block h-full bg-primary transition-[width] duration-500" style={{ width: `${percentage}%` }} />
             </span>
@@ -141,7 +156,7 @@ export function MonsterAttackPreviewShelf({
                   className="max-h-[calc(95dvh-160px)] w-full object-contain" />
               </div>
               <footer className="shrink-0 border-t border-border/70 bg-card/60 px-4 py-2 text-center text-[11px] text-muted-foreground">
-                A imagem ficará inacessível quando o cronômetro chegar a zero.
+                {onCancel && controllerActive ? "Aperte Select para fechar a foto" : "A imagem ficará inacessível quando o cronômetro chegar a zero."}
               </footer>
             </motion.section>
           </motion.div>

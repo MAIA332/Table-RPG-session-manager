@@ -117,6 +117,11 @@ export function CrisisControls({ controller }: { controller: ReturnType<typeof u
     setTab(nextTab)
     setOpen(true)
   }
+  useEffect(() => {
+    const handler = () => openModal()
+    window.addEventListener('otms.gm.open-crisis', handler)
+    return () => window.removeEventListener('otms.gm.open-crisis', handler)
+  })
   function change(id: string, patch: Partial<CrisisCondition>) {
     setDraft(state => ({
       ...state,

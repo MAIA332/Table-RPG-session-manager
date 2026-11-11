@@ -7,6 +7,8 @@ import type { Character, ActiveCreature } from "@/lib/types"
 import { AnimatePresence } from "framer-motion"
 import { CharacterPortrait } from "./character-portrait"
 import { getPortraitFrameStroke } from "@/lib/portrait-frames"
+import { useController } from "@/components/controller/controller-provider"
+import { useControllerActions } from "@/lib/input/use-controller-actions"
 const TERRAIN_COLORS: Record<TerrainType, string> = {
   grass: "rgba(34, 197, 94, 0.2)", stone: "rgba(100, 116, 139, 0.4)",
   water: "rgba(59, 130, 246, 0.4)", lava: "rgba(239, 68, 68, 0.5)",
@@ -25,21 +27,14 @@ interface BattlemapProps {
   onPaintTerrain: (mapId: string, tile: TileData) => void;
 }
 export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose, onMoveToken, onPaintTerrain }: BattlemapProps) {
-  const [gridVisible, setGridVisible] = useState(true)
-  useEffect(() => {
-    try { setGridVisible(localStorage.getItem(`battle-grid-lines:${mapData.id}`) !== "hidden") } catch {}
-  }, [mapData.id])
-  const toggleGrid = () => {
-    const visible = !gridVisible
-    setGridVisible(visible)
-    try { localStorage.setItem(`battle-grid-lines:${mapData.id}`, visible ? "visible" : "hidden") } catch {}
-  }
+  const { active: controllerActive } = useController()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const imageCache = useRef<Record<string, HTMLImageElement>>({})
   const zoomRef = useRef(1)
   const fitZoomRef = useRef(1)
   const [mode, setMode] = useState<"view" | "paint" | "move" | "place">("view")
+  const [gridVisible, setGridVisible] = useState(true)
   const [activeTerrain, setActiveTerrain] = useState<TerrainType>("stone")
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
@@ -49,6 +44,44 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
   const [tokenToPlace, setTokenToPlace] = useState<{id: string, type: "character"|"creature"} | null>(null)
   const [hoveredTile, setHoveredTile] = useState<{x: number, y: number} | null>(null)
   const [renderTick, setRenderTick] = useState(0)
+  const [controllerTile, setControllerTile] = useState(() => ({
+    x: Math.floor(mapData.grid.cols / 2), y: Math.floor(mapData.grid.rows / 2),
+  }))
+  const controllerTileRef = useRef(controllerTile)
+  controllerTileRef.current = controllerTile
+
+  const moveCursor = (dx: number, dy: number) => {
+    setControllerTile(previous => ({
+      x: Math.min(mapData.grid.cols - 1, Math.max(0, previous.x + dx)),
+      y: Math.min(mapData.grid.rows - 1, Math.max(0, previous.y + dy)),
+    }))
+  }
+  const panCamera = (dx: number, dy: number) => setOffset(previous => ({ x: previous.x + dx, y: previous.y + dy }))
+  useEffect(() => {
+    if (!controllerActive || mode === 'view') return
+    const view = viewportRef.current
+    if (!view) return
+    const px = offset.x + (controllerTile.x + .5) * mapData.grid.tileSize * zoom
+    const py = offset.y + (controllerTile.y + .5) * mapData.grid.tileSize * zoom
+    const margin = 56
+    const dx = px < margin ? margin - px : px > view.clientWidth - margin ? view.clientWidth - margin - px : 0
+    const dy = py < margin ? margin - py : py > view.clientHeight - margin ? view.clientHeight - margin - py : 0
+    if (dx || dy) setOffset(value => ({ x: value.x + dx, y: value.y + dy }))
+  }, [controllerTile, controllerActive, mode, mapData.id, mapData.grid.tileSize, offset.x, offset.y, zoom])
+
+  const changeZoom = (factor: number) => {
+    const next = Math.max(Math.max(0.05, fitZoomRef.current * 0.45), Math.min(4, zoomRef.current * factor))
+    zoomRef.current = next
+    setZoom(next)
+  }
+  useEffect(() => {
+    try { setGridVisible(localStorage.getItem(`battle-grid-lines:${mapData.id}`) !== "hidden") } catch {}
+  }, [mapData.id])
+  const toggleGrid = () => {
+    const visible = !gridVisible
+    setGridVisible(visible)
+    try { localStorage.setItem(`battle-grid-lines:${mapData.id}`, visible ? "visible" : "hidden") } catch {}
+  }
   const characterMovement = 6; 
   const fitMapToViewport = (imageWidth?: number, imageHeight?: number) => {
     const viewport = viewportRef.current
@@ -276,8 +309,81 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
       }
     }
   }
+  const selectPlacement = (direction: number) => {
+    const options = [
+      ...characters.map(c => ({id:c.id,type:'character' as const})),
+      ...(isGm ? creatures.map(c => ({id:c.instanceId,type:'creature' as const})) : []),
+    ]
+    if (!options.length) return
+    const current = options.findIndex(item => item.id === tokenToPlace?.id)
+    const start = current < 0 ? (direction > 0 ? -1 : 0) : current
+    setTokenToPlace(options[(start + direction + options.length) % options.length])
+  }
+  const cycleTerrain = (direction: number) => {
+    const options: TerrainType[] = ['grass','stone','water','mud','lava','wood','snow']
+    setActiveTerrain(current => options[(options.indexOf(current)+direction+options.length) % options.length])
+  }
+  // Cursor por células, sem sintetizar cliques ou alterar o comportamento de mouse.
+  useControllerActions({
+    'ui.up': () => { mode === 'view' ? panCamera(0, 45) : moveCursor(0,-1); return true },
+    'ui.down': () => { mode === 'view' ? panCamera(0,-45) : moveCursor(0,1); return true },
+    'ui.left': () => { mode === 'view' ? panCamera(45,0) : moveCursor(-1,0); return true },
+    'ui.right': () => { mode === 'view' ? panCamera(-45,0) : moveCursor(1,0); return true },
+    'map.panUp': () => { panCamera(0,35); return true },
+    'map.panDown': () => { panCamera(0,-35); return true },
+    'map.panLeft': () => { panCamera(35,0); return true },
+    'map.panRight': () => { panCamera(-35,0); return true },
+    'ui.previous': () => {
+      if (mode === 'place') { selectPlacement(-1); return true }
+      if (mode === 'paint' && isGm) { cycleTerrain(-1); return true }
+      changeZoom(0.90); return true
+    },
+    'ui.next': () => {
+      if (mode === 'place') { selectPlacement(1); return true }
+      if (mode === 'paint' && isGm) { cycleTerrain(1); return true }
+      changeZoom(1.10); return true
+    },
+    'character.sheet': () => {
+      setMode(current => isGm ?
+        current === 'view' ? 'move' : current === 'move' ? 'place' : current === 'place' ? 'paint' : 'view'
+        : current === 'view' ? 'move' : 'view')
+      setSelectedTokenId(null)
+      return true
+    },
+    'combat.focus': () => { changeZoom(1.10); return true },
+    'character.inventory': () => { setMode(current => current === 'move' ? 'view' : 'move'); return true },
+    'ui.confirm': () => {
+      const {x,y} = controllerTileRef.current
+      if (mode === 'view') { setMode('move'); return true }
+      if (mode === 'paint' && isGm) { handlePaintTile(x,y); return true }
+      if (mode === 'place' && !tokenToPlace) { selectPlacement(1); return true }
+      if (mode === 'place' && tokenToPlace) {
+        onMoveToken(mapData.id, tokenToPlace.id, x, y, tokenToPlace.type)
+        setMode('move'); setTokenToPlace(null); return true
+      }
+      if (mode === 'move') {
+        const id = Object.entries(mapData.tokens || {}).find(([,pos]) => pos.x === x && pos.y === y)?.[0]
+        if (id) setSelectedTokenId(id)
+        else if (selectedTokenId && mapData.tokens[selectedTokenId]) {
+          const token = mapData.tokens[selectedTokenId]
+          onMoveToken(mapData.id, selectedTokenId, x, y, token.type)
+          setSelectedTokenId(null)
+        }
+        return true
+      }
+      return true
+    },
+    'ui.back': () => {
+      if (selectedTokenId) setSelectedTokenId(null)
+      else if (mode !== 'view') setMode('view')
+      else onClose()
+      return true
+    },
+    'map.open': () => { onClose(); return true },
+  }, { enabled: controllerActive, priority: 150 })
+
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col overflow-hidden bg-black">
+    <div data-controller-layer={controllerActive ? 'active' : undefined} className="fixed inset-0 z-[200] flex flex-col overflow-hidden bg-black">
       <div className="relative z-10 flex min-h-14 shrink-0 flex-col gap-2 border-b border-primary/20 bg-zinc-950/95 px-3 py-2 lg:flex-row lg:items-center lg:justify-between lg:px-6">
         <div className="flex gap-2 overflow-x-auto custom-scrollbar-sepia">
           <Button size="sm" variant={mode === "view" ? "default" : "ghost"} onClick={() => {setMode("view"); setSelectedTokenId(null)}}><Crosshair className="size-4 mr-2"/> Câmera</Button>
@@ -300,6 +406,10 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
       </div>
       <div className="relative flex min-h-0 flex-1">
         <div ref={viewportRef} className={`relative flex-1 ${mode === "view" ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-crosshair"}`}>
+            {controllerActive && <div aria-live="off" className="pointer-events-none absolute z-10 rounded-sm border-[3px] border-amber-300 bg-amber-300/20 shadow-[0_0_15px_#ffd86a]"
+              style={{left: offset.x + controllerTile.x*mapData.grid.tileSize*zoom,
+                top: offset.y + controllerTile.y*mapData.grid.tileSize*zoom,
+                width: mapData.grid.tileSize*zoom, height: mapData.grid.tileSize*zoom}} />}
             <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={() => setIsDragging(false)} onMouseLeave={() => { setIsDragging(false); setHoveredTile(null) }} onContextMenu={(e) => e.preventDefault()} className="absolute inset-0 w-full h-full"/>
             {mode === "move" && !selectedTokenId && (
                 <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-black/70 border border-white/10 text-white px-4 py-2 rounded-full pointer-events-none animate-pulse text-sm">
@@ -312,6 +422,9 @@ export function BattlemapEngine({ mapData, characters, creatures, isGm, onClose,
                 </div>
             )}
         </div>
+        {controllerActive && <p className="pointer-events-none absolute bottom-3 left-4 z-20 rounded bg-black/85 px-3 py-2 text-xs text-amber-200" aria-live="polite">
+          Direcional: {mode === 'view' ? 'mover câmera' : `célula ${controllerTile.x+1}, ${controllerTile.y+1}`} · A selecionar · B voltar · X mover · Y trocar modo · LB/RB {mode === 'place' ? 'herói' : mode === 'paint' ? 'terreno' : 'zoom'}
+        </p>}
         {/* Sidebar Direita para Posicionar */}
         {mode === "place" && (
             <div className="w-64 bg-zinc-950/90 border-l border-white/10 flex flex-col relative z-10 backdrop-blur-md">

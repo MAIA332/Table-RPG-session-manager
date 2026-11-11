@@ -1,4 +1,5 @@
 "use client"
+import { controllerAlert } from '@/lib/input/dialogs'
 
 import {
   ATTRIBUTES,
@@ -218,7 +219,7 @@ export function BestiaryAttackEditor({
                   const encoded = await fileToCompactImage(file)
                   onChange({ ...value, previewImageUrl: encoded })
                 } catch (error) {
-                  window.alert(error instanceof Error ? error.message : "Falha ao processar imagem.")
+                  controllerAlert(error instanceof Error ? error.message : "Falha ao processar imagem.")
                 }
               }}
             />

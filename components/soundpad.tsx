@@ -1,4 +1,5 @@
 "use client"
+import { controllerConfirm } from '@/lib/input/dialogs'
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
@@ -337,7 +338,7 @@ export function Soundpad({
         { kind: "soundHotkeys" as const, data: pendingHotkeys, stored: remote.soundHotkeys },
       ].filter(entry => entry.data && !samePreference(entry.kind, entry.stored, entry.data.value))
       if (pending.some(entry => entry.data!.baseRevision !== revisions[entry.kind])) {
-        if (!window.confirm("O MongoDB contém uma versão diferente deste backup local. Restaurar o backup SUBSTITUIRÁ as pastas/playlists ou atalhos correspondentes salvos no servidor. Deseja continuar?")) {
+        if (!await controllerConfirm("O MongoDB contém uma versão diferente deste backup local. Restaurar o backup SUBSTITUIRÁ as pastas/playlists ou atalhos correspondentes salvos no servidor. Deseja continuar?")) {
           setError("A versão atual do MongoDB foi mantida. Seu backup local não foi apagado.")
           return
         }
@@ -356,8 +357,8 @@ export function Soundpad({
     }
   }
 
-  function discardLocalBackup() {
-    if (!window.confirm("Descartar definitivamente os backups locais de pastas/playlists e atalhos? O conteúdo atual do MongoDB será mantido.")) return
+  async function discardLocalBackup() {
+    if (!await controllerConfirm("Descartar definitivamente os backups locais de pastas/playlists e atalhos? O conteúdo atual do MongoDB será mantido.")) return
     const localFolders = readPendingFolderRecord(campaignId)
     const localHotkeys = readPendingHotkeyRecord(campaignId)
     if (localFolders) clearPendingPreferenceIfMatches(campaignId, "soundFolders", localFolders.value)
@@ -383,7 +384,7 @@ export function Soundpad({
   }
 
   async function deleteFolder(folder: SoundFolder) {
-    if (!confirm(`Excluir a pasta "${folder.name}" e suas playlists? Os arquivos de áudio permanecerão disponíveis em Sem pasta.`)) return
+    if (!await controllerConfirm(`Excluir a pasta "${folder.name}" e suas playlists? Os arquivos de áudio permanecerão disponíveis em Sem pasta.`)) return
     setActiveFolder("all")
     await persistFolders(foldersRef.current.filter(f => f.id !== folder.id))
   }
@@ -414,7 +415,7 @@ export function Soundpad({
   }
 
   async function deletePlaylist(folderId: string, playlist: SoundPlaylist) {
-    if (!confirm(`Excluir a playlist "${playlist.name}"? Os áudios originais serão preservados.`)) return
+    if (!await controllerConfirm(`Excluir a playlist "${playlist.name}"? Os áudios originais serão preservados.`)) return
     await persistFolders(foldersRef.current.map(folder => folder.id === folderId
       ? { ...folder, playlists: folder.playlists.filter(entry => entry.id !== playlist.id) } : folder))
   }
@@ -516,8 +517,8 @@ export function Soundpad({
     setNewSoundUrl("")
   }
 
-  function removeCustomSound(trackId: string) {
-    if (!confirm("Remover este áudio da mesa? As entradas das playlists que o utilizam ficarão indisponíveis.")) return
+  async function removeCustomSound(trackId: string) {
+    if (!await controllerConfirm("Remover este áudio da mesa? As entradas das playlists que o utilizam ficarão indisponíveis.")) return
     onCustomTracksChange?.(customTracks.filter(track => track.id !== trackId))
     bindHotkey(trackId, "")
   }

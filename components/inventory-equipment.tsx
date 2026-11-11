@@ -1,4 +1,5 @@
 "use client"
+import { controllerConfirm } from '@/lib/input/dialogs'
 
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { apiFetch } from "@/lib/client"
@@ -80,7 +81,7 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
         if (!editable || busy || lock.current) return
         if (mode === "use" && action.requirement && !requirements[key]) return
         const shouldConsume = mode === "use" && (isConsumableItem(item) || action.consume)
-        if (shouldConsume && !window.confirm(`Consumir 1 unidade de "${item.name}" ao usar "${action.name}"? Esta ação não pode ser desfeita.`)) return
+        if (shouldConsume && !await controllerConfirm(`Consumir 1 unidade de "${item.name}" ao usar "${action.name}"? Esta ação não pode ser desfeita.`)) return
         lock.current = true; setActiveKey(key); setError(null); setResult(null)
         const retryKey = `${key}:${mode}`
         const requestId = retryIds.current[retryKey] || createClientId()
@@ -125,7 +126,7 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
 
     async function consumeItem(item: any, index: number, key: string) {
         if (!editable || busy || lock.current || !isConsumableItem(item)) return
-        if (!window.confirm(`Tem certeza de que deseja consumir 1 unidade de "${item.name}"? O item será removido da mochila e esta ação não pode ser desfeita.`)) return
+        if (!await controllerConfirm(`Tem certeza de que deseja consumir 1 unidade de "${item.name}"? O item será removido da mochila e esta ação não pode ser desfeita.`)) return
         lock.current = true; setActiveKey(key); setError(null); setResult(null)
         try {
             const updates = consumeInventoryItemUpdates(character, item, index)
@@ -250,7 +251,7 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
             const isFirstCopy = (character.equipment || []).indexOf(id) === index
             const atLimit = kind ? counts[kind] >= EQUIPMENT_LIMITS[kind] : false
             const pulsing = activeKey?.startsWith(itemKey + ":") || (result?.item === item.name)
-            return <motion.article key={itemKey} animate={pulsing && !reducedMotion ? { boxShadow: ["0 0 0px transparent", "0 0 18px rgba(34,211,238,.25)", "0 0 0px transparent"] } : { boxShadow: "0 0 0px transparent" }} transition={{ duration: 0.65 }} className="overflow-hidden rounded-xl border border-primary/30 bg-card/70">
+            return <motion.article key={itemKey} data-inventory-index={index} tabIndex={-1} animate={pulsing && !reducedMotion ? { boxShadow: ["0 0 0px transparent", "0 0 18px rgba(34,211,238,.25)", "0 0 0px transparent"] } : { boxShadow: "0 0 0px transparent" }} transition={{ duration: 0.65 }} className="overflow-hidden rounded-xl border border-primary/30 bg-card/70">
                 <header className="flex items-start justify-between gap-3 border-b border-primary/15 bg-primary/5 p-4">
                     <div className="flex min-w-0 items-start gap-3">
                         {item.imageUrl && <ItemArtwork name={item.name} imageUrl={item.imageUrl} expandable className="size-14" />}

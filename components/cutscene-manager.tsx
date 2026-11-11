@@ -1,7 +1,8 @@
 // components/cutscene-manager.tsx
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
+import { useControllerModalNavigation } from "@/lib/input/modal-focus-return"
 import { motion, AnimatePresence } from "framer-motion"
 import { Clapperboard, Film, MonitorPlay, Plus, Trash2, X } from "lucide-react"
 import { Button } from "./ui/button"
@@ -20,6 +21,11 @@ interface CutsceneManagerProps {
 
 export function CutsceneManager({ isOpen, onClose, cutscenes, onSave, onPlay }: CutsceneManagerProps) {
   const [editingCutscene, setEditingCutscene] = useState<Cutscene | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null)
+  useControllerModalNavigation(isOpen, modalRef, () => {
+    setEditingCutscene(null)
+    onClose()
+  })
 
   const handleCreateCutscene = () => {
     const newId = Math.random().toString(36).substring(7);
@@ -48,34 +54,36 @@ export function CutsceneManager({ isOpen, onClose, cutscenes, onSave, onPlay }: 
     <AnimatePresence>
       {isOpen && (
         <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden" onClick={handleClose}>
-          <motion.div variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col border border-primary/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+          <motion.div ref={modalRef} role="dialog" aria-modal="true" aria-label="Gerenciar cenas" data-controller-layer="active" variants={modalVariants} className="rpg-modal relative flex h-full max-h-[85vh] w-full max-w-4xl flex-col border border-primary/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             
             <div className="rpg-modal-header flex shrink-0 items-center justify-between border-b border-white/10 p-6">
               <div>
                 <h4 className="font-serif text-2xl font-black flex items-center gap-2"><Clapperboard className="size-6 text-primary" /> <span className="text-foreground">Gerenciar cenas</span></h4>
                 <p className="text-sm text-muted-foreground mt-1">Crie sequências de texto, imagens ou vídeos para narrativa visual.</p>
               </div>
-              <button onClick={handleClose} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
+              <button onClick={handleClose} aria-label="Fechar gerenciador de cenas" className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors"><X className="size-5 text-muted-foreground hover:text-white" /></button>
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
                {/* Lista de Cutscenes */}
                <div className="flex max-h-[34%] w-full flex-col gap-3 overflow-y-auto border-b border-white/10 bg-black/20 p-4 custom-scrollbar-sepia md:max-h-none md:w-1/3 md:border-b-0 md:border-r">
-                  <Button variant="outline" className="w-full gap-2 border-dashed border-primary/50 text-primary hover:bg-primary/10 h-10" onClick={handleCreateCutscene}>
+                  <Button data-controller-initial="true" variant="outline" className="w-full gap-2 border-dashed border-primary/50 text-primary hover:bg-primary/10 h-10" onClick={handleCreateCutscene}>
                      <Plus className="size-4" /> Criar Cutscene
                   </Button>
                   
                   {cutscenes.map(c => (
                      <div key={c.id} className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer ${editingCutscene?.id === c.id ? 'border-primary bg-primary/20' : 'border-white/10 bg-black/40 hover:border-primary/40'}`} onClick={() => setEditingCutscene(c)}>
-                        <div className="flex flex-col min-w-0 pr-2">
+                        <button type="button" onClick={() => setEditingCutscene(c)}
+                           aria-label={`Editar cena ${c.name}`} aria-pressed={editingCutscene?.id === c.id}
+                           className="flex flex-1 flex-col min-w-0 pr-2 text-left">
                            <span className="text-sm font-bold text-white truncate">{c.name}</span>
                            <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{c.scenes.length} Cenas</span>
-                        </div>
+                        </button>
                         <div className="flex items-center gap-1">
-                           <button onClick={(e) => handleDeleteCutscene(c.id, e)} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/20 rounded">
+                           <button type="button" title={`Excluir ${c.name}`} aria-label={`Excluir ${c.name}`} onClick={(e) => handleDeleteCutscene(c.id, e)} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/20 rounded">
                               <Trash2 className="size-3" />
                            </button>
-                           <button onClick={(e) => { e.stopPropagation(); onPlay(c.id); }} className="p-1.5 text-primary hover:text-white hover:bg-primary rounded bg-primary/20">
+                           <button type="button" title={`Reproduzir ${c.name}`} aria-label={`Reproduzir ${c.name}`} onClick={(e) => { e.stopPropagation(); onPlay(c.id); }} className="p-1.5 text-primary hover:text-white hover:bg-primary rounded bg-primary/20">
                               <MonitorPlay className="size-3" />
                            </button>
                         </div>
@@ -106,7 +114,7 @@ export function CutsceneManager({ isOpen, onClose, cutscenes, onSave, onPlay }: 
                                  <button onClick={() => {
                                     const newScenes = editingCutscene.scenes.filter((_, i) => i !== sIdx);
                                     handleUpdateEditing({ ...editingCutscene, scenes: newScenes });
-                                 }} className="absolute top-3 right-3 p-1.5 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded border border-red-500/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 }} className="absolute top-3 right-3 p-1.5 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded border border-red-500/30 opacity-100 md:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 transition-opacity">
                                     <Trash2 className="size-3" />
                                  </button>
 

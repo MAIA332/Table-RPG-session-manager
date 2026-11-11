@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { getMemberRole, publish, store, transactStore } from "@/lib/store"
 import type { Character } from "@/lib/types"
+import { MAX_LORE_BONUS_LEVEL, LORE_UPGRADE_COST, type LoreUpgradeRecord } from "@/lib/special-attack-lore"
 import { isTrainingActive } from "@/lib/training-model"
 import {
   validatePlayerSpecialAttacks, validPlayerAttackId,
@@ -61,21 +62,70 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         const campaign = db.campaigns.get(current.campaignId)
         const role = campaign && getMemberRole(campaign, user.id)
         if (!canEdit(current, user.id, role)) throw new AttackError("Sem permissão.", 403)
+        // O nível adquirido jamais vem do JSON enviado pelo navegador.
+        // Um save com estado antigo não pode apagar nem aumentar bônus pagos.
+        const safeAttacks = validated.map(attack => ({
+          ...attack,
+          loreBonusLevel: current.specialAttacks?.find(old => old.id === attack.id)?.loreBonusLevel || 0,
+        }))
         // Excluir contadores órfãos quando um golpe for removido pelo jogador.
         const savedCounts = current.specialAttackUseCounts || {}
-        const validIds = new Set(validated.map(attack => attack.id))
+        const validIds = new Set(safeAttacks.map(attack => attack.id))
         const useCounts: Record<string, number> = {}
         for (const [attackId, count] of Object.entries(savedCounts)) {
           if (validIds.has(attackId) && Number.isSafeInteger(count) && count >= 0)
             useCounts[attackId] = count
         }
-        const next = { ...current, specialAttacks: validated, specialAttackUseCounts: useCounts,
+        const next = { ...current, specialAttacks: safeAttacks, specialAttackUseCounts: useCounts,
           updatedAt: Math.max(Date.now(), current.updatedAt + 1) }
         db.characters.set(id, next)
         return { value: next, changed: true }
       }) as Character & PlayerSpecialAttackCharacter
       publish(updated.campaignId, { type: "character:updated", character: updated })
       return NextResponse.json({ attacks: updated.specialAttacks || [], character: updated })
+    }
+    if (action === "upgrade-lore") {
+      const attackId = body.attackId
+      if (!validPlayerAttackId(attackId)) throw new AttackError("Golpe inválido.")
+      // A transação serializa a leitura de LP e a atualização do nível.
+      const upgrade = await transactStore(db => {
+        const current = db.characters.get(id) as (Character & PlayerSpecialAttackCharacter) | undefined
+        if (!current) throw new AttackError("Personagem não encontrado.", 404)
+        const campaign = db.campaigns.get(current.campaignId)
+        const role = campaign && getMemberRole(campaign, user.id)
+        if (!canEdit(current, user.id, role)) throw new AttackError("Sem permissão.", 403)
+        if (current.isNpc) throw new AttackError("NPCs utilizam o editor gratuito de dados do Mestre.")
+        const attacks = current.specialAttacks || []
+        const index = attacks.findIndex(attack => attack.id === attackId)
+        if (index < 0) throw new AttackError("Golpe não encontrado.", 404)
+        const level = attacks[index].loreBonusLevel || 0
+        if (level >= MAX_LORE_BONUS_LEVEL) throw new AttackError("Bônus máximo de 2d20 já alcançado.")
+        const available = Number(current.resources?.lp ?? 0)
+        if (!Number.isSafeInteger(available) || available < LORE_UPGRADE_COST)
+          throw new AttackError("São necessários 2 pontos de Lore para aprimorar este golpe.", 409)
+        const updatedCharacter = {
+          ...current,
+          resources: { ...current.resources, lp: available - LORE_UPGRADE_COST },
+          specialAttacks: attacks.map((attack, i) => i === index
+            ? { ...attack, loreBonusLevel: level + 1, updatedAt: Date.now() } : attack),
+          updatedAt: Math.max(Date.now(), current.updatedAt + 1),
+        }
+        db.characters.set(id, updatedCharacter)
+        const record: LoreUpgradeRecord = {
+          id: randomUUID(), characterId: current.id, characterName: current.name,
+          attackId, attackName: attacks[index].name, ownerId: current.ownerId,
+          cost: LORE_UPGRADE_COST, newLevel: level + 1, at: Date.now(),
+        }
+        const state = db.campaignState.get(current.campaignId) || {}
+        const previous = Array.isArray(state.loreUpgradeHistory) ? state.loreUpgradeHistory as LoreUpgradeRecord[] : []
+        db.campaignState.set(current.campaignId, { ...state, loreUpgradeHistory: [record, ...previous].slice(0,50) })
+        return { value: {character:updatedCharacter,record}, changed: true }
+      }) as {character:Character & PlayerSpecialAttackCharacter;record:LoreUpgradeRecord}
+      const updated = upgrade.character
+      publish(updated.campaignId, { type: "character:updated", character: updated })
+      publish(updated.campaignId, { type: "special-attack:lore-upgraded", record: upgrade.record })
+      return NextResponse.json({ success: true, attacks: updated.specialAttacks, character: updated },
+        { headers: { "Cache-Control": "no-store" } })
     }
     if (action !== "use") throw new AttackError("Ação desconhecida.")
     const attackId = body.attackId
