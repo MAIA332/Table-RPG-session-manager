@@ -18,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useControllerActions } from "@/lib/input/use-controller-actions"
 import { registerInputHandler } from "@/lib/input/dispatcher"
-import { targetOfAction, restoreTargetOfAction } from "@/lib/input/targeted-actions"
+import { targetOfAction, restoreTargetOfAction, characterBoundOfAction } from "@/lib/input/targeted-actions"
 import { skillRank } from "@/lib/skill-progression"
 import { loreBonusLabel, type LoreUpgradeRecord } from "@/lib/special-attack-lore"
 import { createPortal } from "react-dom"
@@ -4023,47 +4023,55 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     }
   }
 
-  const openControllerSkill = (index: number | string) => {
+  const ownedControllerCharacters = characters.filter(c => c.ownerId === data.me.id)
+  const selectedControllerCharacter = ownedControllerCharacters.find(c => c.id === selectedCombatCharId)
+    || ownedControllerCharacters[0]
+
+  const openControllerSkill = (index: number | string, characterId?: string) => {
     if (activeMap || showGmPanel) return false
-    const own = characters.find(c => c.ownerId === data.me.id) || (isGm ? characters[0] : undefined)
+    const own = characterId
+      ? ownedControllerCharacters.find(c => c.id === characterId)
+      : selectedControllerCharacter
     if (!own) return true
-    // Preserve a requisição até a ficha expandir e montar suas habilidades.
+    // A solicitação sobrevive à expansão e é entregue apenas à ficha escolhida.
     setControllerFocusSkill(index)
     setControllerPanelRequest(null)
     setSelectedCombatCharId(own.id)
     return true
   }
 
-  // Opções exibidas no menu Start: somente habilidades aprendidas das classes
-  // adquiridas por este jogador, e apenas seus próprios golpes cadastrados.
-  const ownControllerCharacter = characters.find(c => c.id === selectedCombatCharId && c.ownerId === data.me.id)
-    || characters.find(c => c.ownerId === data.me.id) || (isGm ? characters[0] : undefined)
-  const ownSkillIds = (ownControllerCharacter?.classes || []).map(cls => cls.classId)
-  const controllerSkillChoices = [...CLASSES, ...customClasses]
-    .filter(cls => ownSkillIds.includes(cls.id) || Boolean(cls.parentClassId && ownSkillIds.includes(cls.parentClassId)))
-    .flatMap(cls => cls.skills.filter((skill:any) => skill.action && skillRank(ownControllerCharacter?.skills?.[skill.id]) > 0)
-      .map((skill:any) => ({id:skill.id,name:`${skill.name} · ${cls.name}`})))
-    .filter((choice,index,array) => array.findIndex(candidate => candidate.id === choice.id) === index)
-  const controllerSpecialChoices = ((ownControllerCharacter as Character & PlayerSpecialAttackCharacter | undefined)?.specialAttacks || [])
-    .map(attack => ({id:attack.id,name:attack.name}))
-  const controllerCharacterChoices = characters.filter(c => c.ownerId === data.me.id)
-    .map(c => ({id:c.id,name:c.name}))
-  const choiceSignature = JSON.stringify({characterId:ownControllerCharacter?.id,skills:controllerSkillChoices,specials:controllerSpecialChoices,characters:controllerCharacterChoices})
+  // Os seletores apresentam SOMENTE personagens pertencentes ao usuário.
+  // Cada habilidade/golpe carrega o characterId, mesmo quando dois NPCs
+  // aprenderam a mesma técnica. Não armazenamos nomes nos atalhos.
+  const ownControllerCharacter = selectedControllerCharacter
+  const controllerCharacterChoices = ownedControllerCharacters.map(c => ({ id:c.id, name:c.name }))
+  const controllerSkillChoices = ownedControllerCharacters.flatMap(own => {
+    const ownSkillIds = (own.classes || []).map(cls => cls.classId)
+    return [...CLASSES, ...customClasses]
+      .filter(cls => ownSkillIds.includes(cls.id) || Boolean(cls.parentClassId && ownSkillIds.includes(cls.parentClassId)))
+      .flatMap(cls => cls.skills.filter((skill:any) => skillRank(own.skills?.[skill.id]) > 0)
+        .map((skill:any) => ({id:skill.id,name:`${skill.name} · ${cls.name}`,characterId:own.id})))
+      .filter((choice,index,array) => array.findIndex(candidate => candidate.id === choice.id) === index)
+  })
+  const controllerSpecialChoices = ownedControllerCharacters.flatMap(own =>
+    ((own as Character & PlayerSpecialAttackCharacter).specialAttacks || [])
+      .map(attack => ({id:attack.id,name:attack.name,characterId:own.id})))
+  const choiceSignature = JSON.stringify({skills:controllerSkillChoices,specials:controllerSpecialChoices,characters:controllerCharacterChoices})
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('otms.controller.skills',{detail:{
       skills:controllerSkillChoices,specials:controllerSpecialChoices,characters:controllerCharacterChoices,
     }}))
   }, [choiceSignature])
-  // Ações com ID só são resolvidas após validar a posse no estado atual da ficha.
+
+  // Resolva ações por IDs estáveis e confira a posse NA HORA do acionamento.
+  // Compatibilidade: atalhos anteriores sem characterId continuam funcionando.
   useEffect(() => registerInputHandler(action => {
-    // Restauração direta sem abrir a ficha. O servidor revalida proprietário e
-    // calcula os máximos no momento da transação; não confiar nos valores da UI.
     const restoreId = restoreTargetOfAction(action)
     if (action === 'character.restore' || restoreId) {
       if (activeMap || showGmPanel) return false
       const own = restoreId
-        ? characters.find(c => c.id === restoreId && c.ownerId === data.me.id)
-        : characters.find(c => c.ownerId === data.me.id)
+        ? ownedControllerCharacters.find(c => c.id === restoreId)
+        : ownedControllerCharacters[0]
       if (!own) { controllerAlert('Selecione um personagem seu nas configurações do controle.'); return true }
       if (restoringControllerVitals.current.has(own.id)) return true
       restoringControllerVitals.current.add(own.id)
@@ -4076,19 +4084,46 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         .finally(() => restoringControllerVitals.current.delete(own.id))
       return true
     }
-    const target = targetOfAction(action)
-    if (!target || activeMap || showGmPanel) return false
-    if (target.kind === 'skill') {
-      if (!controllerSkillChoices.some(choice => choice.id === target.id)) return true
-      return openControllerSkill(target.id)
+    if (activeMap || showGmPanel) return false
+    const bound = characterBoundOfAction(action)
+    if (bound) {
+      const own = ownedControllerCharacters.find(c => c.id === bound.characterId)
+      if (!own) { controllerAlert('O personagem escolhido não está disponível nesta sessão.'); return true }
+      if (bound.command === 'character.sheet') {
+        setControllerFocusSkill(null)
+        setControllerPanelRequest(null)
+        setSelectedCombatCharId(own.id)
+        return true
+      }
+      if (bound.command === 'special.manager') {
+        setControllerFocusSkill(null)
+        setControllerPanelRequest('special.manager')
+        setSelectedCombatCharId(own.id)
+        return true
+      }
+      const position = Number(bound.command.slice(-1)) - 1
+      return openControllerSkill(position, own.id)
     }
-    if (!controllerSpecialChoices.some(choice => choice.id === target.id)) return true
-    if (!ownControllerCharacter) return true
+    const target = targetOfAction(action)
+    if (!target) return false
+    const owner = target.characterId
+      ? ownedControllerCharacters.find(c => c.id === target.characterId)
+      : ownedControllerCharacters.find(c => target.kind === 'skill'
+          ? controllerSkillChoices.some(choice => choice.id === target.id && choice.characterId === c.id)
+          : controllerSpecialChoices.some(choice => choice.id === target.id && choice.characterId === c.id))
+    if (!owner) { controllerAlert('Este personagem ou comando não está mais disponível.'); return true }
+    const authorized = target.kind === 'skill'
+      ? controllerSkillChoices.some(choice => choice.id === target.id && choice.characterId === owner.id)
+      : controllerSpecialChoices.some(choice => choice.id === target.id && choice.characterId === owner.id)
+    if (!authorized) { controllerAlert('Esta técnica não está disponível para o personagem selecionado.'); return true }
+    if (target.kind === 'skill') return openControllerSkill(target.id, owner.id)
     setControllerFocusSkill(null)
-    setControllerPanelRequest(action)
-    setSelectedCombatCharId(ownControllerCharacter.id)
+    // O componente do arsenal recebe o ID legado validado, que ele já entende.
+    setControllerPanelRequest(`special.open.${target.id}`)
+    setSelectedCombatCharId(owner.id)
     return true
-  }, 155), [choiceSignature, activeMap, showGmPanel, selectedCombatCharId])
+  }, 155), [choiceSignature, activeMap, showGmPanel, selectedCombatCharId, data.me.id])
+
   const openControllerSheetPanel = (panel: string) => {
     if (activeMap || showGmPanel || !ownControllerCharacter) return false
     setControllerFocusSkill(null)

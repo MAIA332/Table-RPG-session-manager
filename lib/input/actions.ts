@@ -4,7 +4,7 @@ import { sanitizeSoundpadBindings, type SoundpadBindings } from './soundpad-comm
 export type InputAction =
   | 'ui.confirm' | 'ui.back' | 'ui.up' | 'ui.down' | 'ui.left' | 'ui.right'
   | 'ui.previous' | 'ui.next' | 'ui.settings'
-  | 'character.sheet' | 'character.inventory' | 'character.restore' | `character.restore.${string}` | 'map.open' | 'map.mode'
+  | 'character.sheet' | `character.sheet.${string}` | 'character.inventory' | 'character.restore' | `character.restore.${string}` | 'map.open' | 'map.mode'
   | 'map.select' | 'map.panUp' | 'map.panDown' | 'map.panLeft' | 'map.panRight'
   | 'map.zoomIn' | 'map.zoomOut'
   | 'world.lore' | 'gm.panel' | 'gm.soundpad' | 'gm.bestiary' | 'gallery.open' | 'combat.focus'
@@ -14,8 +14,8 @@ export type InputAction =
   | 'gm.crisis' | 'gm.mapImporter' | 'gm.weather' | 'gm.difficulty'
   | 'player.hand' | 'player.notes' | 'player.mixer' | 'player.gallery' | 'player.maps'
   | `panel.${string}`
-  | 'special.manager' | 'character.training' | 'character.affinities' | 'character.bonds' | 'character.store' | 'character.mannequin' | 'player.theme'
-  | `skill.open.${string}` | `special.open.${string}`
+  | 'special.manager' | `special.manager.${string}` | 'character.training' | 'character.affinities' | 'character.bonds' | 'character.store' | 'character.mannequin' | 'player.theme'
+  | `skill.open.${string}` | `special.open.${string}` | `skill.ability1.${string}` | `skill.ability2.${string}` | `skill.ability3.${string}` | `skill.ability4.${string}`
   | 'audio.play' | 'audio.pause' | 'audio.toggle' | 'audio.stop' | 'audio.previous' | 'audio.next'
   | 'qte.react'
 

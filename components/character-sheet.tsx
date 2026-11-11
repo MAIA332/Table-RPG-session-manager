@@ -2215,10 +2215,11 @@ export function CharacterSheet({
     let attempts = 0
     const timer = window.setInterval(() => {
       attempts++
-      const buttons = [...(sheetRef.current?.querySelectorAll<HTMLButtonElement>('[data-controller-usable-skill="true"]') || [])]
+      const learnedButtons = [...(sheetRef.current?.querySelectorAll<HTMLButtonElement>('[data-controller-skill-id]') || [])]
+      const usableButtons = learnedButtons.filter(button => button.dataset.controllerUsableSkill === 'true')
       const chosen = typeof controllerFocusSkill === 'string'
-        ? buttons.find(button => button.dataset.controllerSkillId === controllerFocusSkill)
-        : buttons[controllerFocusSkill]
+        ? learnedButtons.find(button => button.dataset.controllerSkillId === controllerFocusSkill)
+        : usableButtons[controllerFocusSkill]
       if (chosen) {
         if (chosen.getAttribute("aria-expanded") !== "true") chosen.click() // Não consome recursos.
         // O card expande com Motion; medir e rolar ANTES de limpar o pedido.
@@ -2259,6 +2260,36 @@ export function CharacterSheet({
     }, 110)
     return () => { window.clearInterval(timer); delayedTimers.current.forEach(window.clearTimeout); delayedTimers.current=[] }
   }, [controllerFocusSkill, controllerActive, isExpanded, expandedContentMounted])
+  // O cursor de controle expande apenas a habilidade focada (sem consumi-la).
+  // A nova altura deve continuar visível dentro da ficha, nunca rolar o body
+  // nem mover cabeçalhos/rodapés de outros painéis fullscreen.
+  useEffect(() => {
+    if (!controllerActive || !isExpanded || !expandedSkillId) return
+    const findCard = () => [...(sheetRef.current?.querySelectorAll<HTMLElement>('[data-controller-skill-card-key]') || [])]
+      .find(card => card.dataset.controllerSkillCardKey === expandedSkillId)
+    const keepVisible = () => {
+      const card = findCard()
+      if (!card || !card.contains(document.activeElement)) return
+      let ancestor = card.parentElement
+      while (ancestor && ancestor !== document.body) {
+        const style = getComputedStyle(ancestor)
+        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && ancestor.scrollHeight > ancestor.clientHeight + 5) {
+          const bounds = ancestor.getBoundingClientRect()
+          const target = card.getBoundingClientRect()
+          const upper = bounds.top + 20
+          const lower = bounds.bottom - 20
+          const delta = target.top < upper ? target.top - upper
+            : target.bottom > lower ? target.bottom - lower : 0
+          if (Math.abs(delta) > 2) ancestor.scrollBy({ top: delta, behavior: 'smooth' })
+        }
+        if (ancestor.matches('.combat-character-sheet-overlay, [role="dialog"]')) break
+        ancestor = ancestor.parentElement
+      }
+    }
+    const frame = requestAnimationFrame(keepVisible)
+    const timeout = window.setTimeout(keepVisible, 180)
+    return () => { cancelAnimationFrame(frame); clearTimeout(timeout) }
+  }, [expandedSkillId, controllerActive, isExpanded])
   const [viewingItem, setViewingItem] = useState<any | null>(null)
   const [customTransferTarget, setCustomTransferTarget] = useState("")
   const [showTransferModal, setShowTransferModal] = useState(false)
@@ -5565,14 +5596,20 @@ export function CharacterSheet({
                                   <div
                                     key={skill.id}
                                     data-controller-usable-skill-card="true"
-                                    className={`overflow-hidden rounded-lg border transition-colors ${skillExpanded ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background/30 hover:border-primary/25"}`}
+                                    data-controller-skill-card-key={skillKey}
+                                    onFocusCapture={() => {
+                                      // O analógico/direcional coloca foco REAL no botão;
+                                      // expandir aqui também revela a descrição do passivo.
+                                      if (controllerActive && !skillExpanded) setExpandedSkillId(skillKey)
+                                    }}
+                                    className={`overflow-hidden rounded-lg border transition-colors focus-within:border-primary focus-within:bg-primary/10 focus-within:ring-2 focus-within:ring-primary/35 ${skillExpanded ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background/30 hover:border-primary/25"}`}
                                   >
                                     <div className="flex items-center gap-1 sm:gap-2">
                                     <button
                                       type="button"
                                       aria-expanded={skillExpanded}
                                       data-controller-usable-skill={skill.action && lvl > 0 ? 'true' : undefined}
-                                      data-controller-skill-id={skill.action && lvl > 0 ? skill.id : undefined}
+                                      data-controller-skill-id={lvl > 0 ? skill.id : undefined}
                                       onClick={() =>
                                         setExpandedSkillId(
                                           skillExpanded ? null : skillKey,

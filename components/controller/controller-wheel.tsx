@@ -3,7 +3,7 @@ import type { InputSettings } from '@/lib/input/actions'
 import { labelForPanelAction } from '@/lib/input/panel-actions'
 import { ACTION_LABELS } from '@/lib/input/labels'
 import { ControllerGlyph } from './controller-glyph'
-import { targetOfAction, restoreTargetOfAction, type ControllerTarget } from '@/lib/input/targeted-actions'
+import { targetOfAction, restoreTargetOfAction, characterBoundOfAction, type ControllerTarget } from '@/lib/input/targeted-actions'
 
 interface Props {settings: InputSettings; page: number; skillNames?: string[]; skillChoices?: ControllerTarget[]; specialChoices?: ControllerTarget[]; characterChoices?: ControllerTarget[]; preview?: boolean}
 export function ControllerWheel({settings, page, skillNames = [], skillChoices = [], specialChoices = [], characterChoices = [], preview = false}: Props) {
@@ -11,8 +11,14 @@ export function ControllerWheel({settings, page, skillNames = [], skillChoices =
   const names = slots.map(action => {
     const target = targetOfAction(action)
     const restoreTarget = restoreTargetOfAction(action)
+    const bound = characterBoundOfAction(action)
+    if (bound) return `${ACTION_LABELS[bound.command] || bound.command} · ${characterChoices.find(item=>item.id===bound.characterId)?.name || 'Personagem indisponível'}`
     if (restoreTarget) return `Vida/Mana · ${characterChoices.find(item=>item.id===restoreTarget)?.name || 'Personagem indisponível'}`
-    if (target) return (target.kind === 'skill' ? skillChoices : specialChoices).find(item=>item.id===target.id)?.name || 'Alvo indisponível'
+    if (target) {
+      const character = characterChoices.find(item=>item.id===target.characterId)
+      const item = (target.kind === 'skill' ? skillChoices : specialChoices).find(item=>item.id===target.id && (!target.characterId || item.characterId===target.characterId))
+      return `${item?.name || 'Alvo indisponível'}${character ? ` · ${character.name}` : ''}`
+    }
     return action.startsWith('skill.ability')
       ? skillNames[Number(action.slice(-1)) - 1] || ACTION_LABELS[action]
       : ACTION_LABELS[action] || labelForPanelAction(action)

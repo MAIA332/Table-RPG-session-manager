@@ -111,7 +111,7 @@ export function ControllerStartMenu({ settings, update, onClose, page, skillName
                 </label>)}
               </div>
             </div>
-            <p className="otms-start-note">Habilidades e golpes são filtrados pelo personagem que você controla. Ao escolher uma dessas ações, o segundo seletor indica o alvo específico. Selecionar habilidade abre sua ficha para confirmação. O radial nunca consome MP automaticamente.</p>
+            <p className="otms-start-note">Ao possuir vários personagens, escolha a ficha, habilidade ou golpe e selecione o personagem específico no campo seguinte. Habilidades e golpes são filtrados pela ficha escolhida. O seletor final indica a técnica específica quando necessário. Selecionar habilidade abre sua ficha para confirmação. O radial nunca consome MP automaticamente.</p>
             <button className="otms-start-secondary" onClick={() => update({slots: DEFAULT_SETTINGS.slots.map(row=>[...row])})}><RotateCcw size={16}/> Restaurar conjuntos</button>
           </>}
           {menuTab === 'soundpad' && <>
