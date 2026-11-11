@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react"
 import { AudioLines, LoaderCircle, Play, Square, AlertTriangle, Mic2 } from "lucide-react"
 import {
-  VoicePipeline, captureForProfile, safeInputGain,
+  VoicePipeline, captureForProfile, safeInputGain, safeIsolation,
   type VoiceNoiseMode, type VoiceAudioProfile,
 } from "@/lib/voice/audio-dsp"
 
@@ -95,8 +95,8 @@ export function VoiceAudioSettings({
       if (!mountedRef.current) return
       context = new AudioContext({sampleRate: 48000})
       await context.resume()
-      pipeline = await VoicePipeline.create(context, stream.getAudioTracks()[0], compareBoth ? "rnnoise" : profile.noiseMode, profile.inputGainDb, profile.studio)
-      if (compareBoth) comparisonPipeline = await VoicePipeline.create(context, stream.getAudioTracks()[0], "gtcrn", profile.inputGainDb, profile.studio)
+      pipeline = await VoicePipeline.create(context, stream.getAudioTracks()[0], compareBoth ? "voice" : profile.noiseMode, profile.inputGainDb, profile.studio, profile.isolation)
+      if (compareBoth) comparisonPipeline = await VoicePipeline.create(context, stream.getAudioTracks()[0], "gtcrn", profile.inputGainDb, profile.studio, profile.isolation)
       raw = blobRecorder(stream)
       cleaned = blobRecorder(new MediaStream([pipeline.output]))
       if (comparisonPipeline) gtcrn = blobRecorder(new MediaStream([comparisonPipeline.output]))
@@ -169,16 +169,22 @@ export function VoiceAudioSettings({
 
     <section className="otms-voice-setting-card space-y-2">
       <h4 className="font-semibold">Supressão de ruído</h4>
-      <p className="text-[10px] text-emerald-300">GTCRN selecionado inicialmente · com fallback automático RNNoise → Nativa</p>
+      <p className="text-[10px] text-emerald-300">Padrão: Voz isolada (RNNoise + redução suave de transientes) · fallback automático para RNNoise e Nativa</p>
       <div className="grid grid-cols-2 gap-1.5">
         {([
           ["off", "Natural"], ["native", "Nativa"],
-          ["rnnoise", "RNNoise"], ["gtcrn", "GTCRN · beta"],
+          ["voice", "Voz isolada"], ["rnnoise", "RNNoise"], ["gtcrn", "GTCRN · beta"],
         ] as [VoiceNoiseMode,string][]).map(([key,name]) => <button key={key} type="button" aria-pressed={profile.noiseMode===key}
           className={`otms-voice-profile-btn ${profile.noiseMode===key?"otms-voice-profile-active":""}`}
           onClick={()=>updateProfile({noiseMode:key})}>{name}</button>)}
       </div>
-      <p className="text-[10px] text-muted-foreground">GTCRN roda localmente no navegador. Se sobrecarregar o dispositivo ou não puder ser carregado, alternamos para RNNoise ou Nativa. O estado efetivo aparece abaixo; o modelo selecionado nem sempre é o efetivamente aplicado.</p>
+      <p className="text-[10px] text-muted-foreground">Voz isolada usa RNNoise em WebAssembly com expander suave para atenuar teclados entre falas. GTCRN permanece opcional, pois em alguns microfones deixa a voz artificial. Nada é enviado para processamento externo. O estado efetivo é mostrado abaixo.</p>
+      <label className="block">Isolamento adicional: <strong>{profile.isolation}%</strong>
+        <input aria-label="Intensidade do isolamento de teclado" type="range" min="0" max="100" step="5"
+          className="mt-2 w-full accent-amber-500" value={profile.isolation} disabled={profile.noiseMode !== "voice"}
+          onChange={e=>updateProfile({isolation:safeIsolation(Number(e.target.value))})}/>
+      </label>
+      <p className="text-[10px] text-muted-foreground">Mais isolamento reduz o teclado enquanto ninguém fala, mas pode atenuar sussurros. O filtro mantém uma cauda suave para preservar palavras. Teclado alto simultâneo à fala pode continuar audível; nenhum modelo garante separação perfeita de vozes e ruídos.</p>
       {dspStatus && <p className="text-[10px] text-amber-300 break-words" role="status">{dspStatus}</p>}
       <label className="flex items-center justify-between gap-2"><span>Masterização suave para narração (voz de podcast)</span>
         <input type="checkbox" className="size-4 accent-amber-500" checked={profile.studio} onChange={e => updateProfile({studio:e.target.checked})}/>
@@ -223,7 +229,7 @@ export function VoiceAudioSettings({
     <section className="otms-voice-setting-card space-y-2">
       <h4 className="flex items-center gap-2 font-semibold"><Mic2 className="size-4"/> Prévia privada A/B</h4>
       <p className="text-[10px] text-muted-foreground">Grava 4,5 segundos localmente, sem enviar áudio ao servidor. Compare a captura do navegador com o sinal processado. Use fones de ouvido.</p>
-      <label className="flex items-center justify-between gap-2 text-[11px]"><span>Comparar RNNoise × GTCRN na mesma gravação</span>
+      <label className="flex items-center justify-between gap-2 text-[11px]"><span>Comparar Voz isolada × GTCRN na mesma gravação</span>
         <input type="checkbox" className="size-4 accent-amber-500" disabled={recording || inCall} checked={compareBoth} onChange={e=>setCompareBoth(e.target.checked)}/>
       </label>
       <button className="otms-voice-action w-full" type="button" onClick={recording ? ()=>stopRef.current?.() : ()=>void record()} disabled={inCall}>
@@ -232,7 +238,7 @@ export function VoiceAudioSettings({
       {inCall && <p className="text-[10px] text-muted-foreground">Saia da chamada para comparar sem abrir o microfone duas vezes.</p>}
       {recording && <p className="flex items-center gap-2 text-[10px] text-amber-300"><LoaderCircle className="size-3 animate-spin"/> Gravando apenas neste dispositivo...</p>}
       {rawUrl && <label className="block space-y-1"><span>Captura do navegador</span><audio controls preload="metadata" src={rawUrl} className="h-8 w-full"/></label>}
-      {cleanUrl && <label className="block space-y-1"><span>{compareBoth ? "RNNoise" : `Processado (${profile.noiseMode})`}</span><audio controls preload="metadata" src={cleanUrl} className="h-8 w-full"/></label>}
+      {cleanUrl && <label className="block space-y-1"><span>{compareBoth ? "Voz isolada (RNNoise + expander)" : `Processado (${profile.noiseMode})`}</span><audio controls preload="metadata" src={cleanUrl} className="h-8 w-full"/></label>}
       {gtcrnUrl && <label className="block space-y-1"><span>GTCRN</span><audio controls preload="metadata" src={gtcrnUrl} className="h-8 w-full"/></label>}
       {error && <p className="flex items-start gap-1 text-[10px] text-red-300"><AlertTriangle className="mt-0.5 size-3 shrink-0"/>{error}</p>}
     </section>

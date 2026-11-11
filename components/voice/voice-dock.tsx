@@ -8,13 +8,17 @@ import {
 import { Room, RoomEvent, Track, type Participant, type RemoteTrack, type LocalAudioTrack, type RemoteAudioTrack } from "livekit-client"
 import { VoiceAudioSettings } from "./voice-audio-settings"
 import { audioCounter, audioDelta, audioHealth, type AudioCounter, type AudioDelta } from "@/lib/voice/audio-diagnostics"
-import { VoiceNoiseProcessor, createInputMeter, captureForProfile, isAdvancedNoise, safeInputGain, type VoiceNoiseMode, type VoiceAudioProfile } from "@/lib/voice/audio-dsp"
+import { VoiceNoiseProcessor, createInputMeter, captureForProfile, isAdvancedNoise, safeInputGain, safeIsolation, type VoiceNoiseMode, type VoiceAudioProfile } from "@/lib/voice/audio-dsp"
 import { useControllerActions } from "@/lib/input/use-controller-actions"
 import { registerInputHoldHandler } from "@/lib/input/hold"
 import { VoiceChat } from "./voice-chat"
 import { controllerConfirm } from "@/lib/input/dialogs"
 import { controllerFocus } from "@/lib/input/focus"
 import { CallCuePlayer, type CallCue } from "@/lib/voice/call-cues"
+import {
+  DEFAULT_VOICE_EQ, VOICE_EQ_BANDS, VOICE_EQ_PRESETS, RemoteVoicePlayback,
+  normalizeVoiceEq, safeEqDb, safePeerVolume, type VoiceEqualizer,
+} from "@/lib/voice/remote-audio"
 
 export interface VoiceDockProps {
   campaignId: string
@@ -35,6 +39,7 @@ type VoicePreferences = {
   gain: boolean
   inputGainDb: number
   studio: boolean
+  isolation: number
   deviceProfiles: Record<string, VoiceAudioProfile>
   duckMusic: boolean
   duckDepth: number
@@ -42,15 +47,16 @@ type VoicePreferences = {
   volume: number
   deviceId: string
   personVolumes: Record<string, number>
+  personEqualizers: Record<string, VoiceEqualizer>
 }
 const defaults: VoicePreferences = {
-  mute: false, deaf: false, noiseMode: "gtcrn", echo: true, gain: false, inputGainDb: 0, studio: true,
+  mute: false, deaf: false, noiseMode: "voice", echo: true, gain: false, inputGainDb: 0, studio: true, isolation: 65,
   deviceProfiles: {}, duckMusic: false, duckDepth: 0.35,
-  mode: "open", volume: 1, deviceId: "", personVolumes: {},
+  mode: "open", volume: 1, deviceId: "", personVolumes: {}, personEqualizers: {},
 }
 type VoicePeer = { id: string; name: string; speaking: boolean; microphone: boolean; isMe: boolean; role: string }
-type AudioAttachment = { element: HTMLAudioElement; track: RemoteTrack }
-const validNoiseMode = (x: unknown): x is VoiceNoiseMode => x === "off" || x === "native" || x === "rnnoise" || x === "gtcrn"
+type AudioAttachment = { element: HTMLAudioElement; track: RemoteTrack; playback?: RemoteVoicePlayback }
+const validNoiseMode = (x: unknown): x is VoiceNoiseMode => x === "off" || x === "native" || x === "rnnoise" || x === "gtcrn" || x === "voice"
 const clamp = (value: number) => Math.min(1, Math.max(0, Number.isFinite(value) ? value : 1))
 
 // Os navegadores gerenciam a persistência do consentimento. Toda entrada verifica
@@ -95,6 +101,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [connectionGood, setConnectionGood] = useState(true)
   const [unread, setUnread] = useState(0)
+  const [peerAudioOpen, setPeerAudioOpen] = useState<string | null>(null)
   const [dspStatus, setDspStatus] = useState("")
   const [inputLevel, setInputLevel] = useState(0)
   const [clipping, setClipping] = useState(false)
@@ -113,6 +120,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
   const neuralFallbackRef = useRef<VoiceNoiseMode | null>(null)
   const requestedNoiseRef = useRef<VoiceNoiseMode | null>(null)
   const suppressionFaultRef = useRef(0)
+  const constraintCacheRef = useRef<WeakMap<MediaStreamTrack, string>>(new WeakMap())
   const roomRef = useRef<Room | null>(null)
   // Inicialização tardia: refs preservados pelo Fast Refresh podem estar nulos.
   const attachRef = useRef<Map<RemoteTrack, AudioAttachment> | null>(null)
@@ -142,35 +150,38 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
 
   useEffect(() => {
     try {
+      const v4 = localStorage.getItem(`otms-voice-v4-${userId}`)
       const v3 = localStorage.getItem(`otms-voice-v3-${userId}`)
       const v2 = localStorage.getItem(`otms-voice-v2-${userId}`)
-      const saved = JSON.parse(v3 || v2 || localStorage.getItem(`otms-voice-v1-${userId}`) || "{}")
-      // V3 inicia com GTCRN, inclusive para perfis antigos que herdaram a opção Nativa.
-      // Após a migração a escolha individual do usuário permanece persistida.
-      const migratedMode = validNoiseMode(saved.noiseMode) && saved.noiseMode !== "native"
-        ? saved.noiseMode : "gtcrn"
+      const saved = JSON.parse(v4 || v3 || v2 || localStorage.getItem(`otms-voice-v1-${userId}`) || "{}")
+      // Novo padrão: RNNoise + expander suave de teclado. GTCRN continua
+      // opcional, mas perfis antigos não ficam presos ao modo robótico.
+      const migratedMode = !v4 && (saved.noiseMode === "gtcrn" || saved.noiseMode === "native")
+        ? "voice" : validNoiseMode(saved.noiseMode) ? saved.noiseMode : "voice"
       const oldProfiles = saved.deviceProfiles && typeof saved.deviceProfiles === "object" && !Array.isArray(saved.deviceProfiles)
         ? saved.deviceProfiles as Record<string, VoiceAudioProfile> : {}
-      const deviceProfiles = v3 ? oldProfiles : Object.fromEntries(
-        Object.entries(oldProfiles).map(([id, p]) => [id, {
-          ...p, noiseMode: p.noiseMode === "native" ? "gtcrn" : p.noiseMode,
-          studio: true,
-        }])
-      )
+      const deviceProfiles = Object.fromEntries(Object.entries(oldProfiles).map(([id, p]) => [id, {
+        ...p,
+        noiseMode: !v4 && (p.noiseMode === "gtcrn" || p.noiseMode === "native") ? "voice" : p.noiseMode,
+        isolation: safeIsolation(Number(p.isolation ?? 65)),
+      }]))
       if (saved && typeof saved === "object") setPreferences({
         mute: saved.mute === true,
         deaf: saved.deaf === true,
-        noiseMode: v3 && validNoiseMode(saved.noiseMode) ? saved.noiseMode : migratedMode,
+        noiseMode: migratedMode,
         echo: saved.echo !== false, gain: saved.gain === true,
         inputGainDb: safeInputGain(Number(saved.inputGainDb ?? 0)),
-        studio: v3 ? saved.studio !== false : true,
+        studio: v3 ? saved.studio !== false : true, isolation: safeIsolation(Number(saved.isolation ?? 65)),
         deviceProfiles,
         duckMusic: saved.duckMusic === true,
         duckDepth: clamp(Number(saved.duckDepth ?? 0.35)),
         mode: saved.mode === "ptt" ? "ptt" : "open",
         volume: clamp(Number(saved.volume ?? 1)),
         deviceId: typeof saved.deviceId === "string" ? saved.deviceId : "",
-        personVolumes: saved.personVolumes && typeof saved.personVolumes === "object" ? saved.personVolumes : {},
+        personVolumes: saved.personVolumes && typeof saved.personVolumes === "object" && !Array.isArray(saved.personVolumes)
+          ? Object.fromEntries(Object.entries(saved.personVolumes).map(([id, v]) => [id, safePeerVolume(v)])) : {},
+        personEqualizers: saved.personEqualizers && typeof saved.personEqualizers === "object" && !Array.isArray(saved.personEqualizers)
+          ? Object.fromEntries(Object.entries(saved.personEqualizers).map(([id, v]) => [id, normalizeVoiceEq(v)])) : {},
       })
     } catch { /* Perfil local indisponível. */ }
     try { setOutputDeviceId(localStorage.getItem(`otms-voice-output-v1-${userId}`) || "") } catch { /* sem storage */ }
@@ -178,7 +189,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
   }, [userId])
   useEffect(() => {
     if (!hydrated) return
-    try { localStorage.setItem(`otms-voice-v3-${userId}`, JSON.stringify(preferences)) } catch { /* Storage privado. */ }
+    try { localStorage.setItem(`otms-voice-v4-${userId}`, JSON.stringify(preferences)) } catch { /* Storage privado. */ }
   }, [preferences, userId, hydrated])
 
   useEffect(() => {
@@ -195,12 +206,12 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
           ...next,
           noiseMode: validNoiseMode(saved.noiseMode) ? saved.noiseMode : current.noiseMode,
           echo: saved.echo !== false, gain: saved.gain === true,
-          inputGainDb: safeInputGain(Number(saved.inputGainDb)), studio: saved.studio !== false,
+          inputGainDb: safeInputGain(Number(saved.inputGainDb)), studio: saved.studio !== false, isolation: safeIsolation(Number(saved.isolation ?? 65)),
         }
       }
-      if (patch.noiseMode !== undefined || patch.echo !== undefined || patch.gain !== undefined || patch.inputGainDb !== undefined || patch.studio !== undefined) {
+      if (patch.isolation !== undefined || patch.noiseMode !== undefined || patch.echo !== undefined || patch.gain !== undefined || patch.inputGainDb !== undefined || patch.studio !== undefined) {
         next.deviceProfiles = {...next.deviceProfiles, [next.deviceId || "default"]: {
-          noiseMode: next.noiseMode, echo: next.echo, gain: next.gain, inputGainDb: next.inputGainDb, studio: next.studio,
+          noiseMode: next.noiseMode, echo: next.echo, gain: next.gain, inputGainDb: next.inputGainDb, studio: next.studio, isolation: next.isolation,
         }}
       }
       return next
@@ -221,10 +232,9 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
   const cleanAudio = useCallback(() => {
     const attached = attachRef.current
     if (!attached) return
-    for (const {element, track} of attached.values()) {
-      track.detach(element)
-      element.pause()
-      element.remove()
+    for (const {element, track, playback} of attached.values()) {
+      if (playback) playback.dispose()
+      else { track.detach(element); element.pause(); element.remove() }
     }
     attached.clear()
   }, [])
@@ -296,19 +306,27 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       echoCancellation: prefs.echo,
       autoGainControl: prefs.gain,
     }
+    const applyCaptureConstraints = async () => {
+      const source = track.mediaStreamTrack
+      const signature = JSON.stringify(constraints)
+      if (constraintCacheRef.current.get(source) === signature) return
+      await track.applyConstraints(constraints)
+      constraintCacheRef.current.set(track.mediaStreamTrack, signature)
+    }
     try {
       if (current instanceof VoiceNoiseProcessor && appliedModeRef.current === mode &&
           appliedStudioRef.current === prefs.studio && needsGraph) {
-        await track.applyConstraints(constraints)
+        await applyCaptureConstraints()
         current.setInputGain(prefs.inputGainDb)
+        current.setIsolation(prefs.isolation)
         setDspStatus(`${mode.toUpperCase()} · ${prefs.studio ? "voz de narrador" : "som natural"} · ativo`)
         return
       }
       if (current?.name === "otms-local-voice-dsp") await track.stopProcessor()
       if (roomRef.current !== room) return
-      await track.applyConstraints(constraints)
+      await applyCaptureConstraints()
       if (needsGraph) {
-        await track.setProcessor(new VoiceNoiseProcessor(mode, prefs.inputGainDb, prefs.studio))
+        await track.setProcessor(new VoiceNoiseProcessor(mode, prefs.inputGainDb, prefs.studio, prefs.isolation))
         if (roomRef.current !== room) return
       }
       appliedModeRef.current = mode
@@ -324,13 +342,13 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       try { if (track.getProcessor()?.name === "otms-local-voice-dsp") await track.stopProcessor() } catch { /* no processor */ }
       // GTCRN -> RNNoise -> native. Each fallback is sticky until the user changes
       // the mode or starts a fresh call. Prevents an expensive failure/retry loop.
-      const nextMode: VoiceNoiseMode = mode === "gtcrn" ? "rnnoise" : "native"
+      const nextMode: VoiceNoiseMode = mode === "gtcrn" ? "voice" : mode === "voice" ? "rnnoise" : "native"
       neuralFallbackRef.current = nextMode
       appliedModeRef.current = ""
       appliedStudioRef.current = null
       try {
         await track.applyConstraints({noiseSuppression: nextMode === "native", echoCancellation:prefs.echo, autoGainControl:prefs.gain})
-        await track.setProcessor(new VoiceNoiseProcessor(nextMode, prefs.inputGainDb, prefs.studio))
+        await track.setProcessor(new VoiceNoiseProcessor(nextMode, prefs.inputGainDb, prefs.studio, prefs.isolation))
         appliedModeRef.current = nextMode
         appliedStudioRef.current = prefs.studio
       } catch (fallbackCause) {
@@ -423,7 +441,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
           if (track.kind !== Track.Kind.Audio) continue
           const stats = await (track as RemoteAudioTrack).getReceiverStats()
           if (!stats || !active) continue
-          const key = `rx:${item.element.dataset.personId || track.sid || "remote"}`
+          const key = `rx:${item.playback?.personId || item.element.dataset.personId || track.sid || "remote"}`
           const count = audioCounter(stats, true)
           const delta = audioDelta(count, previousStatsRef.current.get(key))
           previousStatsRef.current.set(key, count)
@@ -441,14 +459,13 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     return () => {active = false; clearInterval(timer); previousStatsRef.current.clear()}
   }, [status])
 
-  // Trocar a saída de áudio apenas quando o navegador oferece setSinkId.
+  // Trocar a saída do áudio processado, inclusive ao voltar para padrão.
   useEffect(() => {
-    if (!outputDeviceId) return
-    for (const {element} of attachRef.current?.values() ?? []) {
+    for (const {element, playback} of attachRef.current?.values() ?? []) {
       const sink = element as HTMLAudioElement & {setSinkId?: (id: string) => Promise<void>}
-      if (typeof sink.setSinkId === "function") void sink.setSinkId(outputDeviceId).catch(() => {
-        setError("Não foi possível selecionar a saída de áudio; usando a saída padrão.")
-      })
+      const request = playback ? playback.setOutputDevice(outputDeviceId)
+        : typeof sink.setSinkId === "function" ? sink.setSinkId(outputDeviceId) : Promise.resolve()
+      void request.catch(() => setError("Não foi possível selecionar a saída de áudio; usando a saída padrão."))
     }
   }, [outputDeviceId, peers.length])
 
@@ -525,7 +542,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     audioTaskRef.current = audioTaskRef.current.catch(() => undefined).then(async () => {
       if (roomRef.current === room) await configureProcessing(room)
     })
-  }, [status, preferences.noiseMode, preferences.echo, preferences.gain, preferences.inputGainDb, preferences.studio, configureProcessing])
+  }, [status, preferences.noiseMode, preferences.echo, preferences.gain, preferences.inputGainDb, preferences.studio, preferences.isolation, configureProcessing])
 
   useEffect(() => {
     const room = roomRef.current
@@ -578,13 +595,20 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     const attached = attachRef.current
     if (!attached) return
     const values = prefsRef.current
-    for (const {element} of attached.values()) {
-      const person = values.personVolumes[element.dataset.personId || ""]
-      const personal = typeof person === "number" ? clamp(person) : 1
-      element.volume = values.deaf ? 0 : clamp(values.volume * personal)
+    for (const {element, playback} of attached.values()) {
+      const identity = playback?.personId || element.dataset.personId || ""
+      const personal = safePeerVolume(values.personVolumes[identity])
+      const eq = normalizeVoiceEq(values.personEqualizers[identity] || DEFAULT_VOICE_EQ)
+      if (playback) {
+        playback.setEq(eq)
+        playback.setVolume(values.volume, personal, values.deaf)
+      } else {
+        // Fallback sem WebAudio: o HTMLAudioElement limita a 100%.
+        element.volume = values.deaf ? 0 : clamp(values.volume * personal)
+      }
     }
   }, [])
-  useEffect(() => { applyVolumes() }, [applyVolumes, preferences.volume, preferences.deaf, preferences.personVolumes])
+  useEffect(() => { applyVolumes() }, [applyVolumes, preferences.volume, preferences.deaf, preferences.personVolumes, preferences.personEqualizers])
 
   // Playback/context watchdog. Do not republish the microphone on every tick:
   // that caused the old random speech cuts. Reanimate playback where the browser
@@ -596,10 +620,11 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       if (!active || document.visibilityState === "hidden") return
       const room = roomRef.current
       if (!room) return
-      for (const {element} of attachRef.current?.values() ?? []) {
+      for (const {element, playback} of attachRef.current?.values() ?? []) {
         if (!element.isConnected) continue
-        if (!prefsRef.current.deaf && element.paused && !element.ended) {
-          void element.play().then(() => setAudioBlocked(false)).catch(() => setAudioBlocked(true))
+        if (!prefsRef.current.deaf && (element.paused || (playback && playback.state !== "running"))) {
+          const attempt = playback ? playback.play() : element.play()
+          void attempt.then(() => setAudioBlocked(false)).catch(() => setAudioBlocked(true))
         }
       }
       const outgoing = room.localParticipant.getTrackPublication(Track.Source.Microphone)?.track as LocalAudioTrack | undefined
@@ -609,24 +634,16 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       if (!health) return
       if (health.state !== "running") {
         if (health.state === "closed" && roomRef.current === room) {
-          neuralFallbackRef.current = appliedModeRef.current === "gtcrn" ? "rnnoise" : "native"
+          neuralFallbackRef.current = appliedModeRef.current === "gtcrn" ? "voice" : appliedModeRef.current === "voice" ? "rnnoise" : "native"
           audioTaskRef.current = audioTaskRef.current.catch(() => undefined).then(() => configureProcessing(room))
         } else void processor.resume().catch(() => undefined)
         suppressionFaultRef.current = 0
         return
       }
-      if (!outgoing?.isMuted && room.localParticipant.isMicrophoneEnabled &&
-          isAdvancedNoise(appliedModeRef.current as VoiceNoiseMode) &&
-          health.raw.rms > 0.09 && health.processed.rms < 0.003) {
-        suppressionFaultRef.current += 1
-      } else suppressionFaultRef.current = 0
-      if (suppressionFaultRef.current >= 4 && roomRef.current === room) {
-        suppressionFaultRef.current = 0
-        const mode = appliedModeRef.current
-        neuralFallbackRef.current = mode === "gtcrn" ? "rnnoise" : "native"
-        setDspStatus(`${mode.toUpperCase()} interrompeu a voz: alternando para ${neuralFallbackRef.current.toUpperCase()} sem sair da chamada.`)
-        audioTaskRef.current = audioTaskRef.current.catch(() => undefined).then(() => configureProcessing(room))
-      }
+      // Silêncio pós-supressão com microfone bruto ruidoso é o resultado
+      // DESEJADO (ex.: teclado). Não confundir com falha do processador:
+      // o watchdog antigo removia o filtro após ~10s de digitação.
+      suppressionFaultRef.current = 0
     }
     const onFocus = () => restore()
     window.addEventListener("focus", onFocus)
@@ -681,43 +698,55 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
         ;(track as RemoteAudioTrack).setPlayoutDelay(0.16)
         const previous = attachments().get(track)
         if (previous) {
-          // A duplicate subscription callback must not leave a second audio element.
-          previous.track.detach(previous.element)
-          previous.element.remove()
+          if (previous.playback) previous.playback.dispose()
+          else { previous.track.detach(previous.element); previous.element.pause(); previous.element.remove() }
           attachments().delete(track)
         }
-        const element = track.attach() as HTMLAudioElement
-        element.autoplay = true
-        element.dataset.personId = participant.identity
-        element.style.display = "none"
-        element.preload = "auto"
+        // O grafo Web Audio torna possível aumentar até 200% e equalizar cada
+        // participante sem alterar seu áudio para os demais ouvintes.
+        let playback: RemoteVoicePlayback | undefined
+        let element: HTMLAudioElement
+        try {
+          playback = new RemoteVoicePlayback(track.mediaStreamTrack, participant.identity)
+          element = playback.element
+        } catch (cause) {
+          console.warn("[Mesa de Voz] Web Audio indisponível; recepção básica:", cause)
+          element = track.attach() as HTMLAudioElement
+          element.dataset.personId = participant.identity
+          element.autoplay = true
+          element.preload = "auto"
+          element.style.display = "none"
+          document.body.append(element)
+        }
         const recover = () => {
           if (roomRef.current !== room || prefsRef.current.deaf) return
           if (document.visibilityState === "hidden") return
           if (element.paused && element.isConnected) {
-            void element.play().then(() => setAudioBlocked(false)).catch(() => setAudioBlocked(true))
+            const attempt = playback ? playback.play() : element.play()
+            void attempt.then(() => setAudioBlocked(false)).catch(() => setAudioBlocked(true))
           }
         }
         element.addEventListener("pause", () => { if (!element.ended) queueMicrotask(recover) })
         element.addEventListener("stalled", recover)
         element.addEventListener("emptied", recover)
         element.addEventListener("playing", () => setAudioBlocked(false))
-        document.body.append(element)
-        const sink = element as HTMLAudioElement & {setSinkId?: (id: string) => Promise<void>}
-        if (outputDeviceId && typeof sink.setSinkId === "function") {
-          void sink.setSinkId(outputDeviceId).catch(() => undefined)
+        if (outputDeviceId) {
+          const sink = element as HTMLAudioElement & {setSinkId?: (id: string) => Promise<void>}
+          const request = playback ? playback.setOutputDevice(outputDeviceId)
+            : sink.setSinkId?.(outputDeviceId)
+          void request?.catch(() => undefined)
         }
-        attachments().set(track, {element, track})
+        attachments().set(track, {element, track, playback})
         applyVolumes()
-        void element.play().then(() => setAudioBlocked(false)).catch(() => setAudioBlocked(true))
+        void (playback ? playback.play() : element.play())
+          .then(() => setAudioBlocked(false)).catch(() => setAudioBlocked(true))
         refresh()
       }
       const offTrack = (track: RemoteTrack) => {
         const attached = attachRef.current?.get(track)
         if (attached) {
-          track.detach(attached.element)
-          attached.element.pause()
-          attached.element.remove()
+          if (attached.playback) attached.playback.dispose()
+          else { track.detach(attached.element); attached.element.pause(); attached.element.remove() }
           attachRef.current?.delete(track)
         }
         if (roomRef.current === room) refresh()
@@ -829,7 +858,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
   const toggleMute = useCallback(() => updatePreferences({mute: !prefsRef.current.mute}), [updatePreferences])
   const toggleDeaf = useCallback(() => updatePreferences({deaf: !prefsRef.current.deaf}), [updatePreferences])
   const toggleNoise = useCallback(() => updatePreferences({
-    noiseMode: prefsRef.current.noiseMode === "gtcrn" ? "native" : "gtcrn",
+      noiseMode: prefsRef.current.noiseMode === "voice" ? "native" : "voice",
   }), [updatePreferences])
   const togglePanel = useCallback(() => setExpanded(value => !value), [])
   const openChat = useCallback(() => {setTab("chat"); setExpanded(true)}, [])
@@ -887,8 +916,8 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     // Must run directly in the click handler to satisfy browser autoplay policies.
     void room.startAudio().then(async () => {
       const items = Array.from(attachRef.current?.values() ?? [])
-      const results = await Promise.allSettled(items.map(({element}) =>
-        !prefsRef.current.deaf && element.paused ? element.play() : Promise.resolve()))
+      const results = await Promise.allSettled(items.map(({element, playback}) =>
+        !prefsRef.current.deaf ? (playback ? playback.play() : element.play()) : Promise.resolve()))
       setAudioBlocked(results.some(result => result.status === "rejected"))
       if (!results.some(result => result.status === "rejected")) setError("")
     }).catch(() => {
@@ -1016,11 +1045,50 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
               {person.microphone ? <AudioLines className={`size-4 ${person.speaking ? "text-emerald-400" : "text-muted-foreground"}`}/> : <MicOff className="size-4 text-muted-foreground"/>}
               {role === "gm" && !person.isMe && person.role === "player" && <button type="button" className="otms-voice-action !p-1.5 text-red-300" onClick={() => void disconnectPeer(person)} title="Desconectar jogador" aria-label={`Desconectar ${person.name}`}><UserRoundX className="size-3.5"/></button>}
             </div>
-            {!person.isMe && <label className="mt-2 flex items-center gap-2 pl-10 text-[10px] text-muted-foreground">
-              <Volume2 className="size-3.5"/>
-              <input aria-label={`Volume de ${person.name}`} className="min-w-0 flex-1 accent-amber-500" type="range" min="0" max="100" value={Math.round((preferences.personVolumes[person.id] ?? 1) * 100)} onChange={e => updatePreferences({personVolumes: {...prefsRef.current.personVolumes, [person.id]: Number(e.target.value) / 100}})} />
-              {Math.round((preferences.personVolumes[person.id] ?? 1) * 100)}%
-            </label>}
+            {!person.isMe && <div className="mt-2 space-y-2 pl-10 text-[10px] text-muted-foreground">
+              <label className="flex items-center gap-2">
+                <Volume2 className="size-3.5 shrink-0"/>
+                <input aria-label={`Volume de ${person.name}`} className="min-w-0 flex-1 accent-amber-500" type="range" min="0" max="200" step="5" value={Math.round(safePeerVolume(preferences.personVolumes[person.id]) * 100)} onChange={e => updatePreferences({personVolumes: {...prefsRef.current.personVolumes, [person.id]: safePeerVolume(Number(e.target.value) / 100)}})} />
+                <span className={safePeerVolume(preferences.personVolumes[person.id]) > 1 ? "text-amber-300" : ""}>{Math.round(safePeerVolume(preferences.personVolumes[person.id]) * 100)}%</span>
+              </label>
+              <button type="button" aria-expanded={peerAudioOpen === person.id} className="otms-voice-link"
+                onClick={() => setPeerAudioOpen(current => current === person.id ? null : person.id)}>
+                <Settings2 className="mr-1 inline size-3"/> {peerAudioOpen === person.id ? "Fechar equalizador" : `Equalizar voz de ${person.name}`}
+              </button>
+              {peerAudioOpen === person.id && <div className="space-y-2 rounded-lg border border-amber-700/25 p-2" aria-label={`Equalizador de ${person.name}`}>
+                <label className="block">Perfil vocal
+                  <select className="otms-voice-field mt-1 w-full px-2 py-1" value={normalizeVoiceEq(preferences.personEqualizers[person.id]).preset}
+                    onChange={e => {
+                      const preset = e.target.value as VoiceEqualizer["preset"]
+                      const chosen: VoiceEqualizer = preset !== "custom" && preset in VOICE_EQ_PRESETS
+                        ? { ...VOICE_EQ_PRESETS[preset as keyof typeof VOICE_EQ_PRESETS], preset }
+                        : { ...normalizeVoiceEq(prefsRef.current.personEqualizers[person.id]), preset: "custom" }
+                      updatePreferences({personEqualizers: {...prefsRef.current.personEqualizers, [person.id]: chosen}})
+                    }}>
+                    <option value="flat">Natural / Sem EQ</option>
+                    <option value="narration">Narração / Podcast</option>
+                    <option value="clarity">Clareza</option>
+                    <option value="warm">Graves quentes</option>
+                    <option value="custom">Personalizado</option>
+                  </select>
+                </label>
+                {VOICE_EQ_BANDS.map(band => {
+                  const eq = normalizeVoiceEq(preferences.personEqualizers[person.id])
+                  return <label key={band.key} className="block">
+                    <span className="flex justify-between"><span>{band.name} · {band.hz} Hz</span><span>{eq[band.key] > 0 ? "+" : ""}{eq[band.key]} dB</span></span>
+                    <input aria-label={`${band.name} de ${person.name}`} type="range" min="-12" max="12" step="0.5" className="mt-1 w-full accent-amber-500"
+                      value={eq[band.key]} onChange={e => updatePreferences({personEqualizers: {
+                        ...prefsRef.current.personEqualizers,
+                        [person.id]: { ...eq, [band.key]: safeEqDb(Number(e.target.value)), preset: "custom" },
+                      }})}/>
+                  </label>
+                })}
+                <button type="button" className="otms-voice-action w-full text-[10px]" onClick={() => updatePreferences({personEqualizers: {
+                  ...prefsRef.current.personEqualizers, [person.id]: { ...DEFAULT_VOICE_EQ },
+                }})}>Restaurar equalização natural</button>
+                <p>Acima de 100% pode amplificar ruído já existente. Um limitador ajuda a evitar distorção, mas não recupera detalhes perdidos.</p>
+              </div>}
+            </div>}
           </div>)}
         </div>}
         {tab === "chat" && <VoiceChat campaignId={campaignId} meId={userId} canModerate={role === "gm"} active={true} onUnreadChange={setUnread}/>}
@@ -1033,7 +1101,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
             <input className="mt-2 w-full accent-amber-500" type="range" min="0" max="100" value={Math.round(preferences.volume * 100)} onChange={e => updatePreferences({volume: Number(e.target.value)/100})}/>
           </label>
           <VoiceAudioSettings
-            profile={{noiseMode:preferences.noiseMode, echo:preferences.echo,gain:preferences.gain,inputGainDb:preferences.inputGainDb,studio:preferences.studio}}
+            profile={{noiseMode:preferences.noiseMode, echo:preferences.echo,gain:preferences.gain,inputGainDb:preferences.inputGainDb,studio:preferences.studio,isolation:preferences.isolation}}
             deviceId={preferences.deviceId}
             devices={devices}
             updateProfile={patch => updatePreferences(patch)}

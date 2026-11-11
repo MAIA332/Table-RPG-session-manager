@@ -1,21 +1,23 @@
 /** Processamento de voz 100% local: captura WebAudio -> WASM em AudioWorklet -> Opus do WebRTC.
  * Nenhum áudio bruto ou modelo é enviado a serviços de terceiros.
  */
-export type VoiceNoiseMode = "off" | "native" | "rnnoise" | "gtcrn"
+export type VoiceNoiseMode = "off" | "native" | "rnnoise" | "gtcrn" | "voice"
 export type VoiceAudioProfile = {
   noiseMode: VoiceNoiseMode
   echo: boolean
   gain: boolean
   inputGainDb: number
   studio: boolean
+  isolation: number
 }
 
 export const VOICE_DSP_PATH = "/voice-dsp"
 export const VOICE_PROFILE_DEFAULTS: VoiceAudioProfile = {
-  noiseMode: "gtcrn", echo: true, gain: false, inputGainDb: 0, studio: true,
+  noiseMode: "voice", echo: true, gain: false, inputGainDb: 0, studio: true, isolation: 65,
 }
 
-export const isAdvancedNoise = (mode: VoiceNoiseMode) => mode === "rnnoise" || mode === "gtcrn"
+export const isAdvancedNoise = (mode: VoiceNoiseMode) => mode === "rnnoise" || mode === "gtcrn" || mode === "voice"
+export const safeIsolation = (value: number) => Math.max(0, Math.min(100, Number.isFinite(value) ? value : 65))
 export const safeInputGain = (value: number) => Math.max(-12, Math.min(6, Number.isFinite(value) ? value : 0))
 export const dbToGain = (value: number) => Math.pow(10, safeInputGain(value) / 20)
 
@@ -65,35 +67,88 @@ export async function verifyVoiceDspAssets(): Promise<void> {
   return assetsPromise
 }
 const worklets = new WeakMap<AudioContext, Set<VoiceNoiseMode>>()
+const isolationWorklets = new WeakSet<AudioContext>()
+async function createIsolationNode(context: AudioContext, strength: number): Promise<AudioWorkletNode> {
+  if (!isolationWorklets.has(context)) {
+    await context.audioWorklet.addModule(`${VOICE_DSP_PATH}/otms-voice-isolation.js`)
+    isolationWorklets.add(context)
+  }
+  return new AudioWorkletNode(context, "otms-voice-isolation", {
+    numberOfInputs: 2, numberOfOutputs: 1, outputChannelCount: [1],
+    processorOptions: { strength: safeIsolation(strength) },
+  })
+}
 
-async function neuralNode(context: AudioContext, mode: "rnnoise" | "gtcrn"): Promise<NeuralNode> {
+
+type NeuralMode = "rnnoise" | "gtcrn" | "voice"
+
+async function neuralNode(
+  context: AudioContext,
+  mode: NeuralMode,
+): Promise<NeuralNode> {
   await verifyVoiceDspAssets()
+
   if (!context.audioWorklet || typeof WebAssembly === "undefined") {
-    throw new Error("Seu navegador não oferece AudioWorklet/WebAssembly.")
+    throw new Error(
+      "Seu navegador não oferece AudioWorklet/WebAssembly."
+    )
   }
-  if (mode === "rnnoise" && context.sampleRate !== 48000) {
-    // RNNoise needs 48000Hz; never distort audio silently using a different rate.
-    throw new Error("RNNoise exige AudioContext de 48 kHz; use o modo Nativo neste dispositivo.")
+
+  // O modo "voice" utiliza RNNoise como motor neural.
+  // A diferença está no processamento adicional de isolamento.
+  const moduleKey: "rnnoise" | "gtcrn" =
+    mode === "voice" ? "rnnoise" : mode
+
+  const usesRnnoise = moduleKey === "rnnoise"
+
+  if (usesRnnoise && context.sampleRate !== 48000) {
+    throw new Error(
+      "RNNoise exige AudioContext de 48 kHz; use o modo Nativo neste dispositivo."
+    )
   }
+
   const {
-    loadRnnoise, RnnoiseWorkletNode, loadGtcrn, GtcrnWorkletNode,
+    loadRnnoise,
+    RnnoiseWorkletNode,
+    loadGtcrn,
+    GtcrnWorkletNode,
   } = await import("@sapphi-red/web-noise-suppressor")
-  const loaded = worklets.get(context) ?? new Set<VoiceNoiseMode>()
-  if (!loaded.has(mode)) {
-    await context.audioWorklet.addModule(`${VOICE_DSP_PATH}/${mode}-worklet.js`)
-    loaded.add(mode)
+
+  const loaded =
+    worklets.get(context) ?? new Set<VoiceNoiseMode>()
+
+  // Evita registrar o mesmo worklet duas vezes.
+  if (!loaded.has(moduleKey)) {
+    await context.audioWorklet.addModule(
+      `${VOICE_DSP_PATH}/${moduleKey}-worklet.js`
+    )
+
+    loaded.add(moduleKey)
     worklets.set(context, loaded)
   }
-  if (mode === "rnnoise") {
+
+  if (usesRnnoise) {
     const wasmBinary = await loadRnnoise({
       url: `${VOICE_DSP_PATH}/rnnoise.wasm`,
       simdUrl: `${VOICE_DSP_PATH}/rnnoise_simd.wasm`,
     })
-    return new RnnoiseWorkletNode(context, { maxChannels: 1, wasmBinary })
+
+    return new RnnoiseWorkletNode(context, {
+      maxChannels: 1,
+      wasmBinary,
+    })
   }
-  const wasmBinary = await loadGtcrn({ url: `${VOICE_DSP_PATH}/gtcrn.wasm` })
-  return new GtcrnWorkletNode(context, { maxChannels: 1, wasmBinary })
+
+  const wasmBinary = await loadGtcrn({
+    url: `${VOICE_DSP_PATH}/gtcrn.wasm`,
+  })
+
+  return new GtcrnWorkletNode(context, {
+    maxChannels: 1,
+    wasmBinary,
+  })
 }
+
 
 /** Narrator chain: conservative tonal shaping after denoising, not a broadcast loudness maximizer.
  * 70 Hz HPF removes low-frequency rumble; subtle warmth/presence; a single gentle
@@ -107,12 +162,13 @@ export class VoicePipeline {
   private readonly gainNode: GainNode
   private readonly destination: MediaStreamAudioDestinationNode
   private readonly effect?: NeuralNode
+  private readonly isolationNode?: AudioWorkletNode
   private readonly stages: AudioNode[]
   private readonly context: AudioContext
 
   private constructor(context: AudioContext, source: MediaStreamAudioSourceNode,
     pre: AnalyserNode, post: AnalyserNode, gain: GainNode,
-    destination: MediaStreamAudioDestinationNode, stages: AudioNode[], effect?: NeuralNode) {
+    destination: MediaStreamAudioDestinationNode, stages: AudioNode[], effect?: NeuralNode, isolationNode?: AudioWorkletNode) {
     this.context = context
     this.source = source
     this.inputAnalyser = pre
@@ -121,13 +177,14 @@ export class VoicePipeline {
     this.destination = destination
     this.stages = stages
     this.effect = effect
+    this.isolationNode = isolationNode
     const track = destination.stream.getAudioTracks()[0]
     if (!track) throw new Error("Falha ao criar saída de áudio processado.")
     this.output = track
   }
 
   static async create(context: AudioContext, sourceTrack: MediaStreamTrack,
-    mode: VoiceNoiseMode, inputGainDb: number, studio = true): Promise<VoicePipeline> {
+    mode: VoiceNoiseMode, inputGainDb: number, studio = true, isolation = 65): Promise<VoicePipeline> {
     const source = context.createMediaStreamSource(new MediaStream([sourceTrack]))
     const pre = context.createAnalyser()
     const post = context.createAnalyser()
@@ -136,6 +193,7 @@ export class VoicePipeline {
     gain.gain.value = dbToGain(inputGainDb)
     const destination = context.createMediaStreamDestination()
     let effect: NeuralNode | undefined
+    let isolationNode: AudioWorkletNode | undefined
     const stages: AudioNode[] = []
     try {
       if (isAdvancedNoise(mode)) effect = await neuralNode(context, mode)
@@ -148,7 +206,15 @@ export class VoicePipeline {
         // processed block after five buffered blocks. Align dry speech near
         // that frame boundary before mixing.
         tail.connect(effect)
-        if (mode === "gtcrn") {
+        if (mode === "voice") {
+          // RNNoise removes broadband/typing noise; a soft, non-zero-floor
+          // expander attenuates residual keystrokes between voice phrases.
+          isolationNode = await createIsolationNode(context, isolation)
+          effect.connect(isolationNode, 0, 0)
+          pre.connect(isolationNode, 0, 1)
+          stages.push(isolationNode)
+          tail = isolationNode
+        } else if (mode === "gtcrn") {
           const dryDelay = context.createDelay(0.08)
           dryDelay.delayTime.value = 5 * 128 / context.sampleRate
           const dry = context.createGain()
@@ -197,7 +263,7 @@ export class VoicePipeline {
       gain.connect(post)
       post.connect(destination)
       // Never connect microphone to speakers (feedback/echo).
-      return new VoicePipeline(context, source, pre, post, gain, destination, stages, effect)
+      return new VoicePipeline(context, source, pre, post, gain, destination, stages, effect, isolationNode)
     } catch (error) {
       effect?.destroy()
       effect?.disconnect()
@@ -211,6 +277,9 @@ export class VoicePipeline {
     }
   }
 
+  setIsolation(strength: number) {
+    this.isolationNode?.port.postMessage({ type: "strength", value: safeIsolation(strength) })
+  }
   getState() { return this.context.state }
   async resume() {
     if (this.context.state !== "running" && this.context.state !== "closed") await this.context.resume()
@@ -242,7 +311,7 @@ export class VoiceNoiseProcessor {
   processedTrack?: MediaStreamTrack
   private graph?: VoicePipeline
   private ownedContext?: AudioContext
-  constructor(private mode: VoiceNoiseMode, private db: number, private studio = true) {}
+  constructor(private mode: VoiceNoiseMode, private db: number, private studio = true, private isolation = 65) {}
   async init(options: { track: MediaStreamTrack; audioContext: AudioContext }) { await this.restart(options) }
   async restart(options: { track: MediaStreamTrack; audioContext: AudioContext }) {
     await this.destroy()
@@ -252,7 +321,7 @@ export class VoiceNoiseProcessor {
       this.ownedContext = context
     }
     try {
-      this.graph = await VoicePipeline.create(context, options.track, this.mode, this.db, this.studio)
+      this.graph = await VoicePipeline.create(context, options.track, this.mode, this.db, this.studio, this.isolation)
       this.processedTrack = this.graph.output
       // Do not await resume indefinitely: browsers may require a new user gesture.
       void this.graph.resume().catch(() => undefined)
@@ -262,6 +331,7 @@ export class VoiceNoiseProcessor {
     }
   }
   setInputGain(db: number) { this.db = db; this.graph?.setInputGain(db) }
+  setIsolation(value: number) { this.isolation = safeIsolation(value); this.graph?.setIsolation(this.isolation) }
   health() { return this.graph?.getHealth() }
   resume() { return this.graph?.resume() ?? Promise.resolve(false) }
   readMeter() {
