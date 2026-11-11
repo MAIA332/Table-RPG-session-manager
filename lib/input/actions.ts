@@ -17,6 +17,9 @@ export type InputAction =
   | 'special.manager' | `special.manager.${string}` | 'character.training' | 'character.affinities' | 'character.bonds' | 'character.store' | 'character.mannequin' | 'player.theme'
   | `skill.open.${string}` | `special.open.${string}` | `skill.ability1.${string}` | `skill.ability2.${string}` | `skill.ability3.${string}` | `skill.ability4.${string}`
   | 'audio.play' | 'audio.pause' | 'audio.toggle' | 'audio.stop' | 'audio.previous' | 'audio.next'
+  | 'voice.join' | 'voice.leave' | 'voice.mute.toggle' | 'voice.deafen.toggle'
+  | 'voice.ptt' | 'voice.panel.toggle' | 'voice.chat.toggle' | 'voice.noise.toggle'
+  | 'voice.volume.up' | 'voice.volume.down'
   | 'qte.react'
 
 export type GamepadButtonName = 'A' | 'B' | 'X' | 'Y' | 'LB' | 'RB' | 'LT' | 'RT' |
@@ -36,6 +39,7 @@ export const DEFAULT_BINDINGS: Readonly<Record<string, InputAction>> = {
   'LT+Y': 'skill.slot4', 'LT+RB': 'skill.nextPage',
   RUP: 'map.panUp', RDOWN: 'map.panDown', RLEFT: 'map.panLeft', RRIGHT: 'map.panRight',
   'LT+UP': 'ui.up', 'LT+DOWN': 'ui.down',
+  'LT+LS': 'voice.panel.toggle', 'LT+RS': 'voice.mute.toggle',
 } as const
 
 /** Botões além do mapeamento padrão, quando expostos individualmente pelo navegador. */
@@ -58,6 +62,8 @@ export const SETTABLE_COMMANDS: readonly InputAction[] = [
   'gm.crisis', 'gm.mapImporter', 'gm.weather', 'gm.difficulty',
   'player.hand', 'player.notes', 'player.mixer', 'player.gallery', 'player.maps',
   'audio.play', 'audio.pause', 'audio.toggle', 'audio.stop', 'audio.previous', 'audio.next',
+  'voice.join', 'voice.leave', 'voice.mute.toggle', 'voice.deafen.toggle', 'voice.ptt',
+  'voice.panel.toggle', 'voice.chat.toggle', 'voice.noise.toggle', 'voice.volume.up', 'voice.volume.down',
   'character.sheet', 'character.inventory', 'character.restore', 'map.open', 'world.lore',
   'special.manager', 'character.training', 'character.affinities', 'character.bonds', 'character.store', 'character.mannequin', 'player.theme',
   'combat.focus', 'gm.panel', 'gm.soundpad', 'gm.bestiary', 'gallery.open', 'ui.settings',
@@ -75,6 +81,8 @@ export const BASE_COMMANDS: readonly InputAction[] = [
   'gm.crisis', 'gm.mapImporter', 'gm.weather', 'gm.difficulty',
   'player.hand', 'player.notes', 'player.mixer', 'player.gallery', 'player.maps',
   'audio.play', 'audio.pause', 'audio.toggle', 'audio.stop', 'audio.previous', 'audio.next',
+  'voice.join', 'voice.leave', 'voice.mute.toggle', 'voice.deafen.toggle', 'voice.ptt',
+  'voice.panel.toggle', 'voice.chat.toggle', 'voice.noise.toggle', 'voice.volume.up', 'voice.volume.down',
 ]
 export function getBindings(settings: InputSettings): Readonly<Record<string, InputAction>> {
   return { ...DEFAULT_BINDINGS, ...settings.buttonBindings }

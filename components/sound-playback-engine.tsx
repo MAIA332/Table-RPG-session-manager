@@ -84,6 +84,10 @@ export function SoundPlaybackEngine({
   const dragRef = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null)
   const [commandError, setCommandError] = useState("")
   const [commandBusy, setCommandBusy] = useState(false)
+  // Atenuação local de músicas quando outro participante fala na Mesa de Voz.
+  // Não altera o volume persistido do mixer nem afeta efeitos sonoros.
+  const [musicDucking, setMusicDucking] = useState(1)
+  const duckTargetRef = useRef(1)
   // O prop pode não ter sido passado pelo componente pai; acompanhar o portal
   // independentemente evita que o miniplayer fique escondido para sempre.
   const [observedOpen, setObservedOpen] = useState<boolean | null>(null)
@@ -96,6 +100,23 @@ export function SoundPlaybackEngine({
   useEffect(() => { onPlayRef.current = onPlaySound }, [onPlaySound])
   useEffect(() => { targetRef.current = hotkeyTargetUserId }, [hotkeyTargetUserId])
   useEffect(() => { tracksRef.current = new Map(tracks.map(track => [track.id, track])) }, [tracks])
+  useEffect(() => {
+    const onVoice = (event: Event) => {
+      const detail = (event as CustomEvent<{campaignId: string; active: boolean; factor: number}>).detail
+      if (!detail || !campaignId || detail.campaignId !== campaignId) return
+      const factor = Number.isFinite(detail.factor) ? detail.factor : .35
+      duckTargetRef.current = detail.active ? Math.max(.1,Math.min(.9,factor)) : 1
+    }
+    window.addEventListener("rpg:voice-duck", onVoice)
+    // Atualização suave sem tocar no estado do mixer.
+    const interval = window.setInterval(() => {
+      setMusicDucking(current => {
+        const next = current + (duckTargetRef.current - current) * .24
+        return Math.abs(next - duckTargetRef.current) < .007 ? duckTargetRef.current : next
+      })
+    }, 65)
+    return () => {clearInterval(interval);window.removeEventListener("rpg:voice-duck", onVoice);duckTargetRef.current=1}
+  }, [campaignId])
 
   // Visibilidade publicada pelo portal: o miniplayer não depende de outro modal.
   useEffect(() => {
@@ -188,7 +209,7 @@ export function SoundPlaybackEngine({
     for (const id of completedRef.current) if (!next.has(id)) completedRef.current.delete(id)
 
     for (const sound of audible) {
-      const volume = safeVolume(sound.playlist || sound.loop ? musicVolume : effectsVolume)
+      const volume = safeVolume(sound.playlist || sound.loop ? musicVolume * musicDucking : effectsVolume)
       const existing = playingRef.current.get(sound.id)
       if (existing) {
         existing.element.volume = volume
@@ -224,7 +245,7 @@ export function SoundPlaybackEngine({
         void audio.play().catch(error => console.warn("Áudio não pôde ser tocado automaticamente:", error))
       }
     }
-  }, [activeSounds, currentUserId, isGm, musicVolume, effectsVolume, campaignId])
+  }, [activeSounds, currentUserId, isGm, musicVolume, musicDucking, effectsVolume, campaignId])
 
   // Consultar diretamente o elemento já existente não reinicia nem desloca o áudio.
   const audible = activeSounds.filter(sound => isGm || sound.targetUserId == null || sound.targetUserId === currentUserId)
@@ -278,7 +299,7 @@ export function SoundPlaybackEngine({
   }, {enabled: isGm && !soundpadOpen && !!featured, priority: 15})
   const controllerHints = floatingAudioHints(controllerSettings, controllerPage)
 
-  const externalPlayers = <div className="fixed bottom-4 left-4 z-[12000] flex max-h-[75vh] flex-col gap-2 overflow-y-auto">{audible.filter(sound => musicSource(sound.url)).map(sound => <ExternalMusicPlayer key={sound.id} sound={sound} volume={sound.loop || sound.playlist ? musicVolume : effectsVolume} onEnded={latest => {
+  const externalPlayers = <div className="fixed bottom-4 left-4 z-[12000] flex max-h-[75vh] flex-col gap-2 overflow-y-auto">{audible.filter(sound => musicSource(sound.url)).map(sound => <ExternalMusicPlayer key={sound.id} sound={sound} volume={sound.loop || sound.playlist ? musicVolume * musicDucking : effectsVolume} onEnded={latest => {
     if (latest.playlist && !isGm) return
     if (onEndedRef.current) onEndedRef.current(latest)
     else if (campaignId) void postSound(campaignId, "ended", latest.id).catch(error => console.warn(error))

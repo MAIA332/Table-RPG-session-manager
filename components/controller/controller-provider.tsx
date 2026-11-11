@@ -8,6 +8,7 @@ import {
 } from '@/lib/input/actions'
 import { ACTION_LABELS } from '@/lib/input/labels'
 import { dispatchInputAction, registerInputHandler } from '@/lib/input/dispatcher'
+import { dispatchInputHoldAction } from '@/lib/input/hold'
 import { controllerFocus, clearControllerFocus, controllerSelectOpen, closeControllerSelect } from '@/lib/input/focus'
 import { scrollControllerContent } from '@/lib/input/scroll'
 import { isEditableKeyboardTarget } from '@/lib/input/keyboard-target'
@@ -174,6 +175,9 @@ export function ControllerProvider({children}: {children:ReactNode}) {
 
   useEffect(() => {
     let frame = 0, idleTimer = 0, previous = new Set<GamepadButtonName>(), lastIndex = -1
+    let pttDown = false
+    let pttArmed = false // Após perda de foco/controle, exige soltar antes de falar novamente.
+    const releasePtt = () => { if (pttDown) {pttDown = false; dispatchInputHoldAction('voice.ptt', false)} }
     let lastNativeAt = 0, wasConnected = false, lastName = '', lastButtonCount = -1, lastScrollAt = 0
     const times = new Map<string,number>()
     const sounds = createControllerSounds()
@@ -200,7 +204,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       else idleTimer = window.setTimeout(tick, hasPad ? 110 : 450)
     }
     const tick = () => {
-      if (document.visibilityState === 'hidden') {previous.clear(); times.clear(); schedule(false,wasConnected);return}
+      if (document.visibilityState === 'hidden' || !document.hasFocus()) {pttArmed=false;releasePtt();previous.clear(); times.clear(); schedule(false,wasConnected);return}
       const pads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : []
       const pad = (lastIndex >= 0 ? pads[lastIndex] : undefined) || [...pads].find(Boolean)
       if (!!pad !== wasConnected) {
@@ -215,6 +219,13 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       }
       const buttons=gamepadButtons(pad,settingsRef.current.deadzone)
       if(buttons.has('LT')!==previous.has('LT'))setLtHeld(buttons.has('LT'))
+      const physicallyPtt = [...buttons].some(button =>
+        actionForButton(button, buttons, getBindings(settingsRef.current)) === 'voice.ptt')
+      if (settingsOpenRef.current) pttArmed = false
+      if (!physicallyPtt) pttArmed = true
+      const wantPtt = pttArmed && !settingsOpenRef.current &&
+        settingsRef.current.preference !== 'desktop' && physicallyPtt
+      if (wantPtt !== pttDown) {pttDown = wantPtt; dispatchInputHoldAction('voice.ptt', wantPtt)}
       const newlyPressed=[...buttons].filter(button=>!previous.has(button))
       const pressedNew=newlyPressed.length>0
       if(pressedNew&&settingsRef.current.preference==='auto')setLastInput('controller')
@@ -313,6 +324,9 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       lastNativeAt=performance.now()
       if(settingsRef.current.preference==='auto')setLastInput('controller')
       if(message.action==='LT'){setLtHeld(message.held===true);return}
+      if(message.action==='voice.ptt' && typeof message.held === 'boolean') {
+        pttDown=message.held; dispatchInputHoldAction('voice.ptt', message.held); return
+      }
       const allowed:readonly string[] = [...SETTABLE_COMMANDS,'ui.confirm','ui.back','ui.up','ui.down',
         'ui.left','ui.right','ui.previous','ui.next','skill.slot1','skill.slot2','skill.slot3',
         'skill.slot4','skill.nextPage','map.panUp','map.panDown','map.panLeft','map.panRight',
@@ -322,7 +336,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
     }
     const native=(window as typeof window & {chrome?: {webview?: {addEventListener?: (type:string,listener:(event:{data?:unknown})=>void)=>void;removeEventListener?: (type:string,listener:(event:{data?:unknown})=>void)=>void}}}).chrome?.webview
     native?.addEventListener?.('message',bridge)
-    const reset=()=>{previous.clear();times.clear();setLtHeld(false)}
+    const reset=()=>{pttArmed=false;releasePtt();previous.clear();times.clear();setLtHeld(false)}
     const onDevice=()=>{lastIndex=-1;reset();window.cancelAnimationFrame(frame);window.clearTimeout(idleTimer);tick()}
     const onPointer=(event:PointerEvent)=>{recordControllerPointerOrigin(event.target);lastControllerActionAt=-Infinity;if(settingsRef.current.preference==='auto')setLastInput('desktop')}
     const onKey=(event:KeyboardEvent)=>{
@@ -353,6 +367,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
           sounds.play('focus')
       }
     }
+    window.addEventListener('blur',reset)
     window.addEventListener('gamepadconnected',onDevice)
     window.addEventListener('gamepaddisconnected',onDevice)
     window.addEventListener('pointerdown',onPointer,true)
@@ -361,8 +376,9 @@ export function ControllerProvider({children}: {children:ReactNode}) {
     document.addEventListener('visibilitychange',reset)
     tick()
     return()=>{
+      releasePtt()
       window.cancelAnimationFrame(frame);window.clearTimeout(idleTimer)
-      window.removeEventListener('gamepadconnected',onDevice);window.removeEventListener('gamepaddisconnected',onDevice)
+      window.removeEventListener('blur',reset);window.removeEventListener('gamepadconnected',onDevice);window.removeEventListener('gamepaddisconnected',onDevice)
       window.removeEventListener('pointerdown',onPointer,true);window.removeEventListener('keydown',onKey,true)
       document.removeEventListener('focusin',markFocus);document.removeEventListener('visibilitychange',reset)
       native?.removeEventListener?.('message',bridge)

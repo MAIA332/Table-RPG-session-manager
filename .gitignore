@@ -19,3 +19,7 @@ node_modules
 vtt-fabula-ultima.zip
 vtt-fabula-ultima.zip/
 *.zip
+
+deploy/livekit/livekit.yaml
+deploy/livekit/.env
+deploy/livekit/APP-LIVEKIT-ENV.txt

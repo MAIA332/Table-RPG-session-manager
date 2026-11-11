@@ -2,14 +2,17 @@
   "name": "my-project",
   "version": "0.1.0",
   "private": true,
-   "scripts": {
+  "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "db:init": "node scripts/init-mongodb.mjs",
     "prestart": "npm run db:init",
-    "db:migrate": "node scripts/migrate-json-to-mongodb.mjs"
+    "db:migrate": "node scripts/migrate-json-to-mongodb.mjs",
+    "predev": "node scripts/sync-voice-dsp.mjs",
+    "prebuild": "node scripts/sync-voice-dsp.mjs",
+    "test:voice-quality": "node --test tests/voice-quality.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -25,7 +28,10 @@
     "shadcn": "^4.8.0",
     "swr": "^2.4.2",
     "tailwind-merge": "^3.3.1",
-    "tw-animate-css": "^1.4.0"
+    "tw-animate-css": "^1.4.0",
+    "livekit-client": "2.23.0",
+    "livekit-server-sdk": "2.19.2",
+    "@sapphi-red/web-noise-suppressor": "0.4.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

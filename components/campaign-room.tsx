@@ -1,4 +1,6 @@
 "use client"
+import { VoiceDock } from "./voice/voice-dock"
+import "./voice/voice.css"
 import { controllerAlert, controllerConfirm } from '@/lib/input/dialogs'
 import {
   assertInventoryChange,
@@ -2115,6 +2117,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const seenCombatRolls = useRef(new Set<string>())
   const handleEvent = useCallback(
     (event: any) => {
+      if (event.type === "voice:chat-updated") {
+        window.dispatchEvent(new Event("otms.voice.chat-update"))
+        return
+      }
       if (event.type === "player-attack-preview:updated") {
         void refreshPlayerAttackPreviews().catch(console.error)
         return
@@ -5362,6 +5368,13 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         <div className="flex flex-wrap items-center justify-end gap-2">
           <div data-controller-target="player.notes"><PersonalNotes campaignId={data.campaign.id} /></div>
           <div data-controller-target="player.theme"><ThemeSwitcher /></div>
+          <VoiceDock
+            campaignId={data.campaign.id}
+            userId={data.me.id}
+            userName={data.me.name}
+            role={isGm ? "gm" : "player"}
+            members={data.members}
+          />
           <div className="relative" ref={volumeMixerRef}>
             <Button
               variant="outline"
