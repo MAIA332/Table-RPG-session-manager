@@ -33,6 +33,8 @@ export const ACTION_LABELS: Record<string, string> = {
   'voice.panel.toggle': 'Voz: abrir/fechar painel',
   'voice.chat.toggle': 'Voz: abrir chat',
   'voice.noise.toggle': 'Voz: supressão de ruído',
+  'voice.studio.toggle': 'Voz: masterização de narrador',
+  'voice.audio.recover': 'Voz: restaurar reprodução',
   'voice.volume.up': 'Voz: aumentar volume', 'voice.volume.down': 'Voz: reduzir volume',
   'qte.react': 'Reação rápida', 'skill.ability1': 'Habilidade 1', 'skill.ability2': 'Habilidade 2',
   'skill.ability3': 'Habilidade 3', 'skill.ability4': 'Habilidade 4',

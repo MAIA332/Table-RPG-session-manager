@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ClipboardEvent as ReactClipboardEvent } from "react"
 import { FileUp, ImageIcon, LoaderCircle, Send, Download, MessageSquareText } from "lucide-react"
 import { VOICE_FILE_MAX_BYTES, type VoiceChatMessage, type VoiceChatPage } from "@/lib/voice/types"
 
@@ -10,9 +10,11 @@ const urlFor = (campaignId: string, id: string) =>
 
 /** Redimensiona imagens grandes antes do upload. A compressão gzip/base64 final é no servidor. */
 async function prepareFile(file: File): Promise<{ name: string; mime: string; dataBase64: string }> {
-  if (file.size > VOICE_FILE_MAX_BYTES) throw new Error("O arquivo original deve ter até 2 MiB.")
   let blob: Blob = file
   let mime = file.type || "application/octet-stream"
+  if (file.size > VOICE_FILE_MAX_BYTES && !["image/jpeg", "image/png", "image/webp"].includes(mime)) {
+    throw new Error("O arquivo deve ter até 2 MiB; imagens podem ser reduzidas antes do envio.")
+  }
   let name = file.name || "arquivo"
   if (["image/jpeg", "image/png", "image/webp"].includes(mime)) {
     try {
@@ -24,10 +26,24 @@ async function prepareFile(file: File): Promise<{ name: string; mime: string; da
         canvas.height = Math.max(1, Math.round(bitmap.height * factor))
         canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
         const optimized = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.78))
-        if (optimized && optimized.size < file.size) {
+        if (optimized && optimized.size < blob.size) {
           blob = optimized
           mime = "image/webp"
           name = name.replace(/\.[^.]+$/, "") + ".webp"
+        }
+        // Capturas de tela maiores que 2 MiB continuam sendo aceitas se a
+        // redução preservar uma versão compatível com o limite do servidor.
+        if (blob.size > VOICE_FILE_MAX_BYTES) {
+          const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height))
+          canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+          canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+          canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+          const compact = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/webp", 0.62))
+          if (compact && compact.size < blob.size) {
+            blob = compact
+            mime = "image/webp"
+            name = name.replace(/\.[^.]+$/, "") + ".webp"
+          }
         }
       } finally { bitmap.close() }
     } catch { /* Envia a imagem original se o decoder/canvas não estiver disponível. */ }
@@ -123,6 +139,26 @@ export function VoiceChat({ campaignId, active, meId, canModerate, onUnreadChang
     if (active) chatBottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
   }, [messages.length, active])
 
+  const pasteImage = (event: ReactClipboardEvent<HTMLTextAreaElement>) => {
+    // Preserve ordinary Ctrl+V text, URLs and keyboard shortcuts.
+    const files = [
+      ...Array.from(event.clipboardData.items).filter(item => item.kind === "file" && item.type.startsWith("image/")).map(item => item.getAsFile()).filter((file): file is File => !!file),
+      ...Array.from(event.clipboardData.files).filter(file => file.type.startsWith("image/")),
+    ]
+    const image = files[0]
+    if (!image) return
+    event.preventDefault()
+    if (sending) return
+    const supported = ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(image.type)
+    if (!supported) { setError("Cole uma imagem PNG, JPG, WebP ou GIF."); return }
+    if (image.size > 30 * 1024 * 1024) { setError("Imagem muito grande para processar (máximo 30 MiB antes da redução)."); return }
+    const suffix = ({"image/jpeg":"jpg", "image/png":"png", "image/webp":"webp", "image/gif":"gif"} as Record<string,string>)[image.type]
+    const name = image.name && !/^image\.(?:png|jpe?g|webp|gif)$/i.test(image.name)
+      ? image.name : `imagem-colada-${new Date().toISOString().replace(/[:.]/g,"-")}.${suffix}`
+    setAttachment(new File([image], name, {type: image.type, lastModified: Date.now()}))
+    setError("")
+  }
+
   const send = async (event: FormEvent) => {
     event.preventDefault()
     if (sending || (!text.trim() && !attachment)) return
@@ -194,21 +230,23 @@ export function VoiceChat({ campaignId, active, meId, canModerate, onUnreadChang
         <button className="otms-voice-link shrink-0" type="button" onClick={() => setAttachment(null)}>Remover</button>
       </div>}
       <label className="sr-only" htmlFor="otms-voice-message">Mensagem da chamada</label>
-      <textarea id="otms-voice-message" value={text} onChange={e => setText(e.target.value.slice(0, 2000))}
+      <textarea id="otms-voice-message" value={text} onChange={e => setText(e.target.value.slice(0, 2000))} onPaste={pasteImage}
         onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.currentTarget.form?.requestSubmit() } }}
         className="otms-voice-field w-full resize-none px-2.5 py-2 text-xs" rows={2} maxLength={2000}
-        placeholder="Mensagem para a mesa... (Enter para enviar)" />
+        placeholder="Mensagem para a mesa... (Ctrl+V cola imagens · Enter envia)" />
       <div className="mt-2 flex items-center gap-2">
         <label className="otms-voice-action cursor-pointer" title="Anexar imagem ou arquivo até 2 MiB">
           <FileUp className="size-4"/><ImageIcon className="size-3"/>
           <input className="sr-only" type="file" onChange={event => {
             const file = event.target.files?.[0] || null
-            if (file && file.size > VOICE_FILE_MAX_BYTES) setError("Limite de 2 MiB por arquivo.")
-            else { setAttachment(file); setError("") }
+            const resizable = file && ["image/png", "image/jpeg", "image/webp"].includes(file.type)
+            if (file && file.size > VOICE_FILE_MAX_BYTES && !(resizable && file.size <= 30 * 1024 * 1024)) {
+              setError("Arquivo maior que o limite. Imagens de até 30 MiB podem ser reduzidas antes do envio.")
+            } else { setAttachment(file); setError("") }
             event.target.value = ""
           }} />
         </label>
-        <span className="flex-1 text-[10px] text-muted-foreground">Até 2 MiB por arquivo</span>
+        <span className="flex-1 text-[10px] text-muted-foreground">Ctrl+V para imagens · até 2 MiB após otimização</span>
         <button className="otms-voice-primary inline-flex items-center gap-1.5 px-3 py-2 text-xs" type="submit" disabled={sending || (!text.trim() && !attachment)}>
           {sending ? <LoaderCircle className="size-3.5 animate-spin"/> : <Send className="size-3.5"/>} Enviar
         </button>

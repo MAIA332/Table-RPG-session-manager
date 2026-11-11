@@ -297,6 +297,21 @@ export function ControllerProvider({children}: {children:ReactNode}) {
           actions.push(nav)
         }
       }
+      // Quando a Mesa de Voz está aberta, os ombros mudam a aba sem exigir A,
+      // independente dos atalhos globais; LT mantém seu modificador normal.
+      if (!soundpadFocused && !settingsOpenRef.current && !buttons.has('LT') &&
+          document.querySelector('[data-voice-tab-navigation="active"]')) {
+        for (const [button, nav] of [['LB', 'ui.previous'], ['RB', 'ui.next']] as const) {
+          if (!buttons.has(button)) continue
+          const mapped = actionForButton(button, buttons, bindings)
+          if (mapped) {
+            let index = actions.indexOf(mapped)
+            while (index >= 0) { actions.splice(index, 1); index = actions.indexOf(mapped) }
+          }
+          // Uma aba por pressão; segurar LB/RB não executa um atalho global.
+          if (newlyPressed.includes(button)) actions.push(nav)
+        }
+      }
       // LB/RB mudam a aba do próprio Start, mesmo se mapeados para Bestiário/Galeria fora dele.
       if(settingsOpenRef.current&&!buttons.has('LT')){
         if(buttons.has('LB')&&!previous.has('LB'))actions.push('ui.previous')

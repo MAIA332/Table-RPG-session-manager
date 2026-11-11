@@ -19,7 +19,7 @@ export type InputAction =
   | 'audio.play' | 'audio.pause' | 'audio.toggle' | 'audio.stop' | 'audio.previous' | 'audio.next'
   | 'voice.join' | 'voice.leave' | 'voice.mute.toggle' | 'voice.deafen.toggle'
   | 'voice.ptt' | 'voice.panel.toggle' | 'voice.chat.toggle' | 'voice.noise.toggle'
-  | 'voice.volume.up' | 'voice.volume.down'
+  | 'voice.volume.up' | 'voice.volume.down' | 'voice.studio.toggle' | 'voice.audio.recover'
   | 'qte.react'
 
 export type GamepadButtonName = 'A' | 'B' | 'X' | 'Y' | 'LB' | 'RB' | 'LT' | 'RT' |
@@ -63,7 +63,7 @@ export const SETTABLE_COMMANDS: readonly InputAction[] = [
   'player.hand', 'player.notes', 'player.mixer', 'player.gallery', 'player.maps',
   'audio.play', 'audio.pause', 'audio.toggle', 'audio.stop', 'audio.previous', 'audio.next',
   'voice.join', 'voice.leave', 'voice.mute.toggle', 'voice.deafen.toggle', 'voice.ptt',
-  'voice.panel.toggle', 'voice.chat.toggle', 'voice.noise.toggle', 'voice.volume.up', 'voice.volume.down',
+  'voice.panel.toggle', 'voice.chat.toggle', 'voice.noise.toggle', 'voice.volume.up', 'voice.volume.down', 'voice.studio.toggle', 'voice.audio.recover',
   'character.sheet', 'character.inventory', 'character.restore', 'map.open', 'world.lore',
   'special.manager', 'character.training', 'character.affinities', 'character.bonds', 'character.store', 'character.mannequin', 'player.theme',
   'combat.focus', 'gm.panel', 'gm.soundpad', 'gm.bestiary', 'gallery.open', 'ui.settings',
@@ -82,7 +82,7 @@ export const BASE_COMMANDS: readonly InputAction[] = [
   'player.hand', 'player.notes', 'player.mixer', 'player.gallery', 'player.maps',
   'audio.play', 'audio.pause', 'audio.toggle', 'audio.stop', 'audio.previous', 'audio.next',
   'voice.join', 'voice.leave', 'voice.mute.toggle', 'voice.deafen.toggle', 'voice.ptt',
-  'voice.panel.toggle', 'voice.chat.toggle', 'voice.noise.toggle', 'voice.volume.up', 'voice.volume.down',
+  'voice.panel.toggle', 'voice.chat.toggle', 'voice.noise.toggle', 'voice.volume.up', 'voice.volume.down', 'voice.studio.toggle', 'voice.audio.recover',
 ]
 export function getBindings(settings: InputSettings): Readonly<Record<string, InputAction>> {
   return { ...DEFAULT_BINDINGS, ...settings.buttonBindings }

@@ -141,6 +141,7 @@ export function Soundpad({
   const [newPlaylistName, setNewPlaylistName] = useState("")
   const [newSoundName, setNewSoundName] = useState("")
   const [newSoundUrl, setNewSoundUrl] = useState("")
+  const [newSoundRole, setNewSoundRole] = useState<"music" | "ambience" | "sfx">("music")
   const [importingMusic, setImportingMusic] = useState(false)
   const [importNotice, setImportNotice] = useState("")
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null)
@@ -518,10 +519,14 @@ export function Soundpad({
     } catch { setError("Informe uma URL HTTP(S) válida para o áudio."); return }
     onCustomTracksChange?.([...customTracks, {
       id: createId("snd_custom"), name: newSoundName.trim(), url: newSoundUrl.trim(),
-      loopable: true, isCustom: true,
+      loopable: true, isCustom: true, audioRole: newSoundRole,
     }])
     setNewSoundName("")
     setNewSoundUrl("")
+  }
+
+  function changeCustomSoundRole(trackId: string, audioRole: "music" | "ambience" | "sfx") {
+    onCustomTracksChange?.(customTracks.map(track => track.id === trackId ? { ...track, audioRole } : track))
   }
 
   async function removeCustomSound(trackId: string) {
@@ -984,7 +989,20 @@ export function Soundpad({
                           <div className="flex min-w-0 items-center gap-3">
                             <span className="w-4 shrink-0 text-right font-mono text-[11px] text-muted-foreground/70">{playing ? <Activity className="size-3.5 text-primary" /> : index + 1}</span>
                             <div className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-primary/15 bg-gradient-to-br from-primary/25 via-card to-background text-primary shadow-sm">{track.isCustom ? <Link2 className="size-[18px]" /> : <Disc3 className="size-[18px]" />}</div>
-                            <div className="min-w-0"><p className={`truncate text-xs font-semibold ${playing ? "text-primary" : "text-foreground"}`} title={track.name}>{track.name}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{track.isCustom ? "Personalizado" : "Biblioteca base"}</p></div>
+                            <div className="min-w-0"><p className={`truncate text-xs font-semibold ${playing ? "text-primary" : "text-foreground"}`} title={track.name}>{track.name}</p>{track.isCustom ? (
+                              <select
+                                aria-label={`Tipo de áudio de ${track.name}`}
+                                title="Define se o som diminui de volume quando alguém fala, independente do provedor (incluindo Zipline)"
+                                value={track.audioRole ?? "music"}
+                                onChange={event => changeCustomSoundRole(track.id, event.target.value as "music" | "ambience" | "sfx")}
+                                onClick={event => event.stopPropagation()}
+                                className="soundpad-select mt-1 max-w-full rounded-md border border-border/40 px-1.5 py-0.5 text-[10px] outline-none focus:border-primary/60"
+                              >
+                                <option value="music">Música (atenuar)</option>
+                                <option value="ambience">Ambiência (atenuar)</option>
+                                <option value="sfx">Efeito (volume fixo)</option>
+                              </select>
+                            ) : <p className="mt-0.5 text-[10px] text-muted-foreground">Biblioteca base</p>}</div>
                           </div>
                           <select aria-label={`Mover ${track.name} para pasta`} disabled={!loaded} value={folderForTrack(track.id)} onChange={event => void moveTrack(track.id, event.target.value)} className="soundpad-select min-w-0 max-w-full cursor-pointer rounded-lg border border-border/50 px-2 py-2 text-[11px] outline-none focus:border-primary/50">
                             <option value="unfiled">Sem pasta</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
@@ -1064,10 +1082,20 @@ export function Soundpad({
               <div className="mb-3 flex items-center gap-2"><Plus className="size-4 text-primary" /><h4 className="text-xs font-extrabold">Adicionar áudio</h4></div>
               <div className="space-y-2.5">
                 <input aria-label="Nome do novo áudio" value={newSoundName} onChange={event => setNewSoundName(event.target.value)} placeholder="Nome do áudio" className={inputClass} />
-                <input aria-label="URL do novo áudio" value={newSoundUrl} onChange={event => setNewSoundUrl(event.target.value)} placeholder="Link do YouTube, Spotify ou MP3" className={inputClass} />
+                <input aria-label="URL do novo áudio" value={newSoundUrl} onChange={event => setNewSoundUrl(event.target.value)} placeholder="URL de áudio (Zipline, MP3, YouTube ou Spotify)" className={inputClass} />
+                {!musicSource(newSoundUrl.trim()) && (
+                  <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    <span>Tipo do áudio (independente da hospedagem)</span>
+                    <select aria-label="Tipo do novo áudio" className="soundpad-select w-full rounded-lg border border-border/60 px-3 py-2 text-sm" value={newSoundRole} onChange={event => setNewSoundRole(event.target.value as "music" | "ambience" | "sfx")}>
+                      <option value="music">Música — diminuir quando alguém falar</option>
+                      <option value="ambience">Ambiência — diminuir quando alguém falar</option>
+                      <option value="sfx">Efeito sonoro — manter volume</option>
+                    </select>
+                  </label>
+                )}
                 <button type="button" onClick={() => void addCustomSound()} disabled={importingMusic || !newSoundUrl.trim()} className={`${buttonClass} w-full`}><Save className="size-4" /> {importingMusic ? "Importando..." : musicSource(newSoundUrl.trim()) ? "Importar automaticamente" : "Salvar áudio"}</button>
                 {importNotice && <p role="status" className="text-xs text-primary">{importNotice}</p>}
-                <p className="text-[11px] text-muted-foreground">YouTube e Spotify usam os players oficiais. O Spotify pode solicitar login e limitar a reprodução conforme a conta.</p>
+                <p className="text-[11px] text-muted-foreground">Links Zipline e arquivos diretos usam o reprodutor local. Classifique cada áudio para que apenas músicas e ambiências sejam atenuadas durante a fala. YouTube e Spotify usam players oficiais.</p>
               </div>
             </div>
           </>}

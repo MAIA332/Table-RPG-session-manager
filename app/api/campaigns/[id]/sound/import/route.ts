@@ -21,7 +21,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!source) return NextResponse.json({ error: "Cole um link HTTPS de vídeo/playlist do YouTube ou faixa/álbum/playlist do Spotify." }, { status: 400 })
   try {
     const tracks: Track[] = []
-    const track = (name: string, url: string, key: string): Track => ({ id: `import_${source.provider}_${key}`, name: name.slice(0, 200), url, loopable: true, isCustom: true })
+    const track = (name: string, url: string, key: string): Track => ({ id: `import_${source.provider}_${key}`, name: name.slice(0, 200), url, loopable: true, isCustom: true, audioRole: "music" })
     if (source.provider === "youtube") {
       if (source.kind === "playlist" && process.env.YOUTUBE_API_KEY) {
         let page = ""

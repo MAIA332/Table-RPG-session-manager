@@ -6,6 +6,7 @@ import { SOUND_LIBRARY, normalizeSoundHotkeys, type ActiveSound, type SoundHotke
 import { readPendingHotkeyRecord, clearPendingPreferenceIfMatches } from "@/lib/soundpad-local"
 import { createClientId } from "@/lib/client-id"
 import { musicSource } from "@/lib/music-sources"
+import { isMusicForDucking } from "@/lib/soundpad-ducking"
 import { ExternalMusicPlayer } from "./external-music-player"
 import { useController } from '@/components/controller/controller-provider'
 import { useControllerActions } from '@/lib/input/use-controller-actions'
@@ -105,13 +106,13 @@ export function SoundPlaybackEngine({
       const detail = (event as CustomEvent<{campaignId: string; active: boolean; factor: number}>).detail
       if (!detail || !campaignId || detail.campaignId !== campaignId) return
       const factor = Number.isFinite(detail.factor) ? detail.factor : .35
-      duckTargetRef.current = detail.active ? Math.max(.1,Math.min(.9,factor)) : 1
+      duckTargetRef.current = detail.active ? safeVolume(factor) : 1
     }
     window.addEventListener("rpg:voice-duck", onVoice)
     // Atualização suave sem tocar no estado do mixer.
     const interval = window.setInterval(() => {
       setMusicDucking(current => {
-        const next = current + (duckTargetRef.current - current) * .24
+        const next = current + (duckTargetRef.current - current) * (duckTargetRef.current < current ? .58 : .18)
         return Math.abs(next - duckTargetRef.current) < .007 ? duckTargetRef.current : next
       })
     }, 65)
@@ -209,7 +210,9 @@ export function SoundPlaybackEngine({
     for (const id of completedRef.current) if (!next.has(id)) completedRef.current.delete(id)
 
     for (const sound of audible) {
-      const volume = safeVolume(sound.playlist || sound.loop ? musicVolume * musicDucking : effectsVolume)
+      const track = tracksRef.current.get(sound.trackId)
+      const volumeFor = (duration?: number) => safeVolume(isMusicForDucking(sound, track, duration) ? musicVolume * musicDucking : effectsVolume)
+      const volume = volumeFor(playingRef.current.get(sound.id)?.element.duration)
       const existing = playingRef.current.get(sound.id)
       if (existing) {
         existing.element.volume = volume
@@ -225,6 +228,7 @@ export function SoundPlaybackEngine({
       audio.preload = "auto"
       audio.loop = Boolean(sound.loop && !sound.playlist)
       audio.volume = volume
+      audio.onloadedmetadata = () => { audio.volume = volumeFor(audio.duration) }
       audio.onended = () => {
         const current = playingRef.current.get(sound.id)
         if (!current || current.element !== audio || audio.loop) return
@@ -245,7 +249,7 @@ export function SoundPlaybackEngine({
         void audio.play().catch(error => console.warn("Áudio não pôde ser tocado automaticamente:", error))
       }
     }
-  }, [activeSounds, currentUserId, isGm, musicVolume, musicDucking, effectsVolume, campaignId])
+  }, [activeSounds, currentUserId, isGm, musicVolume, musicDucking, effectsVolume, campaignId, tracks])
 
   // Consultar diretamente o elemento já existente não reinicia nem desloca o áudio.
   const audible = activeSounds.filter(sound => isGm || sound.targetUserId == null || sound.targetUserId === currentUserId)
@@ -299,7 +303,7 @@ export function SoundPlaybackEngine({
   }, {enabled: isGm && !soundpadOpen && !!featured, priority: 15})
   const controllerHints = floatingAudioHints(controllerSettings, controllerPage)
 
-  const externalPlayers = <div className="fixed bottom-4 left-4 z-[12000] flex max-h-[75vh] flex-col gap-2 overflow-y-auto">{audible.filter(sound => musicSource(sound.url)).map(sound => <ExternalMusicPlayer key={sound.id} sound={sound} volume={sound.loop || sound.playlist ? musicVolume * musicDucking : effectsVolume} onEnded={latest => {
+  const externalPlayers = <div className="fixed bottom-4 left-4 z-[12000] flex max-h-[75vh] flex-col gap-2 overflow-y-auto">{audible.filter(sound => musicSource(sound.url)).map(sound => <ExternalMusicPlayer key={sound.id} sound={sound} volume={musicVolume * musicDucking} onEnded={latest => {
     if (latest.playlist && !isGm) return
     if (onEndedRef.current) onEndedRef.current(latest)
     else if (campaignId) void postSound(campaignId, "ended", latest.id).catch(error => console.warn(error))

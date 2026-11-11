@@ -95,8 +95,8 @@ export function VoiceAudioSettings({
       if (!mountedRef.current) return
       context = new AudioContext({sampleRate: 48000})
       await context.resume()
-      pipeline = await VoicePipeline.create(context, stream.getAudioTracks()[0], compareBoth ? "rnnoise" : profile.noiseMode, profile.inputGainDb)
-      if (compareBoth) comparisonPipeline = await VoicePipeline.create(context, stream.getAudioTracks()[0], "gtcrn", profile.inputGainDb)
+      pipeline = await VoicePipeline.create(context, stream.getAudioTracks()[0], compareBoth ? "rnnoise" : profile.noiseMode, profile.inputGainDb, profile.studio)
+      if (compareBoth) comparisonPipeline = await VoicePipeline.create(context, stream.getAudioTracks()[0], "gtcrn", profile.inputGainDb, profile.studio)
       raw = blobRecorder(stream)
       cleaned = blobRecorder(new MediaStream([pipeline.output]))
       if (comparisonPipeline) gtcrn = blobRecorder(new MediaStream([comparisonPipeline.output]))
@@ -147,7 +147,7 @@ export function VoiceAudioSettings({
   }
   return <div className="space-y-4">
     <section className="otms-voice-setting-card space-y-2">
-      <div className="flex items-center justify-between gap-2"><h4 className="font-semibold">Qualidade do microfone</h4><span className="text-[10px] text-amber-300">Opus · mono · 48 kbps</span></div>
+      <div className="flex items-center justify-between gap-2"><h4 className="font-semibold">Qualidade do microfone</h4><span className="text-[10px] text-amber-300">Opus · mono · até 64 kbps</span></div>
       <label className="block">Dispositivo de entrada
         <select className="otms-voice-field mt-1 w-full px-2 py-2" value={deviceId} onChange={e => changeDevice(e.target.value)}>
           <option value="">Microfone padrão</option>
@@ -169,6 +169,7 @@ export function VoiceAudioSettings({
 
     <section className="otms-voice-setting-card space-y-2">
       <h4 className="font-semibold">Supressão de ruído</h4>
+      <p className="text-[10px] text-emerald-300">GTCRN selecionado inicialmente · com fallback automático RNNoise → Nativa</p>
       <div className="grid grid-cols-2 gap-1.5">
         {([
           ["off", "Natural"], ["native", "Nativa"],
@@ -177,8 +178,12 @@ export function VoiceAudioSettings({
           className={`otms-voice-profile-btn ${profile.noiseMode===key?"otms-voice-profile-active":""}`}
           onClick={()=>updateProfile({noiseMode:key})}>{name}</button>)}
       </div>
-      <p className="text-[10px] text-muted-foreground">Comece pela Nativa para conferir estabilidade. RNNoise requer os arquivos WASM instalados localmente; GTCRN é experimental e pode causar cortes em CPUs fracas. Se o modelo falhar, usamos Nativa e informamos o motivo abaixo.</p>
+      <p className="text-[10px] text-muted-foreground">GTCRN roda localmente no navegador. Se sobrecarregar o dispositivo ou não puder ser carregado, alternamos para RNNoise ou Nativa. O estado efetivo aparece abaixo; o modelo selecionado nem sempre é o efetivamente aplicado.</p>
       {dspStatus && <p className="text-[10px] text-amber-300 break-words" role="status">{dspStatus}</p>}
+      <label className="flex items-center justify-between gap-2"><span>Masterização suave para narração (voz de podcast)</span>
+        <input type="checkbox" className="size-4 accent-amber-500" checked={profile.studio} onChange={e => updateProfile({studio:e.target.checked})}/>
+      </label>
+      <p className="text-[10px] text-muted-foreground">Filtro de graves, presença vocal e compressão leve. Não é uma normalização agressiva; mantém a expressividade do narrador. Não melhora ruídos de um microfone defeituoso nem recupera pacotes perdidos.</p>
       <label className="flex items-center justify-between gap-2"><span>Cancelamento de eco</span><input type="checkbox" className="size-4 accent-amber-500" checked={profile.echo} onChange={e=>updateProfile({echo:e.target.checked})}/></label>
       <label className="flex items-center justify-between gap-2"><span>Ganho automático do navegador</span><input type="checkbox" className="size-4 accent-amber-500" checked={profile.gain} onChange={e=>updateProfile({gain:e.target.checked})}/></label>
       <p className="text-[10px] text-muted-foreground">O ganho automático é controlado pelo navegador e pode ser ignorado pelo dispositivo; o slider de dB acima é independente e aplicado no processamento digital.</p>
@@ -238,10 +243,10 @@ export function VoiceAudioSettings({
         <input type="checkbox" className="size-4 accent-amber-500" checked={duckMusic} onChange={e=>updateDuck({duckMusic:e.target.checked})}/>
       </label>
       <label className="block">Volume da música durante a fala: {Math.round(duckDepth*100)}%
-        <input aria-label="Volume da música durante a fala" className="mt-2 w-full accent-amber-500" type="range" min="10" max="90" step="5" value={Math.round(duckDepth*100)} disabled={!duckMusic}
+        <input aria-label="Volume da música durante a fala" className="mt-2 w-full accent-amber-500" type="range" min="0" max="100" step="5" value={Math.round(duckDepth*100)} disabled={!duckMusic}
           onChange={e=>updateDuck({duckDepth:Number(e.target.value)/100})}/>
       </label>
-      <p className="text-[10px] text-muted-foreground">Ajusta apenas a música/playlist local do Soundpad; os efeitos, a voz e o áudio dos outros jogadores não mudam. Players externos podem limitar o controle.</p>
+      <p className="text-[10px] text-muted-foreground">0% praticamente silencia as músicas enquanto alguém fala; 100% mantém o volume original. Atua localmente nas músicas e faixas de ambientação do Soundpad. YouTube permite ajuste; o player incorporado do Spotify não oferece controle de volume por esta API.</p>
     </section>
   </div>
 }

@@ -5,6 +5,8 @@ export interface Track {
   url: string
   loopable: boolean
   isCustom?: boolean
+  /** Classificação explícita, independente da URL (incluindo arquivos no Zipline). */
+  audioRole?: "music" | "ambience" | "sfx"
 }
 
 export const SOUND_LIBRARY: Track[] = [

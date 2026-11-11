@@ -7,11 +7,12 @@ export type VoiceAudioProfile = {
   echo: boolean
   gain: boolean
   inputGainDb: number
+  studio: boolean
 }
 
 export const VOICE_DSP_PATH = "/voice-dsp"
 export const VOICE_PROFILE_DEFAULTS: VoiceAudioProfile = {
-  noiseMode: "native", echo: true, gain: false, inputGainDb: 0,
+  noiseMode: "gtcrn", echo: true, gain: false, inputGainDb: 0, studio: true,
 }
 
 export const isAdvancedNoise = (mode: VoiceNoiseMode) => mode === "rnnoise" || mode === "gtcrn"
@@ -94,6 +95,10 @@ async function neuralNode(context: AudioContext, mode: "rnnoise" | "gtcrn"): Pro
   return new GtcrnWorkletNode(context, { maxChannels: 1, wasmBinary })
 }
 
+/** Narrator chain: conservative tonal shaping after denoising, not a broadcast loudness maximizer.
+ * 70 Hz HPF removes low-frequency rumble; subtle warmth/presence; a single gentle
+ * compressor avoids breath pumping and preserves speech dynamics.
+ */
 export class VoicePipeline {
   readonly output: MediaStreamTrack
   readonly inputAnalyser: AnalyserNode
@@ -102,33 +107,27 @@ export class VoicePipeline {
   private readonly gainNode: GainNode
   private readonly destination: MediaStreamAudioDestinationNode
   private readonly effect?: NeuralNode
+  private readonly stages: AudioNode[]
+  private readonly context: AudioContext
 
-  private constructor(
-    private readonly context: AudioContext,
-    source: MediaStreamAudioSourceNode,
-    pre: AnalyserNode,
-    post: AnalyserNode,
-    gain: GainNode,
-    destination: MediaStreamAudioDestinationNode,
-    effect?: NeuralNode,
-  ) {
+  private constructor(context: AudioContext, source: MediaStreamAudioSourceNode,
+    pre: AnalyserNode, post: AnalyserNode, gain: GainNode,
+    destination: MediaStreamAudioDestinationNode, stages: AudioNode[], effect?: NeuralNode) {
+    this.context = context
     this.source = source
     this.inputAnalyser = pre
     this.outputAnalyser = post
     this.gainNode = gain
     this.destination = destination
+    this.stages = stages
     this.effect = effect
     const track = destination.stream.getAudioTracks()[0]
     if (!track) throw new Error("Falha ao criar saída de áudio processado.")
     this.output = track
   }
 
-  static async create(
-    context: AudioContext,
-    sourceTrack: MediaStreamTrack,
-    mode: VoiceNoiseMode,
-    inputGainDb: number,
-  ): Promise<VoicePipeline> {
+  static async create(context: AudioContext, sourceTrack: MediaStreamTrack,
+    mode: VoiceNoiseMode, inputGainDb: number, studio = true): Promise<VoicePipeline> {
     const source = context.createMediaStreamSource(new MediaStream([sourceTrack]))
     const pre = context.createAnalyser()
     const post = context.createAnalyser()
@@ -137,19 +136,68 @@ export class VoicePipeline {
     gain.gain.value = dbToGain(inputGainDb)
     const destination = context.createMediaStreamDestination()
     let effect: NeuralNode | undefined
+    const stages: AudioNode[] = []
     try {
       if (isAdvancedNoise(mode)) effect = await neuralNode(context, mode)
       source.connect(pre)
+      let tail: AudioNode = pre
       if (effect) {
-        pre.connect(effect)
-        effect.connect(gain)
-      } else pre.connect(gain)
-      // Não comprimir agressivamente a voz: isso causava bombeamento e som robótico.
-      // O ganho digital permanece controlável; picos são sinalizados pelo medidor.
+        // Neural denoisers can erase weak final syllables, breaths and whispers.
+        // A small dry path preserves intelligibility without disabling GTCRN.
+        // GTCRN works in six 128-sample blocks; its worklet emits the first
+        // processed block after five buffered blocks. Align dry speech near
+        // that frame boundary before mixing.
+        tail.connect(effect)
+        if (mode === "gtcrn") {
+          const dryDelay = context.createDelay(0.08)
+          dryDelay.delayTime.value = 5 * 128 / context.sampleRate
+          const dry = context.createGain()
+          dry.gain.value = 0.16
+          const wet = context.createGain()
+          wet.gain.value = 0.84
+          const merged = context.createGain()
+          pre.connect(dryDelay)
+          dryDelay.connect(dry)
+          dry.connect(merged)
+          effect.connect(wet)
+          wet.connect(merged)
+          stages.push(dryDelay, dry, wet, merged)
+          tail = merged
+        } else {
+          tail = effect
+        }
+      }
+      const addFilter = (type: BiquadFilterType, freq: number, db = 0, q = 0.7) => {
+        const node = context.createBiquadFilter()
+        node.type = type
+        node.frequency.value = freq
+        node.gain.value = db
+        node.Q.value = q
+        tail.connect(node)
+        tail = node
+        stages.push(node)
+      }
+      if (studio) {
+        addFilter("highpass", 72, 0, 0.707)
+        addFilter("lowshelf", 155, 0.9)
+        addFilter("peaking", 340, -1.4, 0.8)
+        addFilter("peaking", 2750, 1.4, 0.85)
+        addFilter("highshelf", 6800, 0.7)
+        const compressor = context.createDynamicsCompressor()
+        compressor.threshold.value = -18
+        compressor.knee.value = 18
+        compressor.ratio.value = 1.8
+        compressor.attack.value = 0.012
+        compressor.release.value = 0.24
+        tail.connect(compressor)
+        tail = compressor
+        stages.push(compressor)
+      }
+      tail.connect(gain)
       gain.connect(post)
       post.connect(destination)
-      // Never connect the microphone to speakers here: prevents feedback/echo.
-      return new VoicePipeline(context, source, pre, post, gain, destination, effect)
+      // Never connect microphone to speakers (feedback/echo).
+      return new VoicePipeline(context, source, pre, post, gain, destination, stages, effect)
     } catch (error) {
       effect?.destroy()
       effect?.disconnect()
@@ -157,19 +205,30 @@ export class VoicePipeline {
       pre.disconnect()
       post.disconnect()
       gain.disconnect()
+      stages.forEach(node => node.disconnect())
       destination.disconnect()
       throw error
     }
   }
 
+  getState() { return this.context.state }
+  async resume() {
+    if (this.context.state !== "running" && this.context.state !== "closed") await this.context.resume()
+    return this.context.state === "running"
+  }
+  getHealth() {
+    return { state: this.context.state,
+      raw: readMeter(this.inputAnalyser), processed: readMeter(this.outputAnalyser) }
+  }
   setInputGain(db: number) {
-    this.gainNode.gain.setTargetAtTime(dbToGain(db), this.context.currentTime, 0.025)
+    this.gainNode.gain.setTargetAtTime(dbToGain(db), this.context.currentTime, 0.035)
   }
   close() {
     this.source.disconnect()
     this.inputAnalyser.disconnect()
     this.effect?.destroy()
     this.effect?.disconnect()
+    this.stages.forEach(node => node.disconnect())
     this.gainNode.disconnect()
     this.outputAnalyser.disconnect()
     this.destination.disconnect()
@@ -177,35 +236,34 @@ export class VoicePipeline {
   }
 }
 
-/** Structural implementation of LiveKit TrackProcessor<Audio>, kept separate from room lifecycle.
- * On unmute/device swap, LiveKit calls restart(), rebuilding against the new capture track.
- */
+/** LiveKit TrackProcessor: never uses a server-side DSP service. */
 export class VoiceNoiseProcessor {
   readonly name = "otms-local-voice-dsp"
   processedTrack?: MediaStreamTrack
   private graph?: VoicePipeline
   private ownedContext?: AudioContext
-  constructor(private mode: VoiceNoiseMode, private db: number) {}
+  constructor(private mode: VoiceNoiseMode, private db: number, private studio = true) {}
   async init(options: { track: MediaStreamTrack; audioContext: AudioContext }) { await this.restart(options) }
   async restart(options: { track: MediaStreamTrack; audioContext: AudioContext }) {
     await this.destroy()
-    // RNNoise trabalha em 48 kHz. Nem todo navegador cria o AudioContext do SDK
-    // nessa frequência; nesse caso, usar um contexto dedicado com resampling nativo.
     let context = options.audioContext
-    if (isAdvancedNoise(this.mode) && context.sampleRate !== 48000) {
+    if (context.state === "closed" || (isAdvancedNoise(this.mode) && context.sampleRate !== 48000)) {
       context = new AudioContext({sampleRate: 48000})
       this.ownedContext = context
-      await context.resume()
     }
     try {
-      this.graph = await VoicePipeline.create(context, options.track, this.mode, this.db)
+      this.graph = await VoicePipeline.create(context, options.track, this.mode, this.db, this.studio)
       this.processedTrack = this.graph.output
+      // Do not await resume indefinitely: browsers may require a new user gesture.
+      void this.graph.resume().catch(() => undefined)
     } catch (cause) {
       await this.destroy()
       throw cause
     }
   }
   setInputGain(db: number) { this.db = db; this.graph?.setInputGain(db) }
+  health() { return this.graph?.getHealth() }
+  resume() { return this.graph?.resume() ?? Promise.resolve(false) }
   readMeter() {
     if (!this.graph) return { rms: 0, peak: 0, clipping: false }
     const input = readMeter(this.graph.inputAnalyser)
