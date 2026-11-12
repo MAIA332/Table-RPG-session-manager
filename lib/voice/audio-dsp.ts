@@ -323,8 +323,16 @@ export class VoiceNoiseProcessor {
     try {
       this.graph = await VoicePipeline.create(context, options.track, this.mode, this.db, this.studio, this.isolation)
       this.processedTrack = this.graph.output
-      // Do not await resume indefinitely: browsers may require a new user gesture.
-      void this.graph.resume().catch(() => undefined)
+      // Um destino MediaStream de AudioContext suspenso gera uma faixa LiveKit
+      // aparentemente publicada, mas SILENCIOSA. Não publicar sem verificar.
+      // O limite impede que resume() bloqueie a transmissão indefinidamente.
+      const started = await Promise.race([
+        this.graph.resume().catch(() => false),
+        new Promise<boolean>(resolve => setTimeout(() => resolve(false), 1200)),
+      ])
+      if (!started || this.graph.getState() !== "running") {
+        throw new Error("Processamento Web Audio não iniciou; restaurar microfone nativo.")
+      }
     } catch (cause) {
       await this.destroy()
       throw cause

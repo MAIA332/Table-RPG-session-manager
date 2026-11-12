@@ -120,6 +120,9 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
   const neuralFallbackRef = useRef<VoiceNoiseMode | null>(null)
   const requestedNoiseRef = useRef<VoiceNoiseMode | null>(null)
   const suppressionFaultRef = useRef(0)
+  // Segurança: falha do AudioContext nunca pode deixar o microfone publicado em silêncio.
+  const emergencyRawRef = useRef(false)
+  const processorUnhealthyRef = useRef(0)
   const constraintCacheRef = useRef<WeakMap<MediaStreamTrack, string>>(new WeakMap())
   const roomRef = useRef<Room | null>(null)
   // Inicialização tardia: refs preservados pelo Fast Refresh podem estar nulos.
@@ -267,6 +270,8 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     neuralFallbackRef.current = null
     requestedNoiseRef.current = null
     suppressionFaultRef.current = 0
+    emergencyRawRef.current = false
+    processorUnhealthyRef.current = 0
     void meterCloseRef.current?.()
     meterCloseRef.current = null
     meterReadRef.current = null
@@ -296,13 +301,15 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       requestedNoiseRef.current = prefs.noiseMode
       neuralFallbackRef.current = null
       suppressionFaultRef.current = 0
+      emergencyRawRef.current = false
+      processorUnhealthyRef.current = 0
     }
     const mode = neuralFallbackRef.current ?? prefs.noiseMode
     const advanced = isAdvancedNoise(mode)
-    const needsGraph = advanced || prefs.inputGainDb !== 0 || prefs.studio
+    const needsGraph = !emergencyRawRef.current && (advanced || prefs.inputGainDb !== 0 || prefs.studio)
     const current = track.getProcessor()
     const constraints = {
-      noiseSuppression: mode === "native",
+      noiseSuppression: emergencyRawRef.current || mode === "native",
       echoCancellation: prefs.echo,
       autoGainControl: prefs.gain,
     }
@@ -330,36 +337,36 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
         if (roomRef.current !== room) return
       }
       appliedModeRef.current = mode
-      appliedStudioRef.current = prefs.studio
+      appliedStudioRef.current = needsGraph ? prefs.studio : false
       const effective = track.mediaStreamTrack.getSettings()
       setLocalMicInfo(`Faixa ${track.mediaStreamTrack.readyState} · ${effective.sampleRate || "?"} Hz · ${effective.channelCount || "?"} canal(is)`)
-      setDspStatus(mode === prefs.noiseMode
+      setDspStatus(emergencyRawRef.current
+        ? "Áudio de segurança: microfone nativo ativo; filtro neural desativado após falha."
+        : mode === prefs.noiseMode
         ? `${mode.toUpperCase()} · ${prefs.studio ? "voz de narrador" : "sem masterização"} · ${advanced ? "modelo neural carregado" : "processamento local"}`
         : `${mode.toUpperCase()} (fallback de ${prefs.noiseMode.toUpperCase()}) · áudio mantido`)
     } catch (cause) {
       console.warn("[Mesa de Voz] Processador de áudio indisponível:", cause)
       if (roomRef.current !== room) return
-      try { if (track.getProcessor()?.name === "otms-local-voice-dsp") await track.stopProcessor() } catch { /* no processor */ }
-      // GTCRN -> RNNoise -> native. Each fallback is sticky until the user changes
-      // the mode or starts a fresh call. Prevents an expensive failure/retry loop.
-      const nextMode: VoiceNoiseMode = mode === "gtcrn" ? "voice" : mode === "voice" ? "rnnoise" : "native"
-      neuralFallbackRef.current = nextMode
-      appliedModeRef.current = ""
-      appliedStudioRef.current = null
+      // Fail-open: tentar outro processador depende do mesmo AudioContext
+      // e pode publicar uma faixa sem áudio. Restaurar a faixa bruta primeiro.
+      emergencyRawRef.current = true
+      processorUnhealthyRef.current = 0
+      neuralFallbackRef.current = "native"
+      appliedModeRef.current = "native"
+      appliedStudioRef.current = false
       try {
-        await track.applyConstraints({noiseSuppression: nextMode === "native", echoCancellation:prefs.echo, autoGainControl:prefs.gain})
-        await track.setProcessor(new VoiceNoiseProcessor(nextMode, prefs.inputGainDb, prefs.studio, prefs.isolation))
-        appliedModeRef.current = nextMode
-        appliedStudioRef.current = prefs.studio
-      } catch (fallbackCause) {
-        console.warn("[Mesa de Voz] Fallback avançado falhou; mantendo captura nativa:", fallbackCause)
-        try { if (track.getProcessor()?.name === "otms-local-voice-dsp") await track.stopProcessor() } catch {}
-        await track.applyConstraints({noiseSuppression:true, echoCancellation:prefs.echo, autoGainControl:prefs.gain}).catch(() => undefined)
-        neuralFallbackRef.current = "native"
-        appliedModeRef.current = "native"
+        if (track.getProcessor()?.name === "otms-local-voice-dsp") await track.stopProcessor()
+      } catch (stopCause) {
+        console.warn("[Mesa de Voz] Não foi possível retirar o processador:", stopCause)
       }
-      setDspStatus(`${mode.toUpperCase()} interrompido: ${cause instanceof Error ? cause.message : "falha de processamento"}. ${neuralFallbackRef.current?.toUpperCase()} como alternativa.`)
-      setLocalMicInfo(`Microfone ativo · filtro alternativo ${neuralFallbackRef.current}`)
+      try {
+        await track.applyConstraints({noiseSuppression:true, echoCancellation:prefs.echo, autoGainControl:prefs.gain})
+      } catch (nativeCause) {
+        console.warn("[Mesa de Voz] Restrições nativas indisponíveis:", nativeCause)
+      }
+      setDspStatus(`${mode.toUpperCase()} falhou: ${cause instanceof Error ? cause.message : "erro de processamento"}. Áudio nativo restaurado.`)
+      setLocalMicInfo("Microfone em modo nativo de segurança (sem DSP Web Audio)")
     }
   }, [])
 
@@ -633,13 +640,23 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       const health = processor.health()
       if (!health) return
       if (health.state !== "running") {
-        if (health.state === "closed" && roomRef.current === room) {
-          neuralFallbackRef.current = appliedModeRef.current === "gtcrn" ? "voice" : appliedModeRef.current === "voice" ? "rnnoise" : "native"
-          audioTaskRef.current = audioTaskRef.current.catch(() => undefined).then(() => configureProcessing(room))
-        } else void processor.resume().catch(() => undefined)
+        // Um AudioContext suspenso produz uma faixa silenciosa mesmo que o SDK
+        // marque o microfone como publicado. Tentar retomar; após duas leituras,
+        // remover o DSP (não testar outro processador igualmente suspenso).
+        if (!outgoing?.isMuted && room.localParticipant.isMicrophoneEnabled) {
+          processorUnhealthyRef.current++
+          if (processorUnhealthyRef.current >= 2 && roomRef.current === room && !emergencyRawRef.current) {
+            emergencyRawRef.current = true
+            neuralFallbackRef.current = "native"
+            processorUnhealthyRef.current = 0
+            setDspStatus("Processamento suspenso pelo navegador; restaurando o microfone nativo.")
+            audioTaskRef.current = audioTaskRef.current.catch(() => undefined).then(() => configureProcessing(room))
+          } else void processor.resume().catch(() => undefined)
+        } else processorUnhealthyRef.current = 0
         suppressionFaultRef.current = 0
         return
       }
+      processorUnhealthyRef.current = 0
       // Silêncio pós-supressão com microfone bruto ruidoso é o resultado
       // DESEJADO (ex.: teclado). Não confundir com falha do processador:
       // o watchdog antigo removia o filtro após ~10s de digitação.
@@ -707,7 +724,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
         let playback: RemoteVoicePlayback | undefined
         let element: HTMLAudioElement
         try {
-          playback = new RemoteVoicePlayback(track.mediaStreamTrack, participant.identity)
+          playback = new RemoteVoicePlayback(track, participant.identity)
           element = playback.element
         } catch (cause) {
           console.warn("[Mesa de Voz] Web Audio indisponível; recepção básica:", cause)

@@ -1,6 +1,7 @@
-/** Mixagem individual de participantes da Mesa de Voz.
- * Usa Web Audio no navegador; o áudio bruto permanece local e o LiveKit não muda.
- * 200% corresponde a +6.02 dB, NÃO ao volume HTMLMediaElement (limitado a 100%).
+/** Reprodução individual com CAMINHO DE SEGURANÇA sempre audível.
+ * O LiveKit toca a faixa diretamente por padrão. Equalização/amplificação
+ * usam Web Audio somente quando o AudioContext e o elemento de saída estão ativos.
+ * Se o navegador suspender o grafo, a reprodução direta retorna imediatamente.
  */
 export type VoiceEqualizer = {
   preset: "flat" | "narration" | "clarity" | "warm" | "custom"
@@ -41,72 +42,52 @@ export function normalizeVoiceEq(value: unknown): VoiceEqualizer {
     presence: safeEqDb(input.presence), treble: safeEqDb(input.treble) }
 }
 
-/** Cada remote track tem sua própria fonte, ganho e EQ; o destino é a saída de áudio escolhida. */
+/** Uma faixa remota LiveKit; attach() permanece a saída primária de áudio. */
+type RemoteTrackAudio = {
+  readonly mediaStreamTrack: MediaStreamTrack
+  attach: (element?: HTMLMediaElement) => HTMLMediaElement
+  detach: (element?: HTMLMediaElement) => unknown
+}
+
 export class RemoteVoicePlayback {
-  // Um único AudioContext por aba evita limites de quantidade de contextos
-  // quando há vários jogadores/NPCs falando simultaneamente.
   private static shared: AudioContext | null = null
   private static users = 0
   readonly element: HTMLAudioElement
   readonly personId: string
-  private readonly context: AudioContext
-  private readonly source: MediaStreamAudioSourceNode
-  private readonly filters: BiquadFilterNode[]
-  private readonly gain: GainNode
-  private readonly limiter: DynamicsCompressorNode
-  private readonly output: MediaStreamAudioDestinationNode
+  private readonly track: RemoteTrackAudio
+  private context?: AudioContext
+  private source?: MediaStreamAudioSourceNode
+  private filters: BiquadFilterNode[] = []
+  private gain?: GainNode
+  private limiter?: DynamicsCompressorNode
+  private destination?: MediaStreamAudioDestinationNode
+  private processedElement?: HTMLAudioElement
   private closed = false
+  private enhanced = false
+  private enhancing?: Promise<void>
+  private eq: VoiceEqualizer = { ...DEFAULT_VOICE_EQ }
+  private volume = 1
+  private outputDeviceId = ""
 
-  constructor(mediaTrack: MediaStreamTrack, personId: string) {
-    const context = RemoteVoicePlayback.shared?.state !== "closed" && RemoteVoicePlayback.shared
-      ? RemoteVoicePlayback.shared : new AudioContext({ latencyHint: "interactive" })
-    RemoteVoicePlayback.shared = context
-    RemoteVoicePlayback.users++
-    this.context = context
+  constructor(track: RemoteTrackAudio, personId: string) {
+    this.track = track
     this.personId = personId
-    const cleanupOnError: AudioNode[] = []
-    try {
-      this.source = context.createMediaStreamSource(new MediaStream([mediaTrack]))
-      cleanupOnError.push(this.source)
-      this.filters = VOICE_EQ_BANDS.map((band, i) => {
-        const node = context.createBiquadFilter()
-        node.type = i === 0 ? "lowshelf" : i === VOICE_EQ_BANDS.length - 1 ? "highshelf" : "peaking"
-        node.frequency.value = band.hz
-        if (node.type === "peaking") node.Q.value = 0.8
-        cleanupOnError.push(node)
-        return node
-      })
-      this.gain = context.createGain()
-      cleanupOnError.push(this.gain)
-      this.limiter = context.createDynamicsCompressor()
-      this.limiter.threshold.value = -5
-      this.limiter.knee.value = 4
-      this.limiter.ratio.value = 16
-      this.limiter.attack.value = 0.003
-      this.limiter.release.value = 0.12
-      cleanupOnError.push(this.limiter)
-      this.output = context.createMediaStreamDestination()
-      cleanupOnError.push(this.output)
-      let node: AudioNode = this.source
-      for (const filter of this.filters) { node.connect(filter); node = filter }
-      node.connect(this.gain)
-      this.gain.connect(this.limiter)
-      this.limiter.connect(this.output)
-      this.element = document.createElement("audio")
-      this.element.autoplay = true
-      this.element.preload = "auto"
-      this.element.style.display = "none"
-      this.element.dataset.personId = personId
-      this.element.srcObject = this.output.stream
-      document.body.append(this.element)
-    } catch (cause) {
-      for (const node of cleanupOnError) try { node.disconnect() } catch { /* cleanup best-effort */ }
-      RemoteVoicePlayback.releaseContext(context)
-      throw cause
-    }
+    // O áudio padrão é responsabilidade do SDK LiveKit: nunca depende de Web Audio.
+    const direct = track.attach() as HTMLAudioElement
+    this.element = direct
+    direct.dataset.personId = personId
+    direct.autoplay = true
+    direct.preload = "auto"
+    direct.style.display = "none"
+    document.body.append(direct)
   }
 
-  private static releaseContext(context: AudioContext) {
+  private needsEnhancement(): boolean {
+    return this.volume > 1.001 || VOICE_EQ_BANDS.some(band => Math.abs(this.eq[band.key]) > 0.01)
+  }
+
+  private static releaseContext(context?: AudioContext): void {
+    if (!context) return
     RemoteVoicePlayback.users = Math.max(0, RemoteVoicePlayback.users - 1)
     if (RemoteVoicePlayback.users === 0 && RemoteVoicePlayback.shared === context) {
       RemoteVoicePlayback.shared = null
@@ -114,44 +95,157 @@ export class RemoteVoicePlayback {
     }
   }
 
-  setEq(profile: VoiceEqualizer) {
-    const value = normalizeVoiceEq(profile)
-    for (let i = 0; i < VOICE_EQ_BANDS.length; i++) {
-      const amount = safeEqDb(value[VOICE_EQ_BANDS[i].key])
-      this.filters[i].gain.setTargetAtTime(amount, this.context.currentTime, 0.035)
+  private initGraph(): void {
+    if (this.context || this.closed) return
+    const context = RemoteVoicePlayback.shared && RemoteVoicePlayback.shared.state !== "closed"
+      ? RemoteVoicePlayback.shared : new AudioContext({ latencyHint: "interactive" })
+    RemoteVoicePlayback.shared = context
+    RemoteVoicePlayback.users++
+    this.context = context
+    try {
+      this.source = context.createMediaStreamSource(new MediaStream([this.track.mediaStreamTrack]))
+      this.filters = VOICE_EQ_BANDS.map((band, i) => {
+        const node = context.createBiquadFilter()
+        node.type = i === 0 ? "lowshelf" : i === VOICE_EQ_BANDS.length - 1 ? "highshelf" : "peaking"
+        node.frequency.value = band.hz
+        if (node.type === "peaking") node.Q.value = 0.8
+        return node
+      })
+      this.gain = context.createGain()
+      this.limiter = context.createDynamicsCompressor()
+      this.limiter.threshold.value = -5
+      this.limiter.knee.value = 4
+      this.limiter.ratio.value = 16
+      this.limiter.attack.value = 0.003
+      this.limiter.release.value = 0.12
+      this.destination = context.createMediaStreamDestination()
+      let tail: AudioNode = this.source
+      for (const node of this.filters) { tail.connect(node); tail = node }
+      tail.connect(this.gain)
+      this.gain.connect(this.limiter)
+      this.limiter.connect(this.destination)
+      this.processedElement = document.createElement("audio")
+      this.processedElement.autoplay = true
+      this.processedElement.preload = "auto"
+      this.processedElement.style.display = "none"
+      this.processedElement.srcObject = this.destination.stream
+      document.body.append(this.processedElement)
+      this.applyGraphSettings()
+      if (this.outputDeviceId) void this.setOutputDevice(this.outputDeviceId)
+    } catch (error) {
+      this.destroyGraph()
+      throw error
     }
   }
-  setVolume(master: number, personal: number, deaf: boolean) {
-    const level = deaf ? 0 : safePeerVolume(master) * safePeerVolume(personal)
-    // Clamped to <=200% per participant. The compressor is AFTER gain, so it
-    // handles peaks that otherwise distort when boosting a quiet participant.
-    this.gain.gain.setTargetAtTime(Math.min(2, level), this.context.currentTime, 0.018)
+
+  private applyGraphSettings() {
+    if (!this.context) return
+    for (let i = 0; i < VOICE_EQ_BANDS.length; i++) {
+      this.filters[i]?.gain.setTargetAtTime(this.eq[VOICE_EQ_BANDS[i].key], this.context.currentTime, 0.035)
+    }
+    this.gain?.gain.setTargetAtTime(this.volume, this.context.currentTime, 0.018)
   }
-  setOutputDevice(id: string): Promise<void> {
-    const element = this.element as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
-    return typeof element.setSinkId === "function" ? element.setSinkId(id) : Promise.resolve()
+
+  private useDirect() {
+    this.enhanced = false
+    this.element.volume = Math.min(1, this.volume)
+    // Nunca manter dois fluxos audíveis simultaneamente.
+    if (this.processedElement) { this.processedElement.volume = 0; this.processedElement.pause() }
+  }
+
+  private async enableEnhancement() {
+    if (this.closed || !this.needsEnhancement()) { this.useDirect(); return }
+    if (this.enhancing) return this.enhancing
+    this.enhancing = (async () => {
+      try {
+        this.initGraph()
+        const context = this.context
+        const output = this.processedElement
+        if (!context || !output) return
+        this.applyGraphSettings()
+        // resume() pode ficar pendente indefinidamente quando a política de autoplay
+        // bloqueia o contexto. Timeout = fallback direto, jamais uma chamada muda.
+        const ready = await Promise.race([
+          Promise.all([
+            context.state === "running" ? Promise.resolve() : context.resume(),
+            output.play(),
+          ]).then(() => true, () => false),
+          new Promise<boolean>(resolve => setTimeout(() => resolve(false), 650)),
+        ])
+        if (!ready || context.state !== "running" || output.paused || this.closed || !this.needsEnhancement()) {
+          this.useDirect()
+          return
+        }
+        // Só depois de confirmar que a saída processada está rodando
+        // diminuímos a saída direta. Se suspender depois, watchdog recupera.
+        output.volume = 1
+        this.element.volume = 0
+        this.enhanced = true
+      } catch (error) {
+        console.warn("[Mesa de Voz] EQ indisponível; mantendo som direto LiveKit:", error)
+        this.useDirect()
+      }
+    })().finally(() => { this.enhancing = undefined })
+    return this.enhancing
+  }
+
+  setEq(profile: VoiceEqualizer) {
+    this.eq = normalizeVoiceEq(profile)
+    this.applyGraphSettings()
+    if (!this.needsEnhancement()) this.useDirect()
+    else if (this.enhanced && this.context?.state !== "running") this.useDirect()
+    else if (!this.enhanced) void this.enableEnhancement()
+  }
+  setVolume(master: number, personal: number, deaf: boolean) {
+    this.volume = deaf ? 0 : Math.min(2, safePeerVolume(master) * safePeerVolume(personal))
+    this.applyGraphSettings()
+    if (deaf || !this.needsEnhancement()) this.useDirect()
+    else if (this.enhanced && this.context?.state !== "running") this.useDirect()
+    else if (!this.enhanced) void this.enableEnhancement()
+    if (!this.enhanced) this.element.volume = Math.min(1, this.volume)
+  }
+  async setOutputDevice(id: string): Promise<void> {
+    this.outputDeviceId = id
+    const setSink = (element?: HTMLAudioElement) => {
+      const target = element as (HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }) | undefined
+      return target?.setSinkId ? target.setSinkId(id) : Promise.resolve()
+    }
+    const results = await Promise.allSettled([setSink(this.element), setSink(this.processedElement)])
+    if (results[0].status === "rejected") throw results[0].reason
   }
   async play(): Promise<void> {
     if (this.closed) return
-    // Iniciar ambas promessas no mesmo gesto do usuário, sem esperar a
-    // primeira terminar (autoplay pode ser bloqueado se perder o gesto).
-    const resume = this.context.state !== "running" && this.context.state !== "closed" ? this.context.resume() : Promise.resolve()
-    await Promise.all([resume, this.element.play()])
+    // A faixa original SEMPRE é reproduzida, mesmo que o AudioContext falhe.
+    await this.element.play()
+    if (this.enhanced && this.context?.state !== "running") this.useDirect()
+    if (this.needsEnhancement() && !this.enhanced) await this.enableEnhancement()
   }
-  get state() { return this.context.state }
+  get state() { return this.enhanced && this.context?.state !== "running" ? "suspended" : "running" }
+  private destroyGraph() {
+    this.useDirect()
+    this.source?.disconnect()
+    this.filters.forEach(n => n.disconnect())
+    this.gain?.disconnect()
+    this.limiter?.disconnect()
+    this.destination?.disconnect()
+    this.processedElement?.remove()
+    if (this.processedElement) this.processedElement.srcObject = null
+    this.destination?.stream.getTracks().forEach(t => t.stop())
+    this.source = undefined
+    this.filters = []
+    this.gain = undefined
+    this.limiter = undefined
+    this.destination = undefined
+    this.processedElement = undefined
+    RemoteVoicePlayback.releaseContext(this.context)
+    this.context = undefined
+  }
   dispose() {
     if (this.closed) return
     this.closed = true
+    this.track.detach(this.element)
     this.element.pause()
-    this.element.srcObject = null
     this.element.remove()
-    this.source.disconnect()
-    this.filters.forEach(node => node.disconnect())
-    this.gain.disconnect()
-    this.limiter.disconnect()
-    this.output.disconnect()
-    // Não interromper a faixa remota: sua propriedade pertence ao LiveKit.
-    for (const track of this.output.stream.getTracks()) track.stop()
-    RemoteVoicePlayback.releaseContext(this.context)
+    if (this.context) this.destroyGraph()
   }
 }
