@@ -1,5 +1,6 @@
 "use client"
 import { VoiceDock } from "./voice/voice-dock"
+import { ArenaMinigame } from "./arena/arena-minigame"
 import "./voice/voice.css"
 import { controllerAlert, controllerConfirm } from '@/lib/input/dialogs'
 import {
@@ -2117,6 +2118,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const seenCombatRolls = useRef(new Set<string>())
   const handleEvent = useCallback(
     (event: any) => {
+      if (event.type === "arena:changed") {
+        window.dispatchEvent(new Event("otms.arena.changed"))
+        return
+      }
       if (event.type === "voice:chat-updated") {
         window.dispatchEvent(new Event("otms.voice.chat-update"))
         return
@@ -4257,6 +4262,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
 
   return (
     <div className="rpg-page mx-auto flex min-h-dvh max-w-[1680px] flex-col px-3 py-4 sm:px-4 md:h-screen md:px-6 md:py-6">
+      <ArenaMinigame campaignId={data.campaign.id} userId={data.me.id} isGm={isGm} />
       <ClassCardReveal value={cardReveal} />
       <MonsterAttackPreviewShelf
         previews={playerAttackPreviews.map(preview => ({

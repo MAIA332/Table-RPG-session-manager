@@ -218,6 +218,7 @@ export interface ActivePoll {
   expiresAt: number
 }
 export type RealtimeEvent =
+  | { type: "arena:changed" }
   | { type: "voice:chat-updated" }
   | { type: "character:created"; character: Character }
   | { type: "character:updated"; character: Character }

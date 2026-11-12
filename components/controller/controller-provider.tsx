@@ -180,6 +180,9 @@ export function ControllerProvider({children}: {children:ReactNode}) {
     const releasePtt = () => { if (pttDown) {pttDown = false; dispatchInputHoldAction('voice.ptt', false)} }
     let lastNativeAt = 0, wasConnected = false, lastName = '', lastButtonCount = -1, lastScrollAt = 0
     const times = new Map<string,number>()
+    // Código oculto: VIEW + L3 + R3, segurados 650 ms em QUALQUER controle.
+    // É físico, não remapeável e nunca pode ser disparado por teclado/mouse.
+    const arenaSecret = new Map<number, {since:number;fired:boolean}>()
     const sounds = createControllerSounds()
     let lastControllerActionAt = -Infinity
     const runAction = (action: InputAction, pad?: Gamepad, nativeController = false) => {
@@ -206,6 +209,17 @@ export function ControllerProvider({children}: {children:ReactNode}) {
     const tick = () => {
       if (document.visibilityState === 'hidden' || !document.hasFocus()) {pttArmed=false;releasePtt();previous.clear(); times.clear(); schedule(false,wasConnected);return}
       const pads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : []
+      for (const candidate of pads) {
+        if (!candidate?.connected) continue
+        const chord = [8,10,11].every(index => candidate.buttons[index]?.pressed)
+        if (!chord) {arenaSecret.delete(candidate.index);continue}
+        const state = arenaSecret.get(candidate.index) || {since:performance.now(),fired:false}
+        if (!state.fired && performance.now() - state.since >= 650 && authenticatedRef.current) {
+          state.fired = true
+          window.dispatchEvent(new CustomEvent('otms.arena.secret', {detail:{index:candidate.index}}))
+        }
+        arenaSecret.set(candidate.index,state)
+      }
       const pad = (lastIndex >= 0 ? pads[lastIndex] : undefined) || [...pads].find(Boolean)
       if (!!pad !== wasConnected) {
         wasConnected = !!pad;setConnected(wasConnected)
@@ -218,6 +232,12 @@ export function ControllerProvider({children}: {children:ReactNode}) {
         lastName=pad.id;lastButtonCount=pad.buttons.length;setName(pad.id);setAvailableButtons(detectedButtonNames(pad.buttons.length))
       }
       const buttons=gamepadButtons(pad,settingsRef.current.deadzone)
+      // A arena é dona exclusiva de todos os comandos enquanto está aberta.
+      // Evita navegar fichas, executar ações ou abrir o menu Start no meio da luta.
+      if (document.documentElement.dataset.otmsArenaActive === 'true' ||
+          [8,10,11].every(index => pad.buttons[index]?.pressed)) {
+        releasePtt(); previous = buttons; return
+      }
       if(buttons.has('LT')!==previous.has('LT'))setLtHeld(buttons.has('LT'))
       const physicallyPtt = [...buttons].some(button =>
         actionForButton(button, buttons, getBindings(settingsRef.current)) === 'voice.ptt')
@@ -355,6 +375,8 @@ export function ControllerProvider({children}: {children:ReactNode}) {
     const onDevice=()=>{lastIndex=-1;reset();window.cancelAnimationFrame(frame);window.clearTimeout(idleTimer);tick()}
     const onPointer=(event:PointerEvent)=>{recordControllerPointerOrigin(event.target);lastControllerActionAt=-Infinity;if(settingsRef.current.preference==='auto')setLastInput('desktop')}
     const onKey=(event:KeyboardEvent)=>{
+      if (document.documentElement.dataset.otmsArenaActive === 'true') return
+
       if(event.ctrlKey&&event.altKey&&event.code==='KeyG'&&(activeRef.current||wasConnected||new URLSearchParams(location.search).get('tv')==='1')){
         event.preventDefault();setSettings(value=>({...value,preference:value.preference==='controller'?'auto':'controller'}));return
       }

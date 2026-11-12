@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Backpack, Grip, Package, Search, Settings2, RotateCcw, ArrowLeftRight, Box, Shield, ScrollText } from 'lucide-react'
 import { itemImageUrl } from '@/lib/item-image'
+import { INVENTORY_GROUPS, inventoryGroupOf, type InventoryGroup } from '@/lib/inventory-groups'
 import { indexedInventory, reconcileInventorySlots, swapInventorySlots } from '@/lib/inventory-slot-layout'
 import { useControllerActions } from '@/lib/input/use-controller-actions'
 import { useController } from './controller/controller-provider'
@@ -15,14 +16,6 @@ interface Props {
   freeKg: number
   maxKg: number
   onManage: (index: number) => void
-}
-const groups = ['Todos', 'Armas', 'Proteção', 'Consumíveis', 'Outros'] as const
-function groupOf(item: any): typeof groups[number] {
-  const type = String(item?.type || '').toLocaleLowerCase('pt-BR')
-  if (/arma|weapon|cajado|espada|lança|arco|adaga|firearm/.test(type)) return 'Armas'
-  if (/armadura|escudo|shield|armor|acess[oó]rio|accessory|proteção/.test(type)) return 'Proteção'
-  if (/consum|potion|poção|alimento|food/.test(type)) return 'Consumíveis'
-  return 'Outros'
 }
 export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog,freeKg,maxKg,onManage}:Props) {
   const {active} = useController()
@@ -39,8 +32,13 @@ export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog
   const [selected,setSelected]=useState<string|null>(null)
   const [picked,setPicked]=useState<number|null>(null)
   const [organizing,setOrganizing]=useState(false)
-  const [group,setGroup]=useState<typeof groups[number]>('Todos')
+  const [group,setGroup]=useState<InventoryGroup>('Todos')
   const [search,setSearch]=useState('')
+  useEffect(()=>{
+    if (!active) return
+    const frame=requestAnimationFrame(()=>gridRef.current?.querySelector<HTMLButtonElement>('button:not([disabled])')?.focus({preventScroll:true}))
+    return ()=>cancelAnimationFrame(frame)
+  },[active,group,search])
   useEffect(()=>{
     try {const saved=JSON.parse(localStorage.getItem(key)||'[]');setStored(Array.isArray(saved)?saved.filter((k:unknown)=>k===null||typeof k==='string').slice(0,256):[])}
     catch{setStored([])}
@@ -51,6 +49,11 @@ export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog
   useEffect(()=>{if(!ready)return;try{localStorage.setItem(key,JSON.stringify(slots))}catch{}},[key,slotKey,ready])
   const byKey=useMemo(()=>new Map(items.map(item=>[item.key,item])),[items])
   const byCatalog=useMemo(()=>new Map(catalog.map(item=>[item.id,item])),[catalog])
+  const visibleItemCount = items.filter(entry=>{
+    const item=byCatalog.get(entry.id)
+    return (group==='Todos'||inventoryGroupOf(item)===group) &&
+      (!search||`${item?.name||entry.id} ${item?.type||''} ${item?.category||''}`.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))
+  }).length
   const chosen=selected?byKey.get(selected):undefined
   const detail=chosen?byCatalog.get(chosen.id):undefined
   const stats=useMemo(()=>{
@@ -72,7 +75,7 @@ export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog
   return <div className="otms-inventory-board">
     <aside className="otms-inventory-categories">
       <div className="otms-inventory-category-title"><Backpack size={21}/> MOCHILA DO VIAJANTE</div>
-      {groups.map(name=><button type="button" key={name} className="otms-inventory-category" data-active={group===name} onClick={()=>{setGroup(name);setPicked(null)}}>{name==='Armas'?<Grip size={17}/>:name==='Proteção'?<Shield size={17}/>:name==='Consumíveis'?<ScrollText size={17}/>:<Box size={17}/>} {name}</button>)}
+      {INVENTORY_GROUPS.map(name=><button type="button" key={name} className="otms-inventory-category" data-active={group===name} onClick={()=>{setGroup(name);setPicked(null);setSelected(null)}}>{name==='Armas'?<Grip size={17}/>:name==='Proteção'?<Shield size={17}/>:name==='Consumíveis'?<ScrollText size={17}/>:<Box size={17}/>} {name}</button>)}
       <div className="otms-inventory-load"><span>CARGA DISPONÍVEL</span><strong>{freeKg} / {maxKg} kg</strong><small>Os slots são visuais; movimentá-los não transfere nem consome itens.</small></div>
     </aside>
     <main className="otms-inventory-grid-area">
@@ -86,8 +89,11 @@ export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog
         {slots.map((itemKey,index)=>{
           const entry=itemKey?byKey.get(itemKey):undefined
           const item=entry?byCatalog.get(entry.id):undefined
-          const matches=!!entry&&(!search||`${item?.name||entry.id} ${item?.type||''}`.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))&&(group==='Todos'||groupOf(item)===group)
+          const matches=!!entry&&(!search||`${item?.name||entry.id} ${item?.type||''} ${item?.category||''}`.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))&&(group==='Todos'||inventoryGroupOf(item)===group)
           const image=matches?itemImageUrl(item?.imageUrl):null
+          // Filtros exibem apenas as ocorrências correspondentes; os índices
+          // originais continuam intactos para equipar/remover/transferir.
+          if ((group!=='Todos'||search.trim()) && !matches) return null
           return <button key={index} type="button" draggable={organizing&&!!entry}
             disabled={!!entry && !matches}
             onDragStart={event=>{if(!organizing||!entry)return;event.dataTransfer.setData('text/plain',String(index));event.dataTransfer.effectAllowed='move';setPicked(index)}}
@@ -102,6 +108,8 @@ export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog
           </button>
         })}
       </div>
+      {(group!=='Todos'||search.trim())&&visibleItemCount===0&&
+        <p className="otms-inventory-instructions" role="status">Nenhum item nesta categoria. Confira outro filtro ou limpe a busca.</p>}
       <div className="otms-inventory-controls"><ControllerGlyph button="A" small/> Escolher {organizing?' / mover':' item'} <ControllerGlyph button="B" small/> Voltar <span>Mouse: clique {organizing?'ou arraste para trocar slots':''}</span></div>
     </main>
     <aside className="otms-inventory-details" aria-live="polite">
@@ -109,7 +117,7 @@ export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog
       {chosen ? <>
         <div className="otms-inventory-detail-art">{itemImageUrl(detail?.imageUrl)?<img alt="" src={itemImageUrl(detail?.imageUrl)||''}/>:<Package size={62}/>}</div>
         <h3>{detail?.name||chosen.id}</h3>
-        <span className="otms-inventory-detail-type">{detail?.type||'Equipamento'} · {stats.get(chosen.id)} unidade(s)</span>
+        <span className="otms-inventory-detail-type">{detail?.type||detail?.category||'Equipamento'} · {stats.get(chosen.id)} unidade(s)</span>
         <div className="otms-inventory-detail-stats">
           {detail?.damage!=null&&<p>Dano <strong>{String(detail.damage)}</strong></p>}
           {detail?.defense!=null&&<p>Defesa <strong>{String(detail.defense)}</strong></p>}
