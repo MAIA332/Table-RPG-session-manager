@@ -4,7 +4,7 @@ import {alterLysaFrame,ALTER_LYSA_ANIMATION_URLS} from './alter-animation'
 export const ANIMATION_COLUMNS=6
 export type ArenaAnimation='idle'|'forward'|'backward'|'jump'|'crouch'|'guard'|'hit'|'fall'|'rise'|'light'|'heavy'|'kick'|'lowKick'|'special0'|'special1'|'special2'
 export type AnimationClock={action:ArenaAnimation;key:string;at:number;travel?:number;lastX?:number;release?:'crouch'|'guard'|'jump';releaseAt?:number}
-export type AnimationFrame={url:string;row:number;rows:number;frame:number;action:ArenaAnimation}
+export type AnimationFrame={url:string;row:number;rows:number;frame:number;action:ArenaAnimation;columns?:number;cellWidth?:number;cellHeight?:number;anchorX?:number;anchorY?:number;scale?:number}
 export function attackAnimationFrame(kind:Parameters<typeof attackTiming>[0],elapsed:number,step=1){
  const startup=attackTiming(kind).startup
  return elapsed<startup?Math.max(step===3?2:step>1?1:0,Math.min(2,Math.floor(Math.max(0,elapsed)/startup*3))):elapsed<startup+.14?3+Math.min(1,Math.floor((elapsed-startup)/.07)):5
@@ -15,6 +15,25 @@ const canonicalWalks=new Set(['fander','andreas','valya','thorfinn','langris'])
 const lighteaRows:Record<string,number>={idle:0,jump:1,crouch:2,guard:3,hit:4,fall:5,rise:5}
 export const walkAtlas=(id:string)=>'/arena/animations/'+id+'/'+(canonicalWalks.has(id)?'movement.webp':'walk-v4.webp')
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v))
+/** Arte usa sua própria cadência; os ticks do ataque são independentes dos desenhos. */
+function sampleCharacterAnimation(p:ArenaPortrait,f:ArenaPublicFighter,t:number,action:ArenaAnimation,clock?:AnimationClock){
+ const def=p.definition;if(!def)return null
+ const anim=def.animations[action]||def.animations.idle
+ if(!anim)return null
+ const key=action+(f.attackKind&&f.attackUntil>t?':'+f.attackAt:'')
+ const state=clock?.key===key?clock:{action,key,at:f.attackKind&&f.attackUntil>t?f.attackAt:t,lastX:f.x,travel:0}
+ const elapsed=Math.max(0,t-state.at)
+ let frame=0
+ if(anim.frameDurations?.length){
+  const total=anim.frameDurations.reduce((sum,d)=>sum+d,0)
+  let position=Math.floor(elapsed*60)
+  if(anim.loop)position%=total;else position=Math.min(total-1,position)
+  for(let i=0;i<anim.frameDurations.length;i++){if(position<anim.frameDurations[i]){frame=i;break}position-=anim.frameDurations[i]}
+ }else{const position=Math.floor(elapsed*anim.fps);frame=anim.loop?position%anim.frames:Math.min(anim.frames-1,position)}
+ const idx=(anim.startFrame??0)+frame
+ return {clock:state,sample:{url:anim.atlas,row:Math.floor(idx/anim.columns),rows:anim.rows,frame:idx%anim.columns,columns:anim.columns,cellWidth:anim.cellWidth??def.rig.cellWidth,cellHeight:anim.cellHeight??def.rig.cellHeight,anchorX:anim.anchorX??def.rig.anchorX,anchorY:anim.anchorY??def.rig.anchorY,scale:def.rig.bodyHeight/200,action} as AnimationFrame}
+}
+
 export function fighterAnimation(f:ArenaPublicFighter,t:number):ArenaAnimation{
  if(f.health<=0||f.pose==='ko')return 'fall'
  if(f.knockdownUntil>t)return f.getupAt>0&&t>=f.getupAt&&f.onGround?'rise':'fall'
@@ -30,6 +49,7 @@ export function fighterAnimation(f:ArenaPublicFighter,t:number):ArenaAnimation{
 }
 export function animationFrame(p:ArenaPortrait,f:ArenaPublicFighter,t:number,clock?:AnimationClock):{clock:AnimationClock;sample:AnimationFrame}{
  if(f.alterLysa)return alterLysaFrame(f,t,fighterAnimation(f,t),clock)
+ const custom=sampleCharacterAnimation(p,f,t,fighterAnimation(f,t),clock);if(custom)return custom
  const action=fighterAnimation(f,t),key=action+(f.attackKind&&f.attackUntil>t?':'+f.attackAt:'')
  let state=clock
  if(!state||state.key!==key){
@@ -63,6 +83,6 @@ export function animationFrame(p:ArenaPortrait,f:ArenaPublicFighter,t:number,clo
  if(p.id==='fander'&&current==='special2')return {clock:state,sample:{url:'/arena/animations/fander/elbow-v4.webp',row:f.buffUntil>t?1:0,rows:2,frame,action:current}}
  if(p.id==='valya'&&current==='special2')return {clock:state,sample:{url:'/arena/animations/valya/dragon-v5.webp',row:0,rows:1,frame,action:current}}
  if(p.id==='loulan'&&current==='special2')return {clock:state,sample:{url:'/arena/animations/loulan/switch-v4.webp',row:f.weapon==='karambit'?0:1,rows:2,frame,action:current}}
- return {clock:state,sample:{url:'/arena/animations/'+p.id+'/'+(combat?(p.id==='thorfinn'?'combat-v16':'combat'):p.id==='miguel'?'movement-v4':'movement')+'.webp',row:combat?combatRows[current]:movementRows[current],rows:combat?7:8,frame,action:current}}
+ return {clock:state,sample:{url:'/arena/animations/'+p.id+'/'+(combat?'combat':p.id==='miguel'?'movement-v4':'movement')+'.webp',row:combat?combatRows[current]:movementRows[current],rows:combat?7:8,frame,action:current}}
 }
-export const animationUrls=(id:string)=>id==='alter-lysa'?ALTER_LYSA_ANIMATION_URLS:[...(id==='lightea'?['/arena/animations/lightea/movement-v9.webp','/arena/animations/lightea/combat-v9.webp']:['/arena/animations/'+id+'/'+(id==='miguel'?'movement-v4':'movement')+'.webp','/arena/animations/'+id+'/'+(id==='thorfinn'?'combat-v16':'combat')+'.webp']),walkAtlas(id),...((id==='joffrey'||id==='amelia')?['/arena/animations/'+id+'/idle-v9.webp']:[]),...(id==='fander'?['/arena/animations/fander/elbow-v4.webp']:id==='loulan'?['/arena/animations/loulan/switch-v4.webp']:id==='valya'?['/arena/animations/valya/dragon-v5.webp']:[])]
+export const animationUrls=(id:string,definition?:ArenaPortrait['definition'])=>definition?[...new Set(Object.values(definition.animations).map(a=>a?.atlas).filter((url):url is string=>!!url))]:id==='alter-lysa'?ALTER_LYSA_ANIMATION_URLS:[...(id==='lightea'?['/arena/animations/lightea/movement-v9.webp','/arena/animations/lightea/combat-v9.webp']:['/arena/animations/'+id+'/'+(id==='miguel'?'movement-v4':'movement')+'.webp','/arena/animations/'+id+'/'+'combat'+'.webp']),walkAtlas(id),...((id==='joffrey'||id==='amelia')?['/arena/animations/'+id+'/idle-v9.webp']:[]),...(id==='fander'?['/arena/animations/fander/elbow-v4.webp']:id==='loulan'?['/arena/animations/loulan/switch-v4.webp']:id==='valya'?['/arena/animations/valya/dragon-v5.webp']:[])]

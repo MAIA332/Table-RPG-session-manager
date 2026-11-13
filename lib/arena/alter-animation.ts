@@ -2,7 +2,7 @@ import type {ArenaPublicFighter} from './model'
 import {EUPHORIA_TRANSFORM_SECONDS,EUPHORIA_REVERT_SECONDS,ALTER_DANCE_SECONDS} from './model'
 import type {ArenaAnimation,AnimationClock,AnimationFrame} from './animation'
 const root='/arena/animations/alter-lysa/'
-const atlas=(name:string)=>root+name+'-v'+(name==='dance'||name==='clone'?14:name.startsWith('base-')?11:['transform','euphoria-dash'].includes(name)?13:12)+'.webp'
+const atlas=(name:string)=>root+name+'-v'+(name==='dance'?13:name==='clone'?11:name.startsWith('base-')?11:['transform','euphoria-dash'].includes(name)?13:12)+'.webp'
 export const ALTER_LYSA_ANIMATION_URLS=['base-movement','base-combat','euphoria-movement','euphoria-combat','euphoria-dash','transform','revert','dance','clone'].map(atlas)
 const movement:Record<string,number>={idle:0,forward:1,backward:2,jump:3,crouch:4,guard:5,hit:6,fall:7,rise:7}
 const combat:Record<string,number>={light:0,heavy:1,kick:2,lowKick:3,special0:1}

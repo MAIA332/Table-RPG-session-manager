@@ -4,7 +4,7 @@ export function applyArenaInputPacket(f:ArenaFighter,value:unknown,pulses:unknow
  if(source&&source===f.lastInputSource&&seq<=f.lastInputSeq)return false
  const newSource=source!==f.lastInputSource
  if(newSource)f.lastPulseCounts={}
- f.lastInputSource=source;f.lastInputSeq=seq
+ f.lastInputSource=source;f.lastInputSeq=seq;f.lastAppliedInputSeq=seq
  const data=value&&typeof value==='object'?value as Record<string,unknown>:{}
  f.input=Object.fromEntries(Object.keys(NO_INPUT).map(key=>[key,data[key]===true])) as ArenaInput
  if(pulses&&typeof pulses==='object'){

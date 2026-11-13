@@ -1,0 +1,266 @@
+{
+  "schemaVersion": 1,
+  "id": "treino-arena",
+  "revision": 1,
+  "name": "Treino Arena",
+  "title": "Exemplo de importação sem codificar personagens",
+  "color": "#7bb2ff",
+  "portrait": "portrait.webp",
+  "speed": 225,
+  "power": 10,
+  "rig": {
+    "cellWidth": 384,
+    "cellHeight": 384,
+    "anchorX": 192,
+    "anchorY": 304,
+    "bodyHeight": 184,
+    "bodyWidth": 56
+  },
+  "animations": {
+    "idle": {
+      "atlas": "animations/movement.webp",
+      "columns": 6,
+      "rows": 8,
+      "frames": 6,
+      "startFrame": 0,
+      "fps": 8,
+      "loop": true
+    },
+    "forward": {
+      "atlas": "animations/movement.webp",
+      "columns": 6,
+      "rows": 8,
+      "frames": 6,
+      "startFrame": 6,
+      "fps": 10,
+      "loop": true
+    },
+    "backward": {
+      "atlas": "animations/movement.webp",
+      "columns": 6,
+      "rows": 8,
+      "frames": 6,
+      "startFrame": 12,
+      "fps": 10,
+      "loop": true
+    },
+    "jump": {
+      "atlas": "animations/movement.webp",
+      "columns": 6,
+      "rows": 8,
+      "frames": 6,
+      "startFrame": 18,
+      "fps": 8,
+      "loop": false
+    },
+    "crouch": {
+      "atlas": "animations/movement.webp",
+      "columns": 6,
+      "rows": 8,
+      "frames": 6,
+      "startFrame": 24,
+      "fps": 8,
+      "loop": false
+    },
+    "guard": {
+      "atlas": "animations/movement.webp",
+      "columns": 6,
+      "rows": 8,
+      "frames": 6,
+      "startFrame": 30,
+      "fps": 8,
+      "loop": false
+    },
+    "hit": {
+      "atlas": "animations/movement.webp",
+      "columns": 6,
+      "rows": 8,
+      "frames": 6,
+      "startFrame": 36,
+      "fps": 8,
+      "loop": false
+    },
+    "fall": {
+      "atlas": "animations/movement.webp",
+      "columns": 6,
+      "rows": 8,
+      "frames": 6,
+      "startFrame": 42,
+      "fps": 8,
+      "loop": false
+    },
+    "rise": {
+      "atlas": "animations/movement.webp",
+      "columns": 6,
+      "rows": 8,
+      "frames": 6,
+      "startFrame": 42,
+      "fps": 8,
+      "loop": false
+    },
+    "light": {
+      "atlas": "animations/combat.webp",
+      "columns": 6,
+      "rows": 7,
+      "frames": 6,
+      "startFrame": 0,
+      "fps": 15,
+      "loop": false
+    },
+    "heavy": {
+      "atlas": "animations/combat.webp",
+      "columns": 6,
+      "rows": 7,
+      "frames": 6,
+      "startFrame": 6,
+      "fps": 15,
+      "loop": false
+    },
+    "kick": {
+      "atlas": "animations/combat.webp",
+      "columns": 6,
+      "rows": 7,
+      "frames": 6,
+      "startFrame": 12,
+      "fps": 15,
+      "loop": false
+    },
+    "lowKick": {
+      "atlas": "animations/combat.webp",
+      "columns": 6,
+      "rows": 7,
+      "frames": 6,
+      "startFrame": 18,
+      "fps": 15,
+      "loop": false
+    },
+    "special0": {
+      "atlas": "animations/combat.webp",
+      "columns": 6,
+      "rows": 7,
+      "frames": 6,
+      "startFrame": 24,
+      "fps": 15,
+      "loop": false
+    },
+    "special1": {
+      "atlas": "animations/combat.webp",
+      "columns": 6,
+      "rows": 7,
+      "frames": 6,
+      "startFrame": 30,
+      "fps": 15,
+      "loop": false
+    },
+    "special2": {
+      "atlas": "animations/combat.webp",
+      "columns": 6,
+      "rows": 7,
+      "frames": 6,
+      "startFrame": 36,
+      "fps": 15,
+      "loop": false
+    }
+  },
+  "moves": {
+    "light": {
+      "startupFrames": 5,
+      "activeFrames": 4,
+      "recoveryFrames": 9,
+      "damage": 6,
+      "range": 115,
+      "hitboxes": [
+        {
+          "fromFrame": 6,
+          "toFrame": 9,
+          "x": 20,
+          "y": -145,
+          "w": 112,
+          "h": 75
+        }
+      ],
+      "bufferFrames": 6,
+      "cancelStartFrame": 8,
+      "cancelOnHit": [
+        "light",
+        "heavy"
+      ]
+    },
+    "heavy": {
+      "startupFrames": 9,
+      "activeFrames": 5,
+      "recoveryFrames": 12,
+      "damage": 10,
+      "range": 122,
+      "hitboxes": [
+        {
+          "fromFrame": 10,
+          "toFrame": 14,
+          "x": 30,
+          "y": -130,
+          "w": 125,
+          "h": 72
+        }
+      ],
+      "bufferFrames": 6
+    },
+    "kick": {
+      "startupFrames": 10,
+      "activeFrames": 6,
+      "recoveryFrames": 12,
+      "damage": 11,
+      "range": 170,
+      "hitboxes": [
+        {
+          "fromFrame": 11,
+          "toFrame": 16,
+          "x": 30,
+          "y": -132,
+          "w": 155,
+          "h": 80
+        }
+      ],
+      "bufferFrames": 6
+    },
+    "lowKick": {
+      "startupFrames": 9,
+      "activeFrames": 4,
+      "recoveryFrames": 10,
+      "damage": 8,
+      "range": 142,
+      "hitboxes": [
+        {
+          "fromFrame": 10,
+          "toFrame": 13,
+          "x": 25,
+          "y": -56,
+          "w": 130,
+          "h": 55
+        }
+      ],
+      "bufferFrames": 6
+    },
+    "special": {
+      "startupFrames": 15,
+      "activeFrames": 6,
+      "recoveryFrames": 17,
+      "damage": 18,
+      "range": 190,
+      "bufferFrames": 8
+    }
+  },
+  "abilities": [
+    {
+      "name": "Projeção de energia",
+      "description": "Especial de demonstração",
+      "action": "projectile",
+      "damage": 16,
+      "speed": 480,
+      "projectileStyle": "fire"
+    }
+  ],
+  "ai": {
+    "style": "balanced",
+    "difficulty": "normal"
+  }
+}

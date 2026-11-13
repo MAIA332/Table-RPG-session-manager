@@ -507,7 +507,7 @@ function CombinedChecksPanel({
           </button>)}
         </div>
       </section>
-      <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 gap-3 max-h-[420px] overflow-x-hidden overflow-y-auto custom-scrollbar-sepia pr-2">
+      <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 auto-rows-max content-start items-stretch gap-3 max-h-[420px] overflow-x-hidden overflow-y-auto custom-scrollbar-sepia pr-2">
         {customFiltered.length > 0 && <div className="col-span-full flex items-center gap-2 border-b border-accent/20 pb-2 text-[10px] font-black uppercase tracking-[0.16em] text-accent"><Dices className="size-4" /> Testes especiais do Mestre <span className="ml-auto font-normal text-muted-foreground">{customFiltered.length} disponível(is)</span></div>}
         {customFiltered.map(check => (
           <Button key={check.id} type="button" disabled={disabled || rollingAttr === `custom:${check.id}`} variant="outline"
@@ -526,7 +526,7 @@ function CombinedChecksPanel({
             disabled={disabled || rollingAttr === check.id}
             variant="outline"
             data-controller-check-roll="true"
-            className="group h-auto min-w-0 justify-start overflow-hidden whitespace-normal break-words rounded-xl border-border/40 p-3 text-left transition-all hover:border-primary/50 hover:bg-primary/5"
+            className="group h-auto min-h-[94px] min-w-0 w-full flex-col items-stretch justify-start whitespace-normal break-words rounded-xl border-border/40 p-3 text-left transition-all hover:border-primary/50 hover:bg-primary/5"
             onClick={() => rollPreset(check)}
           >
             <div className="flex min-w-0 flex-col items-start w-full gap-1">

@@ -1,5 +1,6 @@
 import "server-only"
 import type { CombatSession } from "./combat-types"
+import type { CharacterRecord } from "./arena/character-schema"
 import type {
   Campaign,
   Character,
@@ -43,6 +44,7 @@ interface StoreShape {
   sessions: Map<string, SessionToken>
   campaigns: Map<string, Campaign>
   characters: Map<string, Character>
+  arenaCharacters: Map<string, CharacterRecord>
   characterTombstones: Map<string, number>
   maps: Map<string, GameMap>
   lore: Map<string, any[]>
@@ -66,6 +68,7 @@ const PERSISTED_COLLECTIONS = [
   "sessions",
   "campaigns",
   "characters",
+  "arenaCharacters",
   "characterTombstones",
   "maps",
   "lore",
@@ -152,6 +155,7 @@ function createEmptyStore(): StoreShape {
     sessions: new Map(),
     campaigns: new Map(),
     characters: new Map(),
+    arenaCharacters: new Map(),
     characterTombstones: new Map(),
     maps: new Map(),
     lore: new Map(),
@@ -192,6 +196,7 @@ function createEmptySnapshot(): PersistedSnapshot {
     sessions: new Map(),
     campaigns: new Map(),
     characters: new Map(),
+    arenaCharacters: new Map(),
     characterTombstones: new Map(),
     maps: new Map(),
     lore: new Map(),
@@ -236,6 +241,7 @@ function snapshotFromStore(storeData: StoreShape): PersistedSnapshot {
     sessions: cloneMap(storeData.sessions),
     campaigns: cloneMap(storeData.campaigns),
     characters: cloneMap(storeData.characters),
+    arenaCharacters: cloneMap(storeData.arenaCharacters),
     characterTombstones: cloneMap(storeData.characterTombstones),
     maps: cloneMap(storeData.maps),
     lore,
@@ -252,6 +258,7 @@ function storeFromSnapshot(snapshot: PersistedSnapshot): StoreShape {
   next.sessions = cloneMap(snapshot.sessions as Map<string, SessionToken>)
   next.campaigns = cloneMap(snapshot.campaigns as Map<string, Campaign>)
   next.characters = cloneMap(snapshot.characters as Map<string, Character>)
+  next.arenaCharacters = cloneMap(snapshot.arenaCharacters as Map<string, CharacterRecord>)
   next.characterTombstones = cloneMap(snapshot.characterTombstones as Map<string, number>)
   next.maps = cloneMap(snapshot.maps as Map<string, GameMap>)
   next.lore = cloneMap(snapshot.lore as Map<string, any[]>)
@@ -272,6 +279,7 @@ function replacePersistedMaps(target: StoreShape, source: StoreShape): void {
   target.sessions = source.sessions
   target.campaigns = source.campaigns
   target.characters = source.characters
+  target.arenaCharacters = source.arenaCharacters
   target.characterTombstones = source.characterTombstones
   target.maps = source.maps
   target.lore = source.lore
@@ -492,6 +500,9 @@ if (!store.combatSessions) store.combatSessions = new Map()
 if (!store.maps) store.maps = new Map()
 if (!store.lore) store.lore = new Map()
 if (!store.campaignState) store.campaignState = new Map()
+if (!store.arenaCharacters) store.arenaCharacters = new Map()
+if (globalForStore.__vttPersistedSnapshot && !globalForStore.__vttPersistedSnapshot.arenaCharacters)
+  globalForStore.__vttPersistedSnapshot.arenaCharacters = new Map()
 if (!store.classBooks) store.classBooks = new Map()
 if (!store.personalNotes) store.personalNotes = new Map()
 if (!store.activeSounds) store.activeSounds = new Map()

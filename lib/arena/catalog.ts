@@ -32,10 +32,10 @@ export const ALTER_LYSA:ArenaPortrait={...BASE_LYSA,name:'Alter Lysa',title:'A h
  {name:'Euforia descontrolada',description:'Forma selvagem por 10 segundos: dano +60%. Use de novo para voltar; uma nova transformação exige MP cheio.'},
 ]}
 export function fighterPortrait(roster:readonly ArenaPortrait[],f:Pick<ArenaPublicFighter,'characterId'>&{alterLysa?:boolean}){
- return f.characterId==='lysa'?(f.alterLysa?ALTER_LYSA:BASE_LYSA):roster.find(p=>p.id===f.characterId)
+ return f.characterId==='lysa'?(f.alterLysa?ALTER_LYSA:roster.find(p=>p.id==='lysa')||BASE_LYSA):roster.find(p=>p.id===f.characterId)
 }
 /** The public tile changes for everyone; a fighter's actual variant remains per device. */
 export function arenaRoster(room:Pick<ArenaSession,'roster'|'phase'|'secretUnlocks'>&{fighters:readonly Pick<ArenaPublicFighter,'alterLysa'|'withdrawn'>[]}):ArenaPortrait[]{
  const show=room.phase==='lobby'||room.phase==='stage'?(room.secretUnlocks||[]).length>0:room.phase!=='finished'&&room.fighters.some(f=>f.alterLysa&&!f.withdrawn)
- return room.roster.map(p=>p.id==='lysa'?{...(show?ALTER_LYSA:BASE_LYSA)}:p)
+ return room.roster.map(p=>p.id==='lysa'&&!p.definition?{...(show?ALTER_LYSA:BASE_LYSA)}:p)
 }

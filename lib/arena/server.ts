@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { store, publish } from '@/lib/store'
 import type { ArenaSession, ArenaSnapshot, ArenaPortrait, ArenaInput } from './model'
 import { advanceArena, forfeitArena, newFighter, publicArena, startRound, upgradeArenaSession, configureArenaSettings, arenaSettings, ARENA_MAX_FIGHTERS, NO_INPUT } from './model'
-import { ARENA_CAST, ARENA_STAGES,arenaRoster } from './catalog'
+import { ARENA_STAGES,arenaRoster } from './catalog'
+import {publishedCharacters} from './character-registry'
 import {unlockAlterLysa,hasAlterUnlock,revokeAlterUnlock} from './secrets'
 import {applyArenaInputPacket} from './input-packet'
 
@@ -13,15 +14,19 @@ if(!root.__otmsArenaTick){root.__otmsArenaTick=setInterval(()=>{const now=Date.n
 const age = (n: number) => Date.now() - n
 const error = (message: string) => { throw new Error(message) }
 function changed(id: string) {const room=rooms.get(id);if(room){room.revision=(room.revision||0)+1;room.lastUpdateAt=Date.now()}publish(id, {type: 'arena:changed'}) }
-function rosterFor(_campaignId:string):ArenaPortrait[]{return ARENA_CAST.map(character=>({...character}))}
+function rosterFor(campaignId:string):ArenaPortrait[]{return publishedCharacters(campaignId,store.arenaCharacters)}
 function updateRoster(room: ArenaSession) {
   if((room.phase==='lobby'||room.phase==='stage')&&arenaSettings(room).mode==='teams'&&(room.fighters.length!==4||room.fighters.some(f=>f.withdrawn))){room.settings={...arenaSettings(room),mode:'free-for-all'};room.fighters.forEach(f=>{f.team=undefined})}
+  // Partida em andamento não pode trocar a revisão de golpes ou de sprites.
+  if(room.phase==='playing'||room.phase==='paused')return
   const fresh = rosterFor(room.campaignId)
   room.secretUnlocks=(room.secretUnlocks||[]).filter(g=>room.fighters.some(f=>f.userId===g.userId&&f.device===g.device&&!f.bot))
   room.roster = arenaRoster({...room,roster:fresh})
-  if (room.phase !== 'playing') {
-    const ids = new Set(fresh.map(x => x.id))
-    for (const fighter of room.fighters) if (fighter.characterId && !ids.has(fighter.characterId)) fighter.characterId = null
+  // "playing" e "paused" já retornaram acima: o TypeScript reduziu
+  // room.phase a "lobby" | "stage" | "finished" neste ponto.
+  const ids = new Set(fresh.map(x => x.id))
+  for (const fighter of room.fighters) {
+    if (fighter.characterId && !ids.has(fighter.characterId)) fighter.characterId = null
   }
 }
 function retire(room: ArenaSession) {

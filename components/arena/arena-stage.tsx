@@ -1,6 +1,6 @@
 'use client'
 import {useEffect,useRef} from 'react'
-import {ARENA_FLOOR,ARENA_HEIGHT,ARENA_WIDTH,ARENA_EDGE,ARENA_GO_CLEAR_SECONDS,GRAVITY,AIR_MOVE_MULTIPLIER,getFighterHurtbox,getAttackHitbox,arenaOpponents,type ArenaSnapshot,type ArenaInput} from '@/lib/arena/model'
+import {ARENA_FLOOR,ARENA_HEIGHT,ARENA_WIDTH,ARENA_EDGE,ARENA_GO_CLEAR_SECONDS,GRAVITY,AIR_MOVE_MULTIPLIER,NO_INPUT,attackTiming,type MoveKind,getFighterHurtbox,getAttackHitbox,arenaOpponents,type ArenaSnapshot,type ArenaInput} from '@/lib/arena/model'
 import {ARENA_STAGES,fighterPortrait} from '@/lib/arena/catalog'
 import {animationFrame,attackAnimationFrame,type AnimationClock,type AnimationFrame} from '@/lib/arena/animation'
 import {FX_ROWS,FX_URLS,fxFrame,fxUrl,fxRows,CHARACTER_SPECIAL_FX,CHARACTER_BASIC_FX,type ArenaFx} from '@/lib/arena/fx'
@@ -13,7 +13,7 @@ import headData from '@/lib/arena/fander-heads.json'
 import {arenaImage,arenaImageCount} from '@/lib/arena/assets'
 import effectAnchors from '@/lib/arena/effect-anchors.json'
 
-type Props={room:ArenaSnapshot;getSnapshot?:()=>ArenaSnapshot;debugBoxes?:boolean;localPlayerId:string;getLocalInput:(device:string)=>ArenaInput|undefined;onPointerAttack:(kind:'light'|'heavy',pressed:boolean)=>void}
+type Props={quality?:'quality'|'balanced'|'compatibility';room:ArenaSnapshot;getSnapshot?:()=>ArenaSnapshot;debugBoxes?:boolean;localPlayerId:string;getLocalInput:(device:string)=>ArenaInput|undefined;onPointerAttack:(kind:'light'|'heavy',pressed:boolean)=>void}
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n))
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t
 const asset=arenaImage
@@ -30,10 +30,10 @@ function panoramaColors(image:HTMLImageElement):[string,string]{
 }
 function drawFrame(g:CanvasRenderingContext2D,sample:AnimationFrame,x:number,y:number,facing:number,characterId:string,horns=false,t=0){
  const image=asset(sample.url);if(!image.complete||!image.naturalWidth||![sample.frame,sample.row,x,y].every(Number.isFinite))return false
- const width=image.naturalWidth/6,height=image.naturalHeight/sample.rows
+ const width=image.naturalWidth/(sample.columns||6),height=image.naturalHeight/sample.rows
  g.save();g.translate(x,y);g.scale(facing,1)
- const scale=fighterDimensions(characterId).scale
- g.drawImage(image,sample.frame*width,sample.row*height,width,height,-SPRITE_ANCHOR_X*scale,-SPRITE_ANCHOR_Y*scale,SPRITE_CELL*scale,SPRITE_CELL*scale)
+ const scale=sample.scale??fighterDimensions(characterId).scale
+ g.drawImage(image,sample.frame*width,sample.row*height,width,height,-(sample.anchorX??SPRITE_ANCHOR_X)*scale,-(sample.anchorY??SPRITE_ANCHOR_Y)*scale,(sample.cellWidth??SPRITE_CELL)*scale,(sample.cellHeight??SPRITE_CELL)*scale)
  if(horns&&characterId==='fander'&&!sample.url.includes('elbow-v4')){
   const heads=headData as Record<string,{x:number;y:number}[]>,head=heads[sample.url]?.[sample.row*6+sample.frame]
   if(head)fx(g,'horns',(head.x-SPRITE_ANCHOR_X)*scale,(head.y-SPRITE_ANCHOR_Y-13)*scale,43*scale,43*scale,t,true,1)
@@ -72,11 +72,12 @@ export function ArenaStage(props:Props){
   let view:{x:number;zoom:number}|null=null
   const timeline=new ArenaTimeline(),positions=new Map<string,{x:number;y:number}>(),clocks=new Map<string,AnimationClock>(),heard=new Set<string>(),steps=new Map<string,number>(),puddle=new Map<string,{active:boolean;emergeAt:number}>()
   const previousFrames=new Map<string,AnimationFrame>()
+  const priorButtons=new Map<string,Partial<ArenaInput>>(),visualAttacks=new Map<string,{kind:MoveKind;at:number;clockAt:number}>(),lastLocalSfx=new Map<string,number>()
   for(const url of FX_URLS)asset(url)
   const fit=()=>{
    const bounds=canvas.parentElement?.getBoundingClientRect();if(!bounds)return
    const width=Math.max(160,Math.min(1920,Math.round(bounds.width/Math.max(1,bounds.height)*540)))
-   if(width!==logicalWidth){logicalWidth=width;canvas.width=width}
+   if(width!==logicalWidth)logicalWidth=width
   }
   const observer=new ResizeObserver(fit);if(canvas.parentElement)observer.observe(canvas.parentElement);fit()
   const unlock=()=>{void arenaAudio.unlock()}
@@ -86,25 +87,29 @@ export function ArenaStage(props:Props){
    frame=requestAnimationFrame(render)
    if(document.visibilityState==='hidden'){previousAt=now;return}
    const dt=clamp((now-previousAt)/1000,0,.04);previousAt=now;frames++
-   if(now-lastFpsAt>=1000){canvas.dataset.fps=String(Math.round(frames*1000/(now-lastFpsAt)));frames=0;lastFpsAt=now}
+   if(now-lastFpsAt>=1000){if(live.current.debugBoxes)canvas.dataset.fps=String(Math.round(frames*1000/(now-lastFpsAt)));frames=0;lastFpsAt=now}
    const current=live.current,authoritative=current.getSnapshot?.()||current.room
+   // Perfil explícito de resolução: não promete habilitar/desabilitar GPU do navegador.
+   const ratio=current.quality==='quality'?Math.min(1.5,window.devicePixelRatio||1):current.quality==='compatibility'?.75:1
+   const pixelsX=Math.max(120,Math.round(logicalWidth*ratio)),pixelsY=Math.round(540*ratio)
+   if(canvas.width!==pixelsX||canvas.height!==pixelsY){canvas.width=pixelsX;canvas.height=pixelsY}
    if(authoritative!==lastState){
     if(authoritative.rounds!==round||lastState&&authoritative.gameTime<lastState.gameTime-.1){positions.clear();clocks.clear();heard.clear();puddle.clear();round=authoritative.rounds}
     lastArrival=now;lastState=authoritative
    }
    const scene=timeline.sample(authoritative,now),room=scene.room,lag=authoritative.phase==='playing'?clamp((now-lastArrival)/1000,0,.09):0,t=scene.time,liveTime=authoritative.gameTime+lag,stage=ARENA_STAGES.find(s=>s.id===room.stageId)||ARENA_STAGES[0],background=asset(stage.image)
-   canvas.dataset.networkDelay=String(Math.round(scene.delay*1000))
-   g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.imageSmoothingEnabled=true;g.fillStyle='#0d1017';g.fillRect(0,0,logicalWidth,540)
+   if(current.debugBoxes)canvas.dataset.networkDelay=String(Math.round(scene.delay*1000))
+   g.setTransform(pixelsX/logicalWidth,0,0,pixelsY/540,0,0);g.globalAlpha=1;g.imageSmoothingEnabled=true;g.fillStyle='#0d1017';g.fillRect(0,0,logicalWidth,540)
    const wanted=arenaCamera(room.fighters.map(f=>f.userId===current.localPlayerId&&!f.bot&&positions.has(f.id)?{...f,x:positions.get(f.id)!.x}:f),logicalWidth)
    if(!view)view={x:wanted.x,zoom:wanted.zoom}
    view.zoom=wanted.zoom<view.zoom?wanted.zoom:mix(view.zoom,wanted.zoom,1-Math.exp(-dt*7))
    view.x=clamp(mix(view.x,wanted.x,1-Math.exp(-dt*12)),-ARENA_CAMERA_MARGIN,Math.max(-ARENA_CAMERA_MARGIN,ARENA_WIDTH+ARENA_CAMERA_MARGIN-logicalWidth/view.zoom))
    const camera={...view,y:ARENA_FLOOR*(1-view.zoom)}
-   canvas.dataset.camera=JSON.stringify({x:camera.x,zoom:camera.zoom,worldWidth:ARENA_WIDTH,viewportWidth:logicalWidth})
+   if(current.debugBoxes)canvas.dataset.camera=JSON.stringify({x:camera.x,zoom:camera.zoom,worldWidth:ARENA_WIDTH,viewportWidth:logicalWidth})
    g.save();g.translate(-camera.x*camera.zoom,camera.y);g.scale(camera.zoom,camera.zoom)
    if(background.complete&&background.naturalWidth){
     const backdrop=arenaBackdrop(background.naturalWidth,background.naturalHeight,logicalWidth,camera)
-    canvas.dataset.backdrop=JSON.stringify({worldHeight:backdrop.worldHeight,worldWidth:backdrop.worldWidth})
+    if(current.debugBoxes)canvas.dataset.backdrop=JSON.stringify({worldHeight:backdrop.worldHeight,worldWidth:backdrop.worldWidth})
     // Wide camera shots expose more sky/floor without resizing the world artwork.
     const [sky,floor]=panoramaColors(background),left=backdrop.tiles[0].x
     g.fillStyle=sky;g.fillRect(-10000,-10000,20000,10000+backdrop.top+1)
@@ -133,15 +138,27 @@ export function ArenaStage(props:Props){
     positions.set(f.id,{x,y})
     g.fillStyle='#07090a7a';g.beginPath();g.ellipse(x,ARENA_FLOOR+1,36,6,0,0,Math.PI*2);g.fill()
     const progress=f.attackKind?clamp((t-f.attackAt)/Math.max(.01,f.attackUntil-f.attackAt),0,1):0
-    if(f.buffUntil>t){const aura:ArenaFx=f.buffKind==='electric'?'electricAura':f.buffKind==='shadow'?'shadowAura':f.buffKind==='fire'?'fireAura':'bloodAura';fx(g,aura,x,y-100,260,280,t,true,f.facing,.9)}
-    if(f.autoDodgeUntil>t)fx(g,'dodge',x,y-105,260,250,t,true,f.facing,.65)
+    if(current.quality!=='compatibility'&&f.buffUntil>t){const aura:ArenaFx=f.buffKind==='electric'?'electricAura':f.buffKind==='shadow'?'shadowAura':f.buffKind==='fire'?'fireAura':'bloodAura';fx(g,aura,x,y-100,260,280,t,true,f.facing,.9)}
+    if(current.quality!=='compatibility'&&f.autoDodgeUntil>t)fx(g,'dodge',x,y-105,260,250,t,true,f.facing,.65)
     const prior=puddle.get(f.id)||{active:false,emergeAt:-100}
     const submerged=f.puddleUntil>t&&(!f.attackKind||progress>.55)
     if(prior.active&&!submerged)prior.emergeAt=t
     prior.active=submerged;puddle.set(f.id,prior)
     const controlling=f.puppetUntil>t&&f.health>0&&f.knockdownUntil<=t&&f.stunUntil<=t&&!(f.attackKind==='special'&&f.specialIndex===0)
     const visualFacing=owned&&intent&&!f.attackKind&&f.stunUntil<=t&&f.knockdownUntil<=t?Math.sign(intent):f.facing
-    const drawn=animationFrame(p,{...f,x,y,facing:visualFacing,...(controlling?{pose:'idle' as const,vx:0,attackKind:null,puppetUntil:0}:{vx:owned&&input&&intent&&!f.attackKind&&f.knockdownUntil<=t?intent*225:f.vx,pose:owned&&input&&intent&&!input.crouch&&!input.guard&&f.pose!=='guard'&&!f.attackKind&&f.onGround&&f.stunUntil<=t&&f.puppetUntil<=t&&f.dodgeUntil<=t?'walk':f.pose})},t,clocks.get(f.id))
+    // Startup local especulativo: só anima, nunca aplica dano ou colisão local.
+    // A confirmação SSE substitui a pose; candidatos expiram rapidamente.
+    const keys=owned&&input?input:{...NO_INPUT},previous=priorButtons.get(f.id)||{},pressed=['light','heavy','kick','lowKick','special','special2','special3'].find(key=>keys[key as keyof ArenaInput]&&!previous[key as keyof ArenaInput])
+    priorButtons.set(f.id,{...keys})
+    if(owned&&pressed&&!f.attackKind&&f.stunUntil<=t&&f.dizzyUntil<=t&&f.knockdownUntil<=t&&f.attackCooldownUntil<=t&&room.roundStatus==='fight'){
+     const kind=pressed.startsWith('special')?'special':pressed as MoveKind
+     if(kind!=='special'||f.meter>=25){visualAttacks.set(f.id,{kind,at:t,clockAt:now});lastLocalSfx.set(f.id,now);once('localattack:'+f.id+':'+now,attackAudioCue(p.id,kind,pressed==='special2'?1:pressed==='special3'?2:0),x)}
+    }
+    if(f.attackKind)visualAttacks.delete(f.id)
+    const candidate=visualAttacks.get(f.id)
+    if(candidate&&now-candidate.clockAt>160)visualAttacks.delete(f.id)
+    const preview=candidate&&now-candidate.clockAt<=160&&!f.attackKind?{...f,attackKind:candidate.kind,attackAt:candidate.at,attackUntil:candidate.at+attackTiming(candidate.kind,p.definition?.moves[candidate.kind]).duration,pose:candidate.kind}:f
+    const drawn=animationFrame(p,{...preview,x,y,facing:visualFacing,...(controlling?{pose:'idle' as const,vx:0,attackKind:null,puppetUntil:0}:{vx:owned&&input&&intent&&!f.attackKind&&f.knockdownUntil<=t?intent*225:f.vx,pose:owned&&input&&intent&&!input.crouch&&!input.guard&&f.pose!=='guard'&&!f.attackKind&&f.onGround&&f.stunUntil<=t&&f.puppetUntil<=t&&f.dodgeUntil<=t?'walk':f.pose})},t,clocks.get(f.id))
     clocks.set(f.id,drawn.clock)
     // A poça é a própria transformação da Lysa, sem uma segunda criatura sobreposta.
     if(submerged)drawFrame(g,{url:'/arena/animations/lysa/combat.webp',row:5,rows:7,frame:4,action:'special1'},x,y,visualFacing,p.id)
@@ -153,8 +170,8 @@ export function ArenaStage(props:Props){
       drawFrame(g,previous,x,y,visualFacing,p.id,f.buffUntil>t&&f.buffKind==='electric',t)
      }
     }
-    canvas.dataset.animation=drawn.sample.action
-    if(f.attackKind&&room.phase==='playing')once('attack:'+f.id+':'+f.attackAt,attackAudioCue(f.alterLysa?'alter-lysa':p.id,f.attackKind,f.specialIndex),x)
+    if(current.debugBoxes)canvas.dataset.animation=drawn.sample.action
+    if(f.attackKind&&room.phase==='playing'&&now-(lastLocalSfx.get(f.id)||-Infinity)>180)once('attack:'+f.id+':'+f.attackAt,attackAudioCue(f.alterLysa?'alter-lysa':p.id,f.attackKind,f.specialIndex),x)
     if(f.alterLysa&&(f.euphoriaState==='transforming'||f.euphoriaState==='reverting')&&room.phase==='playing')once('alter:'+f.id+':'+f.euphoriaState+':'+f.euphoriaAt,f.euphoriaState==='transforming'?'world:alter-transform':'world:alter-revert',x)
     if(drawn.sample.action==='jump')once('jump:'+f.id+':'+drawn.clock.at,'world:jump',x)
     if(drawn.sample.action==='fall')once('fall:'+f.id+':'+drawn.clock.at,'world:fall',x)
@@ -163,7 +180,7 @@ export function ArenaStage(props:Props){
      if(steps.get(f.id)!==step){steps.set(f.id,step);void arenaAudio.play('world:step:'+stage.id+':'+step%2,x)}
     }
     if(f.puppetUntil>t)fx(g,'puppet',f.puppetX,ARENA_FLOOR-215+Math.sin(t*2.8)*4,420,420,t,true,f.facing,1,f.attackKind?attackAnimationFrame(f.attackKind,t-f.attackAt):0)
-    if(f.dizzyUntil>t){
+    if(f.dizzyUntil>t&&current.quality!=='compatibility'){
      for(let star=0;star<3;star++){const angle=t*4+star*Math.PI*2/3,sx=x+Math.cos(angle)*29,sy=y-fighterDimensions(p.id).height-12+Math.sin(angle)*7;g.save();g.translate(sx,sy);g.rotate(t+star);g.fillStyle='#ffe18b';g.shadowColor='#f8b94c';g.shadowBlur=7;g.beginPath();for(let k=0;k<10;k++){const a=k*Math.PI/5-Math.PI/2,r=k%2?3:7;g.lineTo(Math.cos(a)*r,Math.sin(a)*r)}g.closePath();g.fill();g.restore()}
     }
     if(f.frozenUntil>t)fx(g,'ice',x,y-95,145,230,t,true,1,.8)
@@ -178,7 +195,7 @@ export function ArenaStage(props:Props){
    for(const p of room.projectiles){
     if(t<(p.launchAt||0)&&p.style!=='iceDragon')continue
     if(p.style==='alterClone'){
-     drawFrame(g,{url:'/arena/animations/alter-lysa/clone-v14.webp',row:0,rows:1,frame:Math.floor((t-(p.launchAt||0))*9)%6,action:'forward'},p.x,p.y,Math.sign(p.vx)||1,'lysa')
+     drawFrame(g,{url:'/arena/animations/alter-lysa/clone-v11.webp',row:0,rows:1,frame:Math.floor((t-(p.launchAt||0))*9)%6,action:'forward'},p.x,p.y,Math.sign(p.vx)||1,'lysa')
      continue
     }
     if(p.style==='root'){if(firstRoot.has(p.ownerId))continue;firstRoot.set(p.ownerId,p.id)}
@@ -212,7 +229,7 @@ export function ArenaStage(props:Props){
    g.restore()
    if(room.roundStatus==='intro'||room.roundStatus==='ko'){
     const remaining=room.nextRoundAt-t,text=room.roundStatus==='ko'?'K.O.':remaining<=ARENA_GO_CLEAR_SECONDS?'':remaining<=.8?'LUTEM!':'ROUND '+room.rounds
-    canvas.dataset.intro=text||'ready'
+    if(current.debugBoxes)canvas.dataset.intro=text||'ready'
     if(room.roundStatus==='intro'){
      once('round:'+room.rounds,'world:round')
      if(remaining<=.8)once('fight:'+room.rounds,'world:fight')
@@ -221,7 +238,7 @@ export function ArenaStage(props:Props){
     }
     if(text){g.textAlign='center';g.font='italic 900 '+Math.min(70,logicalWidth/6)+'px Arial';g.lineWidth=3;g.strokeStyle='#1e131b';g.fillStyle='#f1d8b1';g.strokeText(text,logicalWidth/2,257);g.fillText(text,logicalWidth/2,257)}
    }else{
-    canvas.dataset.intro='fight'
+    if(current.debugBoxes)canvas.dataset.intro='fight'
    }
    if(current.debugBoxes){g.textAlign='left';g.font='12px monospace';g.fillStyle='#fff';g.fillText((canvas.dataset.fps||'60')+' FPS · '+arenaImageCount()+' ATLAS EM CACHE',15,25)}
   }
