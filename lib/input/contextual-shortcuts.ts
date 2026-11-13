@@ -5,7 +5,7 @@ import type { GamepadButtonName, InputAction } from './actions'
  * A camada proprietária só existe enquanto o painel correspondente estiver
  * aberto; ao fechá-lo as preferências mapeadas voltam a valer imediatamente.
  */
-export type ContextualScope = 'bestiary' | 'combat' | 'gm' | 'special-attacks' | 'inventory' | 'store' | null
+export type ContextualScope = 'bestiary' | 'combat' | 'gm' | 'special-attacks' | 'inventory' | 'store' | 'grimoire' | 'checks' | null
 
 const BESTIARY_BUTTONS: Partial<Record<GamepadButtonName, InputAction>> = {
   RB: 'bestiary.spawn',
@@ -21,6 +21,8 @@ export function contextualShortcut(button: GamepadButtonName, scope: ContextualS
     X:'store.buy', Y:'store.sell', LB:'store.category.previous', RB:'store.category.next',
     LT:'store.folder.previous', RT:'store.folder.next', VIEW:'store.zone.next',
   } as Partial<Record<GamepadButtonName, InputAction>>)[button]
+  if (scope === 'grimoire') return button === 'LS' ? 'grimoire.cast' : undefined
+  if (scope === 'checks') return button === 'LS' ? 'checks.roll' : undefined
   if (scope === 'special-attacks') return button === 'LS' ? 'special.attack.use' : undefined
   if (scope === 'inventory') return ({LS:'inventory.item.primary',RS:'inventory.item.consume',RB:'inventory.item.manage',LB:'inventory.item.organize'} as Partial<Record<GamepadButtonName,InputAction>>)[button]
   if (scope === 'gm') return button === 'LB' ? 'gm.edit' : undefined
@@ -40,7 +42,7 @@ export function replaceContextualActions(
 ): InputAction[] {
   if (!scope || pressed.has('LT')) return actions
   const next = [...actions]
-  const buttons: GamepadButtonName[] = scope === 'bestiary' ? ['LB', 'RB'] : scope === 'gm' ? ['LB']
+  const buttons: GamepadButtonName[] = scope === 'grimoire' ? ['LS'] : scope === 'checks' ? ['LS'] : scope === 'bestiary' ? ['LB', 'RB'] : scope === 'gm' ? ['LB']
     : scope === 'special-attacks' ? ['LS'] : scope === 'inventory' ? ['LS','RS','LB','RB'] : ['LS', 'RS']
   for (const button of buttons) {
     const replacement = contextualShortcut(button, scope, hasCreature)

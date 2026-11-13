@@ -4,7 +4,7 @@ import { sanitizeSoundpadBindings, type SoundpadBindings } from './soundpad-comm
 export type InputAction =
   | 'ui.confirm' | 'ui.back' | 'ui.up' | 'ui.down' | 'ui.left' | 'ui.right'
   | 'ui.previous' | 'ui.next' | 'ui.settings'
-  | 'character.sheet' | `character.sheet.${string}` | 'character.inventory' | 'character.restore' | `character.restore.${string}` | 'map.open' | 'map.mode'
+  | 'character.sheet' | `character.sheet.${string}` | 'character.grimoire' | `character.grimoire.${string}` | 'character.inventory' | 'character.restore' | `character.restore.${string}` | 'map.open' | 'map.mode'
   | 'map.select' | 'map.panUp' | 'map.panDown' | 'map.panLeft' | 'map.panRight'
   | 'map.zoomIn' | 'map.zoomOut'
   | 'world.lore' | 'gm.panel' | 'gm.soundpad' | 'gm.bestiary' | 'gallery.open' | 'combat.focus'
@@ -21,7 +21,7 @@ export type InputAction =
   | 'voice.ptt' | 'voice.panel.toggle' | 'voice.chat.toggle' | 'voice.noise.toggle'
   | 'voice.volume.up' | 'voice.volume.down' | 'voice.studio.toggle' | 'voice.audio.recover'
   | 'bestiary.spawn' | 'bestiary.edit' | 'combat.creature.remove' | 'combat.toggle' | 'gm.edit'
-  | 'special.attack.use' | 'inventory.item.primary' | 'inventory.item.consume' | 'inventory.item.manage' | 'inventory.item.organize'
+  | 'special.attack.use' | 'grimoire.cast' | 'checks.roll' | 'checks.quick.previous' | 'checks.quick.next' | 'inventory.item.primary' | 'inventory.item.consume' | 'inventory.item.manage' | 'inventory.item.organize'
   | 'store.buy' | 'store.sell' | 'store.category.previous' | 'store.category.next'
   | 'store.folder.previous' | 'store.folder.next' | 'store.zone.next'
   | 'qte.react'
@@ -68,7 +68,7 @@ export const SETTABLE_COMMANDS: readonly InputAction[] = [
   'audio.play', 'audio.pause', 'audio.toggle', 'audio.stop', 'audio.previous', 'audio.next',
   'voice.join', 'voice.leave', 'voice.mute.toggle', 'voice.deafen.toggle', 'voice.ptt',
   'voice.panel.toggle', 'voice.chat.toggle', 'voice.noise.toggle', 'voice.volume.up', 'voice.volume.down', 'voice.studio.toggle', 'voice.audio.recover',
-  'character.sheet', 'character.inventory', 'character.restore', 'map.open', 'world.lore',
+  'character.sheet', 'character.grimoire', 'character.inventory', 'character.restore', 'map.open', 'world.lore',
   'special.manager', 'character.training', 'character.affinities', 'character.bonds', 'character.store', 'character.mannequin', 'player.theme',
   'combat.focus', 'gm.panel', 'gm.soundpad', 'gm.bestiary', 'gallery.open', 'ui.settings',
 ]
@@ -76,10 +76,10 @@ export const SETTABLE_COMMANDS: readonly InputAction[] = [
 /** A/B, MENU e D-pad são reservados para manter navegação e saída sempre acessíveis. */
 export const REMAPPABLE_BUTTONS = ['X', 'Y', 'LB', 'RB', 'RT', 'VIEW', 'LS', 'RS'] as const
 export const REMAPPABLE_LT_BUTTONS = ['LT+LS', 'LT+RS'] as const
-export const MAX_SKILL_PAGES = 5
+export const MAX_SKILL_PAGES = 10
 export type RemappableButton = typeof REMAPPABLE_BUTTONS[number]
 export const BASE_COMMANDS: readonly InputAction[] = [
-  'ui.previous', 'ui.next', 'character.sheet', 'character.inventory', 'character.restore', 'map.open',
+  'ui.previous', 'ui.next', 'character.sheet', 'character.grimoire', 'character.inventory', 'character.restore', 'map.open',
   'gallery.open', 'gm.bestiary', 'world.lore', 'combat.focus', 'gm.panel', 'gm.soundpad',
   'ui.settings', 'special.manager', 'character.training', 'character.affinities', 'character.bonds', 'character.store', 'character.mannequin', 'player.theme', 'gm.scenes', 'gm.poll', 'gm.custom', 'gm.loots', 'gm.battleGrid',
   'gm.crisis', 'gm.mapImporter', 'gm.weather', 'gm.difficulty',

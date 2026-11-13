@@ -6,7 +6,7 @@ import {
 } from '@/lib/input/targeted-actions'
 
 const CHARACTER_COMMANDS = new Set<string>([
-  'character.sheet', 'special.manager', 'skill.ability1', 'skill.ability2',
+  'character.sheet', 'character.grimoire', 'special.manager', 'skill.ability1', 'skill.ability2',
   'skill.ability3', 'skill.ability4',
 ])
 function isCharacterCommand(value: string): value is CharacterBoundCommand {

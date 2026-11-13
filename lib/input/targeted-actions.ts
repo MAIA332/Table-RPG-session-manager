@@ -6,7 +6,7 @@ export const TARGETED_SKILL = 'skill.open.'
 export const TARGETED_SPECIAL = 'special.open.'
 const ID = '[a-zA-Z0-9_-]{1,100}'
 const SPECIAL_PATTERN = new RegExp(String.raw`^(skill|special)\.open\.(${ID})(?:\.(${ID}))?$`)
-const BOUND_PATTERN = new RegExp(String.raw`^(character\.sheet|special\.manager|skill\.ability[1-4])\.(${ID})$`)
+const BOUND_PATTERN = new RegExp(String.raw`^(character\.sheet|character\.grimoire|special\.manager|skill\.ability[1-4])\.(${ID})$`)
 
 /** IDs com personagem: kind.open.characterId.id. Sem personagem: formato legado. */
 export function targetedAction(kind: 'skill' | 'special', id: string, characterId?: string): InputAction {
@@ -16,7 +16,7 @@ export function targetOfAction(action: string): { kind: 'skill' | 'special'; id:
   const match = SPECIAL_PATTERN.exec(action)
   return match ? { kind: match[1] as 'skill' | 'special', id: match[3] || match[2], ...(match[3] ? { characterId: match[2] } : {}) } : null
 }
-export type CharacterBoundCommand = 'character.sheet' | 'special.manager' | 'skill.ability1' | 'skill.ability2' | 'skill.ability3' | 'skill.ability4'
+export type CharacterBoundCommand = 'character.sheet' | 'character.grimoire' | 'special.manager' | 'skill.ability1' | 'skill.ability2' | 'skill.ability3' | 'skill.ability4'
 export function characterBoundAction(command: CharacterBoundCommand, characterId: string): InputAction {
   return `${command}.${characterId}` as InputAction
 }

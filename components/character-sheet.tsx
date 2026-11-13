@@ -62,6 +62,8 @@ import {
 } from "@/lib/item-mechanics"
 import { ResourceBar } from "@/components/resource-bar"
 import { useControllerActions } from "@/lib/input/use-controller-actions"
+import { focusControllerElement } from "@/lib/input/focus"
+import { ControllerGlyph } from "@/components/controller/controller-glyph"
 import { useControllerModalReturnGroup } from "@/lib/input/modal-focus-return"
 import { useController } from "@/components/controller/controller-provider"
 import { Button } from "@/components/ui/button"
@@ -411,6 +413,7 @@ function CombinedChecksPanel({
   disabled,
   customChecks = [],
   onCustomRoll,
+  controllerActive = false,
 }: {
   character: Character
   onRoll: (check: (typeof PRESET_CHECKS)[number]) => void
@@ -418,6 +421,7 @@ function CombinedChecksPanel({
   rollingAttr: string | null
   disabled: boolean
   customChecks?: CustomCheck[]
+  controllerActive?: boolean
 }) {
   const [search, setSearch] = useState("")
   const normalizedSearch = search.trim().toLocaleLowerCase()
@@ -427,9 +431,59 @@ function CombinedChecksPanel({
   const customFiltered = customChecks.filter(
     (c) => c.name.toLocaleLowerCase().includes(normalizedSearch) || c.description.toLocaleLowerCase().includes(normalizedSearch),
   )
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [usage, setUsage] = useState<Record<string, number>>({})
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(`otms-check-usage:${character.id}`) || '{}')
+      setUsage(stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {})
+    } catch { setUsage({}) }
+  }, [character.id])
+  const recordUsage = (key: string) => {
+    setUsage(previous => {
+      const next = {...previous, [key]: Math.min(10000, (previous[key] || 0) + 1)}
+      try { localStorage.setItem(`otms-check-usage:${character.id}`, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+  const rollPreset = (check: typeof PRESET_CHECKS[number]) => {recordUsage(check.id); onRoll(check)}
+  const rollCustom = (check: CustomCheck) => {recordUsage(`custom:${check.id}`); onCustomRoll(check)}
+  const frequent = [
+    ...PRESET_CHECKS.map(check => ({id:check.id,name:check.name,run:() => rollPreset(check)})),
+    ...customChecks.map(check => ({id:`custom:${check.id}`,name:check.name,run:() => rollCustom(check)})),
+  ].sort((a,b) => (usage[b.id] || 0) - (usage[a.id] || 0)).slice(0,4)
+  // Não executar ações de outra ficha quando o Mestre possui vários painéis abertos.
+  // A aba Perícias deve estar aberta e pertencer à ficha efetivamente em foco.
+  // Não roubar o foco do botão da aba ao montá-la; o usuário decide com o D-pad.
+  const ownsCheckFocus = () => {
+    const panel = rootRef.current
+    const sheet = panel?.closest('[data-controller-sheet-navigation="active"]')
+    return !!panel && !!sheet?.contains(document.activeElement)
+  }
+  const focusFrequent = (offset: -1 | 1) => {
+    const buttons = [...(rootRef.current?.querySelectorAll<HTMLButtonElement>('[data-controller-frequent-check]') || [])].filter(button => !button.disabled)
+    if (!buttons.length) return true
+    const previous = buttons.indexOf(document.activeElement as HTMLButtonElement)
+    const index = previous < 0 ? (offset > 0 ? 0 : buttons.length-1) : (previous+offset+buttons.length)%buttons.length
+    buttons[index].focus({preventScroll:true})
+    buttons[index].scrollIntoView({block:'nearest'})
+    return true
+  }
+  useControllerActions({
+    'checks.roll': () => {
+      if (!ownsCheckFocus()) return false
+      const active = document.activeElement as HTMLElement | null
+      const focused = active && rootRef.current?.contains(active) ? active.closest<HTMLButtonElement>('[data-controller-check-roll]') : null
+      const target = focused || rootRef.current?.querySelector<HTMLButtonElement>('[data-controller-frequent-check]:not(:disabled)')
+      if (target && !target.disabled) target.click()
+      return true
+    },
+    'checks.quick.previous': () => ownsCheckFocus() ? focusFrequent(-1) : false,
+    'checks.quick.next': () => ownsCheckFocus() ? focusFrequent(1) : false,
+  }, {enabled:controllerActive, priority:420})
 
   return (
-    <div className="flex flex-col gap-4 mt-2 animate-in fade-in zoom-in-95 duration-200">
+    <div ref={rootRef} data-controller-checks-shortcuts={controllerActive ? "active" : undefined} className="flex min-w-0 flex-col gap-4 mt-2 animate-in fade-in zoom-in-95 duration-200">
       <div className="relative border border-primary/20 bg-black/40 rounded-lg overflow-hidden shadow-inner">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-primary" />
         <input
@@ -441,16 +495,28 @@ function CombinedChecksPanel({
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[420px] overflow-y-auto custom-scrollbar-sepia pr-2">
+      <section aria-label="Testes mais usados" className="min-w-0 rounded-xl border border-primary/25 bg-primary/[.045] p-3 sm:p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-xs font-black uppercase tracking-wider text-primary">Testes mais usados</h3>
+          {controllerActive && <span className="flex items-center gap-2 text-[10px] text-muted-foreground"><span className="font-bold">D-pad ← / →</span> favoritos · <ControllerGlyph button="LS" small/> rolar · <ControllerGlyph button="LB" small/><ControllerGlyph button="RB" small/> abas</span>}
+        </div>
+        <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4">
+          {frequent.map(check => <button key={check.id} type="button" data-controller-check-roll="true" data-controller-frequent-check="true" disabled={disabled || !!rollingAttr}
+            onClick={check.run} title={`Rolar ${check.name}`} className="flex min-h-12 min-w-0 items-center justify-between gap-1 rounded-lg border border-primary/30 bg-background/70 px-3 py-2 text-left text-[11px] font-bold text-foreground transition-colors hover:border-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-40">
+            <span className="min-w-0 break-words [overflow-wrap:anywhere]">{check.name}</span>{controllerActive && <ControllerGlyph button="LS" small/>}
+          </button>)}
+        </div>
+      </section>
+      <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 gap-3 max-h-[420px] overflow-x-hidden overflow-y-auto custom-scrollbar-sepia pr-2">
         {customFiltered.length > 0 && <div className="col-span-full flex items-center gap-2 border-b border-accent/20 pb-2 text-[10px] font-black uppercase tracking-[0.16em] text-accent"><Dices className="size-4" /> Testes especiais do Mestre <span className="ml-auto font-normal text-muted-foreground">{customFiltered.length} disponível(is)</span></div>}
         {customFiltered.map(check => (
           <Button key={check.id} type="button" disabled={disabled || rollingAttr === `custom:${check.id}`} variant="outline"
-            className="h-auto min-h-[105px] flex-col items-start justify-start gap-3 rounded-xl border-accent/25 bg-accent/[0.055] p-4 text-left hover:border-accent/60 hover:bg-accent/10" onClick={() => onCustomRoll(check)}>
-            <span className="flex w-full items-center justify-between gap-2"><span className="font-bold text-foreground">{check.name}</span><span className="rounded-full bg-accent/15 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-accent">Especial</span></span>
-            <span className="flex flex-wrap gap-1">{check.dice.map((die, index) => (
+            data-controller-check-roll="true" className="min-w-0 h-auto min-h-[105px] flex-col items-start justify-start gap-3 overflow-hidden whitespace-normal rounded-xl border-accent/25 bg-accent/[0.055] p-4 text-left hover:border-accent/60 hover:bg-accent/10" onClick={() => rollCustom(check)}>
+            <span className="flex min-w-0 w-full flex-wrap items-start justify-between gap-2"><span className="min-w-0 break-words [overflow-wrap:anywhere] font-bold text-foreground">{check.name}</span><span className="rounded-full bg-accent/15 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-accent">Especial</span></span>
+            <span className="flex min-w-0 flex-wrap gap-1">{check.dice.map((die, index) => (
               <span key={index} className="rounded-md border border-accent/25 bg-background/80 px-2 py-1 text-[11px] font-mono font-bold text-accent">{die.kind === "attribute" ? `${dieLabel(die)} (${character.attributes[die.attribute] || "d6"})` : dieLabel(die)}</span>
             ))}</span>
-            {check.description && <span className="text-[11px] font-normal leading-relaxed text-muted-foreground">{check.description}</span>}
+            {check.description && <span className="block w-full min-w-0 break-words [overflow-wrap:anywhere] whitespace-normal text-[11px] font-normal leading-relaxed text-muted-foreground">{check.description}</span>}
           </Button>
         ))}
         {customFiltered.length > 0 && <div className="col-span-full mt-1 border-b border-border/50 pb-2 text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">Testes tradicionais</div>}
@@ -459,15 +525,16 @@ function CombinedChecksPanel({
             key={check.id}
             disabled={disabled || rollingAttr === check.id}
             variant="outline"
-            className="h-auto p-3 justify-start border-border/40 hover:border-primary/50 hover:bg-primary/5 transition-all group"
-            onClick={() => onRoll(check)}
+            data-controller-check-roll="true"
+            className="group h-auto min-w-0 justify-start overflow-hidden whitespace-normal break-words rounded-xl border-border/40 p-3 text-left transition-all hover:border-primary/50 hover:bg-primary/5"
+            onClick={() => rollPreset(check)}
           >
-            <div className="flex flex-col items-start w-full gap-1">
-              <div className="flex justify-between items-center w-full">
-                <span className="font-bold text-foreground group-hover:text-primary transition-colors">
+            <div className="flex min-w-0 flex-col items-start w-full gap-1">
+              <div className="flex min-w-0 flex-wrap justify-between items-start gap-2 w-full">
+                <span className="min-w-0 break-words [overflow-wrap:anywhere] font-bold text-foreground group-hover:text-primary transition-colors">
                   {check.name}
                 </span>
-                <div className="flex gap-1.5">
+                <div className="flex min-w-0 flex-wrap gap-1.5">
                   {check.attrs.map((attr: any, i: number) => (
                     <span
                       key={i}
@@ -481,7 +548,7 @@ function CombinedChecksPanel({
                   ))}
                 </div>
               </div>
-              <div className="text-xs font-normal opacity-60 text-left whitespace-normal leading-snug">
+              <div className="w-full min-w-0 break-words [overflow-wrap:anywhere] text-xs font-normal opacity-60 text-left whitespace-normal leading-snug">
                 {check.desc}
               </div>
             </div>
@@ -2198,19 +2265,27 @@ export function CharacterSheet({
       return false
     },
   }, {enabled: controllerActive && (isExpanded || showInventory || showMannequin || showStore || showPortraitGallery || showPortraitEditor || showFrameGallery || showBondsModal || showLore), priority: 180})
-  // LB/RB percorrem as abas da ficha que possui o foco, sem capturar outras fichas.
+  // LB/RB sempre percorrem Principal / Testes / Condições, inclusive quando
+  // os favoritos da aba Testes estão ativos. O D-pad cuida dos favoritos.
+  const shiftSheetTab = (direction: -1 | 1) => {
+    const sheet = sheetRef.current
+    if (!sheet?.contains(document.activeElement)) return false
+    const tabs = ['main', 'checks', 'modifiers'] as const
+    const index = tabs.indexOf(sheetTab)
+    const next = tabs[(index + direction + tabs.length) % tabs.length]
+    setSheetTab(next)
+    requestAnimationFrame(() => {
+      // Foco explícito no destino evita que a aba desmontada deixe o cursor
+      // no body e a próxima direção recomece pelo começo/fim da campanha.
+      const button = sheet.querySelector<HTMLButtonElement>(`[data-controller-sheet-tab="${next}"]`)
+      if (button) focusControllerElement(button)
+    })
+    return true
+  }
   useControllerActions({
-    'ui.next': () => {
-      if (!sheetRef.current?.contains(document.activeElement)) return false
-      setSheetTab(current => current === 'main' ? 'checks' : current === 'checks' ? 'modifiers' : 'main')
-      return true
-    },
-    'ui.previous': () => {
-      if (!sheetRef.current?.contains(document.activeElement)) return false
-      setSheetTab(current => current === 'main' ? 'modifiers' : current === 'modifiers' ? 'checks' : 'main')
-      return true
-    },
-  }, {enabled: controllerActive && isExpanded, priority: 70})
+    'ui.next': () => shiftSheetTab(1),
+    'ui.previous': () => shiftSheetTab(-1),
+  }, {enabled: controllerActive && isExpanded, priority: 85})
   const delayedTimers = useRef<number[]>([])
   useEffect(() => {
     if (!controllerActive || !isExpanded || controllerFocusSkill == null) return
@@ -3752,6 +3827,7 @@ export function CharacterSheet({
   return (
     <div
       ref={sheetRef}
+      data-controller-sheet-navigation={controllerActive && isExpanded ? 'active' : undefined}
       data-expanded={isExpanded}
       className={`panel rpg-character-sheet border-glow relative flex w-full flex-col border bg-zinc-950/40 transition-[padding,border-color,box-shadow,background-color] duration-[480ms] ease-[cubic-bezier(.4,0,.2,1)] ${isOwned && !isGm ? "is-player-owned" : ""} ${isExpanded ? "p-5 sm:p-6 border-primary/50" : "p-2.5 sm:p-3 border-border/40 hover:border-primary/30"}`}
     >
@@ -5028,18 +5104,21 @@ export function CharacterSheet({
                 {/* ABAS */}
                 <div className="rpg-tabs relative z-50 mb-5 grid h-11 w-full grid-cols-3 p-1">
                   <button
+                    data-controller-sheet-tab="main"
                     onClick={() => setSheetTab("main")}
                     className={`rpg-tab-button flex h-9 min-w-0 flex-1 items-center justify-center rounded-md px-2 text-xs leading-none whitespace-nowrap transition-colors ${sheetTab === "main" ? "is-active font-bold" : "text-muted-foreground"}`}
                   >
                     Principal
                   </button>
                   <button
+                    data-controller-sheet-tab="checks"
                     onClick={() => setSheetTab("checks")}
                     className={`rpg-tab-button flex h-9 min-w-0 flex-1 items-center justify-center rounded-md px-2 text-xs leading-none whitespace-nowrap transition-colors ${sheetTab === "checks" ? "is-active font-bold" : "text-muted-foreground"}`}
                   >
                     <span className="truncate">Testes e Perícias</span>
                   </button>
                   <button
+                    data-controller-sheet-tab="modifiers"
                     onClick={() => setSheetTab("modifiers")}
                     className={`rpg-tab-button relative flex h-9 min-w-0 items-center justify-center rounded-md px-7 text-xs leading-none whitespace-nowrap transition-colors ${sheetTab === "modifiers" ? "is-active font-bold" : "text-muted-foreground"}`}
                   >
@@ -5788,6 +5867,7 @@ export function CharacterSheet({
                     onCustomRoll={handleCustomRoll}
                     customChecks={isGm ? [...(character.npcChecks || []), ...customChecks] : customChecks}
                     rollingAttr={rollingAttr}
+                    controllerActive={controllerActive}
                     disabled={!editable || trainingLocked}
                   />
                 )}

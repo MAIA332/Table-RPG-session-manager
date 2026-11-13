@@ -18,7 +18,7 @@ import { CampaignCombat, type CombatActionRequest } from "./campaign-combat"
 import { MonsterAttackPreviewShelf } from "./monster-attack-preview"
 import type { PlayerAttackPreview, PlayerSpecialAttack, PlayerSpecialAttackCharacter } from "@/lib/player-special-attacks"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { Fragment, useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useControllerActions } from "@/lib/input/use-controller-actions"
 import { ControllerGlyph } from "./controller/controller-glyph"
@@ -4151,6 +4151,10 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         setSelectedCombatCharId(own.id)
         return true
       }
+      if (bound.command === 'character.grimoire') {
+        window.dispatchEvent(new CustomEvent('otms.controller.open-grimoire', {detail:{characterId:own.id}}))
+        return true
+      }
       if (bound.command === 'special.manager') {
         setControllerFocusSkill(null)
         setControllerPanelRequest('special.manager')
@@ -4194,6 +4198,11 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
     "skill.ability2": () => openControllerSkill(1),
     "skill.ability3": () => openControllerSkill(2),
     "skill.ability4": () => openControllerSkill(3),
+    "character.grimoire": () => {
+      if (activeMap || showGmPanel || !ownControllerCharacter) return false
+      window.dispatchEvent(new CustomEvent('otms.controller.open-grimoire', {detail:{characterId:ownControllerCharacter.id}}))
+      return true
+    },
     "special.manager": () => openControllerSheetPanel('special.manager'),
     "character.training": () => openControllerSheetPanel('training'),
     "character.affinities": () => openControllerSheetPanel('affinities'),
@@ -5973,7 +5982,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     </h2>
 
                     <div className="flex flex-col gap-3 pb-10">
-                      {characters.map((char) => {
+                      {[...characters].sort((a, b) => Number(b.ownerId === data.me.id) - Number(a.ownerId === data.me.id)).map((char, index, orderedCharacters) => {
                         const isMyTurn =
                           combatController.combat?.enabled &&
                           combatController.combat.spotlight.side === "group" &&
@@ -5987,8 +5996,13 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                           combatController.combat?.playerAttacks[char.id] || []
 
                         return (
+                          <Fragment key={char.id}>
+                          {(index === 0 || (!isMe && orderedCharacters[index - 1]?.ownerId === data.me.id)) && (
+                            <div className="flex items-center gap-2 px-1 pb-1 pt-2 text-[10px] font-black uppercase tracking-widest text-primary">
+                              <span className="h-px w-5 bg-primary/50"/>{isMe ? 'Meus personagens' : index === 0 ? 'Grupo' : 'Outros integrantes'}
+                            </div>
+                          )}
                           <div
-                            key={char.id}
                             onClick={() => {
                               if (
                                 pendingCombatAction &&
@@ -6149,6 +6163,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                               </div>
                             )}
                           </div>
+                          </Fragment>
                         )
                       })}
                     </div>

@@ -4,7 +4,7 @@ import type { InputAction } from './actions'
 export const ACTION_LABELS: Record<string, string> = {
   'ui.confirm': 'Confirmar', 'ui.back': 'Voltar', 'ui.up': 'Cima', 'ui.down': 'Baixo',
   'ui.left': 'Esquerda', 'ui.right': 'Direita', 'ui.previous': 'Aba anterior', 'ui.next': 'Próxima aba',
-  'ui.settings': 'Menu Start', 'character.sheet': 'Ficha', 'character.inventory': 'Inventário',
+  'ui.settings': 'Menu Start', 'character.sheet': 'Ficha', 'character.grimoire': 'Abrir Grimório', 'character.inventory': 'Inventário',
   'character.restore': 'Maximizar vida e mana',
   'map.open': 'Mapa', 'map.mode': 'Modo do mapa', 'map.select': 'Selecionar no mapa',
   'map.panUp': 'Câmera ↑', 'map.panDown': 'Câmera ↓', 'map.panLeft': 'Câmera ←',
@@ -14,7 +14,7 @@ export const ACTION_LABELS: Record<string, string> = {
   'combat.focus': 'Combate',
   'bestiary.spawn': 'Invocar criatura (RB)', 'bestiary.edit': 'Editar criatura (LB)',
   'gm.edit': 'Editar seleção (LB)',
-  'special.attack.use': 'Usar golpe (L3)',
+  'special.attack.use': 'Usar golpe (L3)', 'grimoire.cast': 'Conjurar carta (L3)', 'checks.roll': 'Rolar teste em foco (L3)', 'checks.quick.previous': 'Teste favorito anterior (LB)', 'checks.quick.next': 'Próximo teste favorito (RB)',
   'inventory.item.primary': 'Equipar / usar item (L3)',
   'inventory.item.consume': 'Consumir item (R3)',
   'inventory.item.manage': 'Gerenciar item (RB)',

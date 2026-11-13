@@ -1,5 +1,8 @@
 "use client"
 import { controllerConfirm } from '@/lib/input/dialogs'
+import { useControllerActions } from '@/lib/input/use-controller-actions'
+import { useController } from '@/components/controller/controller-provider'
+import { ControllerGlyph } from '@/components/controller/controller-glyph'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
@@ -118,10 +121,11 @@ function BookCardText({ entry, compact = false }: { entry: ClassBookEntry; compa
   )
 }
 
-function BookCard({ entry, kind, onClick, selected = false, disabled = false, player = false }: {
+function BookCard({ entry, kind, onClick, onFocus, selected = false, disabled = false, player = false }: {
   entry: ClassBookEntry
   kind: BookKind
   onClick?: () => void
+  onFocus?: () => void
   selected?: boolean
   disabled?: boolean
   player?: boolean
@@ -131,6 +135,8 @@ function BookCard({ entry, kind, onClick, selected = false, disabled = false, pl
     <motion.button
       type="button"
       onClick={onClick}
+      onFocus={onFocus}
+      data-controller-grimoire-card="true"
       disabled={disabled}
       aria-pressed={selected}
       whileHover={{ y: -4 }}
@@ -409,6 +415,7 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
 }) {
   const [data, setData] = useState<BooksResponse | null>(null)
   const [open, setOpen] = useState(false)
+  const { active: controllerActive } = useController()
   const triggerButtonRef = useRef<HTMLButtonElement | null>(null)
   const closeButtonRef = useRef<HTMLButtonElement | null>(null)
   const modalRef = useRef<HTMLDivElement | null>(null)
@@ -463,6 +470,39 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
     ? (activeDeck?.hand || []).map(entryId => activeBook.entries.find(e => e.id === entryId)).filter((e): e is ClassBookEntry => !!e)
     : activeBook.entries) : []
   const selectedCard = visibleCards.find(entry => entry.id === selected)
+  // Um único Grimório visível atende o atalho, mesmo quando o personagem
+  // aparece em mais de um painel. Nunca abrir livros de outra ficha.
+  useEffect(() => {
+    const openForCharacter = (event: Event) => {
+      const requested = (event as CustomEvent<{characterId?:string}>).detail?.characterId
+      if (requested !== character.id || !triggerButtonRef.current) return
+      const candidates = [...document.querySelectorAll<HTMLElement>('[data-controller-grimoire-character]')]
+        .filter(el => el.dataset.controllerGrimoireCharacter === character.id &&
+          el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden')
+      if (candidates[0] !== triggerButtonRef.current) return
+      setBookId(books[0]?.id || null)
+      setSelected(null)
+      setOpen(true)
+    }
+    window.addEventListener('otms.controller.open-grimoire', openForCharacter)
+    return () => window.removeEventListener('otms.controller.open-grimoire', openForCharacter)
+  }, [character.id, books])
+  // L3 somente conjura a carta efetivamente selecionada.
+  useControllerActions({
+    'grimoire.cast': () => {
+      if (!open || !modalRef.current) return false
+      const visibleDialogs = [...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')]
+        .filter(element => element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().height > 0)
+      if (visibleDialogs.at(-1) !== modalRef.current) return false
+      if (busy) return true
+      if (!selectedCard) {
+        modalRef.current?.querySelector<HTMLButtonElement>('[data-controller-grimoire-card]')?.focus({preventScroll:true})
+        return true
+      }
+      void useEntry(selectedCard)
+      return true
+    },
+  }, {enabled:open && controllerActive, priority:500})
   // O portal impede que transformações/overflow da ficha e da sala recortem o grimório.
   // O travamento de rolagem é removido ao fechar ou desmontar o componente.
   useEffect(() => {
@@ -540,6 +580,7 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
   if (!books.length && !subclasses.length) return null
   return <>
     <button type="button" ref={triggerButtonRef}
+      data-controller-grimoire-character={character.id}
       className="mb-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-accent/35 bg-accent/10 px-4 py-2.5 text-xs font-bold text-accent shadow-sm transition hover:border-accent/70 hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       onClick={() => { setOpen(true); setBookId(books[0]?.id || null) }}>
       <BookOpen size={18} /> {books.some(b => b.kind === "spellbook") ? "Abrir Grimório" : "Abrir Livro de Projetos"}
@@ -554,6 +595,7 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
             role="dialog"
             aria-modal="true"
             aria-label={`Grimório de ${character.name}`}
+            data-controller-grimoire-shortcuts={controllerActive ? "active" : undefined}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: .2 }}
             className="fixed inset-0 z-[2000] isolate flex h-[100dvh] w-screen flex-col overflow-hidden bg-background text-foreground"
@@ -665,7 +707,7 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
                       </div> : <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3">
                         {visibleCards.map((entry, index) => <motion.div key={`${entry.id}-${index}`}
                           initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .23, delay: Math.min(index, 7) * .035 }}>
-                          <BookCard player entry={entry} kind={activeBook.kind} selected={selected === entry.id} onClick={() => setSelected(selected === entry.id ? null : entry.id)}/>
+                          <BookCard player entry={entry} kind={activeBook.kind} selected={selected === entry.id} onFocus={() => {if (controllerActive) setSelected(entry.id)}} onClick={() => setSelected(selected === entry.id ? null : entry.id)}/>
                         </motion.div>)}
                       </div>}
 
@@ -727,7 +769,7 @@ export function CharacterBookShelf({ campaignId, character, isGm = false, refres
                 <div className="flex shrink-0 gap-2">
                   <button type="button" onClick={() => setSelected(null)} className="flex min-h-11 items-center justify-center rounded-full border border-border px-4 text-xs font-bold text-muted-foreground hover:text-foreground">Cancelar</button>
                   <button type="button" disabled={busy} onClick={() => void useEntry(selectedCard)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-accent px-5 py-2 text-xs font-black text-accent-foreground hover:brightness-110 disabled:opacity-40">
-                    {busy ? <Loader2 size={16} className="animate-spin"/> : <WandSparkles size={16}/>} {activeBook.kind === "spellbook" ? "Conjurar magia" : "Solicitar fabricação"}
+                    {busy ? <Loader2 size={16} className="animate-spin"/> : <WandSparkles size={16}/>} {activeBook.kind === "spellbook" ? "Conjurar magia" : "Solicitar fabricação"}{controllerActive && <span className="ml-2 inline-flex items-center rounded-lg border border-accent-foreground/30 px-2 py-1"><ControllerGlyph button="LS" small/></span>}
                   </button>
                 </div>
               </div>

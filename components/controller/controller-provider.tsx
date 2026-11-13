@@ -9,7 +9,7 @@ import {
 import { ACTION_LABELS } from '@/lib/input/labels'
 import { dispatchInputAction, registerInputHandler } from '@/lib/input/dispatcher'
 import { dispatchInputHoldAction } from '@/lib/input/hold'
-import { controllerFocus, controllerFocusedFieldAction, clearControllerFocus, controllerSelectOpen, closeControllerSelect } from '@/lib/input/focus'
+import { controllerFocus, controllerFocusedFieldAction, clearControllerFocus, controllerSelectOpen, closeControllerSelect, rememberControllerFocus, captureControllerFocusBeforeConfirm, restoreControllerFocusAfterConfirm } from '@/lib/input/focus'
 import { controllerKeyboardOpen, handleControllerKeyboard, handleControllerKeyboardButton, closeControllerKeyboard } from '@/lib/input/virtual-keyboard'
 import { scrollControllerContent } from '@/lib/input/scroll'
 import { isEditableKeyboardTarget } from '@/lib/input/keyboard-target'
@@ -188,6 +188,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
     const releasePtt = () => { if (pttDown) {pttDown = false; dispatchInputHoldAction('voice.ptt', false)} }
     let lastNativeAt = 0, wasConnected = false, lastName = '', lastButtonCount = -1, lastScrollAt = 0, lastDialogStickAt = 0
     const times = new Map<string,number>()
+    const lastChecksDpad = {LEFT: 0, RIGHT: 0}
     // Código oculto: VIEW + L3 + R3, segurados 650 ms em QUALQUER controle.
     // É físico, não remapeável e nunca pode ser disparado por teclado/mouse.
     const arenaSecret = new Map<number, {since:number;fired:boolean}>()
@@ -202,7 +203,16 @@ export function ControllerProvider({children}: {children:ReactNode}) {
         if (!isNavigation && settingsRef.current.soundClick) sounds.play('click')
       }
       if (pad || nativeController) recordControllerCommandOrigin(document.activeElement)
+      // A pode desmontar a origem (botão que muda de estado, confirmação,
+      // testes e listas). Conservar o ponto de navegação, sem roubar o foco
+      // quando uma nova modal ou o teclado virtual foi aberto.
+      const confirmAnchor = action === 'ui.confirm' && activeRef.current
+        ? captureControllerFocusBeforeConfirm() : null
       dispatchInputAction(action)
+      if (confirmAnchor) {
+        requestAnimationFrame(() => restoreControllerFocusAfterConfirm(confirmAnchor))
+        window.setTimeout(() => restoreControllerFocusAfterConfirm(confirmAnchor), 90)
+      }
       if (!['ui.up','ui.down','ui.left','ui.right'].includes(action) && !action.startsWith('map.pan'))
         setLastAction(ACTION_LABELS[action] || labelForPanelAction(action))
       if (pad && settingsRef.current.vibration && (action === 'ui.confirm' || action.startsWith('skill.') || action === 'qte.react')) {
@@ -251,6 +261,8 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       // para LB/RB/L3/R3, o atalho contextual também deve suspender o hold.
       const soundpadFocused = !settingsOpenRef.current && !!document.querySelector('[data-soundpad-fullscreen]')
       const modalBlocking = !!document.querySelector('.otms-controller-dialog-backdrop, .otms-controller-select-overlay, .otms-controller-keyboard-overlay')
+      const grimoire = document.querySelector<HTMLElement>('[data-controller-grimoire-shortcuts="active"]')
+      const checks = document.querySelector<HTMLElement>('[data-controller-checks-shortcuts="active"]')
       const specialAttacks = document.querySelector('[data-controller-special-attacks-shortcuts="active"]')
       const inventoryGrid = document.querySelector('[data-controller-inventory-shortcuts="active"]')
       const storeModal = document.querySelector<HTMLElement>('[data-controller-store-shortcuts="active"]')
@@ -270,10 +282,17 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       const specialVisible = !!specialAttacks && (!topModal || specialAttacks.querySelector('[role="dialog"]') === topModal)
       const inventoryVisible = !!inventoryGrid && (!topModal || inventoryGrid.closest('[aria-modal="true"]') === topModal)
       const storeVisible = !!storeModal && (!topModal || storeModal === topModal)
+      const grimoireVisible = !!grimoire && topModal === grimoire
+      const checksVisible = !!checks && checks.getClientRects().length > 0 && (!topModal || topModal.contains(checks))
       const scope: ContextualScope = !soundpadFocused && !settingsOpenRef.current && !modalBlocking
-        ? storeVisible ? 'store' : specialVisible ? 'special-attacks' : inventoryVisible ? 'inventory' : bestiary ? 'bestiary' : combatPanel ? 'combat' : gmEdit ? 'gm' : null : null
+        ? grimoireVisible ? 'grimoire' : storeVisible ? 'store' : specialVisible ? 'special-attacks' : checksVisible ? 'checks' : inventoryVisible ? 'inventory' : bestiary ? 'bestiary' : combatPanel ? 'combat' : gmEdit ? 'gm' : null : null
       const hasCreature = combatPanel?.dataset.controllerHasCreature === 'true'
+      const sheetWithFocus = document.activeElement instanceof HTMLElement
+        ? document.activeElement.closest<HTMLElement>('[data-controller-sheet-navigation="active"]') : null
+      const sheetOwnsShoulders = !!sheetWithFocus && !buttons.has('LT') &&
+        (!topModal || topModal.contains(sheetWithFocus)) && !modalBlocking
       const physicallyPtt = !controllerKeyboardOpen() && scope !== 'store' && [...buttons].some(button =>
+        !(sheetOwnsShoulders && (button === 'LB' || button === 'RB')) &&
         !(scope && !buttons.has('LT') && contextualShortcut(button, scope, hasCreature)) &&
         actionForButton(button, buttons, getBindings(settingsRef.current)) === 'voice.ptt')
       if (settingsOpenRef.current) pttArmed = false
@@ -376,7 +395,42 @@ export function ControllerProvider({children}: {children:ReactNode}) {
         actions = replaceContextualActions(actions, buttons, new Set(newlyPressed), scope,
           hasCreature, button => actionForButton(button, buttons, bindings))
       }
-      const contextualPanelOpen = !!document.querySelector('[data-controller-bestiary-shortcuts="active"], [data-controller-combat-shortcuts="active"], [data-controller-gm-edit="active"], [data-controller-special-attacks-shortcuts="active"], [data-controller-inventory-shortcuts="active"], [data-controller-store-shortcuts="active"]')
+      const contextualPanelOpen = !!document.querySelector('[data-controller-bestiary-shortcuts="active"], [data-controller-combat-shortcuts="active"], [data-controller-gm-edit="active"], [data-controller-special-attacks-shortcuts="active"], [data-controller-inventory-shortcuts="active"], [data-controller-store-shortcuts="active"], [data-controller-grimoire-shortcuts="active"], [data-controller-checks-shortcuts="active"]')
+      // Ficha aberta: LB/RB continuam SEMPRE trocando as três abas. Mesmo
+      // remapeados no perfil, os ombros pertencem à ficha neste contexto.
+      // Confirmações/teclados, LT e outros modais têm prioridade.
+      const sheet = document.activeElement instanceof HTMLElement
+        ? document.activeElement.closest<HTMLElement>('[data-controller-sheet-navigation="active"]') : null
+      const sheetIsTop = !!sheet && !modalBlocking && !settingsOpenRef.current &&
+        (!topModal || topModal.contains(sheet)) && !soundpadFocused && !buttons.has('LT')
+      if (sheetIsTop) {
+        for (const [button, nav] of [['LB', 'ui.previous'], ['RB', 'ui.next']] as const) {
+          if (!buttons.has(button)) continue
+          const mapped = actionForButton(button, buttons, bindings)
+          if (mapped) actions = actions.filter(item => item !== mapped)
+          if (newlyPressed.includes(button)) actions.push(nav)
+        }
+      }
+      // Favoritos das Perícias usam EXCLUSIVAMENTE o D-PAD físico ←/→.
+      // O analógico esquerdo permanece livre para navegação espacial normal;
+      // usar ações semânticas ui.left/right aqui capturaria os dois dispositivos.
+      if (scope === 'checks' && checks && !buttons.has('LT') && !settingsOpenRef.current &&
+          !modalBlocking && !soundpadFocused &&
+          (checks.contains(document.activeElement) || checks.closest('[data-controller-sheet-navigation="active"]')?.contains(document.activeElement))) {
+        for (const [button, index, shortcut] of [
+          ['LEFT', 14, 'checks.quick.previous'], ['RIGHT', 15, 'checks.quick.next'],
+        ] as const) {
+          const physicallyPressed = !!pad.buttons[index]?.pressed || (pad.buttons[index]?.value ?? 0) >= .55
+          if (!physicallyPressed) {lastChecksDpad[button] = 0;continue}
+          // Reservar a direção enquanto o D-pad está abaixado, mesmo entre
+          // repetições, para não vazar movimento espacial do analógico.
+          const mapped = actionForButton(button, buttons, bindings)
+          if (mapped) actions = actions.filter(item => item !== mapped)
+          if (!newlyPressed.includes(button) && now - lastChecksDpad[button] < settingsRef.current.repeatMs) continue
+          actions.push(shortcut)
+          lastChecksDpad[button] = now
+        }
+      }
       // SELECT/VIEW pode ser remapeado normalmente. Apenas uma foto de golpe
       // ativa do Mestre tem prioridade sobre o atalho configurado.
       const cancelablePreviews = [...document.querySelectorAll<HTMLElement>('[data-controller-preview-cancelable="true"]')]
@@ -505,6 +559,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
         lastFocusedElement = target
         document.querySelectorAll('[data-controller-focused="true"]').forEach(el=>el.removeAttribute('data-controller-focused'))
         target.dataset.controllerFocused='true'
+        rememberControllerFocus(target)
         // focusin can also be caused by a mouse click or Tab; the brief input
         // window ensures only a real controller-initiated focus move plays SFX.
         if(changed && settingsRef.current.soundFocus && performance.now() - lastControllerActionAt < 450)

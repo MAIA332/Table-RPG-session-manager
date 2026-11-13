@@ -98,7 +98,7 @@ export function ControllerStartMenu({ settings, update, onClose, page, skillName
           </>}
           {menuTab === 'wheel' && <>
             <div className="otms-start-section-header"><h3>RODA DE ATALHOS</h3><span>Segure LT durante o jogo</span></div>
-            <p className="otms-start-description">Configure até cinco conjuntos de quatro ações. Segure LT para exibir o radial e use LT + RB para alternar entre eles. L3/R3 e LT + L3/R3 são configuráveis na aba Comandos.</p>
+            <p className="otms-start-description">Configure até dez conjuntos de quatro ações. Segure LT para exibir o radial e use LT + RB para alternar entre eles. L3/R3 e LT + L3/R3 são configuráveis na aba Comandos.</p>
             <div className="otms-wheel-editor">
               <ControllerWheel settings={settings} page={editingPage} skillNames={skillNames} skillChoices={skillChoices} specialChoices={specialChoices} characterChoices={characterChoices} preview />
               <div className="otms-wheel-editor-fields">
@@ -111,7 +111,7 @@ export function ControllerStartMenu({ settings, update, onClose, page, skillName
                 </label>)}
               </div>
             </div>
-            <p className="otms-start-note">Ao possuir vários personagens, escolha a ficha, habilidade ou golpe e selecione o personagem específico no campo seguinte. Habilidades e golpes são filtrados pela ficha escolhida. O seletor final indica a técnica específica quando necessário. Selecionar habilidade abre sua ficha para confirmação. O radial nunca consome MP automaticamente.</p>
+            <p className="otms-start-note">Ao possuir vários personagens, escolha a ficha, Grimório, habilidade ou golpe e selecione o personagem específico no campo seguinte. Habilidades e golpes são filtrados pela ficha escolhida. O seletor final indica a técnica específica quando necessário. Selecionar habilidade abre sua ficha para confirmação. O radial nunca consome MP automaticamente.</p>
             <button className="otms-start-secondary" onClick={() => update({slots: DEFAULT_SETTINGS.slots.map(row=>[...row])})}><RotateCcw size={16}/> Restaurar conjuntos</button>
           </>}
           {menuTab === 'soundpad' && <>

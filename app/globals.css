@@ -2499,3 +2499,9 @@ body:has(.rpg-combat-launcher) .otms-controller-hud{left:auto;right:15px;bottom:
   .otms-store-controller-dock .otms-controller-hud-heading > span { display: none; }
   .otms-store-controller-dock .otms-controller-hud-docked { padding: 3px 5px; }
 }
+
+/* Dez conjuntos LT: nunca comprimir botões até perderem o rótulo. */
+.otms-wheel-editor-fields{min-width:0}
+.otms-wheel-page-picker{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;max-width:100%}
+.otms-wheel-page-picker button{min-width:0;min-height:42px;padding:8px 4px;overflow-wrap:anywhere;white-space:normal;text-align:center}
+@media(max-width:540px){.otms-wheel-page-picker{grid-template-columns:repeat(3,minmax(0,1fr))}}
