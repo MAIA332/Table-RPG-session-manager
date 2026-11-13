@@ -6,6 +6,7 @@ export const ACTION_LABELS: Record<string, string> = {
   'ui.left': 'Esquerda', 'ui.right': 'Direita', 'ui.previous': 'Aba anterior', 'ui.next': 'Próxima aba',
   'ui.settings': 'Menu Start', 'character.sheet': 'Ficha', 'character.grimoire': 'Abrir Grimório', 'character.inventory': 'Inventário',
   'character.restore': 'Maximizar vida e mana',
+  'character.restoreHp': 'Maximizar vida', 'character.restoreMp': 'Maximizar mana',
   'map.open': 'Mapa', 'map.mode': 'Modo do mapa', 'map.select': 'Selecionar no mapa',
   'map.panUp': 'Câmera ↑', 'map.panDown': 'Câmera ↓', 'map.panLeft': 'Câmera ←',
   'map.panRight': 'Câmera →', 'map.zoomIn': 'Zoom +', 'map.zoomOut': 'Zoom −',

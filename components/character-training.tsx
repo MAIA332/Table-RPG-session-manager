@@ -38,7 +38,7 @@ function TrainingRadar({ state, large = false, selected }: {
   ]
 
   return (
-    <svg viewBox="0 0 320 320" className={`mx-auto w-full text-primary ${large ? "max-w-[490px]" : "max-w-[218px]"}`} role="img" aria-label={`Radar de treinamento: ${TRAINING_ATTRIBUTES.map(key => `${LABELS[key]} ${state.points[key]} de ${trainingGoal(state, key)}`).join(", ")}`}>
+    <svg viewBox="0 0 320 320" className={`otms-training-radar mx-auto w-full text-primary ${large ? "max-w-[490px]" : "max-w-[218px]"}`} role="img" aria-label={`Radar de treinamento: ${TRAINING_ATTRIBUTES.map(key => `${LABELS[key]} ${state.points[key]} de ${trainingGoal(state, key)}`).join(", ")}`}>
       <defs>
         <radialGradient id={large ? "training-radar-hero-fill" : "training-radar-small-fill"}>
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.05" />
@@ -55,15 +55,15 @@ function TrainingRadar({ state, large = false, selected }: {
       <polygon points={vertices} fill={`url(#${large ? "training-radar-hero-fill" : "training-radar-small-fill"})`} stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" />
       {TRAINING_ATTRIBUTES.map((key, index) => {
         const [x, y] = point(index, Math.min(1, state.points[key] / trainingGoal(state, key)))
-        return <g key={key}><circle cx={x} cy={y} r={selected === key ? 7 : 4.5} fill="currentColor" stroke="#15100c" strokeWidth="2" />
+        return <g key={key}><circle cx={x} cy={y} r={selected === key ? 7 : 4.5} fill="currentColor" stroke="var(--theme-card-raised, #15100c)" strokeWidth="2" />
           {selected === key && <circle cx={x} cy={y} r="12" fill="none" stroke="currentColor" strokeOpacity=".48" strokeWidth="1" />}</g>
       })}
       {TRAINING_ATTRIBUTES.map((key, index) => <g key={key}>
         <text x={labels[index].x} y={labels[index].y} textAnchor={labels[index].anchor} fontSize={large ? 12 : 14} fontWeight="800" letterSpacing="1.8" fill="currentColor">{LABELS[key]}</text>
-        {large && <text x={labels[index].x} y={labels[index].y + 13} textAnchor="middle" fontSize="9" fill="#a1a1aa">{state.points[key].toLocaleString("pt-BR")} / {trainingGoal(state, key)}</text>}
+        {large && <text x={labels[index].x} y={labels[index].y + 13} textAnchor="middle" fontSize="9" fill="currentColor" fillOpacity="0.65">{state.points[key].toLocaleString("pt-BR")} / {trainingGoal(state, key)}</text>}
       </g>)}
       <circle cx={center} cy={center} r="3" fill="currentColor" />
-      <text x="166" y="152" fontSize="9" fill="#8b8173">0</text>
+      <text x="166" y="152" fontSize="9" fill="currentColor" fillOpacity="0.55">0</text>
     </svg>
   )
 }
@@ -185,9 +185,9 @@ export function CharacterTraining({ character, isGm, isOwner, onUpdated, openReq
   const selectedProjected = Math.min(selectedGoal, state.points[attribute] + selectedOption.points)
   const totalPoints = TRAINING_ATTRIBUTES.reduce((total, key) => total + state.points[key], 0)
   const modal = open && typeof document !== "undefined" ? createPortal(
-    <div className="fixed inset-0 z-[11000] h-[100dvh] w-screen overflow-hidden bg-[#090909] text-foreground" style={{ backgroundImage: "radial-gradient(ellipse 70% 45% at 50% 38%, rgba(150,103,33,.1), transparent 76%), linear-gradient(rgba(214,172,104,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(214,172,104,.026) 1px,transparent 1px)", backgroundSize: "auto, 36px 36px, 36px 36px" }}>
+    <div className="otms-training-modal fixed inset-0 z-[11000] h-[100dvh] w-screen overflow-hidden bg-[#090909] text-foreground" style={{ backgroundImage: "radial-gradient(ellipse 70% 45% at 50% 38%, rgba(150,103,33,.1), transparent 76%), linear-gradient(rgba(214,172,104,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(214,172,104,.026) 1px,transparent 1px)", backgroundSize: "auto, 36px 36px, 36px 36px" }}>
       <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Central de treinamento" className="relative flex h-full min-h-0 w-full flex-col outline-none">
-        <header className="relative z-20 shrink-0 border-b border-primary/20 bg-[#0c0b09]/95 px-4 py-3 shadow-[0_1px_25px_rgba(0,0,0,.5)] sm:px-8 lg:px-12 lg:py-4">
+        <header className="otms-training-header relative z-20 shrink-0 border-b border-primary/20 bg-[#0c0b09]/95 px-4 py-3 shadow-[0_1px_25px_rgba(0,0,0,.5)] sm:px-8 lg:px-12 lg:py-4">
           <div className="mx-auto flex w-full max-w-[1520px] items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3 sm:gap-4">
               <div className="grid size-11 shrink-0 place-items-center border border-primary/50 bg-primary/10 text-primary sm:size-12"><Dumbbell className="size-6" /></div>
@@ -209,7 +209,7 @@ export function CharacterTraining({ character, isGm, isOwner, onUpdated, openReq
                 <span className="rounded-sm border border-primary/20 bg-primary/5 px-3 py-2 font-mono text-xs tracking-widest text-primary">DADOS / <span className="text-foreground">04</span></span>
               </div>
 
-              <div className="relative overflow-hidden rounded-sm border border-primary/25 bg-[#110f0c]/90 shadow-[inset_0_0_80px_rgba(0,0,0,.5)]">
+              <div className="otms-training-radar-panel relative overflow-hidden rounded-sm border border-primary/25 bg-[#110f0c]/90 shadow-[inset_0_0_80px_rgba(0,0,0,.5)]">
                 <div className="pointer-events-none absolute left-4 top-4 size-5 border-l border-t border-primary/45" /><div className="pointer-events-none absolute bottom-4 right-4 size-5 border-b border-r border-primary/45" />
                 <div className="flex items-center justify-between border-b border-primary/10 px-5 py-3 text-[9px] font-black uppercase tracking-[.18em] text-muted-foreground"><span>Radar de proficiência</span><span className="font-mono text-primary/70">ATUALIZAÇÃO · TEMPO REAL</span></div>
                 <div className="grid grid-cols-1 items-center gap-1 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_180px] sm:px-6 sm:py-5 xl:grid-cols-[minmax(0,1fr)_205px]">
@@ -227,7 +227,7 @@ export function CharacterTraining({ character, isGm, isOwner, onUpdated, openReq
                 <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
                   {TRAINING_ATTRIBUTES.map((key, index) => {
                     const selected = key === attribute
-                    return <button key={key} type="button" aria-pressed={selected} onClick={() => setAttribute(key)} className={`group relative min-w-0 rounded-sm border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:p-4 ${selected ? "border-primary bg-primary/[.12] shadow-[inset_0_1px_25px_rgba(184,134,49,.12)]" : "border-border/50 bg-card/25 hover:border-primary/50 hover:bg-card/60"}`}>
+                    return <button key={key} type="button" aria-pressed={selected} onClick={() => setAttribute(key)} className={`otms-training-attribute-choice group relative min-w-0 rounded-sm border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:p-4 ${selected ? "border-primary bg-primary/[.12] shadow-[inset_0_1px_25px_rgba(184,134,49,.12)]" : "border-border/50 bg-card/25 hover:border-primary/50 hover:bg-card/60"}`}>
                       <div className="flex items-center justify-between gap-1 text-[10px] font-bold tracking-wider text-muted-foreground"><span>ATTR. 0{index + 1}</span>{selected ? <Check className="size-4 text-primary" /> : <span className="size-2 border border-primary/35" />}</div>
                       <p className={`mt-2 font-serif text-2xl font-black ${selected ? "text-primary" : "text-foreground"}`}>{LABELS[key]}</p>
                       <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{character.attributes[key]} · {state.points[key].toLocaleString("pt-BR")}/{trainingGoal(state, key)} pts</p>
@@ -242,12 +242,12 @@ export function CharacterTraining({ character, isGm, isOwner, onUpdated, openReq
 
             <aside className="min-w-0 space-y-4 lg:sticky lg:top-0 lg:self-start">
               <div className="border-l-2 border-primary/70 pl-4"><p className="text-[10px] font-black uppercase tracking-[.22em] text-primary/65">02 · Configuração da sessão</p><h3 className="mt-1 font-serif text-xl font-bold sm:text-2xl">Defina sua jornada</h3><p className="mt-1 text-xs text-muted-foreground">O relógio é baseado no horário real, inclusive fora do jogo.</p></div>
-              <div className="rounded-sm border border-primary/25 bg-[#110f0c]/90 p-4 sm:p-5">
+              <div className="otms-training-duration-panel rounded-sm border border-primary/25 bg-[#110f0c]/90 p-4 sm:p-5">
                 <div className="mb-3 flex items-center justify-between"><h4 className="text-[11px] font-black uppercase tracking-[.18em] text-primary">Duração do treinamento</h4><Clock3 className="size-4 text-primary/70" /></div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
                   {(Object.entries(TRAINING_OPTIONS) as Array<[string, (typeof TRAINING_OPTIONS)[TrainingHours]]>).map(([key, choice]) => {
                     const selected = Number(key) === hours
-                    return <button key={key} type="button" aria-pressed={selected} onClick={() => setHours(Number(key) as TrainingHours)} className={`group flex w-full items-center justify-between gap-3 rounded-sm border p-3 text-left transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:p-4 ${selected ? "border-primary bg-primary/10" : "border-border/50 bg-black/20 hover:border-primary/40 hover:bg-card/30"}`}>
+                    return <button key={key} type="button" aria-pressed={selected} onClick={() => setHours(Number(key) as TrainingHours)} className={`otms-training-time-option group flex w-full items-center justify-between gap-3 rounded-sm border p-3 text-left transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:p-4 ${selected ? "border-primary bg-primary/10" : "border-border/50 bg-black/20 hover:border-primary/40 hover:bg-card/30"}`}>
                       <div className="flex min-w-0 items-center gap-3"><div className={`grid size-8 shrink-0 place-items-center rounded-full border ${selected ? "border-primary bg-primary/20 text-primary" : "border-border bg-background text-muted-foreground"}`}>{selected ? <Check className="size-4" /> : <Clock3 className="size-3.5" />}</div><div className="min-w-0"><p className={`text-sm font-black ${selected ? "text-primary" : "text-foreground"}`}>{key} horas <span className="text-[10px] font-normal text-muted-foreground">na campanha</span></p><p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{choice.realMinutes / 60}h reais · +{choice.points.toLocaleString("pt-BR")} PT</p></div></div>
                       <span className={`shrink-0 rounded-sm border px-2 py-1 font-mono text-xs font-bold ${selected ? "border-primary/35 bg-primary/15 text-primary" : "border-border/60 text-muted-foreground"}`}>+{choice.points.toLocaleString("pt-BR")}</span>
                     </button>
@@ -255,7 +255,7 @@ export function CharacterTraining({ character, isGm, isOwner, onUpdated, openReq
                 </div>
               </div>
 
-              <div className="rounded-sm border border-primary/20 bg-primary/[.04] p-4 sm:p-5">
+              <div className="otms-training-projection-panel rounded-sm border border-primary/20 bg-primary/[.04] p-4 sm:p-5">
                 <div className="mb-3 flex items-center justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-[.18em] text-primary">Projeção do treinamento</span><span className="font-mono text-[10px] text-muted-foreground">PREVIEW</span></div>
                 <div className="flex items-end justify-between gap-3"><div><p className="text-xs text-muted-foreground">{LABELS[attribute]} após a sessão</p><p className="mt-1 font-serif text-3xl font-black text-primary">{selectedProjected.toLocaleString("pt-BR")} <span className="text-base font-normal text-muted-foreground">/ {selectedGoal} pt</span></p></div><span className="font-mono text-sm font-bold text-emerald-400">+{selectedOption.points.toLocaleString("pt-BR")}</span></div>
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border/60"><div className="h-full bg-primary transition-[width] duration-300" style={{ width: `${Math.min(100, selectedProjected / selectedGoal * 100)}%` }} /></div>
@@ -268,7 +268,7 @@ export function CharacterTraining({ character, isGm, isOwner, onUpdated, openReq
           </div>
         </div>
 
-        <footer className="relative z-20 shrink-0 border-t border-primary/25 bg-[#0c0b09]/95 px-4 py-3 shadow-[0_-18px_60px_rgba(0,0,0,.58)] sm:px-8 lg:px-12 lg:py-4">
+        <footer className="otms-training-footer relative z-20 shrink-0 border-t border-primary/25 bg-[#0c0b09]/95 px-4 py-3 shadow-[0_-18px_60px_rgba(0,0,0,.58)] sm:px-8 lg:px-12 lg:py-4">
           <div className="mx-auto flex w-full max-w-[1520px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0"><p className="hidden text-[9px] font-black uppercase tracking-[.18em] text-muted-foreground sm:block"><LockKeyhole className="mr-1 inline size-3" /> Configuração salva no personagem</p><p className="truncate text-xs font-semibold text-foreground sm:mt-1 sm:text-sm"><span className="text-primary">{LABELS[attribute]}</span> <span className="mx-2 text-muted-foreground/50">/</span> {hours}h na campanha <span className="mx-2 text-muted-foreground/50">/</span> {selectedOption.realMinutes / 60}h real</p></div>
             <div className="flex shrink-0 gap-2 sm:gap-3"><Button variant="outline" onClick={() => setOpen(false)} className="h-11 flex-1 border-border/60 bg-card/30 px-5 text-xs sm:flex-none sm:px-7">Voltar</Button><Button disabled={busy || !canTrain} onClick={() => void execute("start", { attribute, hours })} className="h-11 flex-[2] gap-2 bg-primary px-5 text-xs font-black uppercase tracking-widest text-primary-foreground shadow-[0_0_24px_rgba(186,139,56,.18)] hover:bg-primary/90 sm:flex-none sm:px-8">{busy ? "Iniciando..." : "Iniciar treinamento"}<ArrowRight className="size-4" /></Button></div>
@@ -277,7 +277,7 @@ export function CharacterTraining({ character, isGm, isOwner, onUpdated, openReq
       </section>
     </div>, document.body) : null
 
-  return <section className="mt-4 rounded-lg border border-amber-700/30 bg-[#100d0a]/65 p-3 sm:p-4" aria-label="Barra de treinamento">
+  return <section className="otms-training-inline mt-4 rounded-lg border border-amber-700/30 bg-[#100d0a]/65 p-3 sm:p-4" aria-label="Barra de treinamento">
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
       <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[.16em] text-amber-200"><Activity className="size-4" /> Treinamento</p>
       <div className="flex items-center gap-2">
@@ -288,7 +288,7 @@ export function CharacterTraining({ character, isGm, isOwner, onUpdated, openReq
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,220px)_1fr]">
       <TrainingRadar state={state} />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {TRAINING_ATTRIBUTES.map(key => <div key={key} className="rounded-md border border-amber-500/15 bg-black/30 p-2.5">
+        {TRAINING_ATTRIBUTES.map(key => <div key={key} className="otms-training-inline-stat rounded-md border border-amber-500/15 bg-black/30 p-2.5">
           <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px]"><strong className="text-amber-100">{LABELS[key]}</strong><span className="font-mono text-amber-300">{state.points[key].toLocaleString("pt-BR")}/{trainingGoal(state, key)}</span></div>
           <div className="flex gap-0.5" aria-label={`Progresso de ${LABELS[key]}`} role="meter" aria-valuenow={Math.min(trainingGoal(state, key), state.points[key])} aria-valuemin={0} aria-valuemax={trainingGoal(state, key)}>
             {Array.from({ length: trainingGoal(state, key) * 2 }, (_, i) => <span key={i} className={`h-2.5 min-w-0 flex-1 rounded-[1px] ${state.points[key] * 2 > i ? "bg-amber-400" : "bg-zinc-800"}`} />)}

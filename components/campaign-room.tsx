@@ -4122,26 +4122,34 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   // Resolva ações por IDs estáveis e confira a posse NA HORA do acionamento.
   // Compatibilidade: atalhos anteriores sem characterId continuam funcionando.
   useEffect(() => registerInputHandler(action => {
-    const restoreId = restoreTargetOfAction(action)
-    if (action === 'character.restore' || restoreId) {
+    const bound = characterBoundOfAction(action)
+    const restoreId = restoreTargetOfAction(action) // Formato legado: Vida + Mana em uma ficha.
+    const restoreMode = bound?.command === 'character.restoreHp' || action === 'character.restoreHp' ? 'hp'
+      : bound?.command === 'character.restoreMp' || action === 'character.restoreMp' ? 'mp'
+      : action === 'character.restore' || restoreId ? 'both' : null
+    if (restoreMode) {
       if (activeMap || showGmPanel) return false
-      const own = restoreId
-        ? ownedControllerCharacters.find(c => c.id === restoreId)
+      const characterId = bound?.characterId || restoreId
+      const own = characterId
+        ? ownedControllerCharacters.find(c => c.id === characterId)
         : ownedControllerCharacters[0]
       if (!own) { controllerAlert('Selecione um personagem seu nas configurações do controle.'); return true }
       if (restoringControllerVitals.current.has(own.id)) return true
       restoringControllerVitals.current.add(own.id)
+      const maxVital = {mode:'max' as const, amount:0}
+      const changes = restoreMode === 'hp' ? {hp:maxVital}
+        : restoreMode === 'mp' ? {mp:maxVital}
+          : {hp:maxVital,mp:maxVital}
       void apiFetch<{character: Character}>(`/api/characters/${encodeURIComponent(own.id)}/vitals`, {
-        method:'PATCH', body:JSON.stringify({changes:{hp:{mode:'max',amount:0},mp:{mode:'max',amount:0}}}),
+        method:'PATCH', body:JSON.stringify({changes}),
       }).then(result => {
         if (!result.character?.id) throw new Error('O servidor não confirmou a recuperação.')
         applyOptimistic(result.character)
-      }).catch(error => controllerAlert(error instanceof Error ? error.message : 'Não foi possível maximizar vida e mana.'))
+      }).catch(error => controllerAlert(error instanceof Error ? error.message : 'Não foi possível restaurar o recurso.'))
         .finally(() => restoringControllerVitals.current.delete(own.id))
       return true
     }
     if (activeMap || showGmPanel) return false
-    const bound = characterBoundOfAction(action)
     if (bound) {
       const own = ownedControllerCharacters.find(c => c.id === bound.characterId)
       if (!own) { controllerAlert('O personagem escolhido não está disponível nesta sessão.'); return true }
@@ -4153,6 +4161,20 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
       }
       if (bound.command === 'character.grimoire') {
         window.dispatchEvent(new CustomEvent('otms.controller.open-grimoire', {detail:{characterId:own.id}}))
+        return true
+      }
+      if (bound.command === 'character.inventory') {
+        setControllerFocusSkill(null)
+        setControllerPanelRequest(null)
+        setInventoryShortcutId(own.id)
+        setInventoryToOpen(own.id)
+        setSelectedCombatCharId(own.id)
+        return true
+      }
+      if (bound.command === 'character.training') {
+        setControllerFocusSkill(null)
+        setControllerPanelRequest('training')
+        setSelectedCombatCharId(own.id)
         return true
       }
       if (bound.command === 'special.manager') {
@@ -6360,7 +6382,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                       onClick={() => setShowLorebook(true)}
                     >
                       <BookOpen className="size-4" />{" "}
-                      <span className="text-[#eee3cf]">Diário do mundo</span>
+                      <span className="text-foreground">Diário do mundo</span>
                     </Button>
                     <Button
                       variant="outline"

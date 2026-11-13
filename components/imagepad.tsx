@@ -267,9 +267,9 @@ const GalleryCard = memo(function GalleryCard({
           {image.isPublic ? "Pública" : "Privada"}
         </span>
       </button>
-      <div className="flex items-center gap-2 border-t border-primary/15 bg-[#1b140f] p-3">
+      <div className="flex items-center gap-2 rpg-gallery-card-meta border-t border-primary/15 p-3">
         <div className="min-w-0 flex-1">
-          <strong className="block truncate text-sm text-zinc-200">{image.name}</strong>
+          <strong className="block truncate text-sm text-foreground">{image.name}</strong>
           <span className="block truncate text-[9px] text-muted-foreground">{image.ownerName || (isGm ? "Mestre" : "")}</span>
         </div>
         {canManage && <div className="flex shrink-0 items-center gap-1">
@@ -279,7 +279,7 @@ const GalleryCard = memo(function GalleryCard({
             {busyVisibility ? <Loader2 className="size-4 animate-spin" /> : image.isPublic ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
           </Button>
           {movableFolders.length > 1 && <select aria-label={`Mover ${image.name} para pasta`} value={image.folderId || "root"} onChange={(event) => onMove(image, event.target.value)}
-            className="h-8 max-w-28 rounded-sm border border-white/10 bg-black/50 px-1 text-[10px]">
+            className="rpg-gallery-folder-select h-8 max-w-28 rounded-md border px-1 text-[10px]">
             {movableFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
           </select>}
           {!isGm && <Button size="sm" variant="ghost" className="size-8 p-0 text-primary"
@@ -717,7 +717,7 @@ export function Imagepad({
           <p className="mt-0.5 text-xs text-muted-foreground">{isGm ? "Organize o acervo e apresente imagens à mesa." : "Explore imagens e gerencie sua coleção."}</p>
         </div>
         <div className="flex w-full items-center gap-2 sm:w-auto sm:flex-1 sm:justify-end">
-          <label className="rpg-archive-search relative flex-1 sm:max-w-[380px]"><span className="sr-only">Buscar imagem por nome</span><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar no acervo..." className="w-full rounded-xl border border-white/10 bg-black/40 py-2.5 pl-9 pr-4 text-sm outline-none focus:border-primary" /></label>
+          <label className="rpg-archive-search relative min-w-0 flex-1 sm:max-w-[380px]"><span className="sr-only">Buscar imagem por nome</span><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar no acervo..." className="w-full rounded-xl border border-white/10 bg-black/40 py-2.5 pl-9 pr-4 text-sm outline-none focus:border-primary" /></label>
           {onClose && <button type="button" aria-label="Fechar galeria arcana" onClick={onClose} className="rpg-archive-close grid size-11 shrink-0 place-items-center rounded-xl border border-border/50 bg-black/20 transition-colors hover:border-primary/60"><X className="size-5" /></button>}
         </div>
 
@@ -726,7 +726,7 @@ export function Imagepad({
       {error && <div className="mb-3 flex shrink-0 items-center justify-between rounded-sm border border-red-500/40 bg-red-950/40 px-3 py-2 text-sm text-red-200"><span>{error}</span><button onClick={() => setError("")}><X className="size-4" /></button></div>}
 
       {isGm && <div className="rpg-archive-settings mt-3 shrink-0">
-        <div className="rpg-archive-settings-bar flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/20 bg-black/20 px-3 py-2.5">
+        <div className="rpg-archive-settings-bar flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2.5">
           <div className="flex min-w-0 items-center gap-2 text-xs"><ShieldCheck className="size-4 shrink-0 text-primary"/><span className="font-bold">Privacidade e envio</span><span className="truncate text-muted-foreground">{privacyEnabled ? "Pastas privadas" : "Pastas compartilhadas"} · {targetUserId ? players.find(player => player.userId === targetUserId)?.name || "Jogador" : "Todos na mesa"}</span></div>
           <button type="button" aria-expanded={settingsExpanded} aria-controls="rpg-gallery-options" onClick={() => setSettingsExpanded(value => !value)} className="rpg-archive-options-button inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary/25 px-3 text-xs font-bold"><Settings2 className="size-4"/>{settingsExpanded ? "Recolher opções" : "Configurar"}<ChevronDown className={`size-4 transition-transform ${settingsExpanded ? "rotate-180" : ""}`}/></button>
         </div>
@@ -789,7 +789,7 @@ export function Imagepad({
 
       <div className="rpg-archive-layout flex min-h-0 flex-1 gap-3">
 
-        <aside className="rpg-archive-sidebar hidden w-64 shrink-0 flex-col overflow-hidden rounded-xl border border-primary/20 bg-black/20 md:flex">
+        <aside className="rpg-archive-sidebar hidden w-64 shrink-0 flex-col overflow-hidden rounded-xl border md:flex">
 
           <div className="flex items-center justify-between border-b border-primary/15 p-3"><span className="text-xs font-black uppercase tracking-widest">Pastas</span>{mayCreateFolder && <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => setShowNewFolder(true)} title="Nova pasta"><FolderPlus className="size-4" /></Button>}</div>
 
@@ -829,7 +829,7 @@ export function Imagepad({
 
         </aside>
 
-        <main className="rpg-archive-content flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-primary/15 bg-black/15 p-3 sm:p-4">
+        <main className="rpg-archive-content flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border p-3 sm:p-4">
 
           <div className="mb-3 flex shrink-0 items-center gap-2 overflow-x-auto pb-1 md:hidden">{normalizedFolders.map(folder => {
             const openable = folderCanOpen(folder)

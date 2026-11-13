@@ -6,6 +6,7 @@ export const PORTRAIT_FRAMES = [
   { id: "academic", name: "Academica", detail: "Brasao da escola" },
   { id: "nature", name: "Natural", detail: "Folhagem antiga" },
   { id: "gothic", name: "Gotica", detail: "Ferro sombrio" },
+  { id: "gothic-alter", name: "Gótica Alter", detail: "Obsidiana e rubi escarlate" },
   { id: "ornate", name: "Ornamental", detail: "Filigrana cerimonial" },
   { id: "simple", name: "Simples", detail: "Contorno discreto" },
 ] as const
@@ -44,6 +45,7 @@ export function getPortraitFrameStroke(value: unknown): string {
     case "academic": return "#9a4550"
     case "nature": return "#6f805a"
     case "gothic": return "#6e6971"
+    case "gothic-alter": return "#a81e2c"
     case "ornate": return "#c99b55"
     case "simple": return "#d6ccba"
     default: return "#ad7b3b"

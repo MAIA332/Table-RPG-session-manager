@@ -4,7 +4,7 @@ import { sanitizeSoundpadBindings, type SoundpadBindings } from './soundpad-comm
 export type InputAction =
   | 'ui.confirm' | 'ui.back' | 'ui.up' | 'ui.down' | 'ui.left' | 'ui.right'
   | 'ui.previous' | 'ui.next' | 'ui.settings'
-  | 'character.sheet' | `character.sheet.${string}` | 'character.grimoire' | `character.grimoire.${string}` | 'character.inventory' | 'character.restore' | `character.restore.${string}` | 'map.open' | 'map.mode'
+  | 'character.sheet' | `character.sheet.${string}` | 'character.grimoire' | `character.grimoire.${string}` | 'character.inventory' | `character.inventory.${string}` | 'character.restore' | `character.restore.${string}` | 'character.restoreHp' | `character.restoreHp.${string}` | 'character.restoreMp' | `character.restoreMp.${string}` | 'map.open' | 'map.mode'
   | 'map.select' | 'map.panUp' | 'map.panDown' | 'map.panLeft' | 'map.panRight'
   | 'map.zoomIn' | 'map.zoomOut'
   | 'world.lore' | 'gm.panel' | 'gm.soundpad' | 'gm.bestiary' | 'gallery.open' | 'combat.focus'
@@ -14,7 +14,7 @@ export type InputAction =
   | 'gm.crisis' | 'gm.mapImporter' | 'gm.weather' | 'gm.difficulty'
   | 'player.hand' | 'player.notes' | 'player.mixer' | 'player.gallery' | 'player.maps'
   | `panel.${string}`
-  | 'special.manager' | `special.manager.${string}` | 'character.training' | 'character.affinities' | 'character.bonds' | 'character.store' | 'character.mannequin' | 'player.theme'
+  | 'special.manager' | `special.manager.${string}` | 'character.training' | `character.training.${string}` | 'character.affinities' | 'character.bonds' | 'character.store' | 'character.mannequin' | 'player.theme'
   | `skill.open.${string}` | `special.open.${string}` | `skill.ability1.${string}` | `skill.ability2.${string}` | `skill.ability3.${string}` | `skill.ability4.${string}`
   | 'audio.play' | 'audio.pause' | 'audio.toggle' | 'audio.stop' | 'audio.previous' | 'audio.next'
   | 'voice.join' | 'voice.leave' | 'voice.mute.toggle' | 'voice.deafen.toggle'
@@ -68,7 +68,7 @@ export const SETTABLE_COMMANDS: readonly InputAction[] = [
   'audio.play', 'audio.pause', 'audio.toggle', 'audio.stop', 'audio.previous', 'audio.next',
   'voice.join', 'voice.leave', 'voice.mute.toggle', 'voice.deafen.toggle', 'voice.ptt',
   'voice.panel.toggle', 'voice.chat.toggle', 'voice.noise.toggle', 'voice.volume.up', 'voice.volume.down', 'voice.studio.toggle', 'voice.audio.recover',
-  'character.sheet', 'character.grimoire', 'character.inventory', 'character.restore', 'map.open', 'world.lore',
+  'character.sheet', 'character.grimoire', 'character.inventory', 'character.restore', 'character.restoreHp', 'character.restoreMp', 'map.open', 'world.lore',
   'special.manager', 'character.training', 'character.affinities', 'character.bonds', 'character.store', 'character.mannequin', 'player.theme',
   'combat.focus', 'gm.panel', 'gm.soundpad', 'gm.bestiary', 'gallery.open', 'ui.settings',
 ]
@@ -79,7 +79,7 @@ export const REMAPPABLE_LT_BUTTONS = ['LT+LS', 'LT+RS'] as const
 export const MAX_SKILL_PAGES = 10
 export type RemappableButton = typeof REMAPPABLE_BUTTONS[number]
 export const BASE_COMMANDS: readonly InputAction[] = [
-  'ui.previous', 'ui.next', 'character.sheet', 'character.grimoire', 'character.inventory', 'character.restore', 'map.open',
+  'ui.previous', 'ui.next', 'character.sheet', 'character.grimoire', 'character.inventory', 'character.restore', 'character.restoreHp', 'character.restoreMp', 'map.open',
   'gallery.open', 'gm.bestiary', 'world.lore', 'combat.focus', 'gm.panel', 'gm.soundpad',
   'ui.settings', 'special.manager', 'character.training', 'character.affinities', 'character.bonds', 'character.store', 'character.mannequin', 'player.theme', 'gm.scenes', 'gm.poll', 'gm.custom', 'gm.loots', 'gm.battleGrid',
   'gm.crisis', 'gm.mapImporter', 'gm.weather', 'gm.difficulty',
@@ -101,6 +101,8 @@ export type InputSettings = {
   soundClick: boolean
   tvScale: boolean
   slots: InputAction[][]
+  /** Custom labels indexed by wheel page. Empty strings use Conjunto N. */
+  slotNames: string[]
   // Includes direct buttons and dedicated LT+L3/LT+R3 chords.
   buttonBindings: Partial<Record<GamepadButtonName | `LT+${GamepadButtonName}`, InputAction>>
   soundpadBindings: SoundpadBindings
@@ -113,6 +115,7 @@ export const DEFAULT_SETTINGS: InputSettings = {
     ['skill.ability1', 'skill.ability2', 'skill.ability3', 'skill.ability4'],
     ['world.lore', 'character.inventory', 'gm.soundpad', 'gm.panel'],
   ],
+  slotNames: ['', ''],
   buttonBindings: {},
   soundpadBindings: sanitizeSoundpadBindings(undefined),
 }
@@ -133,6 +136,10 @@ export function sanitizeSettings(raw: unknown): InputSettings {
     soundClick: value.soundClick !== false,
     tvScale: value.tvScale !== false,
     slots: safeSlots.map(page => [...page]),
+    slotNames: safeSlots.map((_, index) => {
+      const name = Array.isArray(value.slotNames) ? value.slotNames[index] : ''
+      return typeof name === 'string' ? name.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 32) : ''
+    }),
     soundpadBindings: sanitizeSoundpadBindings(value.soundpadBindings),
     buttonBindings: Object.fromEntries(Object.entries(value.buttonBindings ?? {})
       .filter(([button, action]) => (isRemappableButton(button) || (REMAPPABLE_LT_BUTTONS as readonly string[]).includes(button)) &&

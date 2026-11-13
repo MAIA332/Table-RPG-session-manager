@@ -1,15 +1,18 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { Geist_Mono, Cinzel, Kalam, Source_Sans_3, Source_Serif_4 } from 'next/font/google'
+import { Bebas_Neue, Cinzel, Geist_Mono, Inter, Kalam, Source_Sans_3, Source_Serif_4 } from 'next/font/google'
 import './globals.css'
+import './theme-extensions.css'
 import { ControllerProvider } from '@/components/controller/controller-provider'
 
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 const cinzel = Cinzel({ subsets: ['latin'], variable: '--font-cinzel', weight: ['400', '600', '700', '900'] })
 const sourceSans = Source_Sans_3({ subsets: ['latin'], variable: '--font-source-sans' })
 const sourceSerif = Source_Serif_4({ subsets: ['latin'], variable: '--font-source-serif' })
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const bebasNeue = Bebas_Neue({ subsets: ['latin'], variable: '--font-bebas-neue', weight: '400' })
 const kalam = Kalam({ subsets: ['latin'], variable: '--font-kalam', weight: ['300', '400', '700'] })
-const themeScript = `(function(){try{var t=localStorage.getItem('vtt-interface-theme');if(t!=='archive'&&t!=='aether'&&t!=='crimson')t='archive';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='archive'}})()`
+const themeScript = `(function(){try{var t=localStorage.getItem('vtt-interface-theme');if(t!=='archive'&&t!=='aether'&&t!=='crimson'&&t!=='calm-kitty'&&t!=='paper'&&t!=='electric-mint'&&t!=='violet'&&t!=='mars'&&t!=='natalino')t='archive';document.documentElement.dataset.theme=t;document.documentElement.classList.toggle('dark',t!=='calm-kitty'&&t!=='paper'&&t!=='natalino')}catch(e){document.documentElement.dataset.theme='archive'}})()`
 
 export const metadata: Metadata = {
   title: 'Over the Magic School — VTT de Fabula Ultima',
@@ -31,7 +34,7 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`dark bg-background ${sourceSans.variable} ${sourceSerif.variable} ${geistMono.variable} ${cinzel.variable} ${kalam.variable}`}
+      className={`dark bg-background ${sourceSans.variable} ${sourceSerif.variable} ${inter.variable} ${bebasNeue.variable} ${geistMono.variable} ${cinzel.variable} ${kalam.variable}`}
       suppressHydrationWarning
     >
       <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>

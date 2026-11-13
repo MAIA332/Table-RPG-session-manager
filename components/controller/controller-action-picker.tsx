@@ -6,7 +6,8 @@ import {
 } from '@/lib/input/targeted-actions'
 
 const CHARACTER_COMMANDS = new Set<string>([
-  'character.sheet', 'character.grimoire', 'special.manager', 'skill.ability1', 'skill.ability2',
+  'character.sheet', 'character.grimoire', 'character.inventory', 'character.training',
+  'character.restoreHp', 'character.restoreMp', 'special.manager', 'skill.ability1', 'skill.ability2',
   'skill.ability3', 'skill.ability4',
 ])
 function isCharacterCommand(value: string): value is CharacterBoundCommand {
@@ -45,7 +46,7 @@ export function ControllerActionPicker({ value, commands, skills, specials, char
   return <div className="otms-controller-action-picker">
     <select aria-label={label} value={primaryValue} onChange={event => {
       const next = event.target.value
-      if (next === 'character.restore' || isCharacterCommand(next) && characters.length > 1) {
+      if (characters.length > 1 && (next === 'character.restore' || isCharacterCommand(next))) {
         onChange(characters.length > 1 ? makeCommand(next, characters[0].id) : next as InputAction)
       } else if (next === 'skill.choose' || next === 'special.choose') {
         const candidates = next === 'skill.choose' ? skills : specials

@@ -285,3 +285,197 @@
 .rpg-archive-icon-button:hover { border-color: rgba(130,210,216,.72); background: rgba(76,163,174,.14); }
 .rpg-bestiary-empty { padding: clamp(20px, 4vw, 50px); }
 .rpg-bestiary-empty .rpg-bestiary-emblem { box-shadow: 0 16px 45px rgba(199, 102, 101, .08); }
+
+/* --------------------------------------------------------------------------
+   GALERIA ARCANA · superfícies semânticas globais / fullscreen sem moldura
+   A Galeria antes herdava azul/cinza do fullscreen, marrom dos cards e fundos
+   rígidos do tema Arquivo, mesmo com Paper, Calm Kitty e Mars ativos.
+   Usamos a camada base para superar regras antigas !important da camada
+   components sem alterar o Bestiário ou as outras janelas.
+   -------------------------------------------------------------------------- */
+@layer base {
+  html .rpg-gallery-fullscreen {
+    --gallery-page: var(--theme-page, var(--background));
+    --gallery-ink: var(--theme-ink, var(--foreground));
+    --gallery-muted: var(--theme-quiet, var(--muted-foreground));
+    --gallery-accent: var(--theme-highlight, var(--primary));
+    --gallery-surface: var(--theme-card, var(--card));
+    --gallery-raised: var(--theme-card-raised, var(--popover));
+    --gallery-recessed: var(--theme-card-recessed, var(--muted));
+    --gallery-tint: var(--theme-tint, var(--secondary));
+    --gallery-line: var(--theme-line, var(--border));
+    --gallery-soft-line: color-mix(in srgb, var(--gallery-line) 68%, transparent);
+    --gallery-hover: color-mix(in srgb, var(--gallery-accent) 12%, var(--gallery-raised));
+    --gallery-canvas: color-mix(in srgb, var(--gallery-page) 78%, var(--gallery-surface));
+    --archive-highlight: var(--gallery-accent);
+    --archive-line: var(--gallery-soft-line);
+    --archive-ink: var(--gallery-ink);
+    --archive-surface: var(--gallery-surface);
+    --archive-surface-raised: var(--gallery-raised);
+    color: var(--gallery-ink) !important;
+    background: var(--gallery-page) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  html .rpg-archive-overlay:has(> .rpg-gallery-fullscreen),
+  html .rpg-gallery-fullscreen .rpg-media-modal-frame {
+    background: var(--gallery-page, var(--background)) !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* O contêiner cobre a viewport até as bordas; apenas seções internas
+     recebem margens de leitura, não uma falsa borda escura lateral. */
+  html .rpg-gallery-fullscreen .rpg-gallery-workspace {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    min-width: 0;
+    max-width: none !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-header {
+    padding: max(14px, env(safe-area-inset-top)) clamp(12px, 2vw, 30px) 15px !important;
+    color: var(--gallery-ink) !important;
+    background: var(--gallery-raised) !important;
+    border-color: var(--gallery-soft-line) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-header :is(h2, .rpg-title) {
+    color: var(--gallery-ink) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-header .rpg-title svg,
+  html .rpg-gallery-fullscreen .rpg-archive-eyebrow {
+    color: var(--gallery-accent) !important;
+  }
+  html .rpg-gallery-fullscreen :is(.rpg-archive-header p, .rpg-archive-footer, .rpg-archive-content .text-muted-foreground) {
+    color: var(--gallery-muted) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-settings {
+    margin: 12px clamp(12px, 2vw, 30px) 12px !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-settings-bar,
+  html .rpg-gallery-fullscreen .rpg-archive-options > section {
+    color: var(--gallery-ink) !important;
+    background: var(--gallery-surface) !important;
+    border-color: var(--gallery-soft-line) !important;
+    box-shadow: none !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-options-button {
+    background: var(--gallery-recessed) !important;
+    border-color: var(--gallery-soft-line) !important;
+    color: var(--gallery-ink) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-options-button:is(:hover, [aria-expanded='true']) {
+    background: var(--gallery-hover) !important;
+    border-color: var(--gallery-accent) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-layout {
+    padding: 0 clamp(12px, 2vw, 30px) 12px !important;
+    gap: clamp(10px, 1.4vw, 18px) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-sidebar {
+    background: var(--gallery-surface) !important;
+    border-color: var(--gallery-soft-line) !important;
+    color: var(--gallery-ink) !important;
+    box-shadow: none !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-sidebar > div:first-child {
+    color: var(--gallery-ink) !important;
+    border-color: var(--gallery-soft-line) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-sidebar .group:has(button[aria-pressed='true']) {
+    background: var(--gallery-hover) !important;
+    border-color: color-mix(in srgb, var(--gallery-accent) 48%, var(--gallery-line)) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-folder-button {
+    color: var(--gallery-ink) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-folder-button:is(:hover,[aria-pressed='true']) {
+    color: var(--gallery-ink) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-folder-button:disabled {
+    opacity: .56 !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-content {
+    color: var(--gallery-ink) !important;
+    background: var(--gallery-canvas) !important;
+    border-color: var(--gallery-soft-line) !important;
+    box-shadow: none !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-content > div:first-child {
+    color: var(--gallery-ink) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-content > .panel {
+    color: var(--gallery-ink) !important;
+    background: var(--gallery-raised) !important;
+    border-color: var(--gallery-soft-line) !important;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--gallery-line) 8%, transparent) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-grid {
+    scrollbar-color: color-mix(in srgb, var(--gallery-accent) 42%, var(--gallery-line)) transparent !important;
+    min-width: 0;
+  }
+  html .rpg-gallery-fullscreen .rpg-gallery-card {
+    color: var(--gallery-ink) !important;
+    border-color: var(--gallery-soft-line) !important;
+    background: var(--gallery-raised) !important;
+    box-shadow: 0 5px 18px color-mix(in srgb, var(--gallery-line) 18%, transparent) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-gallery-card:is(:hover,:focus-within) {
+    border-color: var(--gallery-accent) !important;
+    box-shadow: 0 6px 22px color-mix(in srgb, var(--gallery-accent) 18%, transparent) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-gallery-card > .rpg-gallery-card-meta {
+    background: var(--gallery-surface) !important;
+    color: var(--gallery-ink) !important;
+    border-color: var(--gallery-soft-line) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-gallery-card-meta strong {
+    color: var(--gallery-ink) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-gallery-card-meta .text-muted-foreground {
+    color: var(--gallery-muted) !important;
+  }
+  html .rpg-gallery-fullscreen :is(input:not([type='file']),select,textarea) {
+    color-scheme: inherit !important;
+    color: var(--gallery-ink) !important;
+    background: var(--gallery-raised) !important;
+    border-color: var(--gallery-soft-line) !important;
+  }
+  html .rpg-gallery-fullscreen :is(input,textarea)::placeholder {
+    color: var(--gallery-muted) !important;
+    opacity: .85;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-close,
+  html .rpg-gallery-fullscreen .rpg-archive-icon-button {
+    color: var(--gallery-ink) !important;
+    background: var(--gallery-recessed) !important;
+    border-color: var(--gallery-soft-line) !important;
+  }
+  html .rpg-gallery-fullscreen :is(.rpg-archive-close,.rpg-archive-icon-button):hover {
+    background: var(--gallery-hover) !important;
+    border-color: var(--gallery-accent) !important;
+  }
+  html .rpg-gallery-fullscreen .rpg-archive-footer {
+    background: var(--gallery-raised) !important;
+    border-color: var(--gallery-soft-line) !important;
+  }
+  html .rpg-gallery-fullscreen :is(button,select,input,textarea):focus-visible,
+  html .rpg-gallery-fullscreen [data-controller-focused='true'] {
+    outline: 3px solid var(--gallery-accent) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--gallery-accent) 22%, transparent) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .rpg-gallery-fullscreen .rpg-gallery-workspace .rpg-archive-header { padding-inline: 12px !important; }
+  .rpg-gallery-fullscreen .rpg-archive-settings { margin-inline: 10px !important; }
+  .rpg-gallery-fullscreen .rpg-archive-layout { padding-inline: 10px !important; }
+  .rpg-gallery-fullscreen .rpg-archive-footer { padding-inline: 12px !important; }
+}

@@ -102,7 +102,8 @@ export function ControllerStartMenu({ settings, update, onClose, page, skillName
             <div className="otms-wheel-editor">
               <ControllerWheel settings={settings} page={editingPage} skillNames={skillNames} skillChoices={skillChoices} specialChoices={specialChoices} characterChoices={characterChoices} preview />
               <div className="otms-wheel-editor-fields">
-                <div className="otms-wheel-page-picker">{settings.slots.map((_, i) => <button key={i} aria-pressed={editingPage===i} onClick={() => setEditingPage(i)}>Conjunto {i+1}</button>)}{settings.slots.length < MAX_SKILL_PAGES && <button type="button" aria-label="Adicionar conjunto LT" onClick={() => { const next = [...settings.slots, [...DEFAULT_SETTINGS.slots[0]]]; update({slots: next}); setEditingPage(next.length-1) }}>+ Novo conjunto</button>}{settings.slots.length > 1 && <button type="button" aria-label="Remover conjunto LT atual" onClick={() => {update({slots:settings.slots.filter((_,i)=>i!==editingPage)});setEditingPage(Math.max(0,editingPage-1))}}>− Remover</button>}</div>
+                <div className="otms-wheel-page-picker">{settings.slots.map((_, i) => <button key={i} type="button" title={settings.slotNames[i]?.trim() || `Conjunto ${i + 1}`} aria-label={`Selecionar conjunto ${i + 1}: ${settings.slotNames[i]?.trim() || `Conjunto ${i + 1}`}`} aria-pressed={editingPage===i} onClick={() => setEditingPage(i)}><small>{String(i + 1).padStart(2,'0')}</small><span>{settings.slotNames[i]?.trim() || `Conjunto ${i+1}`}</span></button>)}{settings.slots.length < MAX_SKILL_PAGES && <button type="button" aria-label="Adicionar conjunto LT" onClick={() => { const next = [...settings.slots, [...DEFAULT_SETTINGS.slots[0]]]; update({slots: next, slotNames: [...settings.slotNames, '']}); setEditingPage(next.length-1) }}>+ Novo conjunto</button>}{settings.slots.length > 1 && <button type="button" aria-label="Remover conjunto LT atual" onClick={() => {update({slots:settings.slots.filter((_,i)=>i!==editingPage),slotNames:settings.slotNames.filter((_,i)=>i!==editingPage)});setEditingPage(Math.max(0,editingPage-1))}}>− Remover</button>}</div>
+                <label className="otms-wheel-name-editor"><span>Nome deste conjunto</span><input type="text" maxLength={32} aria-label={`Renomear conjunto ${editingPage+1}`} placeholder={`Conjunto ${editingPage+1}`} value={settings.slotNames[editingPage] || ''} onChange={event => update({slotNames:settings.slotNames.map((name,i)=>i===editingPage?event.target.value:name)})}/><small>{(settings.slotNames[editingPage] || '').length}/32</small></label>
                 {settings.slots[editingPage].map((action, index) => <label key={index} className="otms-start-mapping-row">
                   <span className="otms-start-binding-button"><ControllerGlyph button={BUTTONS[index]} /><strong>{BUTTONS[index]}</strong></span>
                   <ControllerActionPicker label={`LT mais ${BUTTONS[index]}`} value={action} commands={wheelCommands}
@@ -112,7 +113,7 @@ export function ControllerStartMenu({ settings, update, onClose, page, skillName
               </div>
             </div>
             <p className="otms-start-note">Ao possuir vários personagens, escolha a ficha, Grimório, habilidade ou golpe e selecione o personagem específico no campo seguinte. Habilidades e golpes são filtrados pela ficha escolhida. O seletor final indica a técnica específica quando necessário. Selecionar habilidade abre sua ficha para confirmação. O radial nunca consome MP automaticamente.</p>
-            <button className="otms-start-secondary" onClick={() => update({slots: DEFAULT_SETTINGS.slots.map(row=>[...row])})}><RotateCcw size={16}/> Restaurar conjuntos</button>
+            <button className="otms-start-secondary" onClick={() => {update({slots: DEFAULT_SETTINGS.slots.map(row=>[...row]),slotNames:[...DEFAULT_SETTINGS.slotNames]});setEditingPage(0)}}><RotateCcw size={16}/> Restaurar conjuntos</button>
           </>}
           {menuTab === 'soundpad' && <>
             <div className="otms-start-section-header"><h3>CONTROLES DO SOUND STUDIO</h3><span>Perfil exclusivo da tela cheia</span></div>
@@ -163,7 +164,7 @@ export function ControllerStartMenu({ settings, update, onClose, page, skillName
               <p><ControllerGlyph button="LS"/> / <ControllerGlyph button="RS"/> Ações personalizadas, inclusive segurando LT</p>
               <p>Arquivo Sonoro aberto: perfil próprio na aba Soundpad (X Play/Pause, Y Parar, LB/RB navegar faixas). No miniplayer valem somente os atalhos configurados em Comandos/Atalhos LT.</p>
               <p><ControllerGlyph button="VIEW"/> Select: personalizável; se houver uma imagem de golpe ativa para o Mestre, encerra primeiro a imagem.</p>
-              <p>Maximizar vida e mana: use o segundo seletor para escolher um personagem seu quando houver mais de um.</p>
+              <p>Inventário, Treinamento, Maximizar Vida, Maximizar Mana e Maximizar Vida e Mana: escolha o personagem no segundo seletor quando controlar mais de uma ficha.</p>
               <p>Analógico direito: rolar verticalmente a página ou painel ativo</p>
               <p><Keyboard size={18}/> Se um campo de texto receber foco, digite normalmente com teclado ou teclado virtual do sistema.</p>
               <p><CircleHelp size={18}/> Ctrl + Alt + G alterna o modo de teste quando há controle ou ?tv=1.</p>

@@ -4148,7 +4148,7 @@ export function CharacterSheet({
                   >
                     <style>{`[data-mannequin-focused="true"] { outline: 2px solid var(--primary, #d5a45d); outline-offset: 3px; border-radius: 9px; }`}</style>
                     <div className="otms-inventory-header flex justify-between items-center p-6 border-b border-white/10 bg-black/40 shrink-0">
-                      <h4 className="font-serif text-2xl md:text-3xl font-black text-[#eee3cf] flex items-center gap-3">
+                      <h4 className="font-serif text-2xl md:text-3xl font-black text-foreground flex items-center gap-3">
                         <Package className="size-6 text-primary md:size-8" />{" "}
                         Mochila do Viajante <span className="otms-inventory-hero-label">{character.name}</span>
                       </h4>
@@ -4536,7 +4536,7 @@ export function CharacterSheet({
                     >
                       <X className="size-4" />
                     </button>
-                    <h4 className="mb-2 flex items-center gap-2 font-serif text-xl font-bold text-[#eee3cf]">
+                    <h4 className="mb-2 flex items-center gap-2 font-serif text-xl font-bold text-foreground">
                       <UserPlus className="size-5 text-primary" /> Ceder
                     </h4>
                     <p className="text-sm text-muted-foreground mb-6">
@@ -4869,7 +4869,7 @@ export function CharacterSheet({
               onClick={(event) => { event.stopPropagation(); setShowPortraitGallery(true) }}
               title="Ver galeria de retratos"
               aria-label={`Ver galeria de retratos de ${character.name}`}
-              className="absolute -bottom-2 -left-1 z-10 grid size-7 place-items-center rounded-sm border border-primary/45 bg-background text-primary shadow-md transition hover:bg-primary/15"
+              className="portrait-gallery-trigger absolute -bottom-2 -left-1 z-10 grid size-7 place-items-center rounded-sm border border-primary/45 bg-background text-primary shadow-md transition hover:bg-primary/15"
             >
               <Images className="size-3.5" />
             </button>
@@ -5194,7 +5194,7 @@ export function CharacterSheet({
                         </div>}
                       </section>
                     )}
-                    <div className="rounded-sm border border-border/40 bg-black/35 p-3 shadow-inner sm:p-4">
+                    <div className="rpg-xp-panel rounded-sm border border-border/40 bg-black/35 p-3 shadow-inner sm:p-4">
                       <div className="flex justify-between items-center mb-2">
                         <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest">
                           Experiência (XP)
@@ -5226,7 +5226,7 @@ export function CharacterSheet({
                             size="sm"
                             variant="default"
                             disabled={!editable && !isGm}
-                            className="h-8 text-xs animate-pulse bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 shrink-0"
+                            className="rpg-xp-classes-button h-8 text-xs animate-pulse bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 shrink-0"
                             onClick={() => {
                               setSkillSaveError(null)
                               setSkillSaveSuccess(null)
@@ -5241,7 +5241,7 @@ export function CharacterSheet({
                         )}
                         {isGm && <GmSheetValueEditor characterId={character.id} value={unspentPoints} kind="classPoints" canEdit={true} onSaved={onOptimistic} className="text-xs" />}
                         {isGm && (
-                          <div className="ml-auto flex flex-wrap justify-end gap-1.5">
+                          <div className="rpg-xp-adjustments ml-auto flex flex-wrap justify-end gap-1.5">
                             {([-10, -5, -1] as const).map(delta => (
                               <Button
                                 key={delta}
@@ -5580,8 +5580,8 @@ export function CharacterSheet({
 
                     <div className="flex flex-wrap gap-2 mt-5">
                       {/* INSPIRAÇÃO (mantém a chave fp por compatibilidade com fichas existentes) */}
-                      <div className="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-[color:var(--fp)]/30 bg-[color:var(--fp)]/5 px-3 py-2">
-                        <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[color:var(--fp)]">
+                      <div className="rpg-inspiration-meter flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-[color:var(--fp)]/30 bg-[color:var(--fp)]/5 px-3 py-2">
+                        <span className="rpg-inspiration-label flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[color:var(--fp)]">
                           <Sparkles className="size-3.5" /> Inspiração
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -5593,7 +5593,7 @@ export function CharacterSheet({
                               <Minus className="size-3" />
                             </button>
                           )}
-                          <span className="w-5 text-center font-mono text-sm font-bold text-[color:var(--fp)]">
+                          <span className="rpg-inspiration-value w-5 text-center font-mono text-sm font-bold text-[color:var(--fp)]">
                             {displayResources.fp}
                           </span>
                           {editable && (
@@ -5645,7 +5645,7 @@ export function CharacterSheet({
                           onClick={() => { setMannequinFocusedItem(null); setShowInventory(true) }}
                         >
                           <Package className="size-4 mr-2 shrink-0" />{" "}
-                          <span className="text-[#eee3cf]">Mochila</span>
+                          <span className="text-foreground">Mochila</span>
                         </Button>
 
                         <Button
@@ -5665,7 +5665,7 @@ export function CharacterSheet({
                           onClick={() => setShowStore(true)}
                         >
                           <Store className="size-4 mr-2 shrink-0" />{" "}
-                          <span className="text-[#eee3cf]">Loja</span>
+                          <span className="text-foreground">Loja</span>
                         </Button>
 
                         <Button
@@ -5675,7 +5675,7 @@ export function CharacterSheet({
                           onClick={() => setShowBondsModal(true)}
                         >
                           <Link2 className="size-4 mr-2 shrink-0" />{" "}
-                          <span className="text-[#eee3cf]">Laços</span>
+                          <span className="text-foreground">Laços</span>
                         </Button>
                       </div>
                     </div>

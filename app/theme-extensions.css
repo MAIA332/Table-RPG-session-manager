@@ -1,0 +1,1520 @@
+/* Four selectable interface themes. Existing Archive / Aether / Crimson stay unchanged.
+   Theme tokens share the same semantic API as globals.css so the whole VTT follows
+   the selected palette, including portals mounted under document.body. */
+:root[data-theme='calm-kitty'] {
+  color-scheme: light;
+  --background: #F4EFE8; --foreground: #24392E;
+  --card: #E8EFE7; --card-foreground: #24392E;
+  --popover: #FBF9F5; --popover-foreground: #24392E;
+  --primary: #55735F; --primary-foreground: #FFFFFF;
+  --secondary: #D9E1D9; --secondary-foreground: #284032;
+  --muted: #E1E8DE; --muted-foreground: #52695A;
+  --accent: #476E57; --accent-foreground: #FFFFFF;
+  --destructive: #AD4552; --border: #B4C5B4; --input: #A2B6A2; --ring: #466B53;
+  --bronze: #6B7F6E; --moss: #A7B8A7; --parchment: #F4EFE8;
+  --parchment-light: #FAF8F2; --leather: #DFE6DD; --ink: #26392E; --wine: #AE6770;
+  --sidebar: #E6ECE4; --sidebar-foreground: #24392E; --sidebar-primary: #55735F;
+  --sidebar-primary-foreground: #FFF; --sidebar-accent: #D9E1D9;
+  --sidebar-accent-foreground: #24392E; --sidebar-border: #B4C5B4; --sidebar-ring: #466B53;
+  --color-zinc-950: #F4EFE8; --color-zinc-900: #EDEFE9; --color-zinc-800: #DFE6DD;
+  --color-zinc-700: #C8D5C7; --color-zinc-600: #80988A; --color-zinc-500: #657E6C;
+  --color-zinc-400: #4B6653; --color-zinc-300: #314B3A; --color-zinc-200: #24392E;
+  --theme-top: #F8F7F2; --theme-bottom: #E3EAE0; --theme-field: #F8F8F3;
+  --theme-text: #24392E; --theme-hairline: #A9BCAF; --theme-shadow: rgba(62,76,65,.14);
+  --theme-wallpaper: radial-gradient(ellipse at 85% 2%, rgba(107,127,110,.18), transparent 48%),
+    radial-gradient(ellipse at 4% 88%, rgba(167,184,167,.27), transparent 44%),
+    linear-gradient(140deg, #F4EFE8 0%, #ECF0E7 60%, #E5EBE2 100%);
+  --chart-1: #55735F; --chart-2: #729689; --chart-3: #C9BDAF;
+  --chart-4: #A7B8A7; --chart-5: #AD4552;
+}
+:root[data-theme='paper'] {
+  color-scheme: light;
+  --background: #F6F4EE; --foreground: #111111;
+  --card: #EEEAE2; --card-foreground: #111111;
+  --popover: #F9F7F1; --popover-foreground: #111111;
+  --primary: #333333; --primary-foreground: #F6F4EE;
+  --secondary: #E6E1D7; --secondary-foreground: #111111;
+  --muted: #E6E1D7; --muted-foreground: #54514B;
+  --accent: #333333; --accent-foreground: #F6F4EE;
+  --destructive: #A33E3E; --border: #BEB8AD; --input: #BEB8AD; --ring: #333333;
+  --bronze: #777777; --moss: #8B877D; --parchment: #F6F4EE;
+  --parchment-light: #FFFDF8; --leather: #E6E1D7; --ink: #111111; --wine: #655050;
+  --sidebar: #EAE6DD; --sidebar-foreground: #111111; --sidebar-primary: #333333;
+  --sidebar-primary-foreground: #F6F4EE; --sidebar-accent: #DED8CE;
+  --sidebar-accent-foreground: #111111; --sidebar-border: #BEB8AD; --sidebar-ring: #333333;
+  --color-zinc-950: #F6F4EE; --color-zinc-900: #EEEAE3; --color-zinc-800: #E6E1D7;
+  --color-zinc-700: #BEB8AD; --color-zinc-600: #777777; --color-zinc-500: #5B5955;
+  --color-zinc-400: #484640; --color-zinc-300: #333333; --color-zinc-200: #111111;
+  --theme-top: #FFFEFA; --theme-bottom: #E7E1D7; --theme-field: #F6F4EE;
+  --theme-text: #111111; --theme-hairline: #BEB8AD; --theme-shadow: rgba(36,32,28,.13);
+  --theme-wallpaper: linear-gradient(transparent 39px, rgba(51,51,51,.032) 40px),
+    radial-gradient(ellipse at 92% 7%, rgba(190,184,173,.22), transparent 53%),
+    linear-gradient(160deg, #F6F4EE, #EEEBE4);
+  --chart-1: #333333; --chart-2: #777777; --chart-3: #BEB8AD;
+  --chart-4: #5A5A5A; --chart-5: #A33E3E;
+}
+:root[data-theme='electric-mint'] {
+  color-scheme: dark;
+  --background: #141414; --foreground: #EAFFF9;
+  --card: #202523; --card-foreground: #EAFFF9;
+  --popover: #191F1D; --popover-foreground: #EAFFF9;
+  --primary: #2AF5C8; --primary-foreground: #0E1916;
+  --secondary: #27322F; --secondary-foreground: #E2FCF5;
+  --muted: #26322E; --muted-foreground: #A4C9BF;
+  --accent: #2AF5C8; --accent-foreground: #0E1916;
+  --destructive: #FF6677; --border: #35675B; --input: #3A7063; --ring: #2AF5C8;
+  --bronze: #2AF5C8; --moss: #2D8672; --parchment: #E2FFF6;
+  --parchment-light: #F4FFFC; --leather: #1E2A26; --ink: #111F1A; --wine: #8E4054;
+  --sidebar: #181D1B; --sidebar-foreground: #EAFFF9; --sidebar-primary: #2AF5C8;
+  --sidebar-primary-foreground: #0E1916; --sidebar-accent: #263B34;
+  --sidebar-accent-foreground: #EAFFF9; --sidebar-border: #35675B; --sidebar-ring: #2AF5C8;
+  --color-zinc-950: #141414; --color-zinc-900: #191F1D; --color-zinc-800: #25312C;
+  --color-zinc-700: #34574D; --color-zinc-600: #548878; --color-zinc-500: #77A99A;
+  --color-zinc-400: #A4C9BF; --color-zinc-300: #D0F2E8; --color-zinc-200: #EAFFF9;
+  --theme-top: #243A32; --theme-bottom: #121918; --theme-field: #141B19;
+  --theme-text: #EAFFF9; --theme-hairline: #35675B; --theme-shadow: rgba(0,0,0,.48);
+  --theme-wallpaper: radial-gradient(ellipse at 81% 7%, rgba(42,245,200,.11), transparent 40%),
+    linear-gradient(rgba(42,245,200,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(42,245,200,.035) 1px, transparent 1px),
+    linear-gradient(140deg, #141414, #101B18);
+  --chart-1: #2AF5C8; --chart-2: #5DB89F; --chart-3: #B5FBE7;
+  --chart-4: #4B8B78; --chart-5: #FF6677;
+}
+:root[data-theme='violet'] {
+  color-scheme: dark;
+  --background: #2B1735; --foreground: #F5F0FC;
+  --card: #3B1A47; --card-foreground: #F5F0FC;
+  --popover: #30163A; --popover-foreground: #F5F0FC;
+  --primary: #B6FF00; --primary-foreground: #1A1020;
+  --secondary: #4B2B58; --secondary-foreground: #F5F0FC;
+  --muted: #492954; --muted-foreground: #CCB8D5;
+  --accent: #B6FF00; --accent-foreground: #1A1020;
+  --destructive: #FF728F; --border: #75527F; --input: #805487; --ring: #B6FF00;
+  --bronze: #B6FF00; --moss: #7EAB36; --parchment: #F0E6F8;
+  --parchment-light: #FCF7FF; --leather: #371C42; --ink: #17111C; --wine: #934C89;
+  --sidebar: #30183A; --sidebar-foreground: #F5F0FC; --sidebar-primary: #B6FF00;
+  --sidebar-primary-foreground: #1A1020; --sidebar-accent: #52315E;
+  --sidebar-accent-foreground: #F5F0FC; --sidebar-border: #75527F; --sidebar-ring: #B6FF00;
+  --color-zinc-950: #24112C; --color-zinc-900: #30183A; --color-zinc-800: #3B1A47;
+  --color-zinc-700: #543160; --color-zinc-600: #805487; --color-zinc-500: #A080AC;
+  --color-zinc-400: #C6B0D0; --color-zinc-300: #E6DDF0; --color-zinc-200: #F5F0FC;
+  --theme-top: #452451; --theme-bottom: #28132F; --theme-field: #2A1434;
+  --theme-text: #F5F0FC; --theme-hairline: #75527F; --theme-shadow: rgba(0,0,0,.42);
+  --theme-wallpaper: radial-gradient(ellipse at 83% 8%, rgba(182,255,0,.13), transparent 32%),
+    linear-gradient(rgba(182,255,0,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(182,255,0,.03) 1px, transparent 1px),
+    linear-gradient(130deg, #3B1A47, #24112C);
+  --chart-1: #B6FF00; --chart-2: #D1FF79; --chart-3: #9465AC;
+  --chart-4: #91B746; --chart-5: #FF728F;
+}
+
+/* All four themes: global body, modals, sheet, cartography and user inputs. */
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) {
+  background-color: var(--background);
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) body,
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) body:has(.weather-screen[data-weather='clear']) {
+  color: var(--foreground);
+  background-color: var(--background);
+  background-image: var(--theme-wallpaper) !important;
+  background-repeat: repeat;
+  background-size: auto, 44px 44px, 44px 44px, auto;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) body::before {
+  background-image: radial-gradient(circle at 50% 50%, transparent 45%, var(--theme-shadow) 100%);
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(.panel, .rpg-modal, .rpg-character-sheet, .rpg-themed-workspace, .rpg-cartography, .campaign-cartography, .rpg-media-modal) {
+  color: var(--foreground);
+  border-color: color-mix(in srgb, var(--theme-hairline) 65%, transparent) !important;
+  background: linear-gradient(145deg, var(--theme-top), var(--theme-bottom)) !important;
+  box-shadow: 0 16px 42px var(--theme-shadow), inset 0 1px 0 color-mix(in srgb, var(--foreground) 5%, transparent) !important;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(.rpg-modal-header, .rpg-themed-subtle, .rpg-cartography-header) {
+  color: var(--foreground);
+  border-color: var(--border) !important;
+  background: color-mix(in srgb, var(--card) 82%, var(--background)) !important;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(.rpg-themed-deep, .rpg-themed-card:not([data-active='true']), .rpg-map-entry, .rpg-history-entry) {
+  color: var(--foreground);
+  border-color: color-mix(in srgb, var(--border) 65%, transparent) !important;
+  background: color-mix(in srgb, var(--card) 74%, var(--background)) !important;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(.rpg-themed-card, .rpg-map-entry, .rpg-history-entry, .rpg-tab-button):hover {
+  border-color: color-mix(in srgb, var(--primary) 65%, var(--border)) !important;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) .rpg-tab-button:is(.is-active, :hover) {
+  color: var(--foreground) !important;
+  border-color: var(--ring) !important;
+  background: color-mix(in srgb, var(--primary) 16%, var(--card)) !important;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(input:not([type='range']):not([type='checkbox']):not([type='radio']), select, textarea) {
+  color: var(--foreground);
+  border-color: color-mix(in srgb, var(--input) 75%, transparent) !important;
+  background: var(--theme-field) !important;
+  box-shadow: inset 0 1px 2px var(--theme-shadow) !important;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(input, select, textarea):focus {
+  border-color: var(--ring) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 24%, transparent) !important;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(button, a, [role='button'], input, select, textarea):focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 3px;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(.rpg-cartography, .rpg-themed-workspace, .rpg-history-panel) :is(h1, h2, h3, p) {
+  text-shadow: none;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) ::-webkit-scrollbar-track { background: var(--background); }
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) ::-webkit-scrollbar-thumb {
+  border-color: var(--background);
+  background: color-mix(in srgb, var(--primary) 52%, var(--card));
+}
+/* Preserve the distinctive emphasis of buttons while keeping readable labels. */
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) [data-slot='button'][data-theme-primary='true'] {
+  color: var(--primary-foreground) !important;
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+}
+
+/* Light themes: no translucent ivory text floating over ivory surfaces. */
+html:is([data-theme='calm-kitty'], [data-theme='paper']) :is(.rpg-modal, .rpg-cartography, .rpg-character-sheet, .panel) :is(.text-white, .text-zinc-100, .text-zinc-200):not(button):not(button *) {
+  color: var(--foreground) !important;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper']) :is(.rpg-modal, .rpg-cartography, .rpg-character-sheet, .panel) :is(.text-zinc-400, .text-zinc-500) {
+  color: var(--muted-foreground) !important;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper']) .rpg-character-sheet :is(.bg-black\/40, .bg-black\/30, .bg-black\/20) {
+  background-color: color-mix(in srgb, var(--card) 84%, transparent) !important;
+}
+/* HUD shares theme primitives rather than hardcoded archive gold. */
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) .otms-controller-hud {
+  border-color: var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+
+/* Black + ruby gothic portrait, including small battle tokens and the preview grid. */
+.character-portrait[data-frame='gothic-alter'] {
+  border-radius: 46% 46% 49% 49%;
+  background: conic-gradient(from 15deg, #160a0c 0deg, #801421 28deg, #08090c 70deg,
+    #b22735 112deg, #1b1012 164deg, #080609 205deg, #8a1525 252deg, #0b0809 301deg, #d0404b 343deg, #160a0c 360deg);
+  box-shadow: 0 0 0 2px #060608, 0 0 0 3px #6c1720, 0 8px 22px rgba(0,0,0,.6), 0 0 16px rgba(145,15,31,.22);
+}
+.character-portrait[data-frame='gothic-alter'] .character-portrait-image {
+  inset: 5px;
+  border: 1px solid rgba(226,92,99,.45);
+}
+.character-portrait[data-frame='gothic-alter'] .character-portrait-ornament {
+  inset: -2px;
+  border: 1px solid rgba(146,28,41,.76);
+  box-shadow: inset 0 0 0 1px rgba(5,4,6,.7);
+}
+.character-portrait[data-frame='gothic-alter'] .character-portrait-ornament::before,
+.character-portrait[data-frame='gothic-alter'] .character-portrait-ornament::after {
+  position: absolute;
+  left: 50%;
+  width: clamp(4px, 9%, 11px);
+  height: clamp(4px, 9%, 11px);
+  border: 1px solid #1b090b;
+  background: linear-gradient(135deg, #dc4a56, #4c0814 65%, #090508);
+  transform: translateX(-50%) rotate(45deg);
+  content: '';
+}
+.character-portrait[data-frame='gothic-alter'] .character-portrait-ornament::before { top: -3px; }
+.character-portrait[data-frame='gothic-alter'] .character-portrait-ornament::after { bottom: -3px; }
+
+/* Switcher previews: clean cards in all palettes (only examples, not background assets). */
+.theme-option { border-radius: 12px; overflow: hidden; }
+.theme-option-preview { isolation: isolate; }
+.theme-option.is-selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) {
+  .theme-option, .character-portrait { transition: none; }
+}
+/* Campaign navigation / combat sidebar are outside some .rpg-modal wrappers. */
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(.rpg-session-sidebar, .rpg-map-panel, .rpg-battle-grid-collapse, .rpg-history-panel) {
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+  background-color: var(--card) !important;
+  background-image: linear-gradient(150deg, var(--theme-top), var(--theme-bottom)) !important;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(.rpg-session-sidebar, .rpg-map-panel, .rpg-history-panel) :is(h2, h3, .rpg-history-heading, .rpg-history-name, .rpg-map-entry) {
+  color: var(--foreground) !important;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(.rpg-session-sidebar, .rpg-map-panel, .rpg-history-panel) :is(.rpg-history-profile, .rpg-history-time, .rpg-cartography-muted) {
+  color: var(--muted-foreground) !important;
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(.rpg-map-action, .rpg-cartography-action) {
+  border-color: var(--border) !important;
+  background: color-mix(in srgb, var(--primary) 9%, var(--card)) !important;
+  color: var(--foreground);
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) :is(.rpg-map-action, .rpg-cartography-action):hover {
+  border-color: var(--accent) !important;
+  background: color-mix(in srgb, var(--primary) 20%, var(--card)) !important;
+}
+/* Scrollbar utility is hard-coded sepia for legacy themes. */
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) .custom-scrollbar-sepia {
+  scrollbar-color: color-mix(in srgb, var(--primary) 52%, var(--card)) var(--background);
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) .custom-scrollbar-sepia::-webkit-scrollbar-thumb {
+  border-color: var(--background);
+  background: color-mix(in srgb, var(--primary) 52%, var(--card));
+}
+/* The controller's fixed HUD has its own palette rather than Tailwind tokens. */
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) .otms-controller-hud-heading svg,
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) .otms-controller-hud-heading > button {
+  color: var(--accent);
+}
+html:is([data-theme='calm-kitty'], [data-theme='paper'], [data-theme='electric-mint'], [data-theme='violet']) .otms-controller-hud-keys { color: var(--muted-foreground); }
+
+/* ========================================================================== *
+ * GLOBAL THEME SYSTEM v2 · Campaign / character / GM workspaces
+ *
+ * Important: globals.css defines the original RPG surfaces in @layer components
+ * with !important. Theme declarations outside a layer lose to them in the CSS
+ * cascade. Keep all palette variables unlayered, and put VISUAL overrides in
+ * @layer base (the earliest layer for important declarations) so that the four
+ * added themes can actually replace old Archive surfaces without changing them.
+ * ========================================================================== */
+:root[data-theme='calm-kitty'] {
+  --background: #ebece4; --foreground: #293d32;
+  --card: #f5f6ef; --card-foreground: #293d32;
+  --popover: #fcfaf4; --popover-foreground: #293d32;
+  --primary: #486650; --primary-foreground: #fafcf7;
+  --secondary: #dbe4d7; --secondary-foreground: #304839;
+  --muted: #e4e9df; --muted-foreground: #586c5b;
+  --accent: #486650; --accent-foreground: #fffdf5;
+  --border: #b9c6b8; --input: #9aafa0; --ring: #375e48;
+  --sidebar: #e9eee6; --sidebar-foreground: #293d32;
+  --theme-ink: #293d32; --theme-quiet: #586c5b; --theme-line: #b6c6b5;
+  --theme-highlight: #486650; --theme-highlight-foreground: #ffffff;
+  --theme-page: #ebeee6; --theme-paper: #f8f8f1;
+  --theme-card: #f3f5ed; --theme-card-raised: #fbfaf5;
+  --theme-card-recessed: #e2e9df; --theme-tint: #dce7d9;
+  --theme-subtle-shadow: rgba(55,74,58,.13);
+  --theme-background-image: url('/arcane-academy-desk.webp');
+  --theme-background-overlay: linear-gradient(180deg,rgba(242,244,238,.94),rgba(228,235,227,.95));
+  --theme-paper-grain: radial-gradient(circle at 18% 14%,rgba(108,133,109,.025),transparent 54%),
+    radial-gradient(circle at 88% 83%,rgba(184,170,146,.028),transparent 51%);
+}
+:root[data-theme='paper'] {
+  /* Cozy e-ink / Kindle: warm ivory pages, graphite ink, muted taupe controls. */
+  --background: #eeebe3; --foreground: #302d29;
+  --card: #f8f5ee; --card-foreground: #302d29;
+  --popover: #fffdf7; --popover-foreground: #302d29;
+  --primary: #57574d; --primary-foreground: #fffdf7;
+  --secondary: #e9e5db; --secondary-foreground: #33302a;
+  --muted: #e9e5dd; --muted-foreground: #696258;
+  --accent: #635f52; --accent-foreground: #fffdf7;
+  --destructive: #9d4b47; --border: #d0c8bb; --input: #bcb4a6; --ring: #615c50;
+  --bronze: #999083; --moss: #8b8d80; --parchment: #f5f1e9;
+  --parchment-light: #fffdf7; --leather: #e5ded2; --ink: #302d29; --wine: #90675e;
+  --sidebar: #f4f0e8; --sidebar-foreground: #302d29;
+  --sidebar-primary: #57574d; --sidebar-primary-foreground: #fffdf7;
+  --sidebar-accent: #e8e2d7; --sidebar-accent-foreground: #302d29;
+  --sidebar-border: #d0c8bb; --sidebar-ring: #615c50;
+  --theme-top: #fcfaf4; --theme-bottom: #eee9df; --theme-field: #fffdf7;
+  --theme-text: #302d29; --theme-hairline: #d0c8bb; --theme-shadow: rgba(64,56,43,.12);
+  --theme-ink: #302d29; --theme-quiet: #696258; --theme-line: #d0c8bb;
+  --theme-highlight: #57574d; --theme-highlight-foreground: #fffdf7;
+  --theme-page: #eeebe3; --theme-paper: #fcfaf4;
+  --theme-card: #f9f6ef; --theme-card-raised: #fffdf7;
+  --theme-card-recessed: #eee8de; --theme-tint: #e5e0d5;
+  --theme-subtle-shadow: rgba(64,56,43,.12);
+  --theme-background-image: url('/arcane-academy-desk.webp');
+  --theme-background-overlay: linear-gradient(180deg,rgba(247,244,237,.963),rgba(237,232,222,.97));
+  --theme-paper-grain: radial-gradient(circle at 14% 11%,rgba(145,125,98,.028),transparent 48%),
+    radial-gradient(circle at 85% 92%,rgba(133,116,91,.026),transparent 49%);
+}
+:root[data-theme='electric-mint'] {
+  --theme-ink: #e7f9f4; --theme-quiet: #a6c9bd; --theme-line: #345e55;
+  --theme-highlight: #2af5c8; --theme-highlight-foreground: #0c1815;
+  --theme-page: #101715; --theme-paper: #192522;
+  --theme-card: #1a2623; --theme-card-raised: #24322e;
+  --theme-card-recessed: #121e1b; --theme-tint: #223e35;
+  --theme-subtle-shadow: rgba(0,0,0,.40);
+  --theme-background-image: url('/celestial-academy-night.png');
+  --theme-background-overlay: linear-gradient(180deg,rgba(9,16,14,.89),rgba(12,21,18,.91));
+  --theme-paper-grain: radial-gradient(circle at 88% 4%,rgba(42,245,200,.06),transparent 44%);
+}
+:root[data-theme='violet'] {
+  --theme-ink: #f4edf7; --theme-quiet: #c8b5cd; --theme-line: #775680;
+  --theme-highlight: #b6ff00; --theme-highlight-foreground: #24112c;
+  --theme-page: #25132e; --theme-paper: #372041;
+  --theme-card: #382142; --theme-card-raised: #4b2d54;
+  --theme-card-recessed: #2c1735; --theme-tint: #50305b;
+  --theme-subtle-shadow: rgba(0,0,0,.38);
+  --theme-background-image: url('/gothic-observatory.png');
+  --theme-background-overlay: linear-gradient(180deg,rgba(34,16,43,.86),rgba(32,14,41,.9));
+  --theme-paper-grain: radial-gradient(circle at 87% 5%,rgba(182,255,0,.065),transparent 42%);
+}
+
+@layer base {
+  /* Theme isolation. No grid or repeating paper lines: original background art. */
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) {
+    background-color: var(--theme-page) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) body,
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) body:has(.weather-screen[data-weather='clear']) {
+    color: var(--foreground) !important;
+    background-color: var(--theme-page) !important;
+    background-image: var(--theme-background-overlay),var(--theme-background-image) !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-size: cover !important;
+    background-attachment: fixed !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) body::before,
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-page::after {
+    background: radial-gradient(ellipse at 50% 50%, transparent 48%, color-mix(in srgb,var(--theme-page) 19%,transparent)) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-section-title {
+    color:var(--theme-highlight) !important;
+    text-shadow:none !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-section-title::after,
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-divider {
+    background:linear-gradient(90deg,var(--theme-line),transparent) !important;
+  }
+
+  /* All character cards including compact, expanded, owned and hovered states. */
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    .panel, .rpg-character-sheet, .rpg-character-sheet:not([data-expanded='true']),
+    .rpg-character-sheet:not([data-expanded='true']):hover,
+    .rpg-character-sheet.is-player-owned:not([data-expanded='true']),
+    .rpg-character-sheet.is-player-owned:not([data-expanded='true']):hover,
+    .rpg-modal,.rpg-media-modal,.rpg-themed-workspace,.rpg-history-panel,
+    .rpg-map-panel,.rpg-battle-grid-collapse,.rpg-gallery-card
+  ) {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-line) !important;
+    background:var(--theme-paper-grain),linear-gradient(146deg,var(--theme-card-raised),var(--theme-card)) !important;
+    box-shadow:0 14px 32px var(--theme-subtle-shadow),inset 0 1px 0 color-mix(in srgb,var(--theme-card-raised) 70%,transparent) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .panel::before {
+    border-color:color-mix(in srgb,var(--theme-line) 44%,transparent) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-character-sheet.is-player-owned {
+    border-left:3px solid var(--theme-highlight) !important;
+    box-shadow:0 15px 36px var(--theme-subtle-shadow),inset 3px 0 13px color-mix(in srgb,var(--theme-highlight) 10%,transparent) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-character-sheet[data-expanded='true'] {
+    border-color:color-mix(in srgb,var(--theme-highlight) 44%,var(--theme-line)) !important;
+    border-left-width:3px !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-character-sheet :is(
+    .rpg-character-expansion,.rpg-character-expansion-clip,.rpg-tabs,.character-status-list
+  ) { color:var(--theme-ink) !important; }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-character-sheet .rpg-tab-button:is(:hover,.is-active) {
+    color:var(--theme-ink) !important;
+    background:color-mix(in srgb,var(--theme-highlight) 13%,var(--theme-card-raised)) !important;
+    border-color:var(--theme-line) !important;
+  }
+
+  /* Campaign header (different from the light parchment/cartography panel). */
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .campaign-cartography {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-line) !important;
+    background:var(--theme-paper-grain),linear-gradient(118deg,var(--theme-card-raised),var(--theme-card)) !important;
+    box-shadow:0 18px 38px var(--theme-subtle-shadow),inset 0 1px 0 color-mix(in srgb,var(--theme-card-raised) 75%,transparent) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-cartography:not(.campaign-cartography) {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-line) !important;
+    background:var(--theme-paper-grain),linear-gradient(145deg,var(--theme-card-raised),var(--theme-card)) !important;
+    box-shadow:0 15px 32px var(--theme-subtle-shadow) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .campaign-cartography::before,
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-cartography::before {
+    border-color:color-mix(in srgb,var(--theme-line) 46%,transparent) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .campaign-cartography::after,
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-cartography::after {
+    opacity:.08 !important;
+    background:repeating-conic-gradient(from 22.5deg,var(--theme-highlight) 0deg 3deg,transparent 3deg 45deg) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(.rpg-cartography-title,.campaign-cartography .rpg-cartography-title) {
+    color:var(--theme-ink) !important;
+    text-shadow:none !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(.rpg-cartography-muted,.campaign-cartography .rpg-cartography-muted,.campaign-connection) {
+    color:var(--theme-quiet) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(.rpg-cartography-kicker,.campaign-cartography .rpg-cartography-kicker) {
+    color:var(--theme-highlight) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(.rpg-modal-header,.rpg-themed-subtle,.rpg-cartography-header) {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-line) !important;
+    background:linear-gradient(150deg,var(--theme-card-raised),var(--theme-card)) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    .rpg-themed-deep,.rpg-empty,.rpg-map-entry,.rpg-history-entry,.rpg-themed-card:not([data-active='true'])
+  ) {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-line) !important;
+    background:var(--theme-card-recessed) !important;
+  }
+
+  /* Right-side GM tools: original CSS fixed the panel to brown in all themes. */
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-session-sidebar {
+    color:var(--theme-ink) !important;
+    background:transparent !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-gm-tools {
+    color:var(--theme-ink) !important;
+    border:1px solid var(--theme-line) !important;
+    border-top:2px solid color-mix(in srgb,var(--theme-highlight) 55%,var(--theme-line)) !important;
+    background:var(--theme-paper-grain),linear-gradient(155deg,var(--theme-card-raised),var(--theme-card)) !important;
+    box-shadow:0 18px 36px var(--theme-subtle-shadow) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-gm-heading {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-line) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-gm-heading svg,
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-section-title {
+    color:var(--theme-highlight) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-tool-button {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-line) !important;
+    background:var(--theme-card-recessed) !important;
+    box-shadow:inset 0 1px 0 color-mix(in srgb,var(--theme-card-raised) 60%,transparent) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-tool-button:hover {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-highlight) !important;
+    background:var(--theme-tint) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-tool-button svg,
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-tool-button:nth-child(n) svg {
+    color:var(--theme-highlight) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(.rpg-gm-section,.rpg-gm-heading) {
+    border-color:var(--theme-line) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-weather-button {
+    color:var(--theme-quiet) !important;
+    border-color:var(--theme-line) !important;
+    background:var(--theme-card-recessed) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-weather-button:is(:hover,.is-active) {
+    color:var(--theme-highlight) !important;
+    border-color:var(--theme-highlight) !important;
+    background:var(--theme-tint) !important;
+  }
+
+  /* Secondary actions and affordances. Keep primary shadcn buttons untouched. */
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    .rpg-cartography-action,.campaign-cartography .rpg-cartography-action,
+    .rpg-bestiary-nursery,.rpg-archive-button,.rpg-map-action
+  ) {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-line) !important;
+    background:var(--theme-card-recessed) !important;
+    box-shadow:none !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    .rpg-cartography-action,.campaign-cartography .rpg-cartography-action,
+    .rpg-bestiary-nursery,.rpg-archive-button,.rpg-map-action
+  ):hover {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-highlight) !important;
+    background:var(--theme-tint) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    .rpg-cartography-chip,.campaign-cartography .rpg-cartography-chip
+  ) {
+    color:var(--theme-ink) !important;
+    background:var(--theme-card-recessed) !important;
+    border-color:var(--theme-line) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .rpg-tabs {
+    background:transparent !important;
+    border-color:var(--theme-line) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .otms-controller-hud {
+    background:var(--theme-card-raised) !important;
+    border:1px solid var(--theme-line) !important;
+    color:var(--theme-ink) !important;
+    box-shadow:0 8px 26px var(--theme-subtle-shadow) !important;
+  }
+
+  /* The fullscreen GM Command Center is a separate CSS universe. */
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .gm-command-backdrop {
+    background:color-mix(in srgb,var(--theme-page) 87%,black 13%) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .gm-command-center {
+    --gm-gold:var(--theme-highlight); --gm-gold-soft:var(--theme-quiet);
+    --gm-cyan:var(--theme-highlight); --gm-red:var(--theme-highlight);
+    --gm-line:var(--theme-line); --gm-ink:var(--theme-page);
+    --gm-text:var(--theme-ink); --gm-muted:var(--theme-quiet);
+    color:var(--theme-ink) !important;
+    background:var(--theme-paper-grain),var(--theme-page) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .gm-command-ambient {
+    display:none !important; /* old GM grid is not used by the new themes */
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    .gm-command-rail,.gm-command-header,.gm-command-footer
+  ) {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-line) !important;
+    background:linear-gradient(155deg,var(--theme-card-raised),var(--theme-card)) !important;
+    box-shadow:none !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .gm-command-stage,
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .gm-command-workspace {
+    color:var(--theme-ink) !important;
+    background:var(--theme-page) !important;
+    scrollbar-color:var(--theme-line) var(--theme-page) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .gm-command-workspace [aria-labelledby='gm-catalog-heading'] > header {
+    border-color:var(--theme-line) !important;
+    background:var(--theme-card-recessed) !important;
+    box-shadow:inset 3px 0 var(--theme-highlight) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    .gm-command-nav-item,.gm-command-context,.gm-command-close,.gm-command-footer-back
+  ) {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-line) !important;
+    background:var(--theme-card-recessed) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .gm-command-nav-item:is(:hover,.is-active) {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-highlight) !important;
+    background:var(--theme-tint) !important;
+    box-shadow:inset 3px 0 var(--theme-highlight) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    .gm-command-nav-icon,.gm-command-heading-glyph,.gm-command-emblem
+  ) {
+    color:var(--theme-highlight) !important;
+    border-color:var(--theme-line) !important;
+    background:var(--theme-card-recessed) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    .gm-command-brand-title,.gm-command-brand-title span,.gm-command-title,
+    .gm-command-heading h1,.gm-command-rail-stats strong,.gm-command-breadcrumb strong
+  ) { color:var(--theme-ink) !important; }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    .gm-command-overline,.gm-command-brand-subtitle,.gm-command-nav-label,
+    .gm-command-rail-stat-label,.gm-command-breadcrumb,.gm-command-chapter,
+    .gm-command-description,.gm-command-rail-stats,.gm-command-rail-hint
+  ) { color:var(--theme-quiet) !important; }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    .gm-command-heading-glyph svg,.gm-command-chapter,.gm-command-brand-subtitle,
+    .gm-command-nav-item.is-active .gm-command-nav-icon,.gm-command-title span
+  ) { color:var(--theme-highlight) !important; }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) .gm-command-footer-primary {
+    color:var(--theme-highlight-foreground) !important;
+    border-color:var(--theme-highlight) !important;
+    background:var(--theme-highlight) !important;
+  }
+
+  /* Readable native text fields, portals and controller status. */
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    input:not([type='range']):not([type='checkbox']):not([type='radio']),select,textarea
+  ) {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-line) !important;
+    background:var(--theme-card-raised) !important;
+    box-shadow:inset 0 1px 2px var(--theme-subtle-shadow) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(input,select,textarea):focus {
+    border-color:var(--ring) !important;
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 20%,transparent) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(.rpg-modal,.rpg-character-sheet,.gm-command-center) :is(
+    .bg-zinc-950,.bg-zinc-900,.bg-zinc-800,.bg-black\/20,.bg-black\/30,.bg-black\/40,
+    .bg-black\/50,.bg-black\/60,.bg-zinc-900\/80
+  ) {
+    background-color:var(--theme-card-recessed) !important;
+  }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(.rpg-modal,.rpg-character-sheet,.gm-command-center,.panel) :is(
+    .text-zinc-200,.text-zinc-300,.text-zinc-100
+  ) { color:var(--theme-ink) !important; }
+  html:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(.rpg-modal,.rpg-character-sheet,.gm-command-center,.panel) :is(
+    .text-zinc-400,.text-zinc-500,.text-zinc-600
+  ) { color:var(--theme-quiet) !important; }
+
+  /* Light reading palettes: muted/foreground hierarchy, with no dark cards. */
+  html:is([data-theme='calm-kitty'],[data-theme='paper']) .rpg-character-sheet :is(
+    .bg-card,.bg-background,.bg-background\/50,.bg-card\/40
+  ) { color:var(--theme-ink) !important; }
+  html:is([data-theme='calm-kitty'],[data-theme='paper']) :is(.rpg-character-sheet,.rpg-gm-tools,.gm-command-center) :is(
+    .text-white,.text-zinc-200,.text-zinc-300,.text-amber-200
+  ):not(button):not(button *) { color:var(--theme-ink) !important; }
+  html:is([data-theme='calm-kitty'],[data-theme='paper']) :is(
+    .rpg-character-sheet,.rpg-gm-tools,.gm-command-center,.rpg-modal
+  ) :is(.bg-black\/20,.bg-black\/30,.bg-black\/40,.bg-black\/50,.bg-black\/60) {
+    background-color:var(--theme-card-recessed) !important;
+  }
+
+  /* Kindle finish: calm typography, warm page, restrained dividers and contrast. */
+  html[data-theme='paper'] :is(.rpg-character-sheet,.rpg-gm-tools,.rpg-modal,.gm-command-center,.campaign-cartography) {
+    font-kerning:normal;
+    text-shadow:none !important;
+  }
+  html[data-theme='paper'] :is(.rpg-character-sheet,.rpg-gm-tools,.rpg-modal,.gm-command-center) :is(h1,h2,h3,h4,h5) {
+    color:var(--theme-ink) !important;
+    text-shadow:none !important;
+  }
+  html[data-theme='paper'] :is(.rpg-character-sheet,.rpg-gm-tools,.rpg-modal,.gm-command-center) :is(p,li,small) {
+    text-shadow:none !important;
+  }
+  /* Editorial serif only in Paper: a book, not a cyber dashboard. */
+  html[data-theme='paper'] :is(
+    .rpg-section-title,.rpg-gm-heading h2,.campaign-cartography .rpg-cartography-title,
+    .rpg-character-sheet .rpg-title,.gm-command-title,.rpg-cartography-title
+  ) {
+    font-family:var(--font-source-serif),Georgia,serif !important;
+    letter-spacing:.005em !important;
+  }
+  html[data-theme='paper'] :is(.rpg-character-sheet,.rpg-gm-tools,.gm-command-workspace) :is(p,li) {
+    line-height:1.55;
+  }
+  html[data-theme='paper'] :is(.rpg-gm-tools,.rpg-character-sheet,.campaign-cartography) {
+    border-radius:7px !important;
+  }
+  html[data-theme='paper'] .rpg-paper {
+    color:var(--theme-ink) !important;
+    border-color:var(--theme-line) !important;
+    background:var(--theme-paper-grain),linear-gradient(145deg,#fffdf7,#f6f1e8) !important;
+    box-shadow:0 14px 30px var(--theme-subtle-shadow) !important;
+    background-size:auto !important;
+  }
+  html[data-theme='paper'] :is(.rpg-character-sheet,.gm-command-center,.rpg-gm-tools) :is(.text-muted-foreground,.rpg-cartography-muted) {
+    color:var(--theme-quiet) !important;
+  }
+  html[data-theme='paper'] .rpg-character-sheet .rpg-resource-track {
+    background:#e1dcd2 !important;
+    border-color:#d0c8bb !important;
+    box-shadow:inset 0 1px 3px rgba(67,59,47,.12) !important;
+  }
+
+  /* Visible focus is critical in controller-first interaction. */
+  html[data-input='controller']:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) :is(
+    button,a[href],input,select,textarea,summary,[role='button'],[tabindex='0']
+  ):focus-visible,
+  html[data-input='controller']:is([data-theme='calm-kitty'],[data-theme='paper'],[data-theme='electric-mint'],[data-theme='violet']) [data-controller-focused='true'] {
+    outline:3px solid var(--ring) !important;
+    outline-offset:3px !important;
+    box-shadow:0 0 0 5px color-mix(in srgb,var(--ring) 25%,transparent) !important;
+  }
+}
+
+/* ========================================================================== *
+ * Reading palettes · revision 3
+ * Cozy, reduced-glare Paper / Calm Kitty. All rules are scoped to these two
+ * themes, so Archive, Aether, Crimson, Mint and Violet remain unchanged.
+ * Overrides live in @layer base because the original game styles contain
+ * !important declarations in @layer components.
+ * ========================================================================== */
+:root[data-theme='paper'] {
+  color-scheme: light;
+  --background: #dad4c8; --foreground: #343029;
+  --card: #e9e3d7; --card-foreground: #343029;
+  --popover: #efe9de; --popover-foreground: #343029;
+  --primary: #555447; --primary-foreground: #f4efe5;
+  --secondary: #d8d0c3; --secondary-foreground: #39352e;
+  --muted: #dcd5c9; --muted-foreground: #625c51;
+  --accent: #5d5c4d; --accent-foreground: #f4efe5;
+  --border: #b8afa2; --input: #9e9588; --ring: #555447;
+  --sidebar: #e1dacd; --sidebar-foreground: #343029;
+  --sidebar-accent: #d0c8bb; --sidebar-accent-foreground: #343029;
+  --sidebar-border: #b8afa2; --sidebar-ring: #555447;
+  --theme-top: #eee8db; --theme-bottom: #ddd5c7; --theme-field: #ece6db;
+  --theme-ink: #343029; --theme-quiet: #625c51; --theme-line: #b8afa2;
+  --theme-highlight: #555447; --theme-highlight-foreground: #f4efe5;
+  --theme-page: #dad4c8; --theme-paper: #e8e2d6;
+  --theme-card: #e5ded2; --theme-card-raised: #efe9df;
+  --theme-card-recessed: #dcd5c9; --theme-tint: #ccc6b8;
+  --theme-subtle-shadow: rgba(54,48,40,.12);
+  --theme-background-overlay: linear-gradient(155deg, rgba(223,216,203,.86), rgba(207,198,183,.92));
+  --theme-paper-grain: radial-gradient(circle at 11% 20%,rgba(110,90,65,.038),transparent 43%),
+    radial-gradient(circle at 91% 92%,rgba(143,121,88,.035),transparent 44%);
+}
+:root[data-theme='calm-kitty'] {
+  color-scheme: light;
+  --background: #d7dfd3; --foreground: #293a30;
+  --card: #e5e9df; --card-foreground: #293a30;
+  --popover: #eef0e8; --popover-foreground: #293a30;
+  --primary: #486350; --primary-foreground: #f5f7f0;
+  --secondary: #d1dccc; --secondary-foreground: #2e4537;
+  --muted: #d4ded1; --muted-foreground: #536859;
+  --accent: #486350; --accent-foreground: #f5f7f0;
+  --border: #aabda8; --input: #91a791; --ring: #3d654b;
+  --sidebar: #dce4d8; --sidebar-foreground: #293a30;
+  --sidebar-accent: #c9d6c6; --sidebar-accent-foreground: #293a30;
+  --sidebar-border: #aabda8; --sidebar-ring: #3d654b;
+  --theme-top: #edf0e7; --theme-bottom: #dbe4d8; --theme-field: #e9ede4;
+  --theme-ink: #293a30; --theme-quiet: #536859; --theme-line: #aabda8;
+  --theme-highlight: #486350; --theme-highlight-foreground: #f5f7f0;
+  --theme-page: #d7dfd3; --theme-paper: #e6e9df;
+  --theme-card: #e0e6db; --theme-card-raised: #edf0e7;
+  --theme-card-recessed: #d0dbcf; --theme-tint: #c3d2c0;
+  --theme-subtle-shadow: rgba(52,74,58,.12);
+  --theme-background-overlay: linear-gradient(156deg,rgba(219,228,216,.87),rgba(200,214,198,.91));
+  --theme-paper-grain: radial-gradient(circle at 11% 20%,rgba(75,107,80,.035),transparent 45%),
+    radial-gradient(circle at 88% 88%,rgba(138,148,114,.04),transparent 43%);
+}
+
+@layer base {
+  /* No bright white wash / old grid in the reading themes. */
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) body,
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) body:has(.weather-screen[data-weather='clear']) {
+    color: var(--theme-ink) !important;
+    background-color: var(--theme-page) !important;
+    background-image: var(--theme-background-overlay), var(--theme-background-image) !important;
+    background-size: cover !important;
+    background-repeat: no-repeat !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) :is(.rpg-character-sheet,.rpg-gm-tools,.gm-command-center,.rpg-modal,.campaign-cartography,.rpg-paper) {
+    color: var(--theme-ink) !important;
+    background-color: var(--theme-card) !important;
+  }
+  /* Semantic card heights and layout are unchanged; only reading surfaces. */
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) :is(.rpg-character-sheet,.rpg-gm-tools,.gm-command-center,.rpg-modal) :is(
+    .bg-card\/30,.bg-card\/40,.bg-card\/50,.bg-background\/50,
+    .bg-black\/10,.bg-black\/15,.bg-black\/20,.bg-black\/30,
+    .bg-black\/40,.bg-black\/50,.bg-black\/60,
+    .bg-zinc-950,.bg-zinc-900,.bg-zinc-800
+  ) {
+    background-color: var(--theme-card-recessed) !important;
+  }
+  /* Make icon-bearing controls readable over warm light panels. */
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) :is(.rpg-character-sheet,.rpg-gm-tools,.gm-command-center,.rpg-modal) :is(
+    .text-amber-100,.text-amber-200,.text-amber-300,.text-amber-400
+  ) { color: var(--theme-highlight) !important; }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) :is(.rpg-character-sheet,.rpg-gm-tools,.gm-command-center,.rpg-modal) :is(
+    .text-emerald-200,.text-emerald-300,.text-emerald-400,.text-green-300,.text-green-400
+  ) { color: #356b50 !important; }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) :is(.rpg-character-sheet,.rpg-gm-tools,.gm-command-center,.rpg-modal) :is(
+    .text-rose-200,.text-rose-300,.text-rose-400,.text-red-300,.text-red-400
+  ) { color: #a24850 !important; }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) :is(.rpg-character-sheet,.rpg-gm-tools,.gm-command-center,.rpg-modal) :is(
+    .text-zinc-100,.text-zinc-200,.text-zinc-300
+  ):not(.bg-primary):not(.bg-accent):not([class*='bg-destructive']) {
+    color: var(--theme-ink) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) :is(.rpg-character-sheet,.rpg-gm-tools,.gm-command-center,.rpg-modal) :is(
+    .text-zinc-400,.text-zinc-500,.text-zinc-600
+  ) { color: var(--theme-quiet) !important; }
+
+  /* Portrait frame itself belongs to the player. Only harmonize surrounding
+     action icons and compact-sheet ornaments; never recolor the chosen frame. */
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) :is(.portrait-frame-trigger,.rpg-character-sheet .rpg-portrait-action) {
+    color: var(--theme-ink) !important;
+    background: var(--theme-card-raised) !important;
+    border: 1px solid var(--theme-line) !important;
+    box-shadow: 0 3px 9px var(--theme-subtle-shadow) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) :is(.portrait-frame-trigger,.rpg-character-sheet .rpg-portrait-action):hover {
+    color: var(--theme-highlight) !important;
+    border-color: var(--theme-highlight) !important;
+    background: var(--theme-tint) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .rpg-character-sheet .rpg-portrait {
+    border-color: color-mix(in srgb,var(--theme-highlight) 55%,var(--theme-line)) !important;
+    box-shadow: 0 0 0 2px var(--theme-card-raised), 0 5px 12px var(--theme-subtle-shadow) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .rpg-character-sheet .rpg-resource-track {
+    background: var(--theme-card-recessed) !important;
+    border-color: var(--theme-line) !important;
+    box-shadow: inset 0 1px 3px var(--theme-subtle-shadow) !important;
+  }
+
+  /* Inline training was a near-black island even in Paper / Kitty. */
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-inline {
+    color: var(--theme-ink) !important;
+    background: var(--theme-paper-grain), linear-gradient(145deg,var(--theme-card),var(--theme-card-recessed)) !important;
+    border: 1px solid var(--theme-line) !important;
+    box-shadow: inset 0 1px 0 color-mix(in srgb,var(--theme-card-raised) 65%,transparent) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-inline-stat {
+    color: var(--theme-ink) !important;
+    background: var(--theme-card-raised) !important;
+    border: 1px solid var(--theme-line) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-inline :is(.text-amber-100,.text-amber-200,.text-amber-300,.text-amber-400) {
+    color: var(--theme-highlight) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-inline :is(.text-emerald-300,.text-emerald-400) { color: #356b50 !important; }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-inline :is(.text-rose-300,.text-rose-400) { color: #a24850 !important; }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-inline .bg-zinc-800 {
+    background-color: var(--theme-line) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-inline select {
+    background: var(--theme-card-raised) !important;
+    color: var(--theme-ink) !important;
+  }
+  /* On the fullscreen training modal inline styling sets a black/grid image.
+     The themed override uses !important and applies through React portals. */
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-modal {
+    color: var(--theme-ink) !important;
+    background-color: var(--theme-page) !important;
+    background-image: var(--theme-paper-grain),linear-gradient(154deg,var(--theme-page),var(--theme-card-recessed)) !important;
+    background-size: auto !important;
+    scrollbar-color: var(--theme-line) var(--theme-page) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-modal :is(.otms-training-header,.otms-training-footer) {
+    background: linear-gradient(155deg,var(--theme-card-raised),var(--theme-card)) !important;
+    border-color: var(--theme-line) !important;
+    box-shadow: 0 5px 18px var(--theme-subtle-shadow) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-modal :is(.otms-training-radar-panel,.otms-training-duration-panel,.otms-training-projection-panel) {
+    color: var(--theme-ink) !important;
+    background: var(--theme-card-raised) !important;
+    border-color: var(--theme-line) !important;
+    box-shadow: 0 7px 16px var(--theme-subtle-shadow) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-modal :is(.otms-training-time-option,.otms-training-attribute-choice) {
+    color: var(--theme-ink) !important;
+    background: var(--theme-card) !important;
+    border-color: var(--theme-line) !important;
+    box-shadow: none !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-modal :is(.otms-training-time-option,.otms-training-attribute-choice):is([aria-pressed='true'],:hover) {
+    color: var(--theme-ink) !important;
+    background: var(--theme-tint) !important;
+    border-color: var(--theme-highlight) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-modal .otms-training-radar {
+    color: var(--theme-highlight) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-modal .otms-training-radar text {
+    fill: currentColor;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-modal :is(.text-emerald-300,.text-emerald-400) { color: #356b50 !important; }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-modal :is(.text-rose-300,.text-rose-400) { color: #a24850 !important; }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .otms-training-modal .otms-training-footer button.bg-primary {
+    color: var(--theme-highlight-foreground) !important;
+    background: var(--theme-highlight) !important;
+  }
+
+  /* GM workspace: the nested panels use both semantic and hardcoded dark bg.
+     Neutralize dark surfaces only in this scope and keep coloured status chips. */
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .gm-command-workspace :is(
+    .bg-black\/20,.bg-black\/30,.bg-black\/40,.bg-black\/50,.bg-black\/60,
+    .bg-zinc-950,.bg-zinc-900,.bg-zinc-800
+  ) { background-color: var(--theme-card-recessed) !important; }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .gm-command-workspace :is(.bg-card,.bg-card\/30,.bg-card\/40,.bg-background,.bg-background\/50) {
+    background-color: var(--theme-card-raised) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .gm-command-workspace :is(.text-amber-200,.text-amber-300,.text-amber-400) { color: var(--theme-highlight) !important; }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .gm-command-workspace :is(.text-emerald-300,.text-emerald-400) { color: #356b50 !important; }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .gm-command-workspace :is(.text-rose-300,.text-rose-400) { color: #a24850 !important; }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) :is(.rpg-character-sheet,.gm-command-center,.rpg-modal) :is(button,a[href],[role='button']):focus-visible,
+  html[data-input='controller']:is([data-theme='paper'],[data-theme='calm-kitty']) :is(.otms-training-modal,.otms-training-inline) :is(button,select,input,[role='button']):focus-visible {
+    outline: 3px solid var(--theme-highlight) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 5px color-mix(in srgb,var(--theme-highlight) 22%,transparent) !important;
+  }
+}
+
+@layer base {
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .rpg-character-sheet .portrait-gallery-trigger {
+    color: var(--theme-highlight) !important;
+    background: var(--theme-card-raised) !important;
+    border-color: var(--theme-line) !important;
+    box-shadow: 0 4px 11px var(--theme-subtle-shadow) !important;
+  }
+  html:is([data-theme='paper'],[data-theme='calm-kitty']) .rpg-character-sheet .portrait-gallery-trigger:is(:hover,:focus-visible) {
+    color: var(--theme-ink) !important;
+    background: var(--theme-tint) !important;
+    border-color: var(--theme-highlight) !important;
+  }
+}
+
+
+/* ========================================================================== *
+ * Mars + Natalino themes · warm terracotta and cozy Christmas extension.
+ * Added as late overrides so they also theme portals, sheets, GM panels and
+ * sidebar tools without disturbing the original archive / aether / crimson.
+ * ========================================================================== */
+:root[data-theme='mars'] {
+  color-scheme: dark;
+  --background: #141212; --foreground: #F4EFEA;
+  --card: #251E1C; --card-foreground: #F4EFEA;
+  --popover: #1E1918; --popover-foreground: #F4EFEA;
+  --primary: #D56C4F; --primary-foreground: #141212;
+  --secondary: #352927; --secondary-foreground: #F4EFEA;
+  --muted: #2D2422; --muted-foreground: #C8B3AA;
+  --accent: #D56C4F; --accent-foreground: #141212;
+  --destructive: #F07168; --border: #5B433D; --input: #71564E; --ring: #D56C4F;
+  --bronze: #D56C4F; --moss: #846258; --parchment: #F4EFEA;
+  --parchment-light: #FEF9F5; --leather: #251E1C; --ink: #F4EFEA; --wine: #A44E41;
+  --sidebar: #1B1716; --sidebar-foreground: #F4EFEA; --sidebar-primary: #D56C4F;
+  --sidebar-primary-foreground: #141212; --sidebar-accent: #2A211F;
+  --sidebar-accent-foreground: #F4EFEA; --sidebar-border: #5B433D; --sidebar-ring: #D56C4F;
+  --theme-top: #2B211F; --theme-bottom: #171311; --theme-field: #201A18;
+  --theme-ink: #F4EFEA; --theme-quiet: #C2AEA4; --theme-line: #614944;
+  --theme-highlight: #D56C4F; --theme-highlight-foreground: #141212;
+  --theme-page: #141212; --theme-paper: #221B19;
+  --theme-card: #241D1B; --theme-card-raised: #2C2321;
+  --theme-card-recessed: #1B1615; --theme-tint: #3A2B28;
+  --theme-subtle-shadow: rgba(0,0,0,.46);
+  --theme-background-image: radial-gradient(circle at 70% 20%, rgba(213,108,79,.11), transparent 26%), url('/arcane-academy-desk.webp');
+  --theme-background-overlay: linear-gradient(180deg,rgba(20,18,18,.90),rgba(20,18,18,.96));
+  --theme-paper-grain: radial-gradient(circle at 15% 18%,rgba(244,239,234,.03),transparent 45%), radial-gradient(circle at 84% 82%,rgba(132,98,88,.06),transparent 42%);
+}
+
+:root[data-theme='natalino'] {
+  color-scheme: light;
+  --background: #F4EFE6; --foreground: #333333;
+  --card: #F8F4EC; --card-foreground: #333333;
+  --popover: #FCF9F4; --popover-foreground: #333333;
+  --primary: #D35451; --primary-foreground: #FDF8F2;
+  --secondary: #E5E1D6; --secondary-foreground: #333333;
+  --muted: #ECE6DB; --muted-foreground: #6A635C;
+  --accent: #1E7A44; --accent-foreground: #F8F4EC;
+  --destructive: #B9413D; --border: #D8D0C5; --input: #CFC5B7; --ring: #D35451;
+  --bronze: #846258; --moss: #1E7A44; --parchment: #F4EFE6;
+  --parchment-light: #FFFCF7; --leather: #E8DFD2; --ink: #333333; --wine: #B94B4A;
+  --sidebar: #F2ECE2; --sidebar-foreground: #333333; --sidebar-primary: #D35451;
+  --sidebar-primary-foreground: #FDF8F2; --sidebar-accent: #E8E1D4;
+  --sidebar-accent-foreground: #333333; --sidebar-border: #D8D0C5; --sidebar-ring: #D35451;
+  --theme-top: #FBF7F0; --theme-bottom: #EEE7DA; --theme-field: #FFFDF8;
+  --theme-ink: #333333; --theme-quiet: #6A635C; --theme-line: #D8D0C5;
+  --theme-highlight: #D35451; --theme-highlight-foreground: #FDF8F2;
+  --theme-page: #F4EFE6; --theme-paper: #FBF7F0;
+  --theme-card: #F7F2EA; --theme-card-raised: #FEFBF7;
+  --theme-card-recessed: #EEE7DA; --theme-tint: #EAE2D5;
+  --theme-subtle-shadow: rgba(73,54,45,.12);
+  --theme-background-image: url('/christimas.avif');
+  --theme-background-overlay: linear-gradient(180deg,rgba(244,239,230,.90),rgba(244,239,230,.94));
+  --theme-paper-grain: radial-gradient(circle at 16% 14%,rgba(211,84,81,.035),transparent 42%), radial-gradient(circle at 87% 82%,rgba(30,122,68,.045),transparent 40%);
+  --chart-1: #D35451; --chart-2: #1E7A44; --chart-3: #846258; --chart-4: #F4EFE6; --chart-5: #333333;
+}
+
+@layer base {
+  html:is([data-theme='mars'],[data-theme='natalino']) {
+    background-color: var(--theme-page) !important;
+  }
+  html:is([data-theme='mars'],[data-theme='natalino']) body,
+  html:is([data-theme='mars'],[data-theme='natalino']) body:has(.weather-screen[data-weather='clear']) {
+    color: var(--theme-ink) !important;
+    background-color: var(--theme-page) !important;
+    background-image: var(--theme-background-overlay), var(--theme-background-image) !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-size: cover !important;
+    background-attachment: fixed !important;
+  }
+  html[data-theme='natalino'] body {
+    font-family: var(--font-inter), var(--font-source-sans), ui-sans-serif, system-ui, sans-serif !important;
+  }
+  html[data-theme='natalino'] body::after {
+    position: fixed;
+    inset: -24px;
+    z-index: -2;
+    pointer-events: none;
+    content: '';
+    background-image: linear-gradient(180deg, rgba(244,239,230,.80), rgba(244,239,230,.90)), url('/christimas.avif');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    opacity: .62;
+    filter: blur(9px) saturate(.78);
+    transform: scale(1.05);
+  }
+  html[data-theme='natalino'] body::before {
+    background-image:
+      radial-gradient(circle at 20% 14%, rgb(211 84 81 / 8%), transparent 28%),
+      radial-gradient(circle at 85% 24%, rgb(30 122 68 / 9%), transparent 31%),
+      radial-gradient(circle at center, transparent 44%, rgb(255 255 255 / 18%) 100%) !important;
+  }
+
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(
+    .panel, .rpg-character-sheet, .rpg-character-sheet:not([data-expanded='true']),
+    .rpg-character-sheet:not([data-expanded='true']):hover,
+    .rpg-character-sheet.is-player-owned:not([data-expanded='true']),
+    .rpg-character-sheet.is-player-owned:not([data-expanded='true']):hover,
+    .rpg-modal, .rpg-media-modal, .rpg-themed-workspace, .rpg-history-panel,
+    .rpg-map-panel, .rpg-battle-grid-collapse, .rpg-gallery-card, .rpg-cartography,
+    .campaign-cartography, .rpg-session-sidebar, .rpg-gm-tools, .gm-command-center,
+    .gm-command-stage, .gm-command-workspace, .rpg-paper, .otms-controller-hud
+  ) {
+    color: var(--theme-ink) !important;
+    border-color: var(--theme-line) !important;
+    background: var(--theme-paper-grain), linear-gradient(146deg, var(--theme-card-raised), var(--theme-card)) !important;
+    box-shadow: 0 14px 32px var(--theme-subtle-shadow), inset 0 1px 0 color-mix(in srgb, var(--theme-card-raised) 72%, transparent) !important;
+  }
+
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(
+    .rpg-modal-header, .rpg-themed-subtle, .rpg-cartography-header,
+    .gm-command-footer, .rpg-history-heading, .rpg-gm-heading,
+    .rpg-map-index, .rpg-gallery-toolbar, .rpg-gallery-filters, .rpg-gallery-footer
+  ) {
+    color: var(--theme-ink) !important;
+    border-color: var(--theme-line) !important;
+    background: linear-gradient(155deg, color-mix(in srgb, var(--theme-card-raised) 85%, var(--theme-tint)), color-mix(in srgb, var(--theme-card) 92%, var(--theme-page))) !important;
+  }
+
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(
+    .rpg-themed-card:not([data-active='true']), .rpg-map-entry, .rpg-history-entry,
+    .rpg-tool-button, .rpg-weather-button, .gm-command-nav-item,
+    .otms-training-inline-stat, .otms-training-time-option, .otms-training-attribute-choice,
+    .rpg-gallery-card > div, .rpg-gallery-folder-item
+  ) {
+    color: var(--theme-ink) !important;
+    border-color: color-mix(in srgb, var(--theme-line) 82%, transparent) !important;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--theme-card) 92%, var(--theme-card-raised)), color-mix(in srgb, var(--theme-card-recessed) 94%, var(--theme-card))) !important;
+  }
+
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(
+    .rpg-map-entry:hover, .rpg-history-entry:hover, .rpg-tool-button:hover,
+    .rpg-weather-button:is(:hover,.is-active), .gm-command-nav-item:is(:hover,.is-active),
+    .rpg-themed-card:hover, .rpg-gallery-folder-item:hover
+  ) {
+    border-color: color-mix(in srgb, var(--accent) 65%, var(--theme-line)) !important;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--theme-card-raised) 82%, var(--accent) 18%), color-mix(in srgb, var(--theme-card) 86%, var(--theme-tint) 14%)) !important;
+  }
+
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(input:not([type='range']):not([type='checkbox']):not([type='radio']), select, textarea) {
+    color: var(--theme-ink) !important;
+    border-color: color-mix(in srgb, var(--theme-line) 82%, transparent) !important;
+    background: var(--theme-field) !important;
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--theme-subtle-shadow) 65%, transparent) !important;
+  }
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(input, select, textarea):focus {
+    border-color: var(--ring) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 20%, transparent) !important;
+  }
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(button, a, [role='button'], input, select, textarea):focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--ring) 75%, transparent) !important;
+    outline-offset: 3px;
+  }
+
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(.rpg-map-action, .rpg-cartography-action, .otms-training-modal button, .otms-training-inline button) {
+    color: var(--theme-ink) !important;
+    border-color: var(--theme-line) !important;
+    background: color-mix(in srgb, var(--primary) 10%, var(--theme-card-raised)) !important;
+  }
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(.rpg-map-action, .rpg-cartography-action, .otms-training-modal button, .otms-training-inline button):hover {
+    border-color: var(--primary) !important;
+    background: color-mix(in srgb, var(--primary) 18%, var(--theme-card-raised)) !important;
+  }
+  html:is([data-theme='mars'],[data-theme='natalino']) :is([data-slot='button'][data-theme-primary='true'], .gm-command-footer-primary) {
+    color: var(--primary-foreground) !important;
+    border-color: var(--primary) !important;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, white 4%), color-mix(in srgb, var(--primary) 90%, black 10%)) !important;
+    box-shadow: 0 10px 20px color-mix(in srgb, var(--primary) 18%, transparent) !important;
+  }
+
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(
+    .text-zinc-100, .text-zinc-200, .text-zinc-300, .text-white,
+    .rpg-title, .rpg-cartography-title, .rpg-history-heading h2,
+    .rpg-section-title, .rpg-gm-heading, .rpg-map-panel h2
+  ) {
+    color: var(--theme-ink) !important;
+  }
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(
+    .text-zinc-400, .text-zinc-500, .text-zinc-600,
+    .text-muted-foreground, .rpg-cartography-muted, .campaign-connection,
+    .rpg-history-profile, .rpg-history-time
+  ) {
+    color: var(--theme-quiet) !important;
+  }
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(
+    .text-emerald-200, .text-emerald-300, .text-emerald-400,
+    .text-green-300, .text-green-400
+  ) { color: color-mix(in srgb, var(--accent) 88%, black 12%) !important; }
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(
+    .text-amber-200, .text-amber-300, .text-amber-400
+  ) { color: var(--primary) !important; }
+  html:is([data-theme='mars'],[data-theme='natalino']) :is(
+    .text-red-300, .text-red-400, .text-rose-300, .text-rose-400
+  ) { color: color-mix(in srgb, var(--destructive) 90%, black 10%) !important; }
+
+  html:is([data-theme='mars'],[data-theme='natalino']) .rpg-tab-button:is(.is-active, :hover) {
+    color: var(--theme-ink) !important;
+    border-color: var(--accent) !important;
+    background: color-mix(in srgb, var(--accent) 14%, var(--theme-card-raised)) !important;
+  }
+  html:is([data-theme='mars'],[data-theme='natalino']) .custom-scrollbar-sepia {
+    scrollbar-color: color-mix(in srgb, var(--primary) 52%, var(--theme-card)) var(--theme-page);
+  }
+  html:is([data-theme='mars'],[data-theme='natalino']) .custom-scrollbar-sepia::-webkit-scrollbar-thumb,
+  html:is([data-theme='mars'],[data-theme='natalino']) ::-webkit-scrollbar-thumb {
+    border-color: var(--theme-page);
+    background: color-mix(in srgb, var(--primary) 52%, var(--theme-card));
+  }
+  html:is([data-theme='mars'],[data-theme='natalino']) ::-webkit-scrollbar-track {
+    background: var(--theme-page);
+  }
+
+  html[data-theme='natalino'] :is(
+    .rpg-title, .rpg-section-title, .rpg-gm-heading, .rpg-cartography-title,
+    .gm-command-workspace h1, .gm-command-workspace h2, .gm-command-workspace h3,
+    .rpg-character-sheet h1, .rpg-character-sheet h2, .rpg-character-sheet h3,
+    .rpg-modal h1, .rpg-modal h2, .rpg-modal h3, .panel h1, .panel h2, .panel h3
+  ) {
+    font-family: var(--font-bebas-neue), var(--font-cinzel), Georgia, serif !important;
+    letter-spacing: .05em !important;
+    font-weight: 400 !important;
+    text-transform: none;
+  }
+  html[data-theme='natalino'] :is(.rpg-section-title, .rpg-gm-heading svg, .rpg-tool-button svg) {
+    color: var(--accent) !important;
+  }
+  html[data-theme='natalino'] :is(.rpg-section-title::after, .rpg-divider) {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 55%, var(--primary)), transparent) !important;
+  }
+  html[data-theme='natalino'] .rpg-character-sheet .rpg-resource-track,
+  html[data-theme='natalino'] .otms-training-inline,
+  html[data-theme='natalino'] .otms-training-modal :is(.otms-training-radar-panel,.otms-training-duration-panel,.otms-training-projection-panel) {
+    border-color: var(--theme-line) !important;
+    background: var(--theme-paper-grain), linear-gradient(145deg, var(--theme-card), var(--theme-card-recessed)) !important;
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 46%, transparent), 0 8px 18px var(--theme-subtle-shadow) !important;
+  }
+  html[data-theme='natalino'] :is(.portrait-frame-trigger, .rpg-character-sheet .rpg-portrait-action) {
+    color: var(--theme-ink) !important;
+    background: var(--theme-card-raised) !important;
+    border: 1px solid var(--theme-line) !important;
+    box-shadow: 0 3px 10px var(--theme-subtle-shadow) !important;
+  }
+  html[data-theme='natalino'] :is(.portrait-frame-trigger, .rpg-character-sheet .rpg-portrait-action):hover {
+    color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    background: color-mix(in srgb, var(--primary) 9%, var(--theme-card-raised)) !important;
+  }
+}
+
+
+/* ========================================================================== *
+ * NATALINO v2 · Reading comfort, XP progression, training and Archive actions.
+ * Only the Christmas theme is affected; gameplay and other themes are unchanged.
+ * ========================================================================== */
+:root[data-theme='natalino'] {
+  /* Warm paper, not pure white: cream #F4EFE6 remains a bright accent. */
+  --background: #E8DFD2;
+  --foreground: #333333;
+  --card: #EEE6DA;
+  --card-foreground: #333333;
+  --popover: #F3EBE0;
+  --popover-foreground: #333333;
+  --primary: #D35451;
+  --primary-foreground: #141212; /* Readable even on original Festive Red */
+  --accent: #1E7A44;
+  --accent-foreground: #F4EFE6;
+  --secondary: #DDD1C2;
+  --secondary-foreground: #333333;
+  --muted: #E1D8CB;
+  --muted-foreground: #625B53;
+  --border: #C8BAAB;
+  --input: #C5B8A7;
+  --ring: #B6413D;
+  --sidebar: #EAE0D3;
+  --sidebar-foreground: #333333;
+  --sidebar-accent: #E2D5C5;
+  --sidebar-accent-foreground: #333333;
+  --sidebar-border: #C8BAAB;
+  --sidebar-ring: #B6413D;
+  --theme-page: #E7DED0;
+  --theme-paper: #EFE6D9;
+  --theme-card: #EDE3D5;
+  --theme-card-raised: #F3EADF;
+  --theme-card-recessed: #DDD1C2;
+  --theme-tint: #E8D7C7;
+  --theme-top: #F1E8DC;
+  --theme-bottom: #E5D9CA;
+  --theme-field: #F0E7DB;
+  --theme-ink: #333333;
+  --theme-quiet: #635A51;
+  --theme-line: #C6B5A4;
+  --theme-highlight: #B43E3B; /* Darker red only for small text/icons */
+  --theme-highlight-foreground: #F4EFE6;
+  --theme-subtle-shadow: rgba(63, 42, 31, .13);
+  --theme-background-overlay: linear-gradient(180deg, rgba(231,222,208,.90), rgba(231,222,208,.94));
+  --theme-paper-grain:
+    radial-gradient(circle at 2% 4%, rgba(211,84,81,.045), transparent 36%),
+    radial-gradient(circle at 97% 95%, rgba(30,122,68,.05), transparent 36%);
+  --color-zinc-950: #E2D7C8;
+  --color-zinc-900: #E8DECF;
+  --color-zinc-800: #D4C6B5;
+  --color-zinc-700: #B6A798;
+  --color-zinc-600: #897A6D;
+  --color-zinc-500: #72675C;
+  --color-zinc-400: #62574F;
+  --color-zinc-300: #453D36;
+  --color-zinc-200: #333333;
+}
+
+@layer base {
+  /* Decorative background lives behind the room, never a white translucent veil. */
+  html[data-theme='natalino'] body,
+  html[data-theme='natalino'] body:has(.weather-screen[data-weather='clear']) {
+    background-color: var(--theme-page) !important;
+    background-image: var(--theme-background-overlay), url('/christimas.avif') !important;
+  }
+  html[data-theme='natalino'] body::after {
+    background-image: linear-gradient(180deg, rgba(231,222,208,.76), rgba(231,222,208,.89)), url('/christimas.avif');
+    opacity: .40;
+    filter: blur(12px) saturate(.7);
+  }
+
+  /* Compact sheets: warm depth, pine detail, red accent only on actionable UI. */
+  html[data-theme='natalino'] .rpg-character-sheet,
+  html[data-theme='natalino'] .rpg-character-sheet:not([data-expanded='true']),
+  html[data-theme='natalino'] .rpg-character-sheet:not([data-expanded='true']):hover {
+    color: var(--theme-ink) !important;
+    border-color: var(--theme-line) !important;
+    background: var(--theme-paper-grain), linear-gradient(145deg,#F0E7DA,#E7DACA) !important;
+    box-shadow: 0 12px 27px rgba(67, 46, 37, .15), inset 0 1px 0 rgba(255,255,255,.30) !important;
+  }
+  html[data-theme='natalino'] .rpg-character-sheet.is-player-owned {
+    border-left: 3px solid var(--primary) !important;
+  }
+
+  /* XP section used to be bg-black/35, producing a huge flat gray slab. */
+  html[data-theme='natalino'] .rpg-character-sheet .rpg-xp-panel {
+    background: linear-gradient(135deg,#EBE0D2,#E4D7C6) !important;
+    border: 1px solid #C9B9A8 !important;
+    border-top: 3px solid #D35451 !important;
+    border-radius: 10px !important;
+    color: #333333 !important;
+    box-shadow: 0 4px 15px rgba(64,44,36,.09), inset 0 1px 0 rgba(255,255,255,.3) !important;
+  }
+  html[data-theme='natalino'] .rpg-xp-panel > div:first-child > p:first-child {
+    color: #51463D !important;
+    letter-spacing: .12em;
+  }
+  html[data-theme='natalino'] .rpg-xp-panel > div:first-child > p:last-child,
+  html[data-theme='natalino'] .rpg-xp-panel > p strong {
+    color: #A93936 !important;
+  }
+  html[data-theme='natalino'] .rpg-xp-panel > p {
+    color: #62584F !important;
+    line-height: 1.55;
+  }
+  html[data-theme='natalino'] .rpg-xp-panel .rpg-resource-track {
+    background: #CFC1B0 !important;
+    border: 1px solid #C5B5A3 !important;
+    box-shadow: inset 0 1px 2px rgba(64,44,36,.12) !important;
+  }
+  html[data-theme='natalino'] .rpg-xp-panel .rpg-resource-fill {
+    background: linear-gradient(90deg,#B94441,#D35451) !important;
+  }
+  html[data-theme='natalino'] .rpg-xp-panel .rpg-xp-classes-button:not(:disabled) {
+    color: #141212 !important;
+    border: 1px solid #BB4542 !important;
+    background: #D35451 !important;
+    box-shadow: 0 3px 10px rgba(154,58,51,.16) !important;
+    animation: none !important;
+  }
+  html[data-theme='natalino'] .rpg-xp-panel .rpg-xp-classes-button:is(:hover,:focus-visible):not(:disabled) {
+    border-color: #A83A37 !important;
+    background: #E0726C !important;
+  }
+  html[data-theme='natalino'] .rpg-xp-panel .rpg-xp-adjustments > button {
+    color: #39312C !important;
+    border: 1px solid #C7B7A4 !important;
+    background: #F0E5D7 !important;
+    box-shadow: none !important;
+  }
+  html[data-theme='natalino'] .rpg-xp-panel .rpg-xp-adjustments > button:hover:not(:disabled) {
+    color: #1E7A44 !important;
+    border-color: #1E7A44 !important;
+    background: #DDE9D9 !important;
+  }
+  html[data-theme='natalino'] .rpg-xp-panel .rpg-xp-adjustments > button[aria-label^='Retirar']:hover:not(:disabled) {
+    color: #A93936 !important;
+    border-color: #D35451 !important;
+    background: #F2D9D1 !important;
+  }
+
+  /* Archive button: original globals.css uses near-white on near-white. */
+  html[data-theme='natalino'] .rpg-character-sheet .rpg-archive-button,
+  html[data-theme='natalino'] .rpg-archive-button {
+    color: #141212 !important;
+    background: #D35451 !important;
+    border: 1px solid #BE4C49 !important;
+    box-shadow: 0 3px 11px rgba(145,56,50,.16) !important;
+    font-weight: 750 !important;
+    opacity: 1 !important;
+  }
+  html[data-theme='natalino'] .rpg-archive-button svg {
+    color: currentColor !important;
+    opacity: 1 !important;
+  }
+  html[data-theme='natalino'] .rpg-archive-button:hover:not(:disabled) {
+    background: #C34743 !important;
+    color: #FFF6EC !important;
+    border-color: #AA3734 !important;
+    box-shadow: 0 5px 14px rgba(145,56,50,.22) !important;
+  }
+  html[data-theme='natalino'] .rpg-archive-button:disabled,
+  html[data-theme='natalino'] .rpg-archive-button[aria-disabled='true'] {
+    color: #665D54 !important;
+    background: #D8CDBF !important;
+    border-color: #C8B9A9 !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
+  }
+
+  /* Inline training area: red header / muted parchment body / pine stat labels. */
+  html[data-theme='natalino'] .otms-training-inline {
+    background: linear-gradient(150deg,#E9DFD1,#DED1C1) !important;
+    border: 1px solid #C8B6A3 !important;
+    border-top: 3px solid #1E7A44 !important;
+    border-radius: 12px !important;
+    color: #333333 !important;
+    box-shadow: 0 7px 20px rgba(79,55,42,.12) !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline > div:first-child {
+    background: #D35451 !important;
+    border-radius: 8px;
+    padding: 9px 12px;
+    box-shadow: inset 0 -1px 0 rgba(60,30,25,.12) !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline > div:first-child > p {
+    color: #141212 !important;
+    font-weight: 850 !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline > div:first-child > p svg { color: #141212 !important; }
+  html[data-theme='natalino'] .otms-training-inline > div:first-child button {
+    color: #23472E !important;
+    border: 1px solid #E6DACC !important;
+    background: #F4EFE6 !important;
+    font-weight: 800 !important;
+    box-shadow: 0 2px 8px rgba(62,34,31,.14) !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline > div:first-child button:hover:not(:disabled) {
+    background: #DCE7D9 !important;
+    border-color: #1E7A44 !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline-stat {
+    background: #F0E6D9 !important;
+    border: 1px solid #CABBAB !important;
+    color: #333333 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 7px rgba(64,44,36,.07) !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline-stat > div:first-child strong {
+    color: #246C42 !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline-stat > div:first-child span {
+    color: #A63A37 !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline .otms-training-radar {
+    color: #1E7A44 !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline .otms-training-radar text { fill: currentColor; }
+  html[data-theme='natalino'] .otms-training-inline-stat .bg-zinc-800 {
+    background: #CCBDAA !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline-stat .bg-amber-400 {
+    background: #D35451 !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline :is(.text-amber-100,.text-amber-200) {
+    color: #38332D !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline .text-amber-300 {
+    color: #A83A37 !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline :is(.text-emerald-300,.text-emerald-400) {
+    color: #246C42 !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline :is(.text-rose-300,.text-rose-400) {
+    color: #A63A37 !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline-stat > div button:not(:disabled) {
+    color: #245E3E !important;
+    border-color: #A9C5AE !important;
+    background: #E3ECDD !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline-stat > div button[aria-label^='Retirar']:not(:disabled) {
+    color: #A33D3A !important;
+    border-color: #DCB0A8 !important;
+    background: #F1DFD6 !important;
+  }
+  html[data-theme='natalino'] .otms-training-inline select {
+    color: #333333 !important;
+    background: #EFE6DA !important;
+    border-color: #BEB09F !important;
+  }
+
+  /* Fullscreen training is portaled under body and must be themed independently. */
+  html[data-theme='natalino'] .otms-training-modal {
+    color: #333333 !important;
+    background-color: #E7DDD0 !important;
+    background-image:
+      radial-gradient(ellipse at 8% 10%,rgba(211,84,81,.065),transparent 42%),
+      radial-gradient(ellipse at 94% 85%,rgba(30,122,68,.065),transparent 41%),
+      linear-gradient(155deg,#EAE0D3,#DFD2C2) !important;
+    background-size: auto !important;
+    scrollbar-color: #C5B29E #E7DDD0 !important;
+  }
+  html[data-theme='natalino'] .otms-training-modal :is(.otms-training-header,.otms-training-footer) {
+    color: #333333 !important;
+    border-color: #C8B8A5 !important;
+    background: linear-gradient(150deg,#EFE5D7,#E3D6C6) !important;
+    box-shadow: 0 7px 20px rgba(75,51,38,.11) !important;
+  }
+  html[data-theme='natalino'] .otms-training-modal .otms-training-header {
+    border-bottom: 3px solid #D35451 !important;
+  }
+  html[data-theme='natalino'] .otms-training-modal .otms-training-header .grid.size-11 {
+    color: #141212 !important;
+    background: #D35451 !important;
+    border-color: #BE4845 !important;
+    border-radius: 8px;
+  }
+  html[data-theme='natalino'] .otms-training-modal :is(.otms-training-radar-panel,.otms-training-duration-panel,.otms-training-projection-panel) {
+    color: #333333 !important;
+    border: 1px solid #C9B9A6 !important;
+    background: linear-gradient(145deg,#EEE4D7,#E3D7C7) !important;
+    box-shadow: 0 7px 18px rgba(79,55,42,.10) !important;
+  }
+  html[data-theme='natalino'] .otms-training-modal .otms-training-radar {
+    color: #1E7A44 !important;
+  }
+  html[data-theme='natalino'] .otms-training-modal .otms-training-radar text { fill: currentColor; }
+  html[data-theme='natalino'] .otms-training-modal :is(.otms-training-time-option,.otms-training-attribute-choice) {
+    color: #333333 !important;
+    border: 1px solid #C6B7A6 !important;
+    background: #EFE5D9 !important;
+    box-shadow: none !important;
+  }
+  html[data-theme='natalino'] .otms-training-modal :is(.otms-training-time-option,.otms-training-attribute-choice):is(:hover,[aria-pressed='true']) {
+    color: #333333 !important;
+    background: #EBD5CD !important;
+    border-color: #C4574F !important;
+    box-shadow: inset 3px 0 0 #D35451 !important;
+  }
+  html[data-theme='natalino'] .otms-training-modal :is(.otms-training-time-option,.otms-training-attribute-choice) .text-primary {
+    color: #A83936 !important;
+  }
+  html[data-theme='natalino'] .otms-training-modal :is(.text-emerald-300,.text-emerald-400) {
+    color: #246C42 !important;
+  }
+  html[data-theme='natalino'] .otms-training-modal :is(.text-rose-300,.text-rose-400) {
+    color: #A63A37 !important;
+  }
+  html[data-theme='natalino'] .otms-training-modal .otms-training-footer button.bg-primary {
+    color: #141212 !important;
+    background: #D35451 !important;
+    border: 1px solid #BC4541 !important;
+    box-shadow: 0 4px 12px rgba(168,66,57,.15) !important;
+    font-weight: 800 !important;
+  }
+  html[data-theme='natalino'] .otms-training-modal .otms-training-footer button.bg-primary:hover:not(:disabled) {
+    background: #E0716B !important;
+    border-color: #AF3835 !important;
+  }
+  html[data-theme='natalino'] .otms-training-modal button:disabled,
+  html[data-theme='natalino'] .otms-training-inline button:disabled {
+    opacity: .52 !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
+  }
+  html[data-theme='natalino'] :is(.otms-training-modal,.otms-training-inline) :is(button,select,input,[role='button']):focus-visible {
+    outline: 3px solid #AD403C !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 5px rgba(211,84,81,.18) !important;
+  }
+}
