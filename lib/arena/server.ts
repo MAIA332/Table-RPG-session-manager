@@ -4,15 +4,18 @@ import type { ArenaSession, ArenaSnapshot, ArenaPortrait, ArenaInput } from './m
 import { advanceArena, forfeitArena, newFighter, publicArena, startRound, upgradeArenaSession, configureArenaSettings, arenaSettings, ARENA_MAX_FIGHTERS, NO_INPUT } from './model'
 import { ARENA_CAST, ARENA_STAGES,arenaRoster } from './catalog'
 import {unlockAlterLysa,hasAlterUnlock,revokeAlterUnlock} from './secrets'
+import {applyArenaInputPacket} from './input-packet'
 
-const root = globalThis as typeof globalThis & { __otmsArenaRooms?: Map<string, ArenaSession> }
+const root = globalThis as typeof globalThis & { __otmsArenaRooms?: Map<string, ArenaSession>; __otmsArenaTick?:ReturnType<typeof setInterval> }
 const rooms = root.__otmsArenaRooms ?? (root.__otmsArenaRooms = new Map<string, ArenaSession>())
+// Physics keeps its 60 Hz clock even when a stream buffers or no HTTP request arrives.
+if(!root.__otmsArenaTick){root.__otmsArenaTick=setInterval(()=>{const now=Date.now();for(const room of rooms.values())if(room.phase==='playing')advanceArena(room,now)},16);root.__otmsArenaTick.unref?.()}
 const age = (n: number) => Date.now() - n
 const error = (message: string) => { throw new Error(message) }
 function changed(id: string) {const room=rooms.get(id);if(room){room.revision=(room.revision||0)+1;room.lastUpdateAt=Date.now()}publish(id, {type: 'arena:changed'}) }
 function rosterFor(_campaignId:string):ArenaPortrait[]{return ARENA_CAST.map(character=>({...character}))}
 function updateRoster(room: ArenaSession) {
-  if((room.phase==='lobby'||room.phase==='stage')&&arenaSettings(room).mode==='teams'&&(room.fighters.length!==4||room.fighters.some(f=>f.bot||f.withdrawn))){room.settings={...arenaSettings(room),mode:'free-for-all'};room.fighters.forEach(f=>{f.team=undefined})}
+  if((room.phase==='lobby'||room.phase==='stage')&&arenaSettings(room).mode==='teams'&&(room.fighters.length!==4||room.fighters.some(f=>f.withdrawn))){room.settings={...arenaSettings(room),mode:'free-for-all'};room.fighters.forEach(f=>{f.team=undefined})}
   const fresh = rosterFor(room.campaignId)
   room.secretUnlocks=(room.secretUnlocks||[]).filter(g=>room.fighters.some(f=>f.userId===g.userId&&f.device===g.device&&!f.bot))
   room.roster = arenaRoster({...room,roster:fresh})
@@ -31,8 +34,7 @@ export function arenaSnapshot(campaignId: string): ArenaSnapshot | null {
   const room = rooms.get(campaignId)
   if (!room) return null
   advanceArena(room)
-  retire(room)
-  updateRoster(room)
+  if(room.phase==='lobby'||room.phase==='stage'||room.phase==='finished'){retire(room);updateRoster(room)}
   return publicArena(room)
 }
 function ownFighter(room: ArenaSession, userId: string, device: string) {
@@ -44,13 +46,11 @@ function deviceKey(value: unknown): string {
   return value
 }
 export type ArenaCommand = {
-  action: 'open' | 'configure' | 'join' | 'select' | 'unlock-alter-lysa' | 'stage' | 'start' | 'fight' | 'cancel-stage' | 'rematch' | 'reset' | 'close' | 'leave' | 'kick' | 'input' | 'heartbeat' | 'pause' | 'resume' | 'exit' | 'forfeit'
-  device?: unknown; fighterId?: unknown; characterId?: unknown; stageId?:unknown; inputs?: unknown; seq?: unknown; source?: unknown; snapshot?:unknown; settings?:unknown
+  action: 'open' | 'configure' | 'add-bot' | 'select-bot' | 'remove-bot' | 'join' | 'select' | 'unlock-alter-lysa' | 'stage' | 'start' | 'fight' | 'cancel-stage' | 'rematch' | 'reset' | 'close' | 'leave' | 'kick' | 'input' | 'heartbeat' | 'pause' | 'resume' | 'exit' | 'forfeit'
+  device?: unknown; fighterId?: unknown; characterId?: unknown; stageId?:unknown; inputs?: unknown; seq?: unknown; source?: unknown; snapshot?:unknown; settings?:unknown;slot?:unknown
 }
-function normalizeInput(value: unknown): ArenaInput {
-  const data = value && typeof value === 'object' ? value as Record<string, unknown> : {}
-  return Object.fromEntries(Object.keys(NO_INPUT).map(key=>[key,data[key]===true])) as ArenaInput
-}
+const freeSlot=(room:ArenaSession)=>[0,1,2,3].find(i=>!room.fighters.some(f=>f.slot===i))
+const sortSlots=(room:ArenaSession)=>room.fighters.sort((a,b)=>(a.slot||0)-(b.slot||0))
 function assertGm(gm: boolean) { if (!gm) error('Apenas o mestre administra a arena.') }
 export function commandArena(campaignId: string, userId: string, gm: boolean, cmd: ArenaCommand): ArenaSnapshot | null {
   let room = rooms.get(campaignId)
@@ -68,6 +68,14 @@ export function commandArena(campaignId: string, userId: string, gm: boolean, cm
   }
   if (!room) return error('Abra a arena antes de jogar.')
   advanceArena(room)
+  if(cmd.action==='input'){
+    if(room.phase==='playing'&&Array.isArray(cmd.inputs))for(const entry of cmd.inputs.slice(0,ARENA_MAX_FIGHTERS) as Array<{device?:unknown;buttons?:unknown;pulses?:unknown}>){
+      let device:string;try{device=deviceKey(entry?.device)}catch{continue}
+      const fighter=ownFighter(room,userId,device);if(!fighter)continue
+      applyArenaInputPacket(fighter,entry.buttons,entry.pulses,typeof cmd.seq==='number'&&Number.isSafeInteger(cmd.seq)?cmd.seq:0,typeof cmd.source==='string'?cmd.source.slice(0,80):'',Date.now())
+    }
+    return cmd.snapshot===true?publicArena(room):null
+  }
   retire(room)
   updateRoster(room)
   if (cmd.action === 'close') {
@@ -78,7 +86,7 @@ export function commandArena(campaignId: string, userId: string, gm: boolean, cm
     if(!gm&&!room.fighters.some(f=>f.userId===userId&&!f.bot))error('Entre na arena para voltar à seleção.')
     revokeAlterUnlock(room)
     room.phase = 'lobby'; room.winnerId = null; room.winningTeam=null; room.gameTime = 0; room.hitstopFrames = 0; room.pausedBy = null; room.projectiles = []; room.effects = [];room.zones=[]
-    room.fighters = room.fighters.filter(f => !f.bot)
+    room.fighters = room.fighters.filter(f => !f.autoBot)
     room.fighters.forEach(f => {f.input = {...NO_INPUT}; f.lastSeen = Date.now(); f.withdrawn=false;f.team=undefined})
     room.message = 'Revanche!'; updateRoster(room); changed(campaignId)
     return publicArena(room)
@@ -87,7 +95,7 @@ export function commandArena(campaignId: string, userId: string, gm: boolean, cm
     const device = cmd.device === undefined ? null : deviceKey(cmd.device)
     if (!gm && !room.fighters.some(f=>!f.bot&&f.userId===userId&&f.device===device)) error('Somente participantes podem pausar.')
     if (room.phase === 'playing') {
-      room.phase='paused';room.pausedBy=userId;room.fighters.forEach(f=>{f.input={...NO_INPUT}});changed(campaignId)
+      room.phase='paused';room.pausedBy=userId;room.fighters.forEach(f=>{f.input={...NO_INPUT};f.pendingPulses={}});changed(campaignId)
     }
     return publicArena(room)
   }
@@ -112,7 +120,21 @@ export function commandArena(campaignId: string, userId: string, gm: boolean, cm
     room.fighters = room.fighters.filter(f => f.id !== cmd.fighterId)
     changed(campaignId); return publicArena(room)
   }
-  if(cmd.action==='configure'){
+  if(cmd.action==='add-bot'){
+    if(room.phase!=='lobby')error('Adicione bots na seleção de personagens.')
+    const slot=cmd.slot===undefined?freeSlot(room):cmd.slot
+    if(typeof slot!=='number'||!Number.isInteger(slot)||slot<0||slot>3||room.fighters.some(f=>f.slot===slot))error('Slot indisponível.')
+    const chosen=room.roster.find(p=>p.id===cmd.characterId)||room.roster.find(p=>!room.fighters.some(f=>f.characterId===p.id))||room.roster[0]
+    const bot=newFighter('bot:'+randomUUID(),'bot','cpu','BOT',true);bot.characterId=chosen.id;bot.botOwnerId=userId;bot.slot=slot as number
+    room.fighters.push(bot);sortSlots(room);changed(campaignId)
+  }else if(cmd.action==='select-bot'||cmd.action==='remove-bot'){
+    if(room.phase!=='lobby')error('Edite bots na seleção de personagens.')
+    const bot=room.fighters.find(f=>f.id===cmd.fighterId&&f.bot)
+    if(!bot||!gm&&bot.botOwnerId!==userId)error('Você só pode editar seus bots.')
+    if(cmd.action==='remove-bot')room.fighters=room.fighters.filter(f=>f.id!==bot!.id)
+    else{const chosen=room.roster.find(p=>p.id===cmd.characterId);if(!chosen)error('Personagem inválido.');bot!.characterId=chosen!.id}
+    updateRoster(room);changed(campaignId)
+  }else if(cmd.action==='configure'){
     configureArenaSettings(room,cmd.settings);changed(campaignId)
   } else if(cmd.action==='unlock-alter-lysa'){
     unlockAlterLysa(room,userId,deviceKey(cmd.device));updateRoster(room);changed(campaignId)
@@ -131,6 +153,7 @@ export function commandArena(campaignId: string, userId: string, gm: boolean, cm
       if (room.fighters.length >= ARENA_MAX_FIGHTERS) error('Arena cheia (4 lutadores).')
       updateRoster(room)
       fighter = newFighter(randomUUID(), userId, device, 'Jogador')
+      fighter.slot=freeSlot(room)
       // Um único A já entra e escolhe o retrato focado. Nunca fica preso sem herói.
       const chosen = room.roster.find(p => p.id === (cmd.characterId==='alter-lysa'?'lysa':cmd.characterId)) || room.roster[0]
       fighter.characterId = chosen?.id ?? null
@@ -138,6 +161,7 @@ export function commandArena(campaignId: string, userId: string, gm: boolean, cm
       // A identidade humana vem exclusivamente da sessão autenticada.
       fighter.name = store.users.get(userId)?.name || (gm ? 'Mestre' : 'Jogador')
       room.fighters.push(fighter)
+      sortSlots(room)
       changed(campaignId)
     }
     fighter.lastSeen = Date.now()
@@ -162,46 +186,31 @@ export function commandArena(campaignId: string, userId: string, gm: boolean, cm
     if (cmd.action === 'rematch' && room.phase !== 'finished') error('A revanche só começa ao término do combate.')
     if (cmd.action === 'start' && room.phase !== 'lobby') error('Rodada em andamento.')
     if(cmd.action==='rematch')revokeAlterUnlock(room)
-    room.fighters = room.fighters.filter(f => !f.bot)
+    room.fighters = room.fighters.filter(f => !f.autoBot)
     updateRoster(room)
-    if (!room.fighters.length || room.fighters.some(f => !f.characterId)) error('Todos os jogadores devem escolher personagens.')
+    if (!room.fighters.some(f=>!f.bot) || room.fighters.some(f => !f.characterId)) error('Todos os jogadores devem escolher personagens.')
     if(arenaSettings(room).mode==='teams'&&room.fighters.length!==4)error('Em equipe exige quatro jogadores.')
     room.phase='stage';room.message='Escolha o cenário do duelo.';changed(campaignId)
   } else if(cmd.action==='fight'){
     if(room.phase!=='stage')error('Escolha os personagens antes de iniciar o combate.')
     if(!room.fighters.some(f=>!f.bot)||room.fighters.some(f=>!f.characterId))error('Escolha os personagens do duelo.')
     if(!ARENA_STAGES.some(stage=>stage.id===cmd.stageId))error('Cenário inválido.')
-    if(arenaSettings(room).mode==='teams'&&(room.fighters.length!==4||room.fighters.some(f=>f.bot||f.withdrawn)))error('Em equipe exige quatro jogadores.')
+    if(arenaSettings(room).mode==='teams'&&(room.fighters.length!==4||room.fighters.some(f=>f.withdrawn)))error('Em equipe exige quatro participantes.')
     room.stageId=String(cmd.stageId)
     if (room.fighters.length === 1) {
       const npc = room.roster.find(c => c.kind !== 'player' && c.id !== room.fighters[0].characterId)
         || room.roster.find(c => c.id !== room.fighters[0].characterId) || room.roster[0]
       const bot = newFighter(`bot:${randomUUID()}`, 'bot', 'cpu', 'CPU', true)
       bot.characterId = npc?.id ?? room.fighters[0].characterId
+      bot.slot=freeSlot(room);bot.autoBot=true
       room.fighters.push(bot)
+      sortSlots(room)
     }
     room.secretUnlocks=[] // The authorization is spent by this match; fighter flags survive its rounds.
     startRound(room); changed(campaignId)
   } else if (cmd.action === 'heartbeat') {
     const fighter = ownFighter(room, userId, deviceKey(cmd.device))
     if (fighter) fighter.lastSeen = Date.now()
-  } else if (cmd.action === 'input') {
-    if (room.phase === 'playing' && Array.isArray(cmd.inputs)) {
-      for (const entry of cmd.inputs.slice(0, ARENA_MAX_FIGHTERS) as Array<{device?:unknown, buttons?:unknown}>) {
-        let device: string
-        try {device = deviceKey(entry?.device)} catch {continue}
-        const fighter = ownFighter(room, userId, device)
-        if (!fighter) continue
-        // Pacotes da rede podem chegar fora de ordem. Cada cliente envia contador e sessão.
-        const seq = typeof cmd.seq === 'number' && Number.isSafeInteger(cmd.seq) ? cmd.seq : 0
-        const source = typeof cmd.source === 'string' ? cmd.source.slice(0,80) : ''
-        if (source && source === fighter.lastInputSource && seq <= fighter.lastInputSeq) continue
-        fighter.lastInputSource = source
-        fighter.lastInputSeq = seq
-        fighter.input = normalizeInput(entry.buttons)
-        fighter.lastSeen = Date.now()
-      }
-    }
   } else error('Comando desconhecido.')
   room.roster=arenaRoster(room)
   room.lastUpdateAt = Date.now()

@@ -7,12 +7,13 @@ import {FX_ROWS,FX_URLS,fxFrame,fxUrl,fxRows,CHARACTER_SPECIAL_FX,CHARACTER_BASI
 import {arenaAudio,attackAudioCue} from '@/lib/arena/audio'
 import {fighterDimensions,SPRITE_CELL,SPRITE_ANCHOR_X,SPRITE_ANCHOR_Y} from '@/lib/arena/geometry'
 import {arenaCamera,ARENA_CAMERA_MARGIN} from '@/lib/arena/camera'
+import {arenaBackdrop} from '@/lib/arena/backdrop'
+import {ArenaTimeline} from '@/lib/arena/timeline'
 import headData from '@/lib/arena/fander-heads.json'
 import {arenaImage,arenaImageCount} from '@/lib/arena/assets'
 import effectAnchors from '@/lib/arena/effect-anchors.json'
 
 type Props={room:ArenaSnapshot;getSnapshot?:()=>ArenaSnapshot;debugBoxes?:boolean;localPlayerId:string;getLocalInput:(device:string)=>ArenaInput|undefined;onPointerAttack:(kind:'light'|'heavy',pressed:boolean)=>void}
-type Seen={room:ArenaSnapshot;at:number}
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n))
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t
 const asset=arenaImage
@@ -58,7 +59,7 @@ export function ArenaStage(props:Props){
   const canvas=canvasRef.current,g=canvas?.getContext('2d',{alpha:false});if(!canvas||!g)return
   let frame=0,previousAt=performance.now(),lastState:ArenaSnapshot|null=null,lastArrival=previousAt,lastFpsAt=previousAt,frames=0,round=0,logicalWidth=960
   let view:{x:number;zoom:number}|null=null
-  const history:Seen[]=[],positions=new Map<string,{x:number;y:number}>(),clocks=new Map<string,AnimationClock>(),heard=new Set<string>(),steps=new Map<string,number>(),puddle=new Map<string,{active:boolean;emergeAt:number}>()
+  const timeline=new ArenaTimeline(),positions=new Map<string,{x:number;y:number}>(),clocks=new Map<string,AnimationClock>(),heard=new Set<string>(),steps=new Map<string,number>(),puddle=new Map<string,{active:boolean;emergeAt:number}>()
   const previousFrames=new Map<string,AnimationFrame>()
   for(const url of FX_URLS)asset(url)
   const fit=()=>{
@@ -75,23 +76,29 @@ export function ArenaStage(props:Props){
    if(document.visibilityState==='hidden'){previousAt=now;return}
    const dt=clamp((now-previousAt)/1000,0,.04);previousAt=now;frames++
    if(now-lastFpsAt>=1000){canvas.dataset.fps=String(Math.round(frames*1000/(now-lastFpsAt)));frames=0;lastFpsAt=now}
-   const current=live.current,room=current.getSnapshot?.()||current.room
-   if(room!==lastState){
-    if(room.rounds!==round||lastState&&room.gameTime<lastState.gameTime-.1){history.length=0;positions.clear();clocks.clear();heard.clear();puddle.clear();round=room.rounds}
-    history.push({room,at:now});if(history.length>8)history.shift();lastArrival=now;lastState=room
+   const current=live.current,authoritative=current.getSnapshot?.()||current.room
+   if(authoritative!==lastState){
+    if(authoritative.rounds!==round||lastState&&authoritative.gameTime<lastState.gameTime-.1){positions.clear();clocks.clear();heard.clear();puddle.clear();round=authoritative.rounds}
+    lastArrival=now;lastState=authoritative
    }
-   const lag=room.phase==='playing'?clamp((now-lastArrival)/1000,0,.09):0,t=room.gameTime+lag,stage=ARENA_STAGES.find(s=>s.id===room.stageId)||ARENA_STAGES[0],background=asset(stage.image)
+   const scene=timeline.sample(authoritative,now),room=scene.room,lag=authoritative.phase==='playing'?clamp((now-lastArrival)/1000,0,.09):0,t=scene.time,liveTime=authoritative.gameTime+lag,stage=ARENA_STAGES.find(s=>s.id===room.stageId)||ARENA_STAGES[0],background=asset(stage.image)
+   canvas.dataset.networkDelay=String(Math.round(scene.delay*1000))
    g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.imageSmoothingEnabled=true;g.fillStyle='#0d1017';g.fillRect(0,0,logicalWidth,540)
-   const wanted=arenaCamera(room.fighters,logicalWidth)
+   const wanted=arenaCamera(room.fighters.map(f=>f.userId===current.localPlayerId&&!f.bot&&positions.has(f.id)?{...f,x:positions.get(f.id)!.x}:f),logicalWidth)
    if(!view)view={x:wanted.x,zoom:wanted.zoom}
    view.zoom=wanted.zoom<view.zoom?wanted.zoom:mix(view.zoom,wanted.zoom,1-Math.exp(-dt*7))
    view.x=clamp(mix(view.x,wanted.x,1-Math.exp(-dt*12)),-ARENA_CAMERA_MARGIN,Math.max(-ARENA_CAMERA_MARGIN,ARENA_WIDTH+ARENA_CAMERA_MARGIN-logicalWidth/view.zoom))
    const camera={...view,y:ARENA_FLOOR*(1-view.zoom)}
    canvas.dataset.camera=JSON.stringify({x:camera.x,zoom:camera.zoom,worldWidth:ARENA_WIDTH,viewportWidth:logicalWidth})
    if(background.complete&&background.naturalWidth){
-    const worldWidth=(ARENA_WIDTH+ARENA_CAMERA_MARGIN*2)*camera.zoom,ratio=background.naturalHeight/background.naturalWidth
-    const h=Math.max(worldWidth*ratio,ARENA_FLOOR/.83,(ARENA_HEIGHT-ARENA_FLOOR)/.17),w=h/ratio
-    g.drawImage(background,(-ARENA_CAMERA_MARGIN-camera.x)*camera.zoom-(w-worldWidth)/2,ARENA_FLOOR-h*.83,w,h)
+    const backdrop=arenaBackdrop(background.naturalWidth,background.naturalHeight,logicalWidth,camera)
+    canvas.dataset.backdrop=JSON.stringify({worldHeight:backdrop.worldHeight,worldWidth:backdrop.worldWidth})
+    for(const tile of backdrop.tiles){
+     g.save();g.translate(tile.x+(tile.mirror?backdrop.width:0),0);g.scale(tile.mirror?-1:1,1)
+     if(backdrop.top>0)g.drawImage(background,0,0,background.naturalWidth,2,0,0,backdrop.width,backdrop.top+2)
+     if(backdrop.bottom<540)g.drawImage(background,0,background.naturalHeight-2,background.naturalWidth,2,0,backdrop.bottom-1,backdrop.width,541-backdrop.bottom)
+     g.drawImage(background,0,backdrop.top,backdrop.width,backdrop.height);g.restore()
+    }
    }
    g.save();g.translate(-camera.x*camera.zoom,camera.y);g.scale(camera.zoom,camera.zoom)
    // Os efeitos de golpe, campos e projéteis são quadros de atlas desenhados.
@@ -100,22 +107,17 @@ export function ArenaStage(props:Props){
     const size=zone.kind==='cage'?[180,270]:zone.kind==='roots'?[240,185]:zone.kind==='fate'?[260,225]:zone.kind==='barrier'?[420,400]:[zone.radius*2.2,280]
     fx(g,key,zone.x,ARENA_FLOOR,size[0],size[1],t,true,1,.95,undefined,true)
    }
-   for(const f of room.fighters){
+   for(const sample of room.fighters){
+    const owned=sample.userId===current.localPlayerId&&!sample.bot&&authoritative.phase==='playing',f=owned?authoritative.fighters.find(e=>e.id===sample.id)||sample:sample,t=owned?liveTime:scene.time
     if(f.withdrawn||f.swallowedUntil>t)continue
     const p=fighterPortrait(room.roster,f);if(!p)continue
-    const owned=f.userId===current.localPlayerId&&!f.bot&&room.phase==='playing',input=owned&&room.roundStatus==='fight'?current.getLocalInput(f.device):undefined,intent=input?Number(input.right)-Number(input.left):0
-    let x=f.x+f.vx*lag,y=Math.min(ARENA_FLOOR,f.y+f.vy*lag+(f.onGround?0:.5*GRAVITY*lag*lag))
+    const input=owned&&room.roundStatus==='fight'?current.getLocalInput(f.device):undefined,intent=input?Number(input.right)-Number(input.left):0
+    let x=f.x+(owned?f.vx*lag:0),y=owned?Math.min(ARENA_FLOOR,f.y+f.vy*lag+(f.onGround?0:.5*GRAVITY*lag*lag)):f.y
     const state=positions.get(f.id)
     if(owned&&state&&room.roundStatus==='fight'&&f.stunUntil<=t&&f.frozenUntil<=t&&f.rootUntil<=t&&!f.attackKind&&f.puppetUntil<=t&&f.dodgeUntil<=t&&!(f.alterLysa&&(f.euphoriaState==='transforming'||f.euphoriaState==='reverting'||f.danceUntil>t))){
      const speed=f.puddleUntil>t?430:(p.speed||225)*(f.buffUntil>t?1.35:1)*(f.characterId==='loulan'&&f.weapon==='kunai'?1.1:1)*(f.alterLysa&&f.euphoriaState==='active'?1.2:1)*(intent===-f.facing?.65:1)*(f.onGround&&(input?.crouch||input?.guard)?0:1)
      x=state.x+intent*speed*dt;x+=clamp(f.x+intent*speed*.025-x,-45,45)*Math.min(1,dt*10);x=clamp(x,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE)
-    }else if(state&&Math.abs(state.x-x)<120){x=mix(state.x,x,1-Math.exp(-dt*26));y=mix(state.y,y,1-Math.exp(-dt*28))}
-    if(!owned&&history.length>=2){
-     const displayAt=now-55;let a=history[0],b=history.at(-1)!
-     for(let i=1;i<history.length;i++)if(history[i].at>=displayAt){a=history[i-1];b=history[i];break}
-     const fa=a.room.fighters.find(e=>e.id===f.id),fb=b.room.fighters.find(e=>e.id===f.id)
-     if(fa&&fb){const k=clamp((displayAt-a.at)/Math.max(1,b.at-a.at),0,1);x=mix(fa.x,fb.x,k);y=mix(fa.y,fb.y,k)}
-    }
+    }else if(owned&&state&&Math.abs(state.x-x)<120){x=mix(state.x,x,1-Math.exp(-dt*26));y=mix(state.y,y,1-Math.exp(-dt*28))}
     positions.set(f.id,{x,y})
     g.fillStyle='#07090a7a';g.beginPath();g.ellipse(x,ARENA_FLOOR+1,36,6,0,0,Math.PI*2);g.fill()
     const progress=f.attackKind?clamp((t-f.attackAt)/Math.max(.01,f.attackUntil-f.attackAt),0,1):0
@@ -160,7 +162,7 @@ export function ArenaStage(props:Props){
    for(const p of room.projectiles){
     if(t<(p.launchAt||0)&&p.style!=='iceDragon')continue
     if(p.style==='alterClone'){
-     drawFrame(g,{url:'/arena/animations/alter-lysa/clone-v11.webp',row:0,rows:1,frame:Math.floor((t-(p.launchAt||0))*9)%6,action:'forward'},p.x+p.vx*lag,p.y,Math.sign(p.vx)||1,'lysa')
+     drawFrame(g,{url:'/arena/animations/alter-lysa/clone-v14.webp',row:0,rows:1,frame:Math.floor((t-(p.launchAt||0))*9)%6,action:'forward'},p.x,p.y,Math.sign(p.vx)||1,'lysa')
      continue
     }
     if(p.style==='root'){if(firstRoot.has(p.ownerId))continue;firstRoot.set(p.ownerId,p.id)}
@@ -168,7 +170,7 @@ export function ArenaStage(props:Props){
     if(!(key in FX_ROWS))continue
     const dimensions=p.style==='iceDragon'?[432,360]:p.style==='ice'?[130,215]:p.style==='shadow'?[150,205]:p.style==='tornado'?[180,240]:p.style==='chain'?[250,95]:p.style==='bullet'?[65,35]:p.style==='blood'?[140,80]:p.style==='root'?[270,170]:[155,155]
     const effectY=p.style==='root'?ARENA_FLOOR:p.y
-    fx(g,key,p.x+(t>=(p.launchAt||0)?p.vx*lag:0),effectY,dimensions[0],dimensions[1],t-(p.launchAt||0)+(p.style==='iceDragon'?.14:0),true,Math.sign(p.vx)||1,1,undefined,p.style==='root')
+    fx(g,key,p.x,effectY,dimensions[0],dimensions[1],t-(p.launchAt||0)+(p.style==='iceDragon'?.14:0),true,Math.sign(p.vx)||1,1,undefined,p.style==='root')
    }
    for(const e of room.effects){
     const duration=e.kind==='skill'?.85:e.kind==='dust'?.3:e.kind==='ko'?1:.4,elapsed=duration-(e.expiresAt-t)

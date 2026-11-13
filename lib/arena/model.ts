@@ -3,7 +3,7 @@ import {fighterPortrait} from './catalog'
 /** Simulação a 60 Hz, independente das fichas e recursos da campanha. */
 export const ARENA_WIDTH=1600,ARENA_HEIGHT=540,ARENA_FLOOR=451,ARENA_MAX_FIGHTERS=4,ROUND_SECONDS=99,ROUNDS_TO_WIN=2,GRAVITY=1740
 export const ARENA_EDGE=56,HIT_RECOVERY_GRACE=.08
-export const ARENA_SCHEMA_VERSION=7
+export const ARENA_SCHEMA_VERSION=8
 export type ArenaSettings={roundSeconds:30|60|99|null;mode:'free-for-all'|'teams'}
 export const DEFAULT_ARENA_SETTINGS:ArenaSettings={roundSeconds:ROUND_SECONDS,mode:'free-for-all'}
 export const arenaSettings=(r:{settings?:ArenaSettings}):ArenaSettings=>r.settings||DEFAULT_ARENA_SETTINGS
@@ -13,12 +13,12 @@ export function configureArenaSettings(r:ArenaSession,value:unknown){
  const {roundSeconds,mode}=value as ArenaSettings
  if(roundSeconds!==null&&roundSeconds!==30&&roundSeconds!==60&&roundSeconds!==99)throw new Error('Escolha 30, 60, 99 segundos ou infinito.')
  if(mode!=='free-for-all'&&mode!=='teams')throw new Error('Modo de partida inválido.')
- if(mode==='teams'&&(r.fighters.length!==4||r.fighters.some(f=>f.bot||f.withdrawn)))throw new Error('Em equipe exige quatro jogadores: P1 + P3 contra P2 + P4.')
+ if(mode==='teams'&&(r.fighters.length!==4||r.fighters.some(f=>f.withdrawn)))throw new Error('Em equipe exige quatro participantes.')
  r.settings={roundSeconds,mode}
 }
-export const arenaTeam=(r:{fighters:readonly{id:string;team?:0|1}[]},f:{id:string;team?:0|1})=>f.team??Math.max(0,r.fighters.findIndex(e=>e.id===f.id))%2
+export const arenaTeam=(r:{fighters:readonly{id:string;team?:0|1}[]},f:{id:string;team?:0|1;slot?:number})=>f.team??(f.slot??Math.max(0,r.fighters.findIndex(e=>e.id===f.id)))%2
 export const arenaOpponents=(r:{settings?:ArenaSettings;fighters:readonly{id:string;team?:0|1}[]},a:{id:string;team?:0|1},b:{id:string;team?:0|1})=>a.id!==b.id&&(arenaSettings(r).mode!=='teams'||arenaTeam(r,a)!==arenaTeam(r,b))
-export const EUPHORIA_TRANSFORM_SECONDS=2.1,EUPHORIA_REVERT_SECONDS=1.1,EUPHORIA_DRAIN=3,ALTER_DANCE_SECONDS=1.6
+export const EUPHORIA_TRANSFORM_SECONDS=2.1,EUPHORIA_REVERT_SECONDS=1.1,EUPHORIA_DRAIN=3,ALTER_DANCE_SECONDS=2.4
 export const ARENA_GO_CLEAR_SECONDS=.12
 const STEP=1/60
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n))
@@ -34,12 +34,13 @@ export type ArenaBox={x:number;y:number;w:number;h:number}
 export const intersectsAABB=(a:ArenaBox,b:ArenaBox)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y
 export type DirectionSample={direction:number;at:number}
 export type ArenaFighter={
- id:string;userId:string;device:string;name:string;characterId:string|null;bot:boolean;withdrawn:boolean;team?:0|1
+ id:string;userId:string;device:string;name:string;characterId:string|null;bot:boolean;withdrawn:boolean;team?:0|1;slot?:number;botOwnerId?:string;autoBot?:boolean
  x:number;y:number;vx:number;vy:number;facing:number;onGround:boolean;health:number;guard:number;meter:number;wins:number;combo:number;comboUntil:number
  pose:FighterPose;poseUntil:number;invincibleUntil:number;stunUntil:number;dodgeUntil:number
  attackKind:MoveKind|null;attackAt:number;attackUntil:number;attackHit:boolean;attackTargets:string[];attackCooldownUntil:number;comboStep:number;chainUntil:number;bufferKind:MoveKind|null;bufferUntil:number;airJumps:number
  lastHitBy:string|null;input:ArenaInput;lastSeen:number;lastInputSeq:number;lastInputSource:string;previousJump:boolean;previousLight:boolean;previousHeavy:boolean;previousSpecial:boolean;previousDodge:boolean
  previousButtons:ArenaInput;directions:DirectionSample[];specialIndex:number;bufferSpecial:number;directional:boolean;activeTechnique:string
+ lastPulseCounts:Partial<Record<keyof ArenaInput,number>>;pendingPulses:Partial<ArenaInput>
  buffUntil:number;buffKind:string;autoDodgeUntil:number;frozenUntil:number;rootUntil:number;puppetUntil:number;puppetX:number;puddleUntil:number;swallowedUntil:number;swallowedBy:string|null;revived:boolean;weapon:'kunai'|'karambit'
  alterLysa:boolean;euphoriaState:'normal'|'transforming'|'active'|'reverting';euphoriaAt:number;euphoriaNeedsFull:boolean;euphoriaBurst:boolean;danceAt:number;danceUntil:number;danceLaunched:boolean
 }
@@ -54,7 +55,7 @@ export type ArenaSession={
  roster:ArenaPortrait[];fighters:ArenaFighter[];winnerId:string|null;pausedBy:string|null;tickAt:number;accumulator:number;gameTime:number;roundElapsed:number;rounds:number;roundStatus:'intro'|'fight'|'ko'
  nextRoundAt:number;message:string;lastUpdateAt:number;projectiles:ArenaProjectile[];zones:ArenaZone[];effects:ArenaEffect[];effectSequence:number;hitstopFrames?:number
 }
-type PrivateFighter='input'|'lastSeen'|'lastInputSeq'|'lastInputSource'|'previousJump'|'previousLight'|'previousHeavy'|'previousSpecial'|'previousDodge'|'previousButtons'|'directions'|'bufferKind'|'bufferUntil'|'bufferSpecial'|'attackTargets'
+type PrivateFighter='input'|'lastSeen'|'lastInputSeq'|'lastInputSource'|'lastPulseCounts'|'pendingPulses'|'previousJump'|'previousLight'|'previousHeavy'|'previousSpecial'|'previousDodge'|'previousButtons'|'directions'|'bufferKind'|'bufferUntil'|'bufferSpecial'|'attackTargets'
 export type ArenaPublicFighter=Omit<ArenaFighter,PrivateFighter>
 export type ArenaSnapshot=Omit<ArenaSession,'fighters'> & {fighters:ArenaPublicFighter[]}
 export const spawnX=(i:number)=>[600,1000,360,1240][i]??800
@@ -88,7 +89,7 @@ export function recognizeMotion(samples:readonly DirectionSample[],facing:number
 function setupFighter(f:ArenaFighter,index:number){
  Object.assign(f,{x:spawnX(index),y:ARENA_FLOOR,vx:0,vy:0,facing:index%2?-1:1,onGround:true,health:100,guard:100,meter:70,combo:0,comboUntil:0,pose:'idle',poseUntil:0,
  invincibleUntil:0,stunUntil:0,dodgeUntil:0,attackKind:null,attackAt:0,attackUntil:0,attackHit:false,attackTargets:[],attackCooldownUntil:0,comboStep:0,chainUntil:0,bufferKind:null,bufferUntil:0,bufferSpecial:0,airJumps:0,
- lastHitBy:null,input:{...NO_INPUT},previousButtons:{...NO_INPUT},directions:[],lastInputSeq:0,lastInputSource:'',previousJump:false,previousLight:false,previousHeavy:false,previousSpecial:false,previousDodge:false,
+ lastHitBy:null,input:{...NO_INPUT},previousButtons:{...NO_INPUT},directions:[],lastInputSeq:f.lastInputSeq||0,lastInputSource:f.lastInputSource||'',lastPulseCounts:f.lastPulseCounts||{},pendingPulses:{},previousJump:false,previousLight:false,previousHeavy:false,previousSpecial:false,previousDodge:false,
  specialIndex:0,directional:false,activeTechnique:'',buffUntil:0,buffKind:'',autoDodgeUntil:0,frozenUntil:0,rootUntil:0,puppetUntil:0,puppetX:spawnX(index),puddleUntil:0,swallowedUntil:0,swallowedBy:null,weapon:'kunai',euphoriaState:'normal',euphoriaAt:0,euphoriaNeedsFull:false,euphoriaBurst:false,danceAt:0,danceUntil:0,danceLaunched:false})
 }
 export function newFighter(id:string,userId:string,device:string,name:string,bot=false):ArenaFighter {
@@ -97,12 +98,12 @@ export function newFighter(id:string,userId:string,device:string,name:string,bot
 }
 function initRound(r:ArenaSession){
  r.roundElapsed=0;r.rounds++;r.roundStatus='intro';r.nextRoundAt=r.gameTime+2.6;r.projectiles=[];r.effects=[];r.zones=[];r.hitstopFrames=0;r.message='ROUND '+r.rounds
- r.fighters.forEach((f,i)=>{if(!f.withdrawn)setupFighter(f,i)})
+ r.fighters.forEach((f,i)=>{if(!f.withdrawn)setupFighter(f,f.slot??i)})
 }
 export function startRound(r:ArenaSession){
- if(arenaSettings(r).mode==='teams'&&(r.fighters.length!==4||r.fighters.some(f=>f.bot||f.withdrawn)))throw new Error('Em equipe exige quatro jogadores.')
+ if(arenaSettings(r).mode==='teams'&&(r.fighters.length!==4||r.fighters.some(f=>f.withdrawn)))throw new Error('Em equipe exige quatro participantes.')
  r.phase='playing';r.winnerId=null;r.pausedBy=null;r.hitstopFrames=0;r.rounds=0;r.gameTime=0;r.tickAt=Date.now();r.accumulator=0;r.effectSequence=0
- r.winningTeam=null;r.fighters.forEach((f,i)=>{f.team=arenaSettings(r).mode==='teams'?i%2 as 0|1:undefined;f.wins=0;f.withdrawn=false;f.revived=false});initRound(r)
+ r.winningTeam=null;r.fighters.forEach((f,i)=>{f.team=arenaSettings(r).mode==='teams'?(f.slot??i)%2 as 0|1:undefined;f.wins=0;f.withdrawn=false;f.revived=false});initRound(r)
 }
 function effect(r:ArenaSession,x:number,y:number,kind:ArenaEffect['kind'],power=1,facing=1,style?:string){
  r.effects.push({id:++r.effectSequence,x,y,kind,power,facing,style,expiresAt:r.gameTime+(kind==='ko'?1:kind==='skill'?.85:kind==='dust'?.3:.4)})
@@ -289,7 +290,9 @@ function step(r:ArenaSession,dt:number){
    if(f.swallowedUntil>t&&caster&&alive(caster)){f.x=caster.x;f.y=caster.y;continue}
    f.swallowedBy=null;f.swallowedUntil=0;if(caster){f.x=clamp(caster.x+caster.facing*130,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE);f.invincibleUntil=0;receiveHit(r,caster,f,18,true,f.x);f.vx=caster.facing*580;effect(r,f.x,f.y-100,'skill',1.4,caster.facing,'spit')}
   }
-  const input=f.bot?botInput(f,r):f.input;if(f.bot)f.input=input
+  const input=f.bot?botInput(f,r):{...f.input};if(f.bot)f.input=input
+  for(const key of PULSE_BUTTONS)if(f.pendingPulses?.[key]){input[key]=true;f.previousButtons[key]=false;if(key==='jump')f.previousJump=false;if(key==='dodge')f.previousDodge=false}
+  f.pendingPulses={}
   if(updateAlterLysa(r,f,dt)){
    f.vx=0;f.bufferKind=null;f.previousJump=input.jump;f.previousDodge=input.dodge;f.previousButtons={...input}
    f.vy=clamp(f.vy+GRAVITY*dt,-750,1000);f.y=Math.min(ARENA_FLOOR,f.y+f.vy*dt);f.onGround=f.y>=ARENA_FLOOR;if(f.onGround)f.vy=0
@@ -382,11 +385,13 @@ export function upgradeArenaSession(r:ArenaSession){
   if(!Array.isArray(f.directions))f.directions=[]
   f.input={...NO_INPUT,...f.input};f.previousButtons={...NO_INPUT,...f.previousButtons}
   f.x=clamp(f.x,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE)
+  if(!Number.isInteger(f.slot))f.slot=i
+  if(f.bot&&!f.botOwnerId&&f.autoBot===undefined)f.autoBot=true
  }
  r.zones||=[];r.projectiles||=[];r.effects||=[];r.secretUnlocks||=[];r.revision||=0;r.settings||={...DEFAULT_ARENA_SETTINGS};r.schemaVersion=ARENA_SCHEMA_VERSION
 }
 export function publicArena(r:ArenaSession):ArenaSnapshot {
- return {...r,fighters:r.fighters.map(({input,lastSeen,lastInputSeq,lastInputSource,previousJump,previousLight,previousHeavy,previousSpecial,previousDodge,previousButtons,directions,bufferKind,bufferUntil,bufferSpecial,attackTargets,...f})=>f)}
+ return {...r,fighters:r.fighters.map(({input,lastSeen,lastInputSeq,lastInputSource,lastPulseCounts,pendingPulses,previousJump,previousLight,previousHeavy,previousSpecial,previousDodge,previousButtons,directions,bufferKind,bufferUntil,bufferSpecial,attackTargets,...f})=>f)}
 }
 export function forfeitArena(r:ArenaSession,f:ArenaFighter){
  f.withdrawn=true;f.health=0;f.pose='ko';f.input={...NO_INPUT}

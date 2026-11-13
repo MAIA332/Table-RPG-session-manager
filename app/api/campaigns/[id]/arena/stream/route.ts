@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/lib/auth'
 import { getMemberRole, store } from '@/lib/store'
 import { arenaSnapshot } from '@/lib/arena/server'
+import {ArenaWireEncoder} from '@/lib/arena/wire'
 
 export const runtime='nodejs'
 export const dynamic='force-dynamic'
@@ -12,6 +13,7 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
  const stream=new ReadableStream({
   start(controller){
    let closed=false,lastSent=0
+   const wire=new ArenaWireEncoder()
    stop=()=>{if(closed)return;closed=true;if(timer)clearInterval(timer);request.signal.removeEventListener('abort',stop);try{controller.close()}catch{}}
    const send=()=>{
     if(closed)return
@@ -20,9 +22,9 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     const room=arenaSnapshot(id),now=Date.now()
     if(room?.phase!=='playing'&&now-lastSent<350)return
     lastSent=now
-    try{controller.enqueue(encoder.encode(`data: ${JSON.stringify({room:room?{...room,roster:undefined}:null,at:now})}\n\n`))}catch{stop()}
+    try{controller.enqueue(encoder.encode(`data: ${JSON.stringify(wire.encode(room?{...room,roster:undefined}:null,now))}\n\n`))}catch{stop()}
    }
-   timer=setInterval(send,33);request.signal.addEventListener('abort',stop,{once:true})
+   timer=setInterval(send,50);request.signal.addEventListener('abort',stop,{once:true})
    if(request.signal.aborted)stop();else send()
   },cancel(){stop()},
  })

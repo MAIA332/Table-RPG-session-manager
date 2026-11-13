@@ -72,7 +72,7 @@ body:has(.rpg-combat-launcher) .otms-arena-entry{bottom:90px}
 .arena-seat{display:flex;align-items:center;gap:9px;border:1px solid #ffffff13;border-bottom:2px solid #ffffff18;background:#fff03;min-height:57px;padding:8px 10px;text-align:left;overflow:hidden}
 .arena-seat[data-occupied=true]{border-bottom-color:var(--seat-color);background:linear-gradient(90deg,color-mix(in srgb,var(--seat-color) 9%,transparent),transparent)}
 .arena-seat-index{font-size:17px;font-weight:900;font-style:italic;color:var(--seat-color)}
-.arena-seat>img{width:33px;height:38px;object-fit:cover;object-position:top;border:1px solid #fff2}
+.arena-seat-main>img{width:33px;height:38px;object-fit:cover;object-position:top;border:1px solid #fff2}
 .arena-seat-copy{display:flex;flex:1;flex-direction:column;gap:4px;min-width:0}
 .arena-seat-copy b{font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .arena-seat-copy small{font-size:9px;color:#928a82;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -162,7 +162,7 @@ body:has(.rpg-combat-launcher) .otms-arena-entry{bottom:90px}
 @keyframes arena-breathe{50%{opacity:.4}}
 @keyframes arena-portrait-drift{50%{transform:scale(1.035) translateY(-2px)}}
 @media(min-height:920px) and (min-width:1000px){.arena-selection{min-height:520px}.arena-character{aspect-ratio:.9;max-height:170px}.arena-techniques{padding:17px}.arena-technique{padding-top:13px}.arena-technique b{font-size:12px}.arena-technique p{font-size:11px}.arena-showcase-copy{bottom:35px}}
-@media(max-height:760px) and (min-width:900px){.arena-header{padding:12px 25px}.arena-lobby{gap:10px;padding-top:12px}.arena-selection{min-height:330px;gap:20px}.arena-showcase{min-height:330px}.arena-character{aspect-ratio:1.1;min-height:70px}.arena-techniques{min-height:85px;padding:6px 10px}.arena-technique{padding-top:5px}.arena-technique p{font-size:9px}.arena-map-grid button{aspect-ratio:2.3}.arena-seats{gap:8px}.arena-seat{min-height:45px;padding:5px 9px}.arena-seat>img{height:32px;width:27px}.arena-ready{padding-bottom:10px}.otms-arena .arena-launch{padding:12px 20px}.arena-footer{padding:7px 25px;min-height:40px}}
+@media(max-height:760px) and (min-width:900px){.arena-header{padding:12px 25px}.arena-lobby{gap:10px;padding-top:12px}.arena-selection{min-height:330px;gap:20px}.arena-showcase{min-height:330px}.arena-character{aspect-ratio:1.1;min-height:70px}.arena-techniques{min-height:85px;padding:6px 10px}.arena-technique{padding-top:5px}.arena-technique p{font-size:9px}.arena-map-grid button{aspect-ratio:2.3}.arena-seats{gap:8px}.arena-seat{min-height:45px;padding:5px 9px}.arena-seat-main>img{height:32px;width:27px}.arena-ready{padding-bottom:10px}.otms-arena .arena-launch{padding:12px 20px}.arena-footer{padding:7px 25px;min-height:40px}}
 @media(max-width:899px){.arena-header{padding:14px 18px}.arena-lobby{padding:14px 18px 0;gap:13px}.arena-selection{grid-template-columns:.7fr 1fr;gap:15px;min-height:370px}.arena-showcase{min-height:370px}.arena-showcase-copy{left:15px;bottom:16px}.arena-showcase-copy h2{font-size:40px}.arena-showcase-copy>p{font-size:14px}.arena-confirm-prompt{font-size:9px}.arena-confirm-prompt>svg,.arena-confirm-prompt>i{display:none}.arena-roster{gap:5px}.arena-character{min-height:60px;aspect-ratio:.7}.arena-character strong{font-size:8px}.arena-technique{gap:8px}.arena-technique p{font-size:9px}.arena-motion{min-width:46px;font-size:12px}.arena-seats{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.arena-footer{padding:10px 18px}.arena-secret-hint{display:none!important}.arena-wordmark>svg{width:22px}.arena-toolbar{gap:5px}.arena-toolbar button{padding:7px}.arena-toolbar button:nth-child(2){font-size:0;gap:0}.arena-toolbar button:nth-child(2) svg{font-size:14px}}
 @media(max-width:599px){.otms-arena-shell{width:100vw;height:100dvh;border:0}.arena-wordmark{gap:8px}.arena-wordmark h1{font-size:14px;letter-spacing:.015em}.arena-wordmark>svg{width:17px}.arena-header{padding:12px}.arena-lobby{padding:12px 12px 0}.arena-selection{display:flex;flex-direction:column;gap:16px}.arena-showcase{height:220px;min-height:220px}.arena-showcase-image{object-position:center 30%}.arena-showcase-copy h2{font-size:46px;margin-bottom:10px}.arena-showcase-copy>p{font-size:14px}.arena-roster{gap:7px}.arena-character{aspect-ratio:1;min-height:72px}.arena-character strong{font-size:10px}.arena-techniques{min-height:0}.arena-technique p{font-size:10px}.arena-map-grid button{aspect-ratio:1.5}.arena-map-grid span{font-size:7px;left:4px}.arena-seats{margin-top:0}.arena-seat{padding:7px;gap:6px}.arena-seat-copy b{font-size:9px}.arena-seat-index{font-size:14px}.arena-seat-check{display:none}.arena-ready{align-items:stretch;flex-direction:column;gap:12px}.arena-devices{justify-content:center}.arena-footer{padding:8px 12px;font-size:8px;gap:7px}.arena-footer>span{gap:4px}.arena-footer button{font-size:9px;gap:5px}.arena-command-columns{gap:20px;grid-template-columns:1fr}.arena-help-card{padding:24px 18px;max-height:96%}.arena-motion-guide{grid-template-columns:1fr;gap:5px}.arena-motion-guide>span{margin-bottom:10px}.arena-overlay{padding:12px}.arena-battle{padding:0 10px}.arena-health-grid{gap:12px}.arena-health{min-width:130px;gap:5px}.arena-health>img{width:28px;height:35px}.arena-health-name{display:block}.arena-health-name b{font-size:11px}.arena-health-name small{display:block;font-size:7px;margin-top:2px}.arena-health-track{height:8px}.arena-battle-hud{gap:10px}.arena-battle-hud>span{font-size:9px}.arena-stage-wrap{min-height:220px}.arena-battle-footer>span{font-size:9px}.arena-confirm-prompt .arena-pad-key{width:20px;min-width:20px;height:20px}}
 @media(prefers-reduced-motion:reduce){.otms-arena *,.otms-arena *:before,.otms-arena *:after{animation:none!important;transition:none!important}}
@@ -251,7 +251,7 @@ body:has(.rpg-combat-launcher) .otms-arena-entry{bottom:90px}
 .otms-arena .arena-seat:not([data-occupied=true]){background:#ffffff08;border-color:#d2b78840}
 .otms-arena .arena-seats{margin:0;gap:10px}
 .otms-arena .arena-seat-index{font-size:25px}
-.otms-arena .arena-seat>img{width:42px;height:52px}
+.otms-arena .arena-seat-main>img{width:42px;height:52px}
 .otms-arena .arena-seat-copy b{font-size:13px}
 .otms-arena .arena-seat-copy small{font-size:11px}
 .otms-arena .arena-ready{padding:0;gap:10px;min-height:44px}
@@ -269,7 +269,7 @@ body:has(.rpg-combat-launcher) .otms-arena-entry{bottom:90px}
  .otms-arena .arena-lobby{padding:10px 14px;gap:8px}
  .otms-arena .arena-seat{min-height:72px;padding:8px;gap:7px}
  .otms-arena .arena-seat-index{font-size:21px}
- .otms-arena .arena-seat>img{width:30px;height:44px}
+ .otms-arena .arena-seat-main>img{width:30px;height:44px}
  .otms-arena .arena-seat-copy b{font-size:11px}
  .otms-arena .arena-seat-copy small{font-size:10px}
  .otms-arena .arena-devices button{padding:6px 9px;font-size:11px}
@@ -289,7 +289,7 @@ body:has(.rpg-combat-launcher) .otms-arena-entry{bottom:90px}
  .otms-arena .arena-seats{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
  .otms-arena .arena-seat-index{font-size:21px}
  .otms-arena .arena-seat-copy b{font-size:10px}
- .otms-arena .arena-seat>img{width:28px;height:40px}
+ .otms-arena .arena-seat-main>img{width:28px;height:40px}
  .otms-arena .arena-ready{flex-direction:row;align-items:center;flex-wrap:wrap;gap:6px}
  .otms-arena .arena-ready>.arena-launch{flex:1;min-width:165px;padding:10px;font-size:10px;gap:6px}
  .otms-arena .arena-devices{gap:4px}
@@ -353,6 +353,15 @@ body:has(.rpg-combat-launcher) .otms-arena-entry{bottom:90px}
 }
 .otms-arena .arena-stage-selection .arena-section-title>button{font-size:15px;font-weight:700;gap:10px}
 .arena-launch-actions{display:flex;align-items:stretch;gap:12px;flex-shrink:0}
+.arena-seat-main{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:0;border:0;background:none;text-align:left}
+.otms-arena .arena-seat-main:disabled{opacity:1;cursor:default}
+.arena-seat-main>img{flex-shrink:0}
+.arena-seat-add-bot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex-shrink:0;align-self:stretch;min-width:44px;padding:6px;border:1px solid #d8bd8755;background:#d8bd8712;color:#e8d0a7}
+.arena-seat-add-bot span{font-size:10px;font-weight:800;letter-spacing:.04em}
+.arena-bot-actions{display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+.arena-bot-actions button{display:grid;place-items:center;padding:4px;border:1px solid #d8bd8733;background:#ffffff08}
+.arena-seat-main .arena-seat-copy small{white-space:normal}
+.arena-seat-main .arena-seat-copy small svg{flex-shrink:0}
 .otms-arena .arena-launch-actions .arena-settings-open{width:56px;min-width:56px;padding:10px;flex:0 0 56px}
 .arena-settings{z-index:45}
 .arena-settings-card{position:relative;width:min(620px,100%);max-height:calc(100dvh - 48px);overflow:auto;padding:32px;background:linear-gradient(130deg,#252029,#100e16);border:1px solid #c5ac7f77;border-top:3px solid #d5b581;box-shadow:0 25px 90px #000a;color:#f4ece0}

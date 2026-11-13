@@ -28,7 +28,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   if (auth.error) return auth.error
   const cmd = await request.json().catch(() => null)
   if (!cmd || typeof cmd !== 'object' || typeof cmd.action !== 'string' ||
-      !['open','configure','join','select','unlock-alter-lysa','stage','start','fight','cancel-stage','rematch','reset','close','leave','kick','input','heartbeat','pause','resume','exit','forfeit'].includes(cmd.action))
+      !['open','configure','add-bot','select-bot','remove-bot','join','select','unlock-alter-lysa','stage','start','fight','cancel-stage','rematch','reset','close','leave','kick','input','heartbeat','pause','resume','exit','forfeit'].includes(cmd.action))
     return NextResponse.json({error:'Comando inválido.'},{status:400})
   try {
     const room=commandArena(auth.id!, auth.user!.id, auth.role === 'gm', cmd as ArenaCommand)

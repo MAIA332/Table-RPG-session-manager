@@ -2,7 +2,7 @@ import type {ArenaPublicFighter} from './model'
 import {EUPHORIA_TRANSFORM_SECONDS,EUPHORIA_REVERT_SECONDS,ALTER_DANCE_SECONDS} from './model'
 import type {ArenaAnimation,AnimationClock,AnimationFrame} from './animation'
 const root='/arena/animations/alter-lysa/'
-const atlas=(name:string)=>root+name+'-v'+(name.startsWith('base-')||name==='clone'?11:['transform','euphoria-dash','dance'].includes(name)?13:12)+'.webp'
+const atlas=(name:string)=>root+name+'-v'+(name==='dance'||name==='clone'?14:name.startsWith('base-')?11:['transform','euphoria-dash'].includes(name)?13:12)+'.webp'
 export const ALTER_LYSA_ANIMATION_URLS=['base-movement','base-combat','euphoria-movement','euphoria-combat','euphoria-dash','transform','revert','dance','clone'].map(atlas)
 const movement:Record<string,number>={idle:0,forward:1,backward:2,jump:3,crouch:4,guard:5,hit:6,fall:7}
 const combat:Record<string,number>={light:0,heavy:1,kick:2,lowKick:3,special0:1}
@@ -18,7 +18,7 @@ export function alterLysaFrame(f:ArenaPublicFighter,t:number,action:ArenaAnimati
  }
  if(alive&&f.euphoriaState==='transforming')return timed('transform',18,f.euphoriaAt,EUPHORIA_TRANSFORM_SECONDS)
  if(alive&&f.euphoriaState==='reverting')return timed('revert',12,f.euphoriaAt,EUPHORIA_REVERT_SECONDS)
- if(alive&&f.danceUntil>t)return timed('dance',18,f.danceAt,ALTER_DANCE_SECONDS)
+ if(alive&&f.danceUntil>t)return timed('dance',24,f.danceAt,ALTER_DANCE_SECONDS)
  if(alive&&form==='euphoria'&&f.pose==='dash'&&f.dodgeUntil>t)return timed('euphoria-dash',12,f.dodgeUntil-.45,.45)
  const elapsed=Math.max(0,t-clock.at);let frame=0
  if(walking){clock.travel=(clock.travel||0)+Math.min(24,Math.abs(f.x-(clock.lastX??f.x)));clock.lastX=f.x;frame=Math.floor(clock.travel/22)%6}
