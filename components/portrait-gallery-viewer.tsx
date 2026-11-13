@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { ChevronLeft, ChevronRight, Grid2X2, Images, Rows3, X } from "lucide-react"
-import { getDisplayPortraits, type CharacterPortraitCollection } from "@/lib/portrait-gallery"
+import { getDisplayPortraits, characterPortraitLimit, type CharacterPortraitCollection } from "@/lib/portrait-gallery"
 
 interface PortraitGalleryViewerProps {
   name: string
@@ -70,8 +70,8 @@ export function PortraitGalleryViewer({ name, character, onClose, initialLayout 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-5 sm:px-8 lg:px-12">
           <div className="mx-auto w-full max-w-[1500px] flex-1">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-l-2 border-primary/70 pl-4">
-              <div><p className="text-[10px] font-black uppercase tracking-[.19em] text-primary/80">Retratos do personagem</p><h3 className="mt-1 font-serif text-xl font-bold">Cada imagem conta uma história</h3><p className="mt-1 text-xs text-muted-foreground">Explore até cinco versões do personagem, acompanhadas de suas legendas.</p></div>
-              <span className="border border-primary/25 bg-primary/5 px-3 py-1.5 font-mono text-xs text-primary">{String(portraits.length).padStart(2,"0")} / 05</span>
+              <div><p className="text-[10px] font-black uppercase tracking-[.19em] text-primary/80">Retratos do personagem</p><h3 className="mt-1 font-serif text-xl font-bold">Cada imagem conta uma história</h3><p className="mt-1 text-xs text-muted-foreground">Explore as versões do personagem, acompanhadas de suas legendas.</p></div>
+              <span className="border border-primary/25 bg-primary/5 px-3 py-1.5 font-mono text-xs text-primary">{String(portraits.length).padStart(2,"0")} / {String(characterPortraitLimit(character.portraitLimit)).padStart(2, "0")}</span>
             </div>
             <div className="mb-5 flex gap-2 sm:hidden" role="group" aria-label="Modo de visualização">
               <button type="button" aria-pressed={layout === "grid"} onClick={() => setLayout("grid")} className={`flex-1 border px-3 py-2 text-xs ${layout === "grid" ? "border-primary/50 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground"}`}>Grade</button>

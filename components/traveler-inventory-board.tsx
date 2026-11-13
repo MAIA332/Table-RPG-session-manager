@@ -1,7 +1,9 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Backpack, Grip, Package, Search, Settings2, RotateCcw, ArrowLeftRight, Box, Shield, ScrollText } from 'lucide-react'
+import { Backpack, Grip, Package, Search, Settings2, RotateCcw, ArrowLeftRight, Box, Shield, ScrollText, Sparkles, FlaskConical } from 'lucide-react'
 import { itemImageUrl } from '@/lib/item-image'
+import { formatWeight, itemWeightGrams } from '@/lib/inventory-weight'
+import { isConsumableItem } from '@/lib/item-mechanics'
 import { INVENTORY_GROUPS, inventoryGroupOf, type InventoryGroup } from '@/lib/inventory-groups'
 import { indexedInventory, reconcileInventorySlots, swapInventorySlots } from '@/lib/inventory-slot-layout'
 import { useControllerActions } from '@/lib/input/use-controller-actions'
@@ -16,8 +18,9 @@ interface Props {
   freeKg: number
   maxKg: number
   onManage: (index: number) => void
+  onShortcutAction: (index: number, action: "primary" | "consume") => Promise<void>
 }
-export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog,freeKg,maxKg,onManage}:Props) {
+export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog,freeKg,maxKg,onManage,onShortcutAction}:Props) {
   const {active} = useController()
   const gridRef = useRef<HTMLDivElement>(null)
   useEffect(()=>{
@@ -71,8 +74,19 @@ export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog
     }
     setSelected(itemKey||null)
   }
-  useControllerActions({'ui.back':()=>{if(picked!==null){setPicked(null);return true}return false}}, {enabled:active,priority:250})
-  return <div className="otms-inventory-board">
+  const selectedItemIndex = chosen?.index ?? -1
+  const shortcut = (action: "primary" | "consume") => {
+    if (organizing || selectedItemIndex < 0) return
+    void onShortcutAction(selectedItemIndex, action)
+  }
+  useControllerActions({
+    'ui.back':()=>{if(picked!==null){setPicked(null);return true}return false},
+    'inventory.item.primary':()=>{shortcut('primary');return true},
+    'inventory.item.consume':()=>{shortcut('consume');return true},
+    'inventory.item.manage':()=>{if(selectedItemIndex>=0 && !organizing)onManage(selectedItemIndex);return true},
+    'inventory.item.organize':()=>{setOrganizing(current=>!current);setPicked(null);return true},
+  }, {enabled:active,priority:380})
+  return <div data-controller-inventory-shortcuts="active" className="otms-inventory-board">
     <aside className="otms-inventory-categories">
       <div className="otms-inventory-category-title"><Backpack size={21}/> MOCHILA DO VIAJANTE</div>
       {INVENTORY_GROUPS.map(name=><button type="button" key={name} className="otms-inventory-category" data-active={group===name} onClick={()=>{setGroup(name);setPicked(null);setSelected(null)}}>{name==='Armas'?<Grip size={17}/>:name==='Proteção'?<Shield size={17}/>:name==='Consumíveis'?<ScrollText size={17}/>:<Box size={17}/>} {name}</button>)}
@@ -100,6 +114,7 @@ export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog
             onDragOver={event=>{if(organizing)event.preventDefault()}}
             onDrop={event=>{if(!organizing)return;event.preventDefault();const source=Number(event.dataTransfer.getData('text/plain'));if(Number.isInteger(source))setStored(swapInventorySlots(slots,source,index));setPicked(null)}}
             onDragEnd={()=>setPicked(null)} onClick={()=>selectSlot(index)}
+            onFocus={()=>{if(active && !organizing)setSelected(itemKey||null)}}
             className="otms-inventory-slot" data-selected={!!entry&&selected===itemKey} data-picked={picked===index} data-hidden-item={!!entry&&!matches}
             aria-label={entry ? `Slot ${index+1}: ${item?.name||entry.id}${organizing?', pressione para mover':''}`:`Slot vazio ${index+1}`} aria-pressed={!!entry&&selected===itemKey}>
             {matches&&image?<img src={image} alt="" loading="lazy"/>:matches?<Package size={24}/>:null}
@@ -110,7 +125,14 @@ export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog
       </div>
       {(group!=='Todos'||search.trim())&&visibleItemCount===0&&
         <p className="otms-inventory-instructions" role="status">Nenhum item nesta categoria. Confira outro filtro ou limpe a busca.</p>}
-      <div className="otms-inventory-controls"><ControllerGlyph button="A" small/> Escolher {organizing?' / mover':' item'} <ControllerGlyph button="B" small/> Voltar <span>Mouse: clique {organizing?'ou arraste para trocar slots':''}</span></div>
+      <div className="otms-inventory-controls" aria-label="Atalhos da mochila">
+        <span className="otms-inventory-help-item"><ControllerGlyph button="A" small/> {organizing ? 'Mover slot' : 'Selecionar'}</span>
+        <span className="otms-inventory-help-item"><ControllerGlyph button="LS" small/> Equipar/usar</span>
+        <span className="otms-inventory-help-item"><ControllerGlyph button="RS" small/> Consumir</span>
+        <span className="otms-inventory-help-item"><ControllerGlyph button="RB" small/> Gerenciar</span>
+        <span className="otms-inventory-help-item"><ControllerGlyph button="LB" small/> Organizar</span>
+        <span className="otms-inventory-help-item"><ControllerGlyph button="B" small/> Voltar</span>
+      </div>
     </main>
     <aside className="otms-inventory-details" aria-live="polite">
       <div className="otms-inventory-detail-eyebrow">INFORMAÇÕES DO ITEM</div>
@@ -118,6 +140,9 @@ export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog
         <div className="otms-inventory-detail-art">{itemImageUrl(detail?.imageUrl)?<img alt="" src={itemImageUrl(detail?.imageUrl)||''}/>:<Package size={62}/>}</div>
         <h3>{detail?.name||chosen.id}</h3>
         <span className="otms-inventory-detail-type">{detail?.type||detail?.category||'Equipamento'} · {stats.get(chosen.id)} unidade(s)</span>
+        <p className="mt-2 inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary" aria-label={`Peso de uma unidade: ${formatWeight(itemWeightGrams(detail))}`}>
+          Peso unitário: {formatWeight(itemWeightGrams(detail))} · Total: {formatWeight(itemWeightGrams(detail) * (stats.get(chosen.id) || 1))}
+        </p>
         <div className="otms-inventory-detail-stats">
           {detail?.damage!=null&&<p>Dano <strong>{String(detail.damage)}</strong></p>}
           {detail?.defense!=null&&<p>Defesa <strong>{String(detail.defense)}</strong></p>}
@@ -125,7 +150,20 @@ export function TravelerInventoryBoard({characterId,campaignId,equipment,catalog
           {detail?.cost!=null&&<p>Valor <strong>{String(detail.cost)} z</strong></p>}
         </div>
         <p className="otms-inventory-detail-text">{detail?.detail||detail?.effect||'Sem descrição cadastrada.'}</p>
-        <button type="button" className="otms-inventory-manage" onClick={()=>onManage(chosen.index)}><Settings2 size={18}/> Gerenciar este item</button>
+        <div className="otms-inventory-actions" aria-label={`Ações de ${detail?.name || chosen.id}`}>
+          <button type="button" className="otms-inventory-action otms-inventory-action-primary" onClick={()=>shortcut("primary")} aria-label={`Equipar ou usar ${detail?.name || chosen.id} (L3)`}>
+            <ControllerGlyph button="LS" small/>
+            <span className="otms-inventory-action-name"><Sparkles size={15} aria-hidden="true"/> Equipar / usar</span>
+          </button>
+          <button type="button" className="otms-inventory-action otms-inventory-action-consume" onClick={()=>shortcut("consume")} disabled={!isConsumableItem(detail)} aria-label={`Consumir ${detail?.name || chosen.id} (R3)`} title={!isConsumableItem(detail)?'Este item não é consumível':undefined}>
+            <ControllerGlyph button="RS" small/>
+            <span className="otms-inventory-action-name"><FlaskConical size={15} aria-hidden="true"/> Consumir</span>
+          </button>
+          <button type="button" className="otms-inventory-action otms-inventory-action-manage" onClick={()=>onManage(chosen.index)} aria-label={`Gerenciar ${detail?.name || chosen.id} (RB)`}>
+            <ControllerGlyph button="RB" small/>
+            <span className="otms-inventory-action-name"><Settings2 size={16} aria-hidden="true"/> Gerenciar item</span>
+          </button>
+        </div>
       </> : <div className="otms-inventory-empty"><Package size={48}/><p>Selecione um item na grade para ver sua descrição, atributos e ações.</p></div>}
     </aside>
   </div>

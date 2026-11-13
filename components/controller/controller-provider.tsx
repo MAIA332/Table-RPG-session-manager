@@ -251,8 +251,11 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       // para LB/RB/L3/R3, o atalho contextual também deve suspender o hold.
       const soundpadFocused = !settingsOpenRef.current && !!document.querySelector('[data-soundpad-fullscreen]')
       const modalBlocking = !!document.querySelector('.otms-controller-dialog-backdrop, .otms-controller-select-overlay, .otms-controller-keyboard-overlay')
+      const specialAttacks = document.querySelector('[data-controller-special-attacks-shortcuts="active"]')
+      const inventoryGrid = document.querySelector('[data-controller-inventory-shortcuts="active"]')
+      const storeModal = document.querySelector<HTMLElement>('[data-controller-store-shortcuts="active"]')
       const bestiary = document.querySelector('[data-controller-bestiary-shortcuts="active"]')
-      const gmEditCandidate = document.querySelector<HTMLElement>('[data-controller-gm-edit="active"]')
+      const gmEditCandidate = document.querySelector<HTMLElement>('[data-controller-gm-edit="active"], [data-controller-special-attacks-shortcuts="active"], [data-controller-inventory-shortcuts="active"]')
       const modalStack = [...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')].filter(element =>
         element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().height > 0)
       const gmEdit = gmEditCandidate && (!modalStack.length ||
@@ -262,10 +265,15 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       const tableAvailable = !document.querySelector('[aria-modal="true"], [data-controller-layer="active"]')
       const combatPanel = combatModal || (tableAvailable
         ? document.querySelector<HTMLElement>('[data-controller-combat-table="active"]') : null)
+      const topModal = modalStack.at(-1) || null
+      // Uma confirmação sobreposta suspende os atalhos do painel de baixo.
+      const specialVisible = !!specialAttacks && (!topModal || specialAttacks.querySelector('[role="dialog"]') === topModal)
+      const inventoryVisible = !!inventoryGrid && (!topModal || inventoryGrid.closest('[aria-modal="true"]') === topModal)
+      const storeVisible = !!storeModal && (!topModal || storeModal === topModal)
       const scope: ContextualScope = !soundpadFocused && !settingsOpenRef.current && !modalBlocking
-        ? bestiary ? 'bestiary' : combatPanel ? 'combat' : gmEdit ? 'gm' : null : null
+        ? storeVisible ? 'store' : specialVisible ? 'special-attacks' : inventoryVisible ? 'inventory' : bestiary ? 'bestiary' : combatPanel ? 'combat' : gmEdit ? 'gm' : null : null
       const hasCreature = combatPanel?.dataset.controllerHasCreature === 'true'
-      const physicallyPtt = !controllerKeyboardOpen() && [...buttons].some(button =>
+      const physicallyPtt = !controllerKeyboardOpen() && scope !== 'store' && [...buttons].some(button =>
         !(scope && !buttons.has('LT') && contextualShortcut(button, scope, hasCreature)) &&
         actionForButton(button, buttons, getBindings(settingsRef.current)) === 'voice.ptt')
       if (settingsOpenRef.current) pttArmed = false
@@ -351,15 +359,24 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       const bindings = soundpadFocused
         ? soundpadRuntimeBindings(settingsRef.current.soundpadBindings)
         : getBindings(settingsRef.current)
-      let actions=collectActions(buttons,previous,now,times,settingsRef.current.repeatMs,bindings)
+      let actions=collectActions(buttons,previous,now,times,settingsRef.current.repeatMs, scope === 'store'
+        ? {A:'ui.confirm', B:'ui.back', UP:'ui.up', DOWN:'ui.down', LEFT:'ui.left', RIGHT:'ui.right'}
+        : bindings)
       // Painéis dedicados tomam posse temporária dos botões físicos, mesmo
       // quando LB/RB/L3/R3 foram personalizados no perfil global. O modal
       // de confirmação e o Start sempre prevalecem; LT mantém seus atalhos.
-      if (scope) {
+      if (scope === 'store') {
+        // Mercado é dono de X/Y, bumpers, gatilhos e View. Bloquear inclusive
+        // combos LT+... do perfil global, sem regravar as preferências do usuário.
+        for (const button of newlyPressed) {
+          const shortcut = contextualShortcut(button, 'store')
+          if (shortcut) actions.push(shortcut)
+        }
+      } else if (scope) {
         actions = replaceContextualActions(actions, buttons, new Set(newlyPressed), scope,
           hasCreature, button => actionForButton(button, buttons, bindings))
       }
-      const contextualPanelOpen = !!document.querySelector('[data-controller-bestiary-shortcuts="active"], [data-controller-combat-shortcuts="active"], [data-controller-gm-edit="active"]')
+      const contextualPanelOpen = !!document.querySelector('[data-controller-bestiary-shortcuts="active"], [data-controller-combat-shortcuts="active"], [data-controller-gm-edit="active"], [data-controller-special-attacks-shortcuts="active"], [data-controller-inventory-shortcuts="active"], [data-controller-store-shortcuts="active"]')
       // SELECT/VIEW pode ser remapeado normalmente. Apenas uma foto de golpe
       // ativa do Mestre tem prioridade sobre o atalho configurado.
       const cancelablePreviews = [...document.querySelectorAll<HTMLElement>('[data-controller-preview-cancelable="true"]')]
@@ -461,6 +478,17 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       // Escape sintético pode ter target=document; não reprocessar eventos
       // disparados por controllerFocus (evita recursão e TypeError).
       if(!event.isTrusted||!activeRef.current||event.defaultPrevented||event.altKey||event.ctrlKey||event.metaKey)return
+      // O teclado do controle mantém o input de origem focado para impedir
+      // que onBlur desmonte inputs numéricos. Mesmo assim, setas/Enter/Escape
+      // precisam controlar o teclado virtual, não o input atrás do overlay.
+      if (controllerKeyboardOpen()) {
+        const virtualDirections:Record<string,InputAction>={ArrowUp:'ui.up',ArrowDown:'ui.down',ArrowLeft:'ui.left',ArrowRight:'ui.right',Enter:'ui.confirm',Escape:'ui.back'}
+        const virtualAction=virtualDirections[event.key]
+        if (virtualAction) {event.preventDefault();event.stopPropagation();runAction(virtualAction);return}
+        if (event.key==='Backspace' || event.key==='Delete') {
+          event.preventDefault();event.stopPropagation();handleControllerKeyboardButton(event.key==='Delete'?'Y':'X');return
+        }
+      }
       const editing=isEditableKeyboardTarget(event.target)
       if(editing && event.key!=='Escape') {if(settingsRef.current.preference==='auto')setLastInput('desktop');return}
       const mapping:Record<string,InputAction>={ArrowUp:'ui.up',ArrowDown:'ui.down',ArrowLeft:'ui.left',ArrowRight:'ui.right',Enter:'ui.confirm',Escape:'ui.back',Backspace:'ui.back'}

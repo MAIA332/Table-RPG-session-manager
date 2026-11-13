@@ -2,18 +2,20 @@ import { BASE_HP, BASE_MP, BASE_MAX_IP, getClass, type GameClass } from "./game-
 import type { AttributeKey, Character, ClassLevel, DieSize } from "./types"
 import {
   inventoryStatus,
-  INVENTORY_RULES,
+  DEFAULT_CAMPAIGN_INVENTORY_RULES,
+  type CampaignInventoryRules,
   type ItemWeight,
 } from "./inventory-weight"
 export const OVERWEIGHT_MODIFIER_ID = "system:inventory-overweight"
 export function applyInventoryRules<T extends Character>(
   character: T,
   catalog: ItemWeight[] = [],
+  rules: CampaignInventoryRules = DEFAULT_CAMPAIGN_INVENTORY_RULES,
 ): T {
   const equipment = Array.isArray(character.equipment)
     ? character.equipment
     : []
-  const status = inventoryStatus(character, catalog)
+  const status = inventoryStatus(character, catalog, rules)
   const modifiers = Array.isArray((character as any).customModifiers)
     ? (character as any).customModifiers.filter(
         (m: any) => m?.id !== OVERWEIGHT_MODIFIER_ID,
@@ -22,9 +24,9 @@ export function applyInventoryRules<T extends Character>(
   if (status.overloaded)
     modifiers.push({
       id: OVERWEIGHT_MODIFIER_ID,
-      name: "Peso da mochila",
+      name: "Peso",
       target: "dex",
-      value: INVENTORY_RULES.dexPenalty,
+      value: -rules.dexPenalty,
       system: true,
     })
   return {
@@ -58,6 +60,7 @@ export function clamp(value: number, min: number, max: number): number {
 export function normalizeResources(
   character: Character,
   catalog: ItemWeight[] = [],
+  rules: CampaignInventoryRules = DEFAULT_CAMPAIGN_INVENTORY_RULES,
 ): Character {
   const { resources } = character
   return applyInventoryRules(
@@ -72,5 +75,6 @@ export function normalizeResources(
       },
     },
     catalog,
+    rules,
   )
 }

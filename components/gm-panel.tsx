@@ -56,6 +56,7 @@ import {
 } from "lucide-react"
 
 import { ItemWeightField } from "./item-weight-field"
+import { GmInventoryRules } from "./gm-inventory-rules"
 import { weightFields, type ItemWeight } from "@/lib/inventory-weight"
 import { ItemActionsEditor } from "./inventory-equipment"
 import { ItemArtwork } from "./item-artwork"
@@ -2744,6 +2745,7 @@ export function GmPanel({
                             className="w-full bg-background/80 border border-border/80 rounded-lg py-4 pl-12 pr-4 text-xl font-mono font-bold text-accent placeholder:text-muted-foreground/30 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all"
                           />
                         </div>
+                        <GmInventoryRules campaignId={campaignId}/>
                         <p className="text-xs text-muted-foreground bg-accent/5 p-3 rounded-lg border border-accent/10 flex items-center gap-2">
                           <Coins className="size-4 text-accent shrink-0" /> O
                           valor será somado diretamente à carteira do personagem

@@ -12,6 +12,7 @@ import type { GameMap } from "@/lib/map-types"
 import type { CampaignClassBooks } from "./class-books"
 import { campaignItemCatalog, enforceInventoryDatabase } from "./inventory-server"
 import { applyInventoryRules } from "./character"
+import { readCampaignInventoryRules } from "./inventory-weight"
 import { getMongoDb } from "./mongodb"
 import type { AnyBulkWriteOperation, Collection } from "mongodb"
 import { notifyCombatStorageChanged } from "./combat-file-notifications"
@@ -713,7 +714,8 @@ export function getCampaignCharacters(campaignId: string): Character[] {
   return [...store.characters.values()]
     .filter((c) => c.campaignId === campaignId)
     .map((character) =>
-      applyInventoryRules(character, campaignItemCatalog(store, campaignId)),
+      applyInventoryRules(character, campaignItemCatalog(store, campaignId),
+        readCampaignInventoryRules(store.campaignState.get(campaignId)?.inventoryRules)),
     )
     .sort((a, b) => a.createdAt - b.createdAt)
 }

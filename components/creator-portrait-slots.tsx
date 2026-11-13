@@ -2,7 +2,7 @@
 
 import { ImagePlus, Images, Link2, Plus, Sparkles, Trash2, Check, AlertCircle, ArrowUpRight } from "lucide-react"
 import { createClientId } from "@/lib/client-id"
-import { MAX_ALTERNATE_PORTRAITS, MAX_CHARACTER_PORTRAITS, validPortraitImage as publicPortraitUrl, type AlternatePortrait } from "@/lib/portrait-gallery"
+import { DEFAULT_CHARACTER_PORTRAITS, validPortraitImage as publicPortraitUrl, type AlternatePortrait } from "@/lib/portrait-gallery"
 
 type Props = {
   avatarUrl: string
@@ -18,7 +18,7 @@ type Props = {
 /** As imagens extras são exclusivamente URLs HTTPS. O avatar principal usa o campo Foto já existente. */
 export function CreatorPortraitSlots({ avatarUrl, portraitLabel, onAvatarUrl, onPortraitLabel, portraits, onPortraits, onSelect, selectedId }: Props) {
   const add = () => {
-    if (portraits.length >= MAX_ALTERNATE_PORTRAITS) return
+    if (portraits.length >= (DEFAULT_CHARACTER_PORTRAITS - 1)) return
     const newId = `portrait_${createClientId()}`
     onPortraits([...portraits, { id: newId, label: "Nova expressão", url: "" }])
     onSelect(newId)
@@ -49,7 +49,7 @@ export function CreatorPortraitSlots({ avatarUrl, portraitLabel, onAvatarUrl, on
           <h4 className="mt-1 font-serif text-lg font-semibold text-foreground">Suas cinco faces</h4>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Uma imagem principal e até quatro expressões, todas com legenda. Use links de imagens públicas.</p>
         </div>
-        <span className="shrink-0 border border-primary/35 bg-primary/10 px-2.5 py-1 font-mono text-[11px] text-primary">{portraits.length + 1}/{MAX_CHARACTER_PORTRAITS}</span>
+        <span className="shrink-0 border border-primary/35 bg-primary/10 px-2.5 py-1 font-mono text-[11px] text-primary">{portraits.length + 1}/{DEFAULT_CHARACTER_PORTRAITS}</span>
       </div>
       <label className="block space-y-1.5 rounded-sm border border-primary/25 bg-primary/[.06] p-3">
         <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.14em] text-primary"><Sparkles className="size-3.5" /> Legenda do avatar principal</span>
@@ -82,7 +82,7 @@ export function CreatorPortraitSlots({ avatarUrl, portraitLabel, onAvatarUrl, on
             <button type="button" disabled={!valid} onClick={() => makePrimary(portrait.id)} className="flex items-center gap-1.5 text-[10px] font-semibold text-primary underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-40"><ArrowUpRight className="size-3.5" /> Tornar avatar principal</button>
           </div>
         })}
-        {portraits.length < MAX_ALTERNATE_PORTRAITS && <button type="button" onClick={add} className="flex min-h-20 items-center justify-center gap-2 border border-dashed border-primary/40 bg-primary/[.03] p-3 text-xs font-bold text-primary transition hover:border-primary/80 hover:bg-primary/10"><Plus className="size-4" /> Adicionar expressão</button>}
+        {portraits.length < (DEFAULT_CHARACTER_PORTRAITS - 1) && <button type="button" onClick={add} className="flex min-h-20 items-center justify-center gap-2 border border-dashed border-primary/40 bg-primary/[.03] p-3 text-xs font-bold text-primary transition hover:border-primary/80 hover:bg-primary/10"><Plus className="size-4" /> Adicionar expressão</button>}
       </div>
       <p className="text-[11px] leading-relaxed text-muted-foreground">Cada expressão pode representar o personagem cansado, ferido, transformado ou em outro estado. Os demais jogadores poderão vê-las depois na ficha, em grade ou carrossel.</p>
     </section>

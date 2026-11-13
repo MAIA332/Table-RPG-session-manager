@@ -9,10 +9,13 @@ export function ControllerStatus({ active, connected, authenticated, name, lastA
   const [dock, setDock] = useState<HTMLElement | null>(null)
   useEffect(() => {
     if (!active || !authenticated) { setDock(null); return }
-    // The GM panel is conditionally mounted. Observe only structural changes:
-    // after opening and closing, move the same HUD into a reserved layout slot.
+    // Fullscreen panels take precedence over the GM panel, so the HUD never
+    // floats over primary actions (e.g. the Mercado's Comprar button).
+    // When the fullscreen panel unmounts, automatically return to the GM slot.
     const checkDock = () => {
-      const target = document.getElementById('gm-controller-hud-slot')
+      const market = document.getElementById('store-controller-hud-slot')
+      const gm = document.getElementById('gm-controller-hud-slot')
+      const target = (market?.isConnected ? market : null) || (gm?.isConnected ? gm : null)
       setDock(previous => previous === target ? previous : target)
     }
     checkDock()

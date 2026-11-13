@@ -101,6 +101,12 @@ function commit() {
   oldSource.dispatchEvent(new Event('input', {bubbles:true}))
   oldSource.dispatchEvent(new Event('change', {bubbles:true}))
   closeControllerKeyboard()
+  // Alguns campos (ex.: Zenits e capacidade da mochila) só persistem em onBlur.
+  // Aguarda o React processar o input/change antes de disparar o blur final;
+  // nunca desfoca outro elemento se o usuário já mudou de contexto.
+  requestAnimationFrame(() => {
+    if (oldSource.isConnected && document.activeElement === oldSource) oldSource.blur()
+  })
 }
 
 const letters = [
@@ -131,6 +137,10 @@ function renderKeys() {
     button.className = 'otms-controller-keyboard-key' + (special ? ' otms-controller-keyboard-special' : '')
     button.textContent = label
     button.dataset.keyboardValue = value
+    // Não remover o foco do input de origem: alguns formulários React
+    // desmontam o campo no onBlur, fechando o teclado no primeiro direcional.
+    button.addEventListener('pointerdown', event => event.preventDefault())
+    button.addEventListener('mousedown', event => event.preventDefault())
     button.addEventListener('click', () => {
       if (value === 'commit') {commit();return}
       if (value === 'cancel') {closeControllerKeyboard();return}
@@ -168,7 +178,8 @@ function highlight(button: HTMLButtonElement | undefined) {
   index = selected
   keys.forEach(key => {key.removeAttribute('data-controller-focused');key.setAttribute('aria-selected', String(key === button))})
   button.dataset.controllerFocused = 'true'
-  button.focus({preventScroll:true})
+  // Seleção virtual ≠ foco DOM: preserva o input original durante a digitação.
+  // Isso evita o onBlur automático de inputs numéricos condicionais.
   button.scrollIntoView({block:'nearest',inline:'nearest'})
 }
 

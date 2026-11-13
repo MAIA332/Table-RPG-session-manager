@@ -125,7 +125,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       catch (reason) { throw new RestoreError(reason instanceof Error ? reason.message : "Golpes especiais inválidos.") }
       const galleryInput = draft.portraitGallery ?? stored.portraitGallery
       let portraitGallery: ReturnType<typeof validateAlternatePortraits> | undefined
-      try { if (galleryInput !== undefined) portraitGallery = validateAlternatePortraits(galleryInput) }
+      try { if (galleryInput !== undefined) portraitGallery = validateAlternatePortraits(galleryInput, 50) }
       catch (reason) { throw new RestoreError(reason instanceof Error ? reason.message : "Retratos alternativos inválidos.") }
       const portraitLabelInput = draft.portraitLabel ?? stored.portraitLabel
       const portraitLabel = portraitLabelInput === undefined ? undefined : portraitLabelInput.trim()

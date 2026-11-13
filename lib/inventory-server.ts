@@ -1,5 +1,5 @@
 import type { Character } from "./types"
-import { assertInventoryChange, type ItemWeight } from "./inventory-weight"
+import { assertInventoryChange, readCampaignInventoryRules, type ItemWeight } from "./inventory-weight"
 import { applyInventoryRules } from "./character"
 import { assertWornLimits, isItemActionRuntimeMarker } from "./item-mechanics"
 import { EQUIPMENT } from "./game-data"
@@ -54,6 +54,7 @@ export function enforceInventoryDatabase(db: InventoryDatabase, previous?: Inven
     db.characters.set(id, applyInventoryRules(
       reconcileActionRuntime(character, previous?.characters.get(id), now),
       campaignItemCatalog(db, character.campaignId),
+      readCampaignInventoryRules(db.campaignState.get(character.campaignId)?.inventoryRules),
     ))
   }
 }

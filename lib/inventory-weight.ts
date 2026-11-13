@@ -7,8 +7,47 @@ export const INVENTORY_RULES = {
   fallbackGrams: 100,
   dexPenalty: -2,
 } as const
+/** Configurável por campanha e persistido no estado da campanha (validação também no servidor). */
+export type CampaignInventoryRules = {
+  startingZenitLimit: number
+  zenitPerUpgrade: number
+  startingCapacityKg: number
+  capacityPerUpgradeKg: number
+  overloadPercent: number
+  dexPenalty: number
+}
+export const DEFAULT_CAMPAIGN_INVENTORY_RULES: CampaignInventoryRules = {
+  startingZenitLimit: 800, zenitPerUpgrade: 800, startingCapacityKg: 6,
+  capacityPerUpgradeKg: 2, overloadPercent: 100, dexPenalty: 2,
+}
+export function readCampaignInventoryRules(input: unknown): CampaignInventoryRules {
+  const raw = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {}
+  const result = { ...DEFAULT_CAMPAIGN_INVENTORY_RULES }
+  for (const key of Object.keys(result) as (keyof CampaignInventoryRules)[]) {
+    const value = raw[key]
+    const range = key === "startingCapacityKg" ? [1, 1000] : key === "capacityPerUpgradeKg" ? [1, 1000]
+      : key === "overloadPercent" ? [100, 200] : key === "dexPenalty" ? [0, 100] : [0, 100000000]
+    if (typeof value === "number" && Number.isSafeInteger(value) && value >= range[0] && value <= range[1]) result[key] = value
+  }
+  return result
+}
+export function validateCampaignInventoryRules(input: unknown): CampaignInventoryRules {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("Configuração inválida.")
+  const raw = input as Record<string, unknown>
+  const value = readCampaignInventoryRules(input)
+  if ((Object.keys(value) as (keyof CampaignInventoryRules)[]).some(key => raw[key] !== value[key]))
+    throw new Error("Valores inválidos: informe números inteiros dentro dos limites permitidos.")
+  return value
+}
+/** 6 kg = 800z; 8 kg = 1600z; 10 kg = 2400z, com padrões editáveis pelo Mestre. */
+export function zenitCapacity(maxIp: number, rules: CampaignInventoryRules = DEFAULT_CAMPAIGN_INVENTORY_RULES): number {
+  const capacity = Math.max(0, Number.isFinite(maxIp) ? maxIp : 0)
+  const upgrades = Math.max(0, Math.floor((capacity - rules.startingCapacityKg) / rules.capacityPerUpgradeKg))
+  return Math.min(Number.MAX_SAFE_INTEGER, rules.startingZenitLimit + upgrades * rules.zenitPerUpgrade)
+}
 export type ItemWeight = { weight?: number; weightUnit?: "g" | "kg" }
 export type InventoryLike = {
+  zenit?: number
   equipment?: string[]
   customItems?: Array<ItemWeight & { id: string }>
   resources: { maxIp: number }
@@ -52,6 +91,7 @@ export function weightFields(
 export function inventoryStatus(
   character: InventoryLike,
   customCatalog: ItemWeight[] = [],
+  rules: CampaignInventoryRules = DEFAULT_CAMPAIGN_INVENTORY_RULES,
 ) {
   const catalog = new Map<string, ItemWeight>(
     EQUIPMENT.map((item) => [item.id, item]),
@@ -76,14 +116,28 @@ export function inventoryStatus(
   const mig = /^d(\d+)$/i.exec(character.attributes?.mig || "d6")
   const carryLimitGrams =
     ((mig ? Number(mig[1]) : 6) + INVENTORY_RULES.migBonusKg) * 1000
+  const thresholdGrams = Math.round(capacityGrams * rules.overloadPercent / 100)
+  const zenitLimit = zenitCapacity(Number(character.resources?.maxIp) || 0, rules)
+  const zenit = Math.max(0, Number(character.zenit) || 0)
+  const zenitOverflow = Math.max(0, zenit - zenitLimit)
+  // A carga física nunca pode ativar Peso quando a ficha ainda indica kg livres.
+  // Configurações antigas de 1..99% são migradas para 100% por readCampaignInventoryRules.
+  const effectiveThresholdGrams = Math.max(capacityGrams, Math.min(carryLimitGrams, thresholdGrams))
+  const weightOverloaded = grams > effectiveThresholdGrams
   return {
     grams,
     capacityGrams,
+    zenitLimit,
+    zenitOverflow,
+    zenitOverloaded: zenitOverflow > 0,
+    weightOverloaded,
+    overloadThresholdGrams: effectiveThresholdGrams,
     carryLimitGrams,
     freeGrams: Math.max(0, capacityGrams - grams),
     freePoints:
       Math.max(0, capacityGrams - grams) / INVENTORY_RULES.gramsPerPoint,
-    overloaded: grams > carryLimitGrams,
+    // Uma única condição Peso: moedas acima do limite OU itens acima da carga.
+    overloaded: weightOverloaded || zenitOverflow > 0,
   }
 }
 export const formatWeight = (grams: number) =>

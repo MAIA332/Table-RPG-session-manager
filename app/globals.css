@@ -2454,3 +2454,48 @@ body:has(.rpg-combat-launcher) .otms-controller-hud{left:auto;right:15px;bottom:
 .otms-controller-keyboard-help{line-height:1.65;white-space:normal;overflow-wrap:break-word}
 @media(max-height:720px){.otms-controller-keyboard-panel{gap:8px}.otms-controller-keyboard-key{min-height:36px}.otms-controller-keyboard-preview{min-height:40px}}
 @media(prefers-reduced-motion:reduce){.otms-controller-keyboard-key{transition:none}}
+
+/* O HUD do controle entra no cabeçalho do Mercado, sem cobrir Comprar/Vender. */
+.otms-store-controller-dock {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+}
+.otms-store-controller-dock:empty { display: none; }
+.otms-store-controller-dock .otms-controller-hud-docked {
+  position: static !important;
+  inset: auto !important;
+  display: flex !important;
+  width: auto;
+  min-width: 0;
+  max-width: 100% !important;
+  flex-wrap: nowrap;
+  align-items: center;
+  margin: 0;
+  padding: 4px 7px 4px 10px;
+  border-color: rgba(205, 170, 110, .36);
+  border-radius: 9px;
+  background: rgba(13, 24, 30, .85);
+  box-shadow: none;
+  pointer-events: auto;
+}
+.otms-store-controller-dock .otms-controller-hud-heading {
+  gap: 7px;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.otms-store-controller-dock .otms-controller-hud-heading > button {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+/* Os atalhos completos já aparecem na barra contextual da loja. */
+.otms-store-controller-dock .otms-controller-hud-keys,
+.otms-store-controller-dock .otms-controller-last-action { display: none; }
+@media (max-width: 480px) {
+  .otms-store-controller-dock .otms-controller-hud-heading > span { display: none; }
+  .otms-store-controller-dock .otms-controller-hud-docked { padding: 3px 5px; }
+}

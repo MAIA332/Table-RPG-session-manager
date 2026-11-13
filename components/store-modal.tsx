@@ -1,5 +1,5 @@
 "use client"
-import { controllerAlert } from '@/lib/input/dialogs'
+import { controllerAlert, controllerConfirm } from '@/lib/input/dialogs'
 import { normalizeStoreFolders } from "@/lib/store-folders"
 import { useState, useMemo, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -21,6 +21,7 @@ import {
   SearchX,
   ShoppingCart,
   Folder,
+  Scale,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -46,6 +47,11 @@ const modalVariants = {
   exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } },
 } as any
 
+const STORE_CATEGORIES = [
+  ['all', 'Todos'], ['weapon', 'Armas'], ['armor', 'Armaduras'],
+  ['shield', 'Escudos'], ['accessory', 'Acessórios'], ['misc', 'Diversos'],
+] as const
+
 interface StoreModalProps {
   isOpen: boolean
   onClose: () => void
@@ -54,8 +60,8 @@ interface StoreModalProps {
   customEquipment: any[]
   storeFolders: StoreFolder[]
   editable: boolean
-  sellItem: (itemId: string, index: number) => void
-  buyItem: (itemId: string) => void
+  sellItem: (itemId: string, index: number) => Promise<boolean> | boolean
+  buyItem: (itemId: string) => Promise<boolean> | boolean
   getEquipment: (id: string) => any
 }
 
@@ -73,6 +79,8 @@ export function StoreModal({
 }: StoreModalProps) {
   const [storeSearch, setStoreSearch] = useState("")
   const [storeCategory, setStoreCategory] = useState("all")
+  const [selectedBagIndex, setSelectedBagIndex] = useState<number | null>(null)
+  const busyRef = useRef(false)
   const [selectedStoreItem, setSelectedStoreItem] = useState<any | null>(null)
   const { active: controllerActive } = useController()
   const marketRef = useRef<HTMLDivElement>(null)
@@ -160,10 +168,74 @@ export function StoreModal({
     }
     return true
   }
+  const changeCategory = (direction: -1 | 1) => {
+    const index = STORE_CATEGORIES.findIndex(([id]) => id === storeCategory)
+    const next = STORE_CATEGORIES[(index + direction + STORE_CATEGORIES.length) % STORE_CATEGORIES.length][0]
+    setStoreCategory(next)
+    setSelectedStoreItem(null)
+    requestAnimationFrame(() => focusVisibleCatalogCard())
+    return true
+  }
+  const changeFolder = (direction: -1 | 1) => {
+    if (!visibleFolders.length) return true
+    const index = visibleFolders.findIndex(folder => folder.id === activeFolderId)
+    const folder = visibleFolders[(Math.max(0, index) + direction + visibleFolders.length) % visibleFolders.length]
+    setActiveFolderId(folder.id)
+    setSelectedStoreItem(null)
+    setStoreCategory('all')
+    requestAnimationFrame(() => focusVisibleCatalogCard())
+    return true
+  }
+  const buySelected = async () => {
+    if (!editable || busyRef.current) return false
+    const card = marketRef.current?.querySelector<HTMLElement>('[data-store-card]:focus')
+    const item = filteredStoreItems.find(entry => entry.id === card?.dataset.storeItemId) || selectedStoreItem
+    if (!item) { focusZone('catalog'); return false }
+    if (currentZenit < item.cost) { controllerAlert('Zenits insuficientes para esta compra.'); return false }
+    if (!(await controllerConfirm(`Comprar “${item.name}” por ${item.cost} Zenits? Peso adicional: ${formatWeight(itemWeightGrams(item))}.`))) return false
+    busyRef.current = true
+    try {
+      const success = await purchase(item.id)
+      if (success) {
+        setSelectedStoreItem(null)
+        requestAnimationFrame(() => focusVisibleCatalogCard(item.id))
+      }
+      return success
+    } finally { busyRef.current = false }
+  }
+  const sellSelectedAt = async (requestedIndex?: number) => {
+    if (!editable || busyRef.current) return false
+    const focused = document.activeElement as HTMLElement | null
+    const focusIndex = focused?.dataset.storeZone === 'bag' ? Number(focused.dataset.storeItemIndex) : NaN
+    if (requestedIndex === undefined && focusedZone.current !== 'bag' && focused?.dataset.storeZone !== 'bag') {
+      focusZone('bag')
+      return false
+    }
+    const index = requestedIndex ?? (Number.isInteger(focusIndex) && focusIndex >= 0 ? focusIndex : selectedBagIndex)
+    if (index == null || index < 0 || !character.equipment[index]) { focusZone('bag'); return false }
+    const item = customEquipment.find(entry => entry.id === character.equipment[index]) || getEquipment(character.equipment[index])
+    if (!item) return false
+    const value = Math.floor((Number(item.cost) || 0) / 2)
+    if (!(await controllerConfirm(`Vender “${item.name}” por ${value} Zenits? Uma unidade será removida da mochila.`))) return false
+    busyRef.current = true
+    try {
+      const success = await sellItem(item.id, index)
+      if (!success) return false
+      setSelectedBagIndex(current => current == null || character.equipment.length <= 1 ? null : Math.min(current, character.equipment.length - 2))
+      return true
+    } catch (reason) {
+      controllerAlert(reason instanceof Error ? reason.message : 'Não foi possível vender o item.')
+      return false
+    } finally { busyRef.current = false }
+  }
+
   // Captura o foco apenas enquanto a loja está aberta: comandos mapeados para
   // outras partes da campanha não executam por trás de uma compra/venda.
   useControllerActions({
     'ui.confirm': () => {
+      const dialogs=[...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')]
+        .filter(el=>{const rect=el.getBoundingClientRect();return rect.width>0&&rect.height>0})
+      if (dialogs.at(-1) !== marketRef.current) return controllerFocus('ui.confirm')
       if (!marketRef.current?.contains(document.activeElement)) return focusVisibleCatalogCard()
       return controllerFocus('ui.confirm')
     },
@@ -185,19 +257,25 @@ export function StoreModal({
     'ui.down': () => controllerFocus('ui.down'),
     'ui.left': () => controllerFocus('ui.left'),
     'ui.right': () => controllerFocus('ui.right'),
+    'store.buy': () => {void buySelected(); return true},
+    'store.sell': () => {void sellSelectedAt(); return true},
+    'store.category.previous': () => changeCategory(-1),
+    'store.category.next': () => changeCategory(1),
+    'store.folder.previous': () => changeFolder(-1),
+    'store.folder.next': () => changeFolder(1),
+    'store.zone.next': () => focusAdjacentZone(1),
     'ui.settings': () => false, // MENU ainda abre as preferências gerais.
   }, {enabled:isOpen, priority:350, captureAll:true})
 
   const weightStatus = inventoryStatus(character, customEquipment)
-  const purchase = (id: string) => {
+  const purchase = async (id: string) => {
     try {
       assertInventoryChange(
         character,
         { ...character, equipment: [...character.equipment, id] },
         customEquipment,
       )
-      buyItem(id)
-      return true
+      return await buyItem(id)
     } catch (e) {
       controllerAlert(e instanceof Error ? e.message : "Mochila sem capacidade.")
       return false
@@ -263,7 +341,7 @@ export function StoreModal({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 md:p-6 overflow-hidden"
+          className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/95 backdrop-blur-lg"
           onClick={onClose}
         >
           <motion.div
@@ -274,36 +352,37 @@ export function StoreModal({
             aria-label="Mercado e Forja"
             data-controller-layer={controllerActive ? 'active' : undefined}
             data-controller-store="active"
-            className="rpg-modal relative flex h-full max-h-[95vh] w-full max-w-7xl flex-col overflow-hidden border border-accent/30 bg-zinc-950 shadow-2xl"
+            className="rpg-modal relative flex h-[100dvh] w-screen max-w-none flex-col overflow-hidden border-0 bg-[#0b1116] shadow-2xl"
+            data-controller-store-shortcuts={controllerActive ? 'active' : undefined}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header da Loja */}
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 p-5 md:p-6 border-b border-white/10 bg-black/50 shrink-0">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-accent/20 bg-gradient-to-r from-[#142934] via-[#101c23] to-[#0c1218] px-4 py-3 sm:px-7 sm:py-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-accent/10 border border-accent/20">
                   <Store className="size-6 md:size-7 text-accent" />
                 </div>
                 <div>
-                  <h4 className="font-serif text-xl md:text-2xl font-black text-[#eee3cf]">
+                  <h4 className="font-serif text-2xl font-black tracking-tight text-[#eee3cf] md:text-3xl">
                     Mercado & Forja
                   </h4>
-                  <p className="text-sm text-amber-200">
-                    Mochila: {formatWeight(weightStatus.grams)} /{" "}
-                    {formatWeight(weightStatus.capacityGrams)} · Livre:{" "}
-                    {formatWeight(weightStatus.freeGrams)}
+                  <p className="text-[11px] font-medium text-amber-200/85 sm:text-xs">
+                    Carga {formatWeight(weightStatus.grams)} / {formatWeight(weightStatus.capacityGrams)} · Livre {formatWeight(weightStatus.freeGrams)}
                   </p>
                   <p className="text-[10px] md:text-xs uppercase tracking-[0.2em] text-muted-foreground">
                     Equipamentos • Relíquias • Suprimentos
                   </p>
                 </div>
               </div>
-              <div className="flex items-center justify-between md:justify-end gap-3">
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
                 <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-full border border-accent/20 shadow-inner">
                   <Coins className="size-4 text-accent" />
                   <span className="font-mono font-bold text-sm md:text-base text-foreground">
                     {currentZenit} z
                   </span>
                 </div>
+                {/* A presença do controle ocupa espaço no cabeçalho. */}
+                {controllerActive && <div id="store-controller-hud-slot" className="otms-store-controller-dock" aria-label="Status do controle no mercado" />}
                 <button
                   onClick={onClose}
                   aria-label="Fechar Mercado e Forja"
@@ -314,18 +393,21 @@ export function StoreModal({
               </div>
             </div>
 
-            {controllerActive && <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2 border-b border-accent/20 bg-accent/[.07] px-5 py-2.5 text-[11px] text-foreground/90" aria-label="Comandos de controle do Mercado e Forja">
-              <span className="font-bold tracking-wide text-accent">Mercado / controle</span>
-              <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="LB" small/><ControllerGlyph button="RB" small/> Trocar área</span>
-              <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="A" small/> Examinar / comprar / vender</span>
-              <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="B" small/> Voltar / fechar</span>
-              <span className="text-muted-foreground">Analógico direito: rolar lista</span>
-            </div>}
+            {controllerActive && <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-accent/20 bg-[#0e1c25] px-4 py-2.5 text-[11px] text-foreground/85 sm:px-7" aria-label="Comandos de controle do Mercado e Forja">
+               <span className="font-bold uppercase tracking-[.14em] text-accent">Atalhos</span>
+               <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="X" small/> Comprar</span>
+               <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="Y" small/> Vender</span>
+               <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="LB" small/><ControllerGlyph button="RB" small/> Categorias</span>
+               <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="LT" small/><ControllerGlyph button="RT" small/> Pastas</span>
+               <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="VIEW" small/> Painéis</span>
+               <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="A" small/> Selecionar</span>
+               <span className="inline-flex items-center gap-1.5"><ControllerGlyph button="B" small/> Voltar</span>
+             </div>}
 
             {/* Corpo da Loja */}
-            <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
               {/* Mochila (Sidebar Esquerda) */}
-              <aside className="max-h-[25dvh] lg:max-h-none lg:w-[260px] xl:w-[300px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20 flex flex-col">
+              <aside className="flex max-h-[22dvh] shrink-0 flex-col border-b border-white/10 bg-[#0e191f] lg:max-h-none lg:w-[250px] lg:border-b-0 lg:border-r xl:w-[292px]">
                 <div className="p-4 border-b border-white/10 flex items-center justify-between">
                   <div>
                     <h5 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -360,7 +442,7 @@ export function StoreModal({
                         return (
                           <div
                             key={`${id}-${index}`}
-                            className="group flex items-center gap-3 p-3 rounded-lg bg-card/60 border border-border/50 hover:border-accent/40 hover:bg-card transition-all"
+                            className={`group flex items-center gap-3 rounded-xl border p-3 transition-all ${selectedBagIndex === index ? "border-accent/60 bg-accent/10" : "border-border/40 bg-card/40 hover:border-accent/40 hover:bg-card"}`}
                           >
                              <div className="shrink-0">
                                <ItemArtwork name={item.name} imageUrl={item.imageUrl} className="size-9" fallback={<Package className="size-4 text-accent/70" />} />
@@ -370,7 +452,7 @@ export function StoreModal({
                                 {item.name}
                               </p>
                               <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                {getCategoryLabel(item.category)}{item.consumable === true ? " · Consumível" : ""}
+                                {getCategoryLabel(item.category)} · {formatWeight(itemWeightGrams(item))}{item.consumable === true ? " · Consumível" : ""}
                               </p>
                             </div>
                             <Button
@@ -378,11 +460,13 @@ export function StoreModal({
                               variant="ghost"
                               disabled={!editable}
                               data-store-zone="bag"
-                              aria-label={`Vender ${item.name} por ${sellPrice} Zenits`}
-                              className="text-accent hover:bg-accent/10 shrink-0 px-2"
-                              onClick={() => sellItem(item.id, index)}
+                               data-store-item-index={index}
+                               aria-label={`Vender ${item.name} por ${sellPrice} Zenits. Peso removido: ${formatWeight(itemWeightGrams(item))}`}
+                               className="min-h-10 shrink-0 rounded-lg border border-accent/25 bg-accent/5 px-2.5 text-accent hover:bg-accent/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                               onFocus={() => setSelectedBagIndex(index)}
+                               onClick={() => {setSelectedBagIndex(index); void sellSelectedAt(index)}}
                             >
-                              +{sellPrice}z
+                              {controllerActive && <ControllerGlyph button="Y" small/>} +{sellPrice}z
                             </Button>
                           </div>
                         )
@@ -393,19 +477,21 @@ export function StoreModal({
               </aside>
 
               {/* Área Principal (Filtros, Pastas e Vitrine) */}
-              <main className="flex-1 min-w-0 flex flex-col">
-                <div className="p-4 md:p-5 border-b border-white/10 bg-black/20 flex flex-col gap-4">
+              <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <div className="flex shrink-0 flex-col gap-3 border-b border-accent/15 bg-[#11232b]/75 p-3 sm:p-4">
                   {/* PASTAS DA LOJA */}
-                  <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar-sepia">
+                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar-sepia">
                     {visibleFolders.map((folder) => (
                       <button
                         key={folder.id}
                         data-store-zone="catalog"
+                        aria-pressed={activeFolderId === folder.id}
+                        aria-label={`Pasta ${folder.name}`}
                         onClick={() => {
                           setActiveFolderId(folder.id)
                           setSelectedStoreItem(null)
                         }}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all ${activeFolderId === folder.id ? "bg-accent/20 text-accent border-accent/50 shadow-inner" : "bg-white/5 text-muted-foreground border-white/10 hover:bg-white/10 hover:text-foreground"}`}
+                        className={`flex min-h-10 items-center gap-2 rounded-lg border px-4 py-2 text-xs font-bold whitespace-nowrap transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${activeFolderId === folder.id ? "bg-accent/20 text-accent border-accent/50 shadow-inner" : "bg-white/5 text-muted-foreground border-white/10 hover:bg-white/10 hover:text-foreground"}`}
                       >
                         <Folder className="size-4" />
                         {folder.name}
@@ -428,19 +514,13 @@ export function StoreModal({
                       />
                     </div>
                     <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar-sepia">
-                      {[
-                        ["all", "Todos"],
-                        ["weapon", "Armas"],
-                        ["armor", "Armaduras"],
-                        ["shield", "Escudos"],
-                        ["accessory", "Acessórios"],
-                        ["misc", "Diversos"],
-                      ].map(([id, label]) => (
+                      {STORE_CATEGORIES.map(([id, label]) => (
                         <button
                           key={id}
                           data-store-zone="catalog"
-                          onClick={() => setStoreCategory(id)}
-                          className={`px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider font-bold whitespace-nowrap border transition-all ${storeCategory === id ? "bg-accent text-accent-foreground border-accent" : "bg-white/5 text-muted-foreground border-white/10 hover:border-accent/30 hover:text-foreground"}`}
+                          aria-pressed={storeCategory === id}
+                          onClick={() => { setStoreCategory(id); setSelectedStoreItem(null) }}
+                          className={`min-h-10 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${storeCategory === id ? "bg-accent text-accent-foreground border-accent" : "bg-white/5 text-muted-foreground border-white/10 hover:border-accent/30 hover:text-foreground"}`}
                         >
                           {label}
                         </button>
@@ -449,7 +529,7 @@ export function StoreModal({
                   </div>
                 </div>
 
-                <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 custom-scrollbar-sepia">
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 custom-scrollbar-sepia sm:p-5">
                   <div className="mb-4 flex items-end justify-between">
                     <div>
                       <h5 className="font-serif text-lg font-bold text-foreground">
@@ -493,7 +573,8 @@ export function StoreModal({
                             data-store-zone="catalog"
                             data-store-card="true"
                             data-store-item-id={item.id}
-                            aria-label={`Examinar ${item.name}, custo ${item.cost} Zenits`}
+                            aria-pressed={selected}
+                            aria-label={`Examinar ${item.name}, custo ${item.cost} Zenits, peso ${formatWeight(itemWeightGrams(item))}`}
                             onClick={(event) => {
                               setSelectedStoreItem(item)
                               // No controle, A entra na inspeção; um clique de mouse
@@ -501,7 +582,7 @@ export function StoreModal({
                               if (controllerActive && event.detail === 0)
                                 requestAnimationFrame(()=>focusZone('inspect'))
                             }}
-                            className={`text-left group relative p-4 rounded-xl border transition-all duration-200 ${selected ? "border-accent bg-accent/10 shadow-lg shadow-accent/5" : canAfford ? "border-border/60 bg-card/50 hover:border-accent/40 hover:bg-card" : "border-destructive/20 bg-destructive/5 opacity-60"}`}
+                            className={`group relative min-h-[160px] rounded-xl border p-4 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${selected ? "border-accent bg-accent/10 shadow-lg shadow-accent/5" : canAfford ? "border-border/60 bg-card/50 hover:border-accent/40 hover:bg-card" : "border-destructive/20 bg-destructive/5 opacity-60"}`}
                           >
                             <div className="absolute top-3 right-3">
                               <div
@@ -533,10 +614,9 @@ export function StoreModal({
                                 {getCategoryLabel(item.category)}{item.consumable === true ? " · Consumível" : ""}
                               </p>
                             </div>
-                            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
-                              <span className="text-[10px] text-muted-foreground">
-                                Clique para examinar
-                              </span>
+                             <div className="mt-4 flex items-center justify-between gap-2 border-t border-white/10 pt-3">
+                               <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary"><Scale className="size-3.5"/> {formatWeight(itemWeightGrams(item))}</span>
+                               <span className="text-[10px] text-muted-foreground">Examinar</span>
                               <Eye className="size-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
                             </div>
                           </motion.button>
@@ -554,7 +634,7 @@ export function StoreModal({
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
-                    className="w-full lg:w-[340px] xl:w-[380px] shrink-0 border-t lg:border-t-0 lg:border-l border-white/10 bg-black/40 flex flex-col"
+                    className="flex max-h-[38dvh] w-full shrink-0 flex-col overflow-hidden border-t border-white/10 bg-[#0d1b22] lg:max-h-none lg:w-[340px] lg:border-l lg:border-t-0 xl:w-[380px]"
                   >
                     <div className="p-5 border-b border-white/10">
                       <div className="flex justify-between items-start gap-3">
@@ -563,8 +643,7 @@ export function StoreModal({
                             Inspecionando
                           </p>
                           <h5 className="font-serif text-xl font-bold text-foreground">
-                            {selectedStoreItem.name} ·{" "}
-                            {formatWeight(itemWeightGrams(selectedStoreItem))}
+                             {selectedStoreItem.name}
                           </h5>
                         </div>
                         <button
@@ -609,7 +688,7 @@ export function StoreModal({
                             {selectedStoreItem.detail}
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                         <div className="grid grid-cols-3 gap-2">
                           <div className="p-3 rounded-lg bg-card border border-border/50">
                             <p className="text-[9px] uppercase tracking-widest text-muted-foreground">
                               Categoria
@@ -626,26 +705,24 @@ export function StoreModal({
                               {selectedStoreItem.cost} z
                             </p>
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-5 border-t border-white/10 bg-black/30">
+                           <div className="rounded-lg border border-primary/25 bg-primary/10 p-3">
+                             <p className="text-[9px] uppercase tracking-widest text-primary/80">Peso por unidade</p>
+                             <p className="mt-1 text-xs font-bold text-primary">{formatWeight(itemWeightGrams(selectedStoreItem))}</p>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                     <div className="border-t border-white/10 bg-black/30 p-3 sm:p-4">
                       {currentZenit >= selectedStoreItem.cost ? (
                         <Button
                           disabled={!editable}
                           data-store-zone="inspect"
                           data-store-buy="true"
-                          onClick={() => {
-                            const id=selectedStoreItem.id as string
-                            if (purchase(id)) {
-                              setSelectedStoreItem(null)
-                              if (controllerActive) requestAnimationFrame(()=>focusVisibleCatalogCard(id))
-                            }
-                          }}
+                           onClick={() => void buySelected()}
                           className="w-full h-11 bg-accent text-accent-foreground hover:bg-accent/90 font-bold"
                         >
-                          <ShoppingCart className="size-4 mr-2" /> Comprar por{" "}
-                          {selectedStoreItem.cost} z
+                          <ShoppingCart className="size-4 mr-2" /> Comprar por {selectedStoreItem.cost} z
+                          {controllerActive && <span className="ml-auto"><ControllerGlyph button="X" small/></span>}
                         </Button>
                       ) : (
                         <div className="text-center p-3 rounded-lg bg-destructive/10 border border-destructive/20">

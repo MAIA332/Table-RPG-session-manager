@@ -1,3 +1,4 @@
+import { readCampaignInventoryRules } from "@/lib/inventory-weight"
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import {
@@ -256,6 +257,7 @@ export async function PATCH(
       const normalized = normalizeResources(
         { ...next, updatedAt: Math.max(Date.now(), current.updatedAt + 1) },
         catalog,
+        readCampaignInventoryRules(db.campaignState.get(current.campaignId)?.inventoryRules),
       )
       // A normalização calcula recursos e capacidade, mas não pode apagar LP.
       // O único valor válido é o que existia no armazenamento no início

@@ -7,7 +7,7 @@ import { CharacterPortrait } from "@/components/character-portrait"
 import { Button } from "@/components/ui/button"
 import { createClientId } from "@/lib/client-id"
 import { DEFAULT_PORTRAIT_CROP, normalizePortraitCrop, type PortraitCrop, type PortraitFrameId } from "@/lib/portrait-frames"
-import { MAX_ALTERNATE_PORTRAITS, MAX_CHARACTER_PORTRAITS, validPortraitImage, validateAlternatePortraits, type AlternatePortrait } from "@/lib/portrait-gallery"
+import { MAX_ALTERNATE_PORTRAITS, MAX_CHARACTER_PORTRAITS, characterPortraitLimit, validPortraitImage, validateAlternatePortraits, type AlternatePortrait } from "@/lib/portrait-gallery"
 
 interface PortraitEditorProps {
   name: string
@@ -16,6 +16,9 @@ interface PortraitEditorProps {
   crop?: PortraitCrop
   portraitLabel?: string
   portraitGallery?: AlternatePortrait[]
+  portraitLimit?: number
+  canConfigureLimit?: boolean
+  onSaveLimit?: (limit: number) => Promise<void>
   onClose: () => void
   onSave: (avatarUrl: string, crop: PortraitCrop, portraitLabel: string, gallery: AlternatePortrait[]) => Promise<void>
 }
@@ -42,7 +45,10 @@ async function prepareImage(file: File): Promise<string> {
 }
 
 /** Editor em caixas com limite total de cinco retratos, incluindo o avatar principal. */
-export function PortraitEditor({ name, avatarUrl, frame, crop, portraitLabel, portraitGallery, onClose, onSave }: PortraitEditorProps) {
+export function PortraitEditor({ name, avatarUrl, frame, crop, portraitLabel, portraitGallery, portraitLimit, canConfigureLimit = false, onSaveLimit, onClose, onSave }: PortraitEditorProps) {
+  const [limit, setLimit] = useState(() => characterPortraitLimit(portraitLimit))
+  const [limitDraft, setLimitDraft] = useState(() => characterPortraitLimit(portraitLimit))
+  const [limitBusy, setLimitBusy] = useState(false)
   const [currentUrl, setCurrentUrl] = useState(avatarUrl || "/mystic-adventurer-portrait.png")
   const [urlDraft, setUrlDraft] = useState(avatarUrl || "")
   const [currentCrop, setCurrentCrop] = useState(() => normalizePortraitCrop(crop))
@@ -102,7 +108,7 @@ export function PortraitEditor({ name, avatarUrl, frame, crop, portraitLabel, po
   }
 
   function addPortrait() {
-    if (extras.length >= MAX_ALTERNATE_PORTRAITS) return
+    if (extras.length >= limit - 1) return
     setExtras(current => [...current, { id: `portrait_${createClientId()}`, label: "Nova expressão", url: "" }])
     setError("")
   }
@@ -138,7 +144,7 @@ export function PortraitEditor({ name, avatarUrl, frame, crop, portraitLabel, po
     try {
       const label = mainLabel.trim()
       if (!label || label.length > 60) throw new Error("A legenda principal deve ter de 1 a 60 caracteres.")
-      const normalized = validateAlternatePortraits(extras)
+      const normalized = validateAlternatePortraits(extras, limit)
       if (normalized.some(item => item.url === currentUrl)) throw new Error("A imagem principal não pode se repetir nas alternativas.")
       setSaving(true)
       await onSave(currentUrl, currentCrop, label, normalized)
@@ -151,10 +157,17 @@ export function PortraitEditor({ name, avatarUrl, frame, crop, portraitLabel, po
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[11500] flex items-center justify-center overflow-y-auto bg-black/85 p-2 backdrop-blur-md sm:p-5" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
       <motion.div ref={editorDialogRef} role="dialog" aria-modal="true" aria-label={`Editar retratos de ${name}`} tabIndex={-1} initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.98 }} className="rpg-modal my-auto flex max-h-[96dvh] w-full max-w-[1320px] flex-col overflow-hidden border border-primary/30 bg-background text-foreground shadow-2xl">
         <header className="flex shrink-0 items-center justify-between gap-4 border-b border-primary/20 bg-card/40 px-4 py-4 sm:px-7">
-          <div className="flex min-w-0 items-center gap-3"><span className="grid size-11 shrink-0 place-items-center border border-primary/40 bg-primary/10 text-primary"><Images className="size-5" /></span><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[.22em] text-primary/80">Retratos do viajante · {extras.length + 1} / {MAX_CHARACTER_PORTRAITS}</p><h2 className="truncate font-serif text-xl font-black sm:text-2xl">Expressões de {name}</h2></div></div>
+          <div className="flex min-w-0 items-center gap-3"><span className="grid size-11 shrink-0 place-items-center border border-primary/40 bg-primary/10 text-primary"><Images className="size-5" /></span><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[.22em] text-primary/80">Retratos do viajante · {extras.length + 1} / {limit}</p><h2 className="truncate font-serif text-xl font-black sm:text-2xl">Expressões de {name}</h2></div></div>
           <button type="button" onClick={onClose} aria-label="Fechar editor de retratos" className="grid size-10 shrink-0 place-items-center border border-border/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"><X className="size-5" /></button>
         </header>
 
+        {canConfigureLimit && onSaveLimit && <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-primary/25 bg-primary/5 px-4 py-3 sm:px-7">
+          <div><p className="text-xs font-bold text-primary">Limite de retratos · Mestre</p><p className="text-[10px] text-muted-foreground">De 1 a 50 por personagem. Não remove imagens existentes.</p></div>
+          <div className="flex items-center gap-2"><input type="number" min={1} max={50} step={1} aria-label="Limite de retratos do personagem" value={limitDraft} onChange={e => setLimitDraft(Number(e.target.value))} className="w-20 border border-primary/30 bg-background p-2 text-center text-sm"/>
+            <button type="button" disabled={limitBusy || limitDraft === limit || !Number.isInteger(limitDraft) || limitDraft < 1 || limitDraft > 50 || extras.length + 1 > limitDraft}
+              onClick={async () => {setLimitBusy(true);setError("");try {await onSaveLimit(limitDraft);setLimit(limitDraft)}catch(e){setError(e instanceof Error ? e.message : "Não foi possível atualizar o limite.")}finally{setLimitBusy(false)}}}
+              className="inline-flex min-h-10 items-center gap-2 border border-primary/45 bg-primary/10 px-3 text-xs font-bold text-primary disabled:opacity-40"><Check className="size-4"/> Aplicar limite</button></div>
+        </div>}
         <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.15fr)]">
           <section className="rpg-themed-workspace border-b border-border/60 bg-card/20 p-4 sm:p-6 lg:border-b-0 lg:border-r">
             <div className="mb-4 flex items-center justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-[.18em] text-primary">01 · Avatar principal</span><span className="border border-primary/30 bg-primary/10 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-primary">Principal</span></div>
@@ -174,7 +187,7 @@ export function PortraitEditor({ name, avatarUrl, frame, crop, portraitLabel, po
           </section>
 
           <section className="min-w-0 space-y-4 p-4 sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-l-2 border-primary/70 pl-4"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-primary">02 · Galeria de expressões</p><h3 className="mt-1 font-serif text-lg font-bold sm:text-xl">Outras versões do personagem</h3><p className="mt-1 text-xs text-muted-foreground">Defina até quatro imagens extras, com uma legenda para cada estado.</p></div><span className="font-mono text-xs text-primary">{extras.length} / {MAX_ALTERNATE_PORTRAITS}</span></div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-l-2 border-primary/70 pl-4"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-primary">02 · Galeria de expressões</p><h3 className="mt-1 font-serif text-lg font-bold sm:text-xl">Outras versões do personagem</h3><p className="mt-1 text-xs text-muted-foreground">Defina até {limit - 1} imagens extras, com uma legenda para cada estado.</p></div><span className="font-mono text-xs text-primary">{extras.length} / {limit - 1}</span></div>
             <div className="rounded-sm border border-primary/25 bg-primary/[.05] p-3 text-xs text-muted-foreground"><Sparkles className="mr-2 inline size-4 text-primary" /> Exemplos: <strong className="text-foreground">Normal</strong>, <strong className="text-foreground">Cansado</strong>, <strong className="text-foreground">Ferido</strong>, <strong className="text-foreground">Transformado</strong>. Outros jogadores poderão visualizar as versões em grade ou carrossel.</div>
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               {extras.map((portrait, index) => (
@@ -194,12 +207,12 @@ export function PortraitEditor({ name, avatarUrl, frame, crop, portraitLabel, po
                   <button type="button" onClick={() => makePrimary(portrait.id)} className="flex w-full items-center justify-center gap-1.5 border border-primary/25 bg-primary/5 px-3 py-2 text-[11px] font-semibold text-primary transition hover:border-primary/60 hover:bg-primary/10"><ArrowUpRight className="size-3.5" /> Definir como avatar principal</button>
                 </div>
               ))}
-              {extras.length < MAX_ALTERNATE_PORTRAITS && <button type="button" onClick={addPortrait} className="flex min-h-[175px] flex-col items-center justify-center gap-2 border border-dashed border-primary/35 bg-primary/[.025] px-4 py-5 text-primary transition hover:border-primary/70 hover:bg-primary/[.07]"><span className="grid size-11 place-items-center rounded-full border border-primary/35 bg-primary/10"><Plus className="size-5" /></span><strong className="text-sm">Adicionar expressão</strong><span className="text-[11px] text-muted-foreground">URL pública + legenda</span></button>}
+              {extras.length < limit - 1 && <button type="button" onClick={addPortrait} className="flex min-h-[175px] flex-col items-center justify-center gap-2 border border-dashed border-primary/35 bg-primary/[.025] px-4 py-5 text-primary transition hover:border-primary/70 hover:bg-primary/[.07]"><span className="grid size-11 place-items-center rounded-full border border-primary/35 bg-primary/10"><Plus className="size-5" /></span><strong className="text-sm">Adicionar expressão</strong><span className="text-[11px] text-muted-foreground">URL pública + legenda</span></button>}
             </div>
           </section>
         </div>
         <footer className="flex shrink-0 flex-col gap-3 border-t border-primary/20 bg-card/35 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-          <div className="min-w-0"><p className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground"><ImagePlus className="size-4 text-primary" /> {extras.length + 1} de {MAX_CHARACTER_PORTRAITS} retratos</p><p className="mt-1 text-[10px] text-muted-foreground">Alterações só são publicadas após salvar.</p></div>
+          <div className="min-w-0"><p className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground"><ImagePlus className="size-4 text-primary" /> {extras.length + 1} de {limit} retratos</p><p className="mt-1 text-[10px] text-muted-foreground">Alterações só são publicadas após salvar.</p></div>
           <div className="flex flex-wrap items-center gap-2">{error && <p role="alert" className="w-full text-xs text-destructive sm:max-w-[330px]">{error}</p>}<Button variant="outline" disabled={saving || preparing} onClick={onClose}>Cancelar</Button><Button onClick={() => void savePortrait()} disabled={saving || preparing} className="min-w-[150px] gap-2 font-bold">{saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} {saving ? "Salvando..." : "Salvar retratos"}</Button></div>
         </footer>
       </motion.div>

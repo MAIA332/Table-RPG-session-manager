@@ -1,6 +1,11 @@
-/** Até cinco retratos por ficha: o avatar principal + quatro alternativas. */
-export const MAX_CHARACTER_PORTRAITS = 5
+/** Limite máximo de segurança; cada personagem começa com cinco retratos. */
+export const MAX_CHARACTER_PORTRAITS = 50
 export const MAX_ALTERNATE_PORTRAITS = MAX_CHARACTER_PORTRAITS - 1
+export const DEFAULT_CHARACTER_PORTRAITS = 5
+export function characterPortraitLimit(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= MAX_CHARACTER_PORTRAITS
+    ? value : DEFAULT_CHARACTER_PORTRAITS
+}
 
 export interface AlternatePortrait {
   id: string
@@ -16,6 +21,7 @@ export type CharacterPortraitCollection = {
   avatarUrl?: string
   portraitLabel?: string
   portraitGallery?: AlternatePortrait[]
+  portraitLimit?: number
 }
 
 export function publicPortraitUrl(value: string): boolean {
@@ -62,9 +68,10 @@ export function getDisplayPortraits(character: CharacterPortraitCollection): Dis
 }
 
 /** Validação estrita para gravação de uploads comprimidos e URLs públicas. */
-export function validateAlternatePortraits(raw: unknown): AlternatePortrait[] {
-  if (!Array.isArray(raw) || raw.length > MAX_ALTERNATE_PORTRAITS) {
-    throw new Error(`Você pode cadastrar até ${MAX_CHARACTER_PORTRAITS} retratos, incluindo o principal.`)
+export function validateAlternatePortraits(raw: unknown, limit = DEFAULT_CHARACTER_PORTRAITS): AlternatePortrait[] {
+  const maximum = characterPortraitLimit(limit)
+  if (!Array.isArray(raw) || raw.length > maximum - 1) {
+    throw new Error(`Este personagem pode cadastrar até ${maximum} retratos, incluindo o principal.`)
   }
   const ids = new Set<string>()
   const urls = new Set<string>()

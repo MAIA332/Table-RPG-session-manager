@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { ItemArtwork } from "./item-artwork"
 import { ITEM_EQUIPPED_PREFIX, blankItemAction, equippedItemBonuses, getItemActions, hasItemBonuses, itemBonusEntries, parseItemDice, rollItemDice, sumItemBonus, itemCooldownRemaining, itemInversionState, itemDamageDefinition, validateItemAction, EQUIPMENT_LIMITS, wearableKind, wearItemUpdates, wornCounts, consumeInventoryItemUpdates, isConsumableItem, isMiscItem, type ItemAction, type ItemStatKey } from "@/lib/item-mechanics"
 import { OVERWEIGHT_MODIFIER_ID } from "@/lib/character"
+import { formatWeight, itemWeightGrams } from "@/lib/inventory-weight"
 
 type Props = {
     character: any
@@ -255,7 +256,7 @@ export function InventoryEquipment({ character, catalog, editable, isGm, busy, o
                 <header className="flex items-start justify-between gap-3 border-b border-primary/15 bg-primary/5 p-4">
                     <div className="flex min-w-0 items-start gap-3">
                         {item.imageUrl && <ItemArtwork name={item.name} imageUrl={item.imageUrl} expandable className="size-14" />}
-                        <div className="min-w-0"><h4 className="font-serif text-base font-bold text-primary">{item.name}</h4><div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-wide text-muted-foreground">{item.type && <span>{item.type}</span>}{miscellaneous && <span>Diversos</span>}{consumable && <span className="text-amber-200">Consumível</span>}{item.purchasable === false && <span className="text-purple-300">Loot raro</span>}{activated && <span className="text-emerald-300">Bônus ativos</span>}</div></div></div>
+                        <div className="min-w-0"><h4 className="font-serif text-base font-bold text-primary">{item.name}</h4><div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-wide text-muted-foreground">{item.type && <span>{item.type}</span>}{miscellaneous && <span>Diversos</span>}{consumable && <span className="text-amber-200">Consumível</span>}{item.purchasable === false && <span className="text-purple-300">Loot raro</span>}<span className="font-semibold text-primary">Peso {formatWeight(itemWeightGrams(item))}</span>{activated && <span className="text-emerald-300">Bônus ativos</span>}</div></div></div>
                     <div className="flex shrink-0 items-center gap-1"><span className="rounded border border-primary/20 px-2 py-1 font-mono text-xs text-primary">{item.cost ?? 0}z</span>{isGm && <Button variant="ghost" size="sm" disabled={busy || !!activeKey} onClick={() => onRemove(index)} aria-label={`Remover ${item.name}`} className="h-8 w-8 p-0"><Trash2 className="size-4" /></Button>}</div>
                 </header>
                 {editable && onTransfer && transferTargets.length > 0 && (

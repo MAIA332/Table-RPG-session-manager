@@ -133,6 +133,9 @@ export interface Character {
   avatarUrl: string
   portraitFrame?: import("./portrait-frames").PortraitFrameId
   portraitCrop?: import("./portrait-frames").PortraitCrop
+  portraitLabel?: string
+  portraitGallery?: import("./portrait-gallery").AlternatePortrait[]
+  portraitLimit?: number
   origin: string
   identity: string
   theme: string

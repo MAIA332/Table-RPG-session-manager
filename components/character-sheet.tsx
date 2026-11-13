@@ -6,7 +6,9 @@ import {
   INVENTORY_RULES,
   assertInventoryChange,
   formatWeight,
+  itemWeightGrams,
 } from "@/lib/inventory-weight"
+import { useCampaignInventoryRules } from "@/lib/use-campaign-inventory-rules"
 import { CustomItemWeightEditor } from "./item-weight-field"
 import { PRESET_CHECKS } from "@/lib/combat-checks"
 import type { CustomCheck } from "@/lib/custom-checks"
@@ -55,6 +57,8 @@ import {
   isItemActionRuntimeMarker,
   isActiveItemInversion,
   getItemActions,
+  wearableKind, wearItemUpdates, hasItemBonuses, isConsumableItem,
+  consumeInventoryItemUpdates, ITEM_EQUIPPED_PREFIX, isMiscItem, itemBonusEntries,
 } from "@/lib/item-mechanics"
 import { ResourceBar } from "@/components/resource-bar"
 import { useControllerActions } from "@/lib/input/use-controller-actions"
@@ -1954,8 +1958,9 @@ export function CharacterSheet({
   showCompactDefenses = false,
   crisisConditions = [],
 }: any) {
+  const {rules: campaignInventoryRules} = useCampaignInventoryRules(rawCharacter.campaignId)
   const character = useMemo(() => {
-    const normalized = applyInventoryRules(rawCharacter, customEquipment)
+    const normalized = applyInventoryRules(rawCharacter, customEquipment, campaignInventoryRules)
     // Pontos de Lore são um recurso persistido; não podem desaparecer quando
     // a normalização de peso/inventário recalcula os recursos da ficha.
     const lp = rawCharacter?.resources?.lp
@@ -1973,7 +1978,7 @@ export function CharacterSheet({
     return typeof lp === "number" && Number.isSafeInteger(lp) && lp >= 0
       ? { ...withAttacks, resources: { ...withAttacks.resources, lp } }
       : withAttacks
-  }, [rawCharacter, customEquipment])
+  }, [rawCharacter, customEquipment, campaignInventoryRules])
   // --- INICIO SOLUÇÃO PERSISTENCIA LAÇOS ---
   // Extrai e separa os Laços escondidos dentro de customModifiers para que o Backend consiga persistir os dados nativamente
   const allMods: any[] = (character as any).customModifiers || []
@@ -2497,11 +2502,13 @@ export function CharacterSheet({
   const weightStatus = inventoryStatus(
     { ...character, resources: displayResources },
     itemCatalog,
+    campaignInventoryRules,
   )
   const inventoryCapacity = Math.max(0, Number(displayResources.maxIp) || 0)
+  const zenitOverflow = weightStatus.zenitOverflow
   const inventoryOverflow = Math.max(
     0,
-    weightStatus.grams - weightStatus.carryLimitGrams,
+    weightStatus.grams - weightStatus.overloadThresholdGrams,
   )
   const transferTargets = (campaignCharacters as Character[])
     .filter(
@@ -3111,7 +3118,11 @@ export function CharacterSheet({
       Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value)),
     )
     if (!Number.isFinite(nextZenit) || nextZenit === currentZenit) return
-    onOptimistic({ ...character, zenit: nextZenit })
+    // O limiar de Zenits é uma condição, não um bloqueio de transação.
+    // Recalcular localmente para mostrar Peso antes de a API responder.
+    onOptimistic(applyInventoryRules(
+      { ...character, zenit: nextZenit }, itemCatalog, campaignInventoryRules,
+    ))
     setPending(true)
     try {
       const { character: updated } = await apiFetch<{ character: Character }>(
@@ -3187,6 +3198,38 @@ export function CharacterSheet({
       },
     )
     onOptimistic(updated)
+  }
+
+  async function quickInventoryAction(index: number, action: "primary" | "consume") {
+    if ((!editable && !isGm) || pending || itemCommitRef.current) return
+    const itemId = (character.equipment || [])[index]
+    const item = itemCatalog.find(entry => entry.id === itemId)
+    if (!item || !itemId) return
+    try {
+      const consumable = isConsumableItem(item)
+      if (action === "consume" || consumable) {
+        if (!consumable) { await controllerAlert(`“${item.name}” não é um item consumível.`); return }
+        if (!await controllerConfirm(`Consumir uma unidade de “${item.name}”? Esta ação não pode ser desfeita.`)) return
+        const updates = consumeInventoryItemUpdates(character, item, index)
+        await commitItemUpdate(updates)
+        return
+      }
+      if (wearableKind(item)) {
+        await commitItemUpdate(wearItemUpdates(character, itemCatalog, itemId))
+        return
+      }
+      if (isMiscItem(item) || (!hasItemBonuses(character,itemId) && itemBonusEntries(item).length === 0)) {
+        await controllerAlert(`“${item.name}” não possui equipamento direto. Use RB para abrir as ações do item.`)
+        return
+      }
+      const id = ITEM_EQUIPPED_PREFIX + itemId
+      const mods = ((character as any).customModifiers || []).filter((mod: any) => mod.id !== id)
+      if (!hasItemBonuses(character, itemId))
+        mods.push({id, name: `Bônus ativos: ${item.name}`, target: "item_state_hidden", value: 1})
+      await commitItemUpdate({customModifiers:mods})
+    } catch(reason) {
+      await controllerAlert(reason instanceof Error ? reason.message : "Não foi possível usar o equipamento.")
+    }
   }
 
   async function saveNewSkillPoint(skillId: string, mode: "free" | "normal" = "free") {
@@ -3296,33 +3339,35 @@ export function CharacterSheet({
     }
   }
 
-  async function buyItem(itemId: string) {
-    if (!editable || pending) return
+  async function buyItem(itemId: string): Promise<boolean> {
+    if (!editable || pending) return false
     const item = itemCatalog.find((e) => e.id === itemId)
-    if (!item) return
+    if (!item) return false
     if (currentZenit < item.cost) {
       controllerAlert("Zênit insuficiente!")
-      return
+      return false
     }
     try {
       await commitItemUpdate({
         equipment: [...(character.equipment || []), item.id],
         zenit: currentZenit - item.cost,
       })
+      return true
     } catch (error) {
       controllerAlert(
         error instanceof Error
           ? error.message
           : "Não foi possível comprar o item.",
       )
+      return false
     }
   }
 
-  async function sellItem(itemId: string, index: number) {
-    if (!editable) return
+  async function sellItem(itemId: string, index: number): Promise<boolean> {
+    if (!editable || pending) return false
     const item =
       customEquipment.find((e: any) => e.id === itemId) || getEquipment(itemId)
-    if (!item) return
+    if (!item) return false
     const sellValue = Math.floor(item.cost / 2)
 
     const currentEquip = Array.isArray(character.equipment)
@@ -3343,6 +3388,11 @@ export function CharacterSheet({
         },
       )
       onOptimistic(updated)
+      return true
+    } catch (error) {
+      onOptimistic(character)
+      controllerAlert(error instanceof Error ? error.message : "Não foi possível vender este item.")
+      return false
     } finally {
       setPending(false)
     }
@@ -3724,6 +3774,13 @@ export function CharacterSheet({
                   crop={character.portraitCrop}
                   portraitLabel={character.portraitLabel}
                   portraitGallery={character.portraitGallery}
+                  portraitLimit={character.portraitLimit}
+                  canConfigureLimit={isGm}
+                  onSaveLimit={async (limit) => {
+                    const { character: updated } = await apiFetch<{ character: Character }>(`/api/characters/${encodeURIComponent(character.id)}/portraits`,
+                      { method: "PUT", body: JSON.stringify({ limit }) })
+                    onOptimistic(updated)
+                  }}
                   onClose={() => setShowPortraitEditor(false)}
                   onSave={savePortraitImage}
                 />
@@ -4042,7 +4099,8 @@ export function CharacterSheet({
                       characterId={character.id} campaignId={character.campaignId}
                       equipment={character.equipment||[]} catalog={itemCatalog}
                       freeKg={weightStatus.freePoints} maxKg={Number(displayResources.maxIp)||0}
-                      onManage={(index)=>{setManageItemIndex(index);setInventoryView('manage')}} />}
+                      onManage={(index)=>{setManageItemIndex(index);setInventoryView('manage')}}
+                      onShortcutAction={quickInventoryAction} />}
                     {inventoryView === 'manage' && <div className="otms-inventory-management flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6 custom-scrollbar-sepia">
                       <section ref={inventoryListRef} className="flex-1 space-y-4">
                         <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground border-b border-white/10 pb-2">
@@ -4119,6 +4177,7 @@ export function CharacterSheet({
                                           >
                                             {item.name}
                                           </span>
+                                          <span className="mt-0.5 text-[10px] font-semibold text-primary">Peso: {formatWeight(itemWeightGrams(item))}</span>
                                           {isLockedForThisChar && (
                                             <span className="text-[9px] uppercase tracking-widest text-destructive mt-0.5">
                                               Requer: Inventor
@@ -4161,7 +4220,7 @@ export function CharacterSheet({
                           </span>
                         </div>
                         <div
-                          className={`rounded-xl border p-4 ${inventoryOverflow ? "border-red-500/40 bg-red-500/10" : "border-emerald-500/30 bg-emerald-500/5"}`}
+                          className={`rounded-xl border p-4 ${weightStatus.overloaded ? "border-red-500/40 bg-red-500/10" : "border-emerald-500/30 bg-emerald-500/5"}`}
                         >
                           {isGm && (
                             <label className="mb-3 block text-sm">
@@ -4193,13 +4252,18 @@ export function CharacterSheet({
                             </label>
                           )}
                           <p className="text-sm">
-                            Limite de carga por vigor:{" "}
-                            {formatWeight(weightStatus.carryLimitGrams)}
+                            Limite de carga por vigor: {formatWeight(weightStatus.carryLimitGrams)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Condição Peso por carga física somente acima de {formatWeight(weightStatus.overloadThresholdGrams)}. Ter espaço livre na mochila não gera penalidade de carga.
                           </p>
                           <p className="font-bold">
                             {formatWeight(weightStatus.grams)} /{" "}
                             {formatWeight(weightStatus.capacityGrams)} de
                             capacidade
+                          </p>
+                          <p className={`mt-2 text-xs font-bold ${zenitOverflow > 0 ? "text-red-300" : "text-primary"}`}>
+                            Carteira: {currentZenit} / {weightStatus.zenitLimit} Zenits (limiar, não bloqueio) · Condição Peso: DEX -{campaignInventoryRules.dexPenalty}
                           </p>
                           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                             1 ponto = 1 kg. O peso de todos os itens é somado em
@@ -4208,9 +4272,12 @@ export function CharacterSheet({
                           </p>
                           {inventoryOverflow > 0 && (
                             <p className="mt-3 flex items-center gap-2 text-sm font-bold text-red-300">
-                              <AlertTriangle className="size-4" /> Sobrecarga:{" "}
-                              {formatWeight(inventoryOverflow)} acima de MIG + {INVENTORY_RULES.migBonusKg}
-                              kg; {INVENTORY_RULES.dexPenalty} em testes com DEX.
+                              <AlertTriangle className="size-4" /> Excesso de carga: {formatWeight(inventoryOverflow)} sobre o limite configurado.
+                            </p>
+                          )}
+                          {zenitOverflow > 0 && (
+                            <p className="mt-3 flex items-center gap-2 text-sm font-bold text-red-300" role="status">
+                              <AlertTriangle className="size-4" /> Excesso de Zenits: {zenitOverflow}z acima do limiar. Dinheiro mantido; condição Peso ativa (DEX −{campaignInventoryRules.dexPenalty}).
                             </p>
                           )}
                         </div>
@@ -4852,7 +4919,7 @@ export function CharacterSheet({
                     if (event.key === "Escape") cancelZenitEdit()
                   }}
                   className="zenit-direct-input"
-                  aria-label="Valor de Zenith"
+                  aria-label={`Zenits: limiar de condição ${weightStatus.zenitLimit}, sem bloqueio`}
                 />
               ) : (
                 <button
@@ -4864,7 +4931,7 @@ export function CharacterSheet({
                     beginZenitEdit()
                   }}
                   className="zenit-direct-value"
-                  title={editable ? "Clique para editar" : undefined}
+                  title={`Limiar de Peso: ${weightStatus.zenitLimit} zenits para ${inventoryCapacity} kg de mochila. Ultrapassar aplica a condição, sem impedir receber dinheiro.${editable ? " Clique para editar." : ""}`}
                 >
                   {currentZenit} <span>z</span>
                 </button>

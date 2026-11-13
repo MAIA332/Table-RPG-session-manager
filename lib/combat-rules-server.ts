@@ -2,6 +2,7 @@ import "server-only"
 import { randomInt } from "node:crypto"
 import { ATTRIBUTE_META, EQUIPMENT } from "./game-data"
 import { applyInventoryRules } from "./character"
+import { DEFAULT_CAMPAIGN_INVENTORY_RULES, type CampaignInventoryRules } from "./inventory-weight"
 import { equippedItemBonuses, sumItemBonus, wornDefenseBonuses } from "./item-mechanics"
 import { QTE_CHECKS } from "./combat-checks"
 import { ATTRIBUTES, type Attack, type Attribute } from "./combat-model"
@@ -33,8 +34,9 @@ export function characterRoll(
   ownerName: string,
   checkId?: string,
   bondId?: string,
+  rules: CampaignInventoryRules = DEFAULT_CAMPAIGN_INVENTORY_RULES,
 ) {
-  const normalized = applyInventoryRules(character, equipment)
+  const normalized = applyInventoryRules(character, equipment, rules)
   const catalog = [
     ...equipment,
     ...EQUIPMENT.filter(base => !equipment.some((item) => item.id === base.id)),

@@ -21,6 +21,9 @@ export type InputAction =
   | 'voice.ptt' | 'voice.panel.toggle' | 'voice.chat.toggle' | 'voice.noise.toggle'
   | 'voice.volume.up' | 'voice.volume.down' | 'voice.studio.toggle' | 'voice.audio.recover'
   | 'bestiary.spawn' | 'bestiary.edit' | 'combat.creature.remove' | 'combat.toggle' | 'gm.edit'
+  | 'special.attack.use' | 'inventory.item.primary' | 'inventory.item.consume' | 'inventory.item.manage' | 'inventory.item.organize'
+  | 'store.buy' | 'store.sell' | 'store.category.previous' | 'store.category.next'
+  | 'store.folder.previous' | 'store.folder.next' | 'store.zone.next'
   | 'qte.react'
 
 export type GamepadButtonName = 'A' | 'B' | 'X' | 'Y' | 'LB' | 'RB' | 'LT' | 'RT' |
