@@ -1,0 +1,684 @@
+{
+  "version": 8,
+  "columns": 6,
+  "cell": 384,
+  "bodyHeight": 200,
+  "anchor": {
+    "x": 192,
+    "y": 304
+  },
+  "sheets": [
+    {
+      "id": "lightea-movement",
+      "url": "/arena/animations/lightea/movement-v8.webp",
+      "rows": 6,
+      "type": "character",
+      "frames": 36,
+      "sha256": "a663d01be57c08111c39b3cdc2e92a4a31620fbabfcc819edf83167e02bf3a30",
+      "frameHashes": [
+        "c90f1b31f089acfa65c65c0719f5fe67ac543f609fe220c5c235d46d889b064b",
+        "8c28f02584aa92c2a64cbc53499e970c87b0d22946b15916d84b6f38adc86ef0",
+        "3b9fee894a32941f8404cd90ff23f8c3523ab4c313dff9a3d1919dc57219fee5",
+        "af9bb8d28d2a9cfa69168a09fdfbdd17d168bba10a0a2b2b81c091bf61f19680",
+        "0fe49628bc683037a0e7d5c6ce91bf3aca9a897da812465c8581b9a70adae4bb",
+        "8d7232e697e8da7efcd13d0a59e0c2fac55f3e74a373cae8cf7d6eed981312a1",
+        "dbd4f48e7dbc99512f8e7fb70b29377a57ce5a751d889dc1e61aa8a557a019ee",
+        "e24222f66062144bf975c9a8b31071e015ee76fb7e89fb2d53111a73c97641b8",
+        "5010b5b418e7cd8023aac7a1a70403fe785ff0ff30f7507f034072e22b9e855d",
+        "19095ea0cf86785511a96538bac1cdd213b376d87369bfccc97f363c808c439b",
+        "2c54f0218fd4b1085900b197296a934406786f9b934854e1f4ae9a1835c94a9f",
+        "e8ce8e66cdbcdce1b9e3554d4ed7a9a49a6a9a75dccf5da7bd18f9188136ed84",
+        "914ab9a9579bc15f4c72621e97ad6e8c06e7d1913e4f8668a653d2aff4da6362",
+        "bc1d7e27a5381cb4088712f75fda38aa2ec84b44e57016a2e9b0567834da752e",
+        "50b5375a9fac9bf61e295d3e1704c980d7b418ed7d4666059c5be6f3712c8781",
+        "ae8ba766a46a909a715ffcf33fb7b6778b5e2ff0264a61f91b6e1c59e16c07ff",
+        "f759cbcee9bd17d8350930ebb73325ba95cd94b1f9a3628f0398551d7cfbef36",
+        "cc400329636e6e9453bb006f02b82aa2d9940cf76319c458510a1354d5b82eac",
+        "a8ecc1894d25988cde3f64a33c1e48b4ecfa59431e4da6461631e3d20c72150c",
+        "3a515fdaf9788ca8d5f0032909f1e38eb67c887538f17e3e7fdafdbe9dde9bc5",
+        "154089ab36c243dd097f5f8c0ef9262fdf480f8968207f6bca5faa6be0d42cfb",
+        "9ce93586ecdf8e02a66053abbfc7debad2ef992ee22f1d8b14c33ac7fcbec1f8",
+        "c1fe9ec5f517728987ce9d47574591aacfd6ba02af7a0d1733fdca5756412229",
+        "b42c1a516d3fa7587e6935d91fe819c95664a771d4d482f0c5e59ce8eb66fbdf",
+        "b041cf155f7dc5c5ead73e384d57eed66238a507a1803857e07c496e9bb282a8",
+        "d1f4a1d23f954bce645c52f9221003f827234a670b6fb916235c71723be03eca",
+        "a5048ae3f168c285401e3f753a16c1b0a0941d97274a81e7ce5314f5488cef36",
+        "8345e28c373a02215b4ab41c36aba4be249d1905a3a3e62d0dc7c9ca3d00e880",
+        "0f4ed63a27233bbc6be8c2658f5732e8ed5cefe509d0af356ab3be7aeb0fad5d",
+        "f289beef0f685293a4eda5ceda434c82bd2dfe68e61b88619f911a5b77c6448a",
+        "e4fc49a559daffb74fb94a08f20a8598451728ad7f6053c0331a4e1e53e055e9",
+        "20fe29b37bd947ae1b688b055b3a620f05c73002c7d0dfc318e148d0230dad25",
+        "9bbff4b43d7d99800b9a42593a4c9e4065aa2709d4c77601eb6ad6743a8a0c9a",
+        "02a19fa11c873853dd053a43a08bb1f2241df3a0a03e25bb3dd49f41bcfa7ff4",
+        "7323f92689a65544908c94495926d510beffccc45ea4a0f46aa974bc44294158",
+        "c1b39862262858d03c8e4c948eaf5af6b6769f1e62878763fbd24876a0d8768d"
+      ],
+      "metrics": [
+        {
+          "row": 0,
+          "frame": 0,
+          "left": 137,
+          "top": 105,
+          "width": 98,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 1,
+          "left": 136,
+          "top": 104,
+          "width": 98,
+          "height": 201
+        },
+        {
+          "row": 0,
+          "frame": 2,
+          "left": 138,
+          "top": 103,
+          "width": 94,
+          "height": 210
+        },
+        {
+          "row": 0,
+          "frame": 3,
+          "left": 138,
+          "top": 105,
+          "width": 92,
+          "height": 204
+        },
+        {
+          "row": 0,
+          "frame": 4,
+          "left": 137,
+          "top": 105,
+          "width": 99,
+          "height": 202
+        },
+        {
+          "row": 0,
+          "frame": 5,
+          "left": 142,
+          "top": 105,
+          "width": 95,
+          "height": 201
+        },
+        {
+          "row": 1,
+          "frame": 0,
+          "left": 136,
+          "top": 156,
+          "width": 103,
+          "height": 149
+        },
+        {
+          "row": 1,
+          "frame": 1,
+          "left": 132,
+          "top": 139,
+          "width": 140,
+          "height": 169
+        },
+        {
+          "row": 1,
+          "frame": 2,
+          "left": 128,
+          "top": 115,
+          "width": 136,
+          "height": 175
+        },
+        {
+          "row": 1,
+          "frame": 3,
+          "left": 136,
+          "top": 115,
+          "width": 138,
+          "height": 164
+        },
+        {
+          "row": 1,
+          "frame": 4,
+          "left": 127,
+          "top": 151,
+          "width": 125,
+          "height": 158
+        },
+        {
+          "row": 1,
+          "frame": 5,
+          "left": 139,
+          "top": 166,
+          "width": 102,
+          "height": 143
+        },
+        {
+          "row": 2,
+          "frame": 0,
+          "left": 143,
+          "top": 131,
+          "width": 94,
+          "height": 174
+        },
+        {
+          "row": 2,
+          "frame": 1,
+          "left": 130,
+          "top": 159,
+          "width": 109,
+          "height": 146
+        },
+        {
+          "row": 2,
+          "frame": 2,
+          "left": 135,
+          "top": 180,
+          "width": 112,
+          "height": 125
+        },
+        {
+          "row": 2,
+          "frame": 3,
+          "left": 133,
+          "top": 190,
+          "width": 103,
+          "height": 115
+        },
+        {
+          "row": 2,
+          "frame": 4,
+          "left": 136,
+          "top": 178,
+          "width": 98,
+          "height": 127
+        },
+        {
+          "row": 2,
+          "frame": 5,
+          "left": 136,
+          "top": 130,
+          "width": 104,
+          "height": 175
+        },
+        {
+          "row": 3,
+          "frame": 0,
+          "left": 143,
+          "top": 134,
+          "width": 94,
+          "height": 171
+        },
+        {
+          "row": 3,
+          "frame": 1,
+          "left": 142,
+          "top": 136,
+          "width": 99,
+          "height": 169
+        },
+        {
+          "row": 3,
+          "frame": 2,
+          "left": 144,
+          "top": 141,
+          "width": 102,
+          "height": 164
+        },
+        {
+          "row": 3,
+          "frame": 3,
+          "left": 131,
+          "top": 153,
+          "width": 108,
+          "height": 153
+        },
+        {
+          "row": 3,
+          "frame": 4,
+          "left": 128,
+          "top": 142,
+          "width": 113,
+          "height": 163
+        },
+        {
+          "row": 3,
+          "frame": 5,
+          "left": 141,
+          "top": 134,
+          "width": 96,
+          "height": 173
+        },
+        {
+          "row": 4,
+          "frame": 0,
+          "left": 142,
+          "top": 132,
+          "width": 96,
+          "height": 173
+        },
+        {
+          "row": 4,
+          "frame": 1,
+          "left": 139,
+          "top": 134,
+          "width": 103,
+          "height": 171
+        },
+        {
+          "row": 4,
+          "frame": 2,
+          "left": 115,
+          "top": 140,
+          "width": 132,
+          "height": 165
+        },
+        {
+          "row": 4,
+          "frame": 3,
+          "left": 122,
+          "top": 147,
+          "width": 146,
+          "height": 159
+        },
+        {
+          "row": 4,
+          "frame": 4,
+          "left": 140,
+          "top": 163,
+          "width": 113,
+          "height": 144
+        },
+        {
+          "row": 4,
+          "frame": 5,
+          "left": 141,
+          "top": 131,
+          "width": 96,
+          "height": 175
+        },
+        {
+          "row": 5,
+          "frame": 0,
+          "left": 142,
+          "top": 129,
+          "width": 96,
+          "height": 175
+        },
+        {
+          "row": 5,
+          "frame": 1,
+          "left": 109,
+          "top": 130,
+          "width": 171,
+          "height": 174
+        },
+        {
+          "row": 5,
+          "frame": 2,
+          "left": 97,
+          "top": 162,
+          "width": 209,
+          "height": 144
+        },
+        {
+          "row": 5,
+          "frame": 3,
+          "left": 104,
+          "top": 190,
+          "width": 228,
+          "height": 120
+        },
+        {
+          "row": 5,
+          "frame": 4,
+          "left": 93,
+          "top": 210,
+          "width": 242,
+          "height": 92
+        },
+        {
+          "row": 5,
+          "frame": 5,
+          "left": 71,
+          "top": 244,
+          "width": 272,
+          "height": 59
+        }
+      ]
+    },
+    {
+      "id": "lightea-combat",
+      "url": "/arena/animations/lightea/combat-v8.webp",
+      "rows": 6,
+      "type": "character",
+      "frames": 36,
+      "sha256": "f999e39ddc6e6a4f577d48e46feb96d6ca67e97ffdab04b2fd177b7377d89942",
+      "frameHashes": [
+        "6b84f2e29c2d1b80f15e082b37cb260b92ba3dde5edcb8be6bdd483927ad7d90",
+        "08931b9b38e4f2bdefa013f2abefc43fe6cfeb0466a7d71045a78eb759caf92e",
+        "08901332065f278364f0663dbf9501a6896baf50b18bf83dae1166a1549be672",
+        "d5bfd40d2e49e7b4ed181df37e0c8c63634dd4b924c9aaaa44a0c3a32f7e53ad",
+        "a71591fad3807c64ab9389b41be4ce7e503226e02838e2df7d5ade8ae8d6370a",
+        "8459682de1328a6edf6b5dd73a2cc5e4f90dc01d2ccef67f19cb1dff3d82b329",
+        "2c9a971f2fabc99d45ab015416719d01ffb95fb00126b0dcf363277808920624",
+        "3fec2411fb21660cca1fe349e1bd01584fa9b68b6358e7ea5e84a7ed5f9abac3",
+        "3b52f9496db5b4ed84412b5915ba14a4feaa39c25951c4a79e8237382e42027b",
+        "f6f961a4a5649fa1ece28e25e50c89c3d8a7e62934cce4a17d8c8b6ede37ee70",
+        "160b72438368d9e2cf87cfac13e47470b0d2a5f086d4f530ad84a81d4a67ee66",
+        "f68b345ddaea137c66e2a2b378b8d739fc31aada35745f5d9412fb1774884038",
+        "b9b392d4296e9c5ed60a59708462077220493d349fb3f3b8caf3774da31eb599",
+        "62e031e211b6b64a5d5787dbc2228482dbd30c25a723004a4bfda7e7a636fa36",
+        "01a349f95395930791976874d2368ef3a2976e501f8cf27d7faaa495a082d949",
+        "013344ecf0dc05d3ee505246cb3dac0c117ee6efa12aaea6694fe4c779467c1d",
+        "35a6cd7ebfae6cd6aec1c7e951f619ef129a4dfb22330ae3fd5516a779b756be",
+        "cbdff419162668f00af5aadeb6b820c7d812c7d77ab647a5b866d37660ff06bf",
+        "ee764da86ccb576698ea00b9668783da212b6a883d569edce87439b8753f3132",
+        "071a95bbddf219554daa37e01095d0b113eee6431b6aa14f7aa2a6c11931d7a0",
+        "afb4643f6fdb77b38ba58f6009be4020ce57797f02f0d003b4f483e89ce45ad8",
+        "e1d3cb84edbb31ed5ad356e3b0aafb60a2ea57d3fba60bb0cdb62a0e4c25f721",
+        "24046f720937982249a9629c2623597331315b43b12d910864bc3befc2808433",
+        "2cefbaccb93cd0f7f8e1741ff6f649d29de48794d9f768308dd0d4d8407fbb79",
+        "3e44f0bc129d25be40b48c3775ed8fc9c27625f1190c68a3dfcd16bc4e70bc3b",
+        "b50a5e03297d8dfe03defc1d683b424eb87bf5140609195bfe8382456896c891",
+        "878c9af753ce0fb0594c85e9a2e6693d3065ef6c9e425124f9dcbbe4fabfdce1",
+        "448b8528c313ff64d7d254c7d7f8c115b40ea537e0f7da8ca456fc8720fa615a",
+        "bf4603fa6a5751f0420aef82493d2384e81cb8a93cd33e10f5ae73bac2a5d6f3",
+        "28fdca330ed796fd566fc4c460fafd5026ce8d893e07c9fe06684fd52991351a",
+        "447dfe66d628bc500a336ac60bda08fdf5eb94e3c16da3beb7fa9c0ed2067027",
+        "ab532fff71e9c0791e056e6f7e43fa131582f6902210bd11463cd02373804c03",
+        "b37aec325a7de0517e1112105e754c0e7cf545659d08f88dedebb0e35c46d2e9",
+        "6499435822a9dfd6e58b2b68dceb1ebbd4f2a833491bddf9f02348b208eeacab",
+        "376ed1480423aab3ddaeb953d7f422c8210dac270548875e8abc55738f7df7d7",
+        "fffdc1ad82ceb0f70ff72f558937af33ed709546670e02773c40f3ba68686a2a"
+      ],
+      "metrics": [
+        {
+          "row": 0,
+          "frame": 0,
+          "left": 129,
+          "top": 105,
+          "width": 119,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 1,
+          "left": 126,
+          "top": 106,
+          "width": 115,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 2,
+          "left": 127,
+          "top": 107,
+          "width": 126,
+          "height": 197
+        },
+        {
+          "row": 0,
+          "frame": 3,
+          "left": 127,
+          "top": 107,
+          "width": 163,
+          "height": 197
+        },
+        {
+          "row": 0,
+          "frame": 4,
+          "left": 127,
+          "top": 106,
+          "width": 122,
+          "height": 197
+        },
+        {
+          "row": 0,
+          "frame": 5,
+          "left": 128,
+          "top": 105,
+          "width": 119,
+          "height": 200
+        },
+        {
+          "row": 1,
+          "frame": 0,
+          "left": 128,
+          "top": 112,
+          "width": 118,
+          "height": 193
+        },
+        {
+          "row": 1,
+          "frame": 1,
+          "left": 122,
+          "top": 127,
+          "width": 129,
+          "height": 177
+        },
+        {
+          "row": 1,
+          "frame": 2,
+          "left": 118,
+          "top": 145,
+          "width": 129,
+          "height": 159
+        },
+        {
+          "row": 1,
+          "frame": 3,
+          "left": 105,
+          "top": 155,
+          "width": 186,
+          "height": 150
+        },
+        {
+          "row": 1,
+          "frame": 4,
+          "left": 128,
+          "top": 141,
+          "width": 129,
+          "height": 165
+        },
+        {
+          "row": 1,
+          "frame": 5,
+          "left": 129,
+          "top": 112,
+          "width": 117,
+          "height": 194
+        },
+        {
+          "row": 2,
+          "frame": 0,
+          "left": 127,
+          "top": 115,
+          "width": 125,
+          "height": 190
+        },
+        {
+          "row": 2,
+          "frame": 1,
+          "left": 128,
+          "top": 116,
+          "width": 112,
+          "height": 188
+        },
+        {
+          "row": 2,
+          "frame": 2,
+          "left": 108,
+          "top": 113,
+          "width": 154,
+          "height": 192
+        },
+        {
+          "row": 2,
+          "frame": 3,
+          "left": 113,
+          "top": 114,
+          "width": 187,
+          "height": 188
+        },
+        {
+          "row": 2,
+          "frame": 4,
+          "left": 125,
+          "top": 115,
+          "width": 121,
+          "height": 188
+        },
+        {
+          "row": 2,
+          "frame": 5,
+          "left": 128,
+          "top": 115,
+          "width": 124,
+          "height": 189
+        },
+        {
+          "row": 3,
+          "frame": 0,
+          "left": 129,
+          "top": 117,
+          "width": 123,
+          "height": 188
+        },
+        {
+          "row": 3,
+          "frame": 1,
+          "left": 120,
+          "top": 126,
+          "width": 131,
+          "height": 176
+        },
+        {
+          "row": 3,
+          "frame": 2,
+          "left": 127,
+          "top": 141,
+          "width": 168,
+          "height": 163
+        },
+        {
+          "row": 3,
+          "frame": 3,
+          "left": 124,
+          "top": 147,
+          "width": 198,
+          "height": 157
+        },
+        {
+          "row": 3,
+          "frame": 4,
+          "left": 131,
+          "top": 137,
+          "width": 118,
+          "height": 166
+        },
+        {
+          "row": 3,
+          "frame": 5,
+          "left": 128,
+          "top": 116,
+          "width": 122,
+          "height": 191
+        },
+        {
+          "row": 4,
+          "frame": 0,
+          "left": 130,
+          "top": 115,
+          "width": 114,
+          "height": 190
+        },
+        {
+          "row": 4,
+          "frame": 1,
+          "left": 131,
+          "top": 116,
+          "width": 133,
+          "height": 189
+        },
+        {
+          "row": 4,
+          "frame": 2,
+          "left": 92,
+          "top": 125,
+          "width": 204,
+          "height": 180
+        },
+        {
+          "row": 4,
+          "frame": 3,
+          "left": 97,
+          "top": 132,
+          "width": 214,
+          "height": 174
+        },
+        {
+          "row": 4,
+          "frame": 4,
+          "left": 93,
+          "top": 118,
+          "width": 175,
+          "height": 188
+        },
+        {
+          "row": 4,
+          "frame": 5,
+          "left": 131,
+          "top": 117,
+          "width": 115,
+          "height": 189
+        },
+        {
+          "row": 5,
+          "frame": 0,
+          "left": 129,
+          "top": 114,
+          "width": 115,
+          "height": 191
+        },
+        {
+          "row": 5,
+          "frame": 1,
+          "left": 134,
+          "top": 115,
+          "width": 119,
+          "height": 190
+        },
+        {
+          "row": 5,
+          "frame": 2,
+          "left": 106,
+          "top": 133,
+          "width": 214,
+          "height": 171
+        },
+        {
+          "row": 5,
+          "frame": 3,
+          "left": 84,
+          "top": 144,
+          "width": 233,
+          "height": 161
+        },
+        {
+          "row": 5,
+          "frame": 4,
+          "left": 130,
+          "top": 120,
+          "width": 172,
+          "height": 186
+        },
+        {
+          "row": 5,
+          "frame": 5,
+          "left": 130,
+          "top": 116,
+          "width": 115,
+          "height": 190
+        }
+      ]
+    }
+  ]
+}

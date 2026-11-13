@@ -1,0 +1,210 @@
+{
+  "version": 5,
+  "columns": 6,
+  "cell": 384,
+  "bodyHeight": 200,
+  "anchor": {
+    "x": 192,
+    "y": 304
+  },
+  "sheets": [
+    {
+      "id": "puppet",
+      "url": "/arena/fx/puppet-float-v5.webp",
+      "rows": 1,
+      "type": "effect",
+      "frames": 6,
+      "sha256": "719feda020165bcaa1fa290905844479dad6e4b2aaee497792d1dbb077485027",
+      "frameHashes": [
+        "144fad88c24ed89df4a1c80ae70171bee5b6ba7ad0d7109b558efb855b2fea7a",
+        "78baf659f34a0032052a6f56e89773642bf344a81af12ee76c3a0ad81ccbe4c9",
+        "7555b312378831f4522b50d2a21ed2be54be237abda05c8a65e2d4dab74fb386",
+        "2345adc06b2cc8dba3d6ffc24199069ac61aeee93c93bf390489127d1bd17551",
+        "65c7b3ffac74303da4af84f9f85e022facf6b951793ecf9222c05177cd7797c1",
+        "e540d39373e918cb41ce9b61c1a69bcfeab73e322cc1cd43787b848d858f05fa"
+      ],
+      "metrics": [
+        {
+          "row": 0,
+          "frame": 0,
+          "left": 122,
+          "top": 33,
+          "width": 144,
+          "height": 320
+        },
+        {
+          "row": 0,
+          "frame": 1,
+          "left": 121,
+          "top": 33,
+          "width": 161,
+          "height": 320
+        },
+        {
+          "row": 0,
+          "frame": 2,
+          "left": 118,
+          "top": 39,
+          "width": 183,
+          "height": 313
+        },
+        {
+          "row": 0,
+          "frame": 3,
+          "left": 102,
+          "top": 43,
+          "width": 224,
+          "height": 310
+        },
+        {
+          "row": 0,
+          "frame": 4,
+          "left": 111,
+          "top": 43,
+          "width": 175,
+          "height": 310
+        },
+        {
+          "row": 0,
+          "frame": 5,
+          "left": 119,
+          "top": 33,
+          "width": 151,
+          "height": 320
+        }
+      ]
+    },
+    {
+      "id": "ice-dragon",
+      "url": "/arena/fx/ice-dragon-v5.webp",
+      "rows": 1,
+      "type": "effect",
+      "frames": 6,
+      "sha256": "840161659c0cdb4e039f6463cbe61ac99996ef2b0bcdae68a82ffab3e14615a4",
+      "frameHashes": [
+        "98435e24cbb59ce7fe45d7462d7dcb890fce0004b6cc9067a422428ca73f39f5",
+        "215c9d7533e0145f7141bb662db58df946d41e1051e854c69716d5d97bb74bc9",
+        "eabead7ff83a682c29d824d83a9fd610dff58aa335010d1148c54ab925780389",
+        "6314d68151cf2a6b182ba59cc39aaeba7aa8547279c37f3c14550f6a8c09faac",
+        "2fab71d9e495b4cfc314789fd4778888a0c407456e5019c8bb4ad221c7cc9f14",
+        "5f4ab6c9158812a756ff8d2c7382dc4d610655facc5deb83d252219a310dbbae"
+      ],
+      "metrics": [
+        {
+          "row": 0,
+          "frame": 0,
+          "left": 81,
+          "top": 32,
+          "width": 223,
+          "height": 320
+        },
+        {
+          "row": 0,
+          "frame": 1,
+          "left": 83,
+          "top": 54,
+          "width": 219,
+          "height": 276
+        },
+        {
+          "row": 0,
+          "frame": 2,
+          "left": 83,
+          "top": 76,
+          "width": 218,
+          "height": 232
+        },
+        {
+          "row": 0,
+          "frame": 3,
+          "left": 76,
+          "top": 76,
+          "width": 232,
+          "height": 232
+        },
+        {
+          "row": 0,
+          "frame": 4,
+          "left": 81,
+          "top": 60,
+          "width": 223,
+          "height": 265
+        },
+        {
+          "row": 0,
+          "frame": 5,
+          "left": 80,
+          "top": 33,
+          "width": 225,
+          "height": 318
+        }
+      ]
+    },
+    {
+      "id": "valya-dragon-cast",
+      "url": "/arena/animations/valya/dragon-v5.webp",
+      "rows": 1,
+      "type": "character",
+      "frames": 6,
+      "sha256": "ed4ef22fb199c6d118731e16dfde8a71a69a26c124c20eb50dd4f8bf3e4590b7",
+      "frameHashes": [
+        "40e0935676f11984cdb33fa88d9ecca762f4583dfab9699d43e3fa3152c70056",
+        "9e6ae737d1f4a960ae3451ffb3047d2371f516ae08e47374a5208595dce41b45",
+        "898339776bad221dc0222a940a87384a13e411044b388d6a8aaf18e8b951a4d3",
+        "b055f36bc8c15ed9b2485d86a3a9408fe7ed42044b0fe465acdf727cce77d86a",
+        "8ad89abb8f02ba0f84bbc02097ecd16b087cb071cc1aaeb6f9639692b64d887f",
+        "4e94a906b5134f9c00233b15c0968a24a6f70b32bfb732693966e9218d760128"
+      ],
+      "metrics": [
+        {
+          "row": 0,
+          "frame": 0,
+          "left": 136,
+          "top": 104,
+          "width": 106,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 1,
+          "left": 131,
+          "top": 105,
+          "width": 113,
+          "height": 199
+        },
+        {
+          "row": 0,
+          "frame": 2,
+          "left": 136,
+          "top": 67,
+          "width": 117,
+          "height": 238
+        },
+        {
+          "row": 0,
+          "frame": 3,
+          "left": 130,
+          "top": 89,
+          "width": 145,
+          "height": 215
+        },
+        {
+          "row": 0,
+          "frame": 4,
+          "left": 135,
+          "top": 105,
+          "width": 140,
+          "height": 199
+        },
+        {
+          "row": 0,
+          "frame": 5,
+          "left": 137,
+          "top": 105,
+          "width": 105,
+          "height": 200
+        }
+      ]
+    }
+  ]
+}

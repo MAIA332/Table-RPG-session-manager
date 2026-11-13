@@ -1,0 +1,276 @@
+{
+  "version": 6,
+  "columns": 6,
+  "cell": 384,
+  "bodyHeight": 200,
+  "anchor": {
+    "x": 192,
+    "y": 304
+  },
+  "sheets": [
+    {
+      "id": "fire-aura",
+      "url": "/arena/fx/fire-aura-v6.webp",
+      "rows": 1,
+      "type": "effect",
+      "frames": 6,
+      "sha256": "71802f6922f94e8d64a46892a10efb400def83b2ffe2351f1d7f7e5bf01c5278",
+      "frameHashes": [
+        "279f7de718040ee782c15e80a49489d928613442f15d856a26080c5b0145228c",
+        "e230674ebf5d502c244744f29a2792a74cdc8d97f6a59509c126d7f089f01e8f",
+        "9e198b319bd0a92d823c7313328dd954de33075736fc26c3212153bac9da3daa",
+        "4233af18ee04b46c687597b101b37d153c3f121cf61111fc0a177335153734c6",
+        "9e8bdfae44620781eb805790cb56373fb51cb8780088368768cceba7e97e0f6a",
+        "9b338f971c3c62e1530871db04e7eafc6e3d71c7e8fc9e094ec1d15efcce65a7"
+      ],
+      "metrics": [
+        {
+          "row": 0,
+          "frame": 0,
+          "left": 96,
+          "top": 61,
+          "width": 193,
+          "height": 263
+        },
+        {
+          "row": 0,
+          "frame": 1,
+          "left": 92,
+          "top": 47,
+          "width": 200,
+          "height": 292
+        },
+        {
+          "row": 0,
+          "frame": 2,
+          "left": 86,
+          "top": 41,
+          "width": 213,
+          "height": 303
+        },
+        {
+          "row": 0,
+          "frame": 3,
+          "left": 85,
+          "top": 32,
+          "width": 215,
+          "height": 320
+        },
+        {
+          "row": 0,
+          "frame": 4,
+          "left": 84,
+          "top": 42,
+          "width": 217,
+          "height": 300
+        },
+        {
+          "row": 0,
+          "frame": 5,
+          "left": 93,
+          "top": 54,
+          "width": 199,
+          "height": 277
+        }
+      ]
+    },
+    {
+      "id": "joffrey-idle",
+      "url": "/arena/animations/joffrey/idle-v6.webp",
+      "rows": 1,
+      "type": "character",
+      "frames": 6,
+      "sha256": "2e3fe10061bc13266fe15fae38f1ddd64fa52886fa9d1474b4e9b5b9830fa787",
+      "frameHashes": [
+        "e73f8b54a72cf07f4262a7ceda890ebb6298b79f7e0dd67645ec57225ff19732",
+        "06e458ce1a5393e6a76a287444b67ce257912c782be0dfb766e22f0d43d01f43",
+        "05ff95c7074c5535efe20f98a9613bf2057ca4cd5c21b0a113637cbaeb88c589",
+        "767a299787ce8529878268bd1c5fe578f74fccc79134de9f594c962201ce8900",
+        "67d6d430e12ebab5bdaf154e0a905a3b779314d7bc8fa4caefc96bf3a417babc",
+        "58d8130b7ecb5466764a3520d52e7108c702d4796d5d21f89d12076fc35adbaa"
+      ],
+      "metrics": [
+        {
+          "row": 0,
+          "frame": 0,
+          "left": 140,
+          "top": 104,
+          "width": 90,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 1,
+          "left": 140,
+          "top": 104,
+          "width": 91,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 2,
+          "left": 137,
+          "top": 104,
+          "width": 94,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 3,
+          "left": 142,
+          "top": 104,
+          "width": 88,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 4,
+          "left": 144,
+          "top": 104,
+          "width": 85,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 5,
+          "left": 144,
+          "top": 104,
+          "width": 84,
+          "height": 200
+        }
+      ]
+    },
+    {
+      "id": "lysa-roots",
+      "url": "/arena/fx/lysa-roots-v6.webp",
+      "rows": 1,
+      "type": "effect",
+      "frames": 6,
+      "sha256": "8320c4d82005083803feab945da7efa1c37bbbc487a77f05d816b732864ca167",
+      "frameHashes": [
+        "3d6c54742b504ee1a051c237f37414497a5b4422f949694a144517f24de02d49",
+        "c4f571765928ac635aeae6e0827db5972b79da4220b4811f027c2a02dbf6a9f9",
+        "18ff8df6f50e408680158a442243a6715f44bf4f4ab9c4c1042d385343a4920d",
+        "b439ac61837f4bc93db570edd41b00a02d2cf2daa1a3533b2557b2dc7194a38b",
+        "9420d3c51ffc7e5e81a5087b3b0b74b3275591428c5d94477a2080fecc98cb77",
+        "6dd5d7e64bbbbc1e868b798359908965126865614eda646f4e202ec4d84d004d"
+      ],
+      "metrics": [
+        {
+          "row": 0,
+          "frame": 0,
+          "left": 33,
+          "top": 162,
+          "width": 319,
+          "height": 62
+        },
+        {
+          "row": 0,
+          "frame": 1,
+          "left": 35,
+          "top": 107,
+          "width": 315,
+          "height": 171
+        },
+        {
+          "row": 0,
+          "frame": 2,
+          "left": 34,
+          "top": 84,
+          "width": 317,
+          "height": 218
+        },
+        {
+          "row": 0,
+          "frame": 3,
+          "left": 35,
+          "top": 89,
+          "width": 315,
+          "height": 206
+        },
+        {
+          "row": 0,
+          "frame": 4,
+          "left": 34,
+          "top": 118,
+          "width": 317,
+          "height": 150
+        },
+        {
+          "row": 0,
+          "frame": 5,
+          "left": 33,
+          "top": 143,
+          "width": 320,
+          "height": 99
+        }
+      ]
+    },
+    {
+      "id": "whip",
+      "url": "/arena/fx/whip-v6.webp",
+      "rows": 1,
+      "type": "effect",
+      "frames": 6,
+      "sha256": "d81c97ca5684f15d973cdca7f01c0a373478bec023976b3984f649d75e4cd998",
+      "frameHashes": [
+        "8173b390bb3d9d1f88448ec4193ef117f5d183b0d6f41248382730e9a724dc6c",
+        "66c75177f78f6029d978b35e505ea57863087f93f1ee09ca672da4c12be71874",
+        "5054ec6776ae69ad4e971dd807c60ffa4d7750273a65f7b5ae137ea16be00117",
+        "739cf2a7177fda012623d592a46ae923d38ccd9ea3de0a8fc77402b49c99b3a3",
+        "473edb2fe1bdb8d2442774b8fc0e9156df79f84963a2ab1807f1f988b78f5f0c",
+        "3567ae0a87281ffa57671c77f2a7dc8e9b92000acc548643c40b129de2e8f3b0"
+      ],
+      "metrics": [
+        {
+          "row": 0,
+          "frame": 0,
+          "left": 92,
+          "top": 130,
+          "width": 200,
+          "height": 125
+        },
+        {
+          "row": 0,
+          "frame": 1,
+          "left": 71,
+          "top": 121,
+          "width": 243,
+          "height": 143
+        },
+        {
+          "row": 0,
+          "frame": 2,
+          "left": 46,
+          "top": 107,
+          "width": 294,
+          "height": 170
+        },
+        {
+          "row": 0,
+          "frame": 3,
+          "left": 32,
+          "top": 134,
+          "width": 320,
+          "height": 118
+        },
+        {
+          "row": 0,
+          "frame": 4,
+          "left": 65,
+          "top": 123,
+          "width": 256,
+          "height": 139
+        },
+        {
+          "row": 0,
+          "frame": 5,
+          "left": 98,
+          "top": 126,
+          "width": 189,
+          "height": 133
+        }
+      ]
+    }
+  ]
+}

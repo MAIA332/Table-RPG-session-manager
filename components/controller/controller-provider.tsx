@@ -211,7 +211,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       const pads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : []
       for (const candidate of pads) {
         if (!candidate?.connected) continue
-        const chord = [8,10,11].every(index => candidate.buttons[index]?.pressed)
+        const chord = [10,11].every(index => candidate.buttons[index]?.pressed)
         if (!chord) {arenaSecret.delete(candidate.index);continue}
         const state = arenaSecret.get(candidate.index) || {since:performance.now(),fired:false}
         if (!state.fired && performance.now() - state.since >= 650 && authenticatedRef.current) {
@@ -392,6 +392,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
     }
     let lastFocusedElement: HTMLElement | null = null
     const markFocus=(event:FocusEvent)=>{
+      if(document.documentElement.dataset.otmsArenaActive==='true')return
       const target=event.target
       if(target instanceof HTMLElement && activeRef.current){
         const changed = target !== lastFocusedElement

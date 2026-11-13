@@ -1,0 +1,2250 @@
+{
+  "version": 2,
+  "cues": {
+    "fander:light": {
+      "url": "/arena/audio/fight-punch-1.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-laserSmall_003.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-1.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "fander:heavy": {
+      "url": "/arena/audio/fight-punch-2.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth2.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-laserSmall_003.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-2.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "fander:kick": {
+      "url": "/arena/audio/fight-punch-3.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth3.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-laserSmall_003.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-3.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "fander:lowKick": {
+      "url": "/arena/audio/fight-punch-4.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth4.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-laserSmall_003.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-4.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "andreas:light": {
+      "url": "/arena/audio/fight-punch-2.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth2.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-forceField_001.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-4.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "andreas:heavy": {
+      "url": "/arena/audio/fight-punch-3.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth3.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-forceField_001.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-5.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "andreas:kick": {
+      "url": "/arena/audio/fight-punch-4.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth4.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-forceField_001.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-6.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "andreas:lowKick": {
+      "url": "/arena/audio/fight-punch-5.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-forceField_001.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-7.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "lightea:light": {
+      "url": "/arena/audio/fight-punch-3.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth3.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-forceField_003.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-7.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "lightea:heavy": {
+      "url": "/arena/audio/fight-punch-4.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth4.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-forceField_003.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-8.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "lightea:kick": {
+      "url": "/arena/audio/fight-punch-5.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-forceField_003.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-9.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "lightea:lowKick": {
+      "url": "/arena/audio/fight-punch-6.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth2.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-forceField_003.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-10.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "maeve:light": {
+      "url": "/arena/audio/fight-punch-4.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth4.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-thrusterFire_001.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-10.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "maeve:heavy": {
+      "url": "/arena/audio/fight-punch-5.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-thrusterFire_001.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-1.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "maeve:kick": {
+      "url": "/arena/audio/fight-punch-6.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth2.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-thrusterFire_001.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-2.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "maeve:lowKick": {
+      "url": "/arena/audio/fight-punch-7.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth3.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-thrusterFire_001.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-3.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "joffrey:light": {
+      "url": "/arena/audio/fight-punch-5.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-knifeSlice.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-3.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "joffrey:heavy": {
+      "url": "/arena/audio/fight-punch-6.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth2.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-knifeSlice.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-4.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "joffrey:kick": {
+      "url": "/arena/audio/fight-punch-7.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth3.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-knifeSlice.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-5.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "joffrey:lowKick": {
+      "url": "/arena/audio/fight-punch-8.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth4.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-knifeSlice.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-6.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "valya:light": {
+      "url": "/arena/audio/fight-punch-6.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth2.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/impact-impactGlass_light_002.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-6.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "valya:heavy": {
+      "url": "/arena/audio/fight-punch-7.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth3.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/impact-impactGlass_light_002.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-7.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "valya:kick": {
+      "url": "/arena/audio/fight-punch-8.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth4.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/impact-impactGlass_light_002.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-8.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "valya:lowKick": {
+      "url": "/arena/audio/fight-punch-9.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/impact-impactGlass_light_002.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-9.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "miguel:light": {
+      "url": "/arena/audio/fight-punch-7.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth3.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-creak2.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-9.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "miguel:heavy": {
+      "url": "/arena/audio/fight-punch-8.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth4.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-creak2.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-10.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "miguel:kick": {
+      "url": "/arena/audio/fight-punch-9.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-creak2.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-1.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "miguel:lowKick": {
+      "url": "/arena/audio/fight-punch-1.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth2.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-creak2.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-2.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "amelia:light": {
+      "url": "/arena/audio/fight-punch-8.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth4.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/impact-impactWood_medium_002.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-2.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "amelia:heavy": {
+      "url": "/arena/audio/fight-punch-9.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/impact-impactWood_medium_002.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-3.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "amelia:kick": {
+      "url": "/arena/audio/fight-punch-1.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth2.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/impact-impactWood_medium_002.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-4.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "amelia:lowKick": {
+      "url": "/arena/audio/fight-punch-2.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth3.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/impact-impactWood_medium_002.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-5.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "lysa:light": {
+      "url": "/arena/audio/fight-punch-9.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-slime_001.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-5.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "lysa:heavy": {
+      "url": "/arena/audio/fight-punch-1.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth2.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-slime_001.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-6.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "lysa:kick": {
+      "url": "/arena/audio/fight-punch-2.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth3.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-slime_001.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-7.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "lysa:lowKick": {
+      "url": "/arena/audio/fight-punch-3.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth4.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-slime_001.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-8.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "thorfinn:light": {
+      "url": "/arena/audio/fight-punch-1.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth2.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-knifeSlice2.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-8.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "thorfinn:heavy": {
+      "url": "/arena/audio/fight-punch-2.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth3.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-knifeSlice2.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-9.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "thorfinn:kick": {
+      "url": "/arena/audio/fight-punch-3.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth4.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-knifeSlice2.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-10.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "thorfinn:lowKick": {
+      "url": "/arena/audio/fight-punch-4.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-knifeSlice2.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-1.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "loulan:light": {
+      "url": "/arena/audio/fight-punch-2.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth3.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-drawKnife2.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-1.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "loulan:heavy": {
+      "url": "/arena/audio/fight-punch-3.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth4.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-drawKnife2.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-2.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "loulan:kick": {
+      "url": "/arena/audio/fight-punch-4.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-drawKnife2.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-3.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "loulan:lowKick": {
+      "url": "/arena/audio/fight-punch-5.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth2.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/rpg-drawKnife2.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-4.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "langris:light": {
+      "url": "/arena/audio/fight-punch-3.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth4.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-spaceEngineLow_003.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-4.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "langris:heavy": {
+      "url": "/arena/audio/fight-punch-4.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-spaceEngineLow_003.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-5.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "langris:kick": {
+      "url": "/arena/audio/fight-punch-5.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth2.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-spaceEngineLow_003.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-6.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "langris:lowKick": {
+      "url": "/arena/audio/fight-punch-6.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth3.ogg",
+          "gain": 0.3,
+          "delay": 0
+        },
+        {
+          "url": "/arena/audio/scifi-spaceEngineLow_003.ogg",
+          "gain": 0.12,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/fight-thwack-7.ogg",
+          "gain": 0.22,
+          "delay": 0.015
+        }
+      ],
+      "maxDuration": 0.75
+    },
+    "fander:special0": {
+      "url": "/arena/audio/scifi-laserLarge_003.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/fight-thwack-1.ogg",
+          "gain": 0.4,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "fander:special1": {
+      "url": "/arena/audio/scifi-forceField_000.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-laserSmall_003.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "andreas:special0": {
+      "url": "/arena/audio/dark-magic-1.flac",
+      "gain": 0.5,
+      "maxDuration": 1.6,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-spaceEngineLow_000.ogg",
+          "gain": 0.2
+        }
+      ]
+    },
+    "andreas:special1": {
+      "url": "/arena/audio/dark-magic-2.flac",
+      "gain": 0.5,
+      "maxDuration": 1.6,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-forceField_001.ogg",
+          "gain": 0.2
+        }
+      ]
+    },
+    "andreas:special2": {
+      "url": "/arena/audio/dark-magic-3.flac",
+      "gain": 0.5,
+      "maxDuration": 1.6,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-engineCircular_003.ogg",
+          "gain": 0.2
+        }
+      ]
+    },
+    "lightea:special0": {
+      "url": "/arena/audio/scifi-forceField_003.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-cloth1.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "maeve:special0": {
+      "url": "/arena/audio/scifi-thrusterFire_000.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/impact-impactSoft_heavy_002.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "maeve:special1": {
+      "url": "/arena/audio/scifi-thrusterFire_003.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-explosionCrunch_001.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "joffrey:special0": {
+      "url": "/arena/audio/rpg-drawKnife1.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-forceField_002.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "joffrey:special1": {
+      "url": "/arena/audio/rpg-knifeSlice2.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/impact-impactMetal_light_001.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "joffrey:special2": {
+      "url": "/arena/audio/scifi-spaceEngine_002.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-knifeSlice.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "valya:special0": {
+      "url": "/arena/audio/ice-wall.wav",
+      "gain": 0.55,
+      "maxDuration": 1.6,
+      "layers": []
+    },
+    "valya:special1": {
+      "url": "/arena/audio/blizzard.wav",
+      "gain": 0.55,
+      "maxDuration": 1.8,
+      "layers": []
+    },
+    "miguel:special0": {
+      "url": "/arena/audio/rpg-creak1.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-beltHandle1.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "miguel:special1": {
+      "url": "/arena/audio/rpg-knifeSlice.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/impact-impactTin_medium_001.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "miguel:special2": {
+      "url": "/arena/audio/scifi-forceField_004.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-metalLatch.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "amelia:special0": {
+      "url": "/arena/audio/impact-impactWood_heavy_003.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-creak2.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "thorfinn:special0": {
+      "url": "/arena/audio/rpg-knifeSlice2.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-slime_000.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "thorfinn:special1": {
+      "url": "/arena/audio/rpg-chop.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/impact-impactSoft_heavy_004.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "thorfinn:special2": {
+      "url": "/arena/audio/scifi-forceField_002.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-lowFrequency_explosion_001.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "loulan:special0": {
+      "url": "/arena/audio/rpg-metalLatch.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/impact-impactMetal_medium_003.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "loulan:special1": {
+      "url": "/arena/audio/pistol-1911.wav",
+      "gain": 0.55,
+      "maxDuration": 1.35,
+      "layers": []
+    },
+    "loulan:special2": {
+      "url": "/arena/audio/rpg-drawKnife3.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-metalClick.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "langris:special0": {
+      "url": "/arena/audio/scifi-spaceEngineLow_003.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-forceField_001.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "langris:special1": {
+      "url": "/arena/audio/scifi-explosionCrunch_004.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-forceField_004.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "langris:special2": {
+      "url": "/arena/audio/scifi-engineCircular_001.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-laserLarge_004.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "lysa:special0": {
+      "url": "/arena/audio/scifi-slime_000.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-creak3.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "lysa:special1": {
+      "url": "/arena/audio/scifi-slime_001.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-forceField_003.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "lysa:special2": {
+      "url": "/arena/audio/scifi-slime_001.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-lowFrequency_explosion_000.ogg",
+          "gain": 0.25,
+          "delay": 0.055
+        },
+        {
+          "url": "/arena/audio/rpg-chop.ogg",
+          "gain": 0.25,
+          "delay": 0.11
+        }
+      ],
+      "maxDuration": 1.45
+    },
+    "ui:move": {
+      "url": "/arena/audio/rpg-metalClick.ogg",
+      "gain": 0.12,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.2
+    },
+    "ui:confirm": {
+      "url": "/arena/audio/rpg-bookClose.ogg",
+      "gain": 0.3,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.35
+    },
+    "ui:open": {
+      "url": "/arena/audio/rpg-bookOpen.ogg",
+      "gain": 0.28,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.5
+    },
+    "ui:back": {
+      "url": "/arena/audio/rpg-bookFlip1.ogg",
+      "gain": 0.23,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.35
+    },
+    "world:hit": {
+      "url": "/arena/audio/fight-punch-4.wav",
+      "gain": 0.6,
+      "layers": [
+        {
+          "url": "/arena/audio/fight-thwack-7.ogg",
+          "gain": 0.25
+        }
+      ],
+      "maxDuration": 0.65
+    },
+    "world:guard": {
+      "url": "/arena/audio/fight-thwack-3.ogg",
+      "gain": 0.5,
+      "maxDuration": 0.5
+    },
+    "world:fall": {
+      "url": "/arena/audio/impact-impactSoft_heavy_003.ogg",
+      "gain": 0.55,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.6
+    },
+    "world:jump": {
+      "url": "/arena/audio/rpg-cloth3.ogg",
+      "gain": 0.25,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.35
+    },
+    "world:revive": {
+      "url": "/arena/audio/scifi-forceField_000.ogg",
+      "gain": 0.5,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/impact-impactBell_heavy_001.ogg",
+          "gain": 0.16,
+          "delay": 0.12
+        }
+      ],
+      "maxDuration": 1.8
+    },
+    "world:step:forest:0": {
+      "url": "/arena/audio/impact-footstep_grass_000.ogg",
+      "gain": 0.22,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.3
+    },
+    "world:step:forest:1": {
+      "url": "/arena/audio/impact-footstep_grass_001.ogg",
+      "gain": 0.22,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.3
+    },
+    "world:step:harbor:0": {
+      "url": "/arena/audio/impact-footstep_wood_000.ogg",
+      "gain": 0.22,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.3
+    },
+    "world:step:harbor:1": {
+      "url": "/arena/audio/impact-footstep_wood_001.ogg",
+      "gain": 0.22,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.3
+    },
+    "world:step:egypt:0": {
+      "url": "/arena/audio/impact-footstep_concrete_000.ogg",
+      "gain": 0.22,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.3
+    },
+    "world:step:egypt:1": {
+      "url": "/arena/audio/impact-footstep_concrete_001.ogg",
+      "gain": 0.22,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.3
+    },
+    "world:step:swamp:0": {
+      "url": "/arena/audio/impact-footstep_grass_000.ogg",
+      "gain": 0.22,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.3
+    },
+    "world:step:swamp:1": {
+      "url": "/arena/audio/impact-footstep_grass_001.ogg",
+      "gain": 0.22,
+      "delay": 0,
+      "layers": [],
+      "maxDuration": 0.3
+    },
+    "fander:special2": {
+      "url": "/arena/audio/scifi-laserLarge_003.ogg",
+      "gain": 0.5,
+      "layers": [
+        {
+          "url": "/arena/audio/fight-thwack-1.ogg",
+          "gain": 0.4,
+          "delay": 0.035
+        },
+        {
+          "url": "/arena/audio/scifi-forceField_003.ogg",
+          "gain": 0.15,
+          "delay": 0.06
+        }
+      ],
+      "maxDuration": 1.1
+    },
+    "lightea:special1": {
+      "url": "/arena/audio/dark-magic-3.flac",
+      "gain": 0.5,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-creak3.ogg",
+          "gain": 0.28,
+          "delay": 0.05
+        },
+        {
+          "url": "/arena/audio/scifi-slime_000.ogg",
+          "gain": 0.22,
+          "delay": 0.08
+        }
+      ],
+      "maxDuration": 1.4
+    },
+    "valya:special2": {
+      "url": "/arena/audio/ice-wall.wav",
+      "gain": 0.65,
+      "layers": [
+        {
+          "url": "/arena/audio/blizzard.wav",
+          "gain": 0.3,
+          "delay": 0.08
+        },
+        {
+          "url": "/arena/audio/scifi-forceField_003.ogg",
+          "gain": 0.24,
+          "delay": 0.12
+        }
+      ],
+      "maxDuration": 1.8
+    },
+    "ui:start": {
+      "url": "/arena/audio/scifi-forceField_003.ogg",
+      "gain": 0.28,
+      "maxDuration": 0.4
+    },
+    "ui:battle": {
+      "url": "/arena/audio/fight-thwack-3.ogg",
+      "gain": 0.35,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-forceField_003.ogg",
+          "gain": 0.12,
+          "delay": 0.03
+        }
+      ],
+      "maxDuration": 0.55
+    },
+    "world:round": {
+      "url": "/arena/audio/scifi-forceField_003.ogg",
+      "gain": 0.35,
+      "maxDuration": 0.9
+    },
+    "world:fight": {
+      "url": "/arena/audio/fight-thwack-8.ogg",
+      "gain": 0.4,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-forceField_003.ogg",
+          "gain": 0.14,
+          "delay": 0.02
+        }
+      ],
+      "maxDuration": 0.5
+    },
+    "ui:secret": {
+      "url": "/arena/audio/scifi-forceField_003.ogg",
+      "gain": 0.3,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-slime_000.ogg",
+          "gain": 0.34,
+          "delay": 0.08
+        }
+      ],
+      "maxDuration": 1.2
+    },
+    "alter-lysa:light": {
+      "url": "/arena/audio/impact-impactPunch_heavy_004.ogg",
+      "gain": 0.5,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-slime_000.ogg",
+          "gain": 0.34
+        }
+      ],
+      "maxDuration": 0.55
+    },
+    "alter-lysa:heavy": {
+      "url": "/arena/audio/impact-impactPunch_heavy_004.ogg",
+      "gain": 0.5,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-creak3.ogg",
+          "gain": 0.28
+        }
+      ],
+      "maxDuration": 0.65
+    },
+    "alter-lysa:kick": {
+      "url": "/arena/audio/fight-punch-2.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-slime_000.ogg",
+          "gain": 0.34
+        }
+      ],
+      "maxDuration": 0.65
+    },
+    "alter-lysa:lowKick": {
+      "url": "/arena/audio/fight-punch-3.wav",
+      "gain": 0.65,
+      "delay": 0,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-creak3.ogg",
+          "gain": 0.28
+        }
+      ],
+      "maxDuration": 0.55
+    },
+    "alter-lysa:special0": {
+      "url": "/arena/audio/scifi-slime_000.ogg",
+      "gain": 0.34,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-forceField_003.ogg",
+          "gain": 0.3,
+          "delay": 0.12
+        }
+      ],
+      "maxDuration": 1.5
+    },
+    "world:alter-transform": {
+      "url": "/arena/audio/rpg-creak3.ogg",
+      "gain": 0.28,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-slime_000.ogg",
+          "gain": 0.34,
+          "delay": 0.12
+        }
+      ],
+      "maxDuration": 1.8
+    },
+    "world:alter-burst": {
+      "url": "/arena/audio/scifi-explosionCrunch_004.ogg",
+      "gain": 0.4,
+      "layers": [
+        {
+          "url": "/arena/audio/scifi-forceField_003.ogg",
+          "gain": 0.3,
+          "delay": 0.025
+        },
+        {
+          "url": "/arena/audio/scifi-slime_000.ogg",
+          "gain": 0.34
+        }
+      ],
+      "maxDuration": 0.9
+    },
+    "world:alter-revert": {
+      "url": "/arena/audio/scifi-slime_000.ogg",
+      "gain": 0.34,
+      "layers": [
+        {
+          "url": "/arena/audio/rpg-creak3.ogg",
+          "gain": 0.28,
+          "delay": 0.14
+        }
+      ],
+      "maxDuration": 1.2
+    }
+  },
+  "sources": [
+    {
+      "author": "Kenney",
+      "license": "CC0-1.0",
+      "urls": [
+        "https://kenney.nl/assets/impact-sounds",
+        "https://kenney.nl/assets/rpg-audio",
+        "https://kenney.nl/assets/sci-fi-sounds"
+      ]
+    },
+    {
+      "author": "Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney",
+      "license": "CC0-1.0",
+      "url": "https://opengameart.org/content/the-free-firearm-sound-library",
+      "description": "Gravação de pistola 1911 A_42P.wav, recortada e normalizada."
+    },
+    {
+      "author": "Ice spells / OpenGameArt",
+      "license": "CC0-1.0",
+      "url": "https://opengameart.org/content/ice-spells"
+    },
+    {
+      "author": "qubodup",
+      "license": "CC0-1.0",
+      "url": "https://opengameart.org/content/3-dark-magic-spells"
+    },
+    {
+      "name": "Thwack Sounds",
+      "author": "Jordan Irwin (AntumDeluge)",
+      "url": "https://opengameart.org/content/thwack-sounds",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Punch SFX",
+      "author": "DavidW",
+      "url": "https://opengameart.org/content/punch-sfx",
+      "license": "CC-BY-4.0",
+      "changes": "Samples originais; ganho, sobreposição e limite de duração durante reprodução."
+    },
+    {
+      "name": "Music Jingles",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets/music-jingles",
+      "license": "CC0-1.0"
+    }
+  ],
+  "files": [
+    {
+      "file": "impact-impactPunch_medium_000.ogg",
+      "original": "impact/impactPunch_medium_000.ogg",
+      "sha256": "486988aa2d6440ffc4c62a0e8ccf3c23673ba84424bd4723378d451b7255eb5c"
+    },
+    {
+      "file": "rpg-cloth1.ogg",
+      "original": "rpg/cloth1.ogg",
+      "sha256": "ddb93a3671233f95da0e0b10367f082f7eb42fa6caaddcf776410aa8833c747d"
+    },
+    {
+      "file": "scifi-laserSmall_003.ogg",
+      "original": "scifi/laserSmall_003.ogg",
+      "sha256": "cfa4391ca280933f567ce81c646b16f7cb2a090866eae674159a20f07641833c"
+    },
+    {
+      "file": "impact-impactPunch_heavy_001.ogg",
+      "original": "impact/impactPunch_heavy_001.ogg",
+      "sha256": "f92f5cb6ba4ff2766497292ffd90865654317eeca976f5652e0708dbdcdc0dd9"
+    },
+    {
+      "file": "rpg-cloth2.ogg",
+      "original": "rpg/cloth2.ogg",
+      "sha256": "8a7451193c38bc05483aec25dd193e163a15d44cf7fff04ac7912573231b0201"
+    },
+    {
+      "file": "impact-impactPunch_heavy_002.ogg",
+      "original": "impact/impactPunch_heavy_002.ogg",
+      "sha256": "7993dd4c156b9979ad69f17be5ebe31850b16039a3857f8477141be54dfee1b3"
+    },
+    {
+      "file": "rpg-cloth3.ogg",
+      "original": "rpg/cloth3.ogg",
+      "sha256": "a48632d17a4f1416541d261a32a31612e01267144c407fa3ecab3ff410f0085b"
+    },
+    {
+      "file": "impact-impactPunch_medium_003.ogg",
+      "original": "impact/impactPunch_medium_003.ogg",
+      "sha256": "2d7c719c05999e0532f4384e1018e04cd916db715140bf16dee2dff3f820e908"
+    },
+    {
+      "file": "rpg-cloth4.ogg",
+      "original": "rpg/cloth4.ogg",
+      "sha256": "e7ab9a6c4466dea874196c61f59bf1da05cfe58748f42fadd695d441a154a99b"
+    },
+    {
+      "file": "impact-impactPunch_medium_001.ogg",
+      "original": "impact/impactPunch_medium_001.ogg",
+      "sha256": "e71d23abcc3f10d9d6bc9615b2a431fff70b12333a5fcdd9964457564ace4349"
+    },
+    {
+      "file": "scifi-forceField_001.ogg",
+      "original": "scifi/forceField_001.ogg",
+      "sha256": "5574e69dd04e5f59322c5ddffde5978f077b09170ae5e29cec0bd9901828cd90"
+    },
+    {
+      "file": "impact-impactPunch_heavy_003.ogg",
+      "original": "impact/impactPunch_heavy_003.ogg",
+      "sha256": "4ab53b26f4ea575120dcc1348526c9e0db2afc6af7a442aa0489bdead2ca80b6"
+    },
+    {
+      "file": "impact-impactPunch_medium_004.ogg",
+      "original": "impact/impactPunch_medium_004.ogg",
+      "sha256": "4a256878a3afb994ec9a4399336687748e68c7c136872c08c9c797d8c4e2464a"
+    },
+    {
+      "file": "impact-impactPunch_medium_002.ogg",
+      "original": "impact/impactPunch_medium_002.ogg",
+      "sha256": "6492f9ccbc8d24dcef607bb1b48790b7870961474561f7fe5601e1c73a3018ef"
+    },
+    {
+      "file": "scifi-forceField_003.ogg",
+      "original": "scifi/forceField_003.ogg",
+      "sha256": "15e3fe971ffd3415e5ab641d3a4d043fb31f6712b0956315b524ba29c3889cda"
+    },
+    {
+      "file": "impact-impactPunch_heavy_004.ogg",
+      "original": "impact/impactPunch_heavy_004.ogg",
+      "sha256": "f4c0c3eb8ab6517583b8218ed03f28923d1b687379aab4c1d5a6d4c10cf8e500"
+    },
+    {
+      "file": "scifi-thrusterFire_001.ogg",
+      "original": "scifi/thrusterFire_001.ogg",
+      "sha256": "924636edc923fe4aab5829b69dc5dc1c5d659dec5739865434dabee752a3bb79"
+    },
+    {
+      "file": "impact-impactPunch_heavy_000.ogg",
+      "original": "impact/impactPunch_heavy_000.ogg",
+      "sha256": "b33a8f14068aec24ec69ba85e5e87fdc41228975f6a1a3e44a6e7d6fc3d9f8d8"
+    },
+    {
+      "file": "rpg-knifeSlice.ogg",
+      "original": "rpg/knifeSlice.ogg",
+      "sha256": "4cd96dc630bed9840c15f1dd2306da2cc56a4da26a5d3f1a03c5a7265ac5e54f"
+    },
+    {
+      "file": "impact-impactGlass_light_002.ogg",
+      "original": "impact/impactGlass_light_002.ogg",
+      "sha256": "710db7451bb7857b9140dfe6afe4621ea2188ad65eda3919c569d1bb285b933d"
+    },
+    {
+      "file": "rpg-creak2.ogg",
+      "original": "rpg/creak2.ogg",
+      "sha256": "8a990afdc03aebb91d528f5385e2f95582dbfa8e2c12c71098ab01be9142294a"
+    },
+    {
+      "file": "impact-impactWood_medium_002.ogg",
+      "original": "impact/impactWood_medium_002.ogg",
+      "sha256": "3f3f1917428b828f733a963167833c707bf88296ff158e1559c57c5cb813d799"
+    },
+    {
+      "file": "scifi-slime_001.ogg",
+      "original": "scifi/slime_001.ogg",
+      "sha256": "822ca475d71e18ef6bba707dbe6bff2bd493d3457b2552f7473d23022c1257ca"
+    },
+    {
+      "file": "rpg-knifeSlice2.ogg",
+      "original": "rpg/knifeSlice2.ogg",
+      "sha256": "6c2064d0ef988d1ec3d56868e823ea8823a5cac00f2742560052633529407def"
+    },
+    {
+      "file": "rpg-drawKnife2.ogg",
+      "original": "rpg/drawKnife2.ogg",
+      "sha256": "d5df6a4130cbb016f97b4883769a418917b9629cb4c21717030b186e0c73281a"
+    },
+    {
+      "file": "scifi-spaceEngineLow_003.ogg",
+      "original": "scifi/spaceEngineLow_003.ogg",
+      "sha256": "e8f7ce4dbc20b5aeead35b94f1c8927b0baa416edaa5b39f1699703031111488"
+    },
+    {
+      "file": "scifi-laserLarge_003.ogg",
+      "original": "scifi/laserLarge_003.ogg",
+      "sha256": "3c7b3c9d856ee31fa1b92d29322f6ee472446627381595baeaba2af35c07135f"
+    },
+    {
+      "file": "scifi-forceField_000.ogg",
+      "original": "scifi/forceField_000.ogg",
+      "sha256": "c2916f2a062c8ddd1aca2826d134fe90847037db31342726ffb0f9097afe339c"
+    },
+    {
+      "file": "scifi-spaceEngineLow_000.ogg",
+      "original": "scifi/spaceEngineLow_000.ogg",
+      "sha256": "d7deee8d7217ce63aab802ad7365a59cacfd243392dc1bd03b0a9d454aa494df"
+    },
+    {
+      "file": "rpg-creak3.ogg",
+      "original": "rpg/creak3.ogg",
+      "sha256": "f9638787f95004b9d2d06f8eff8e99d4e594c21b51947daf562856fbcec905d1"
+    },
+    {
+      "file": "scifi-engineCircular_003.ogg",
+      "original": "scifi/engineCircular_003.ogg",
+      "sha256": "f592ec53043887cf5aeec60d545372da3b4459fba3f634265ee9d5251a4edf4e"
+    },
+    {
+      "file": "scifi-lowFrequency_explosion_000.ogg",
+      "original": "scifi/lowFrequency_explosion_000.ogg",
+      "sha256": "3cb48d86dab63140cfb9aaeea4d4a6846abaca5831d157d8adbec0490da26343"
+    },
+    {
+      "file": "scifi-thrusterFire_000.ogg",
+      "original": "scifi/thrusterFire_000.ogg",
+      "sha256": "0fdc474d93f209debf1fc4ea77765a669dcb7676db31b4d8a0a509685bccf374"
+    },
+    {
+      "file": "impact-impactSoft_heavy_002.ogg",
+      "original": "impact/impactSoft_heavy_002.ogg",
+      "sha256": "d130ae541951243d3f6ed963d0057450a445ffe117fbf9a084d34eb1635cb563"
+    },
+    {
+      "file": "scifi-thrusterFire_003.ogg",
+      "original": "scifi/thrusterFire_003.ogg",
+      "sha256": "04f558ca5abf30788e49ed4370289dfd7e38c7f054d2ea35c2a013210374f1e5"
+    },
+    {
+      "file": "scifi-explosionCrunch_001.ogg",
+      "original": "scifi/explosionCrunch_001.ogg",
+      "sha256": "fdd04d6f0032d4d57c134ad37f3587d2d00e58c9572715275bd8cf4f43593576"
+    },
+    {
+      "file": "rpg-drawKnife1.ogg",
+      "original": "rpg/drawKnife1.ogg",
+      "sha256": "276403e72c3b71c47bc24db3083970c23f8e5551ffa78f436f83483c56f3f0bb"
+    },
+    {
+      "file": "scifi-forceField_002.ogg",
+      "original": "scifi/forceField_002.ogg",
+      "sha256": "051b0eafc479695af4ca3607d41fd4be41bae7c21f4f9508d004722b09f1bd63"
+    },
+    {
+      "file": "impact-impactMetal_light_001.ogg",
+      "original": "impact/impactMetal_light_001.ogg",
+      "sha256": "fba69c467ddd85da7b1d82e259f936b876d9ba6a3d6f1b24bdd10468e46bfe08"
+    },
+    {
+      "file": "scifi-spaceEngine_002.ogg",
+      "original": "scifi/spaceEngine_002.ogg",
+      "sha256": "5a1b1cc6d335944dd9ef94578b6bad939195d3020f61780c19425d2f6b3583db"
+    },
+    {
+      "file": "impact-impactGlass_heavy_001.ogg",
+      "original": "impact/impactGlass_heavy_001.ogg",
+      "sha256": "58686e0e562612cc566791844a10e269f8d1921f4766c14ba43976fd0a429f4e"
+    },
+    {
+      "file": "scifi-forceField_004.ogg",
+      "original": "scifi/forceField_004.ogg",
+      "sha256": "05609bb296cbc287ae95ac8924c89809d69c89d7bb357cc6a117ec1b1ef65e09"
+    },
+    {
+      "file": "scifi-spaceEngineSmall_000.ogg",
+      "original": "scifi/spaceEngineSmall_000.ogg",
+      "sha256": "2bec8ff75d81f0c37a6b78bd63beea6c70375e49ee30b0bbe7f38d654d576831"
+    },
+    {
+      "file": "impact-impactGlass_medium_002.ogg",
+      "original": "impact/impactGlass_medium_002.ogg",
+      "sha256": "48616f22c95589ed9fe55babf0fd012721d7b2ef1b9e85c2ad6408a2cd7c164f"
+    },
+    {
+      "file": "rpg-creak1.ogg",
+      "original": "rpg/creak1.ogg",
+      "sha256": "8a346186fd297254248cab8e8117060a52a5cf2a84f603153a762108550ea95e"
+    },
+    {
+      "file": "rpg-beltHandle1.ogg",
+      "original": "rpg/beltHandle1.ogg",
+      "sha256": "2ef665bd8b65dbe669f4560be38a6d8f04a162e618b15a49e3e71b58e558aab0"
+    },
+    {
+      "file": "impact-impactTin_medium_001.ogg",
+      "original": "impact/impactTin_medium_001.ogg",
+      "sha256": "84253095543c094d83cd749f42ecfbc96e356b60385f18a192c18eafb25b3cc6"
+    },
+    {
+      "file": "rpg-metalLatch.ogg",
+      "original": "rpg/metalLatch.ogg",
+      "sha256": "ba9ba60b172b3ebc131a940f25793cd2e207aca7af73dc80d637277f060f1708"
+    },
+    {
+      "file": "impact-impactWood_heavy_003.ogg",
+      "original": "impact/impactWood_heavy_003.ogg",
+      "sha256": "af07511902b309b3f6d8f0e1fafbe93869127fb88099ebdc0aa6a00a98dc3cb0"
+    },
+    {
+      "file": "scifi-slime_000.ogg",
+      "original": "scifi/slime_000.ogg",
+      "sha256": "480ee82b690136ea9db6966a3c3033356b8274752795c4e37afd6b6defcfacff"
+    },
+    {
+      "file": "rpg-chop.ogg",
+      "original": "rpg/chop.ogg",
+      "sha256": "d00c2b3c9fff07e376145c8c8c45c90e5084ec192f6ce0387db233f7b86f1486"
+    },
+    {
+      "file": "impact-impactSoft_heavy_004.ogg",
+      "original": "impact/impactSoft_heavy_004.ogg",
+      "sha256": "e008f0b6b14f62339c8fe9f9b45cbd6317ba4f66604c4899053b8017020a36f0"
+    },
+    {
+      "file": "scifi-lowFrequency_explosion_001.ogg",
+      "original": "scifi/lowFrequency_explosion_001.ogg",
+      "sha256": "cdda50600a4928f2f1b8371224d53c171ac799c1cf2c30b11999508985250b3b"
+    },
+    {
+      "file": "impact-impactMetal_medium_003.ogg",
+      "original": "impact/impactMetal_medium_003.ogg",
+      "sha256": "2a185e2e57211d02c1bdd33b872d6b6a2fe83e6c14f4e56f426a95e717acf08e"
+    },
+    {
+      "file": "scifi-explosionCrunch_002.ogg",
+      "original": "scifi/explosionCrunch_002.ogg",
+      "sha256": "be2b8ddc62e4a24c91e2e77793de98549ce216faf2f323a917e7d6f34321ff97"
+    },
+    {
+      "file": "impact-impactMetal_heavy_000.ogg",
+      "original": "impact/impactMetal_heavy_000.ogg",
+      "sha256": "e07045693e4a2b3d165c424e3dab4c781d9ff8880a386880ac89a51315d7f831"
+    },
+    {
+      "file": "rpg-drawKnife3.ogg",
+      "original": "rpg/drawKnife3.ogg",
+      "sha256": "a11ae62fb1a628425769d11a9de394980ad8909c31f4c9a4316f226963e21caf"
+    },
+    {
+      "file": "rpg-metalClick.ogg",
+      "original": "rpg/metalClick.ogg",
+      "sha256": "9851a69d0c613e13bceef08060ecc4148f098ef487927cbebe270d642398a3b3"
+    },
+    {
+      "file": "scifi-explosionCrunch_004.ogg",
+      "original": "scifi/explosionCrunch_004.ogg",
+      "sha256": "9c3a1c73cadf0de5d5a578b31a264f20b1ac7cb6ec9bbd34a203f58402ea5390"
+    },
+    {
+      "file": "scifi-engineCircular_001.ogg",
+      "original": "scifi/engineCircular_001.ogg",
+      "sha256": "e1df3a942842a24f7c4056db3177e8008edd73d4f3985fd95f55362bc85058bc"
+    },
+    {
+      "file": "scifi-laserLarge_004.ogg",
+      "original": "scifi/laserLarge_004.ogg",
+      "sha256": "86c749483b40e1bba9bfea6a04e884d479e5481e52efb6f113341141de516b3b"
+    },
+    {
+      "file": "rpg-bookClose.ogg",
+      "original": "rpg/bookClose.ogg",
+      "sha256": "81e976532565f4372abd14e83d2684195fa548d0a28d345de221e56052454f32"
+    },
+    {
+      "file": "rpg-bookOpen.ogg",
+      "original": "rpg/bookOpen.ogg",
+      "sha256": "953390534377222bee89ac8cd9e60a58fdc037c71a4d7c18c43cd647c7f34ba8"
+    },
+    {
+      "file": "rpg-bookFlip1.ogg",
+      "original": "rpg/bookFlip1.ogg",
+      "sha256": "fa81ac2fedc8c641661b87e349630a36c9800e795e0c800e029214efdbe26a7d"
+    },
+    {
+      "file": "impact-impactMetal_medium_002.ogg",
+      "original": "impact/impactMetal_medium_002.ogg",
+      "sha256": "7e89ce2ca0dbda95ea2b78d4b50791cab35c10d20e9f5ccd45dd0b00e99ff548"
+    },
+    {
+      "file": "impact-impactSoft_heavy_003.ogg",
+      "original": "impact/impactSoft_heavy_003.ogg",
+      "sha256": "d00286a2dc62ee5cb4d42bf56120e7050a855f69e655fc1294410aadd337eba3"
+    },
+    {
+      "file": "impact-impactBell_heavy_001.ogg",
+      "original": "impact/impactBell_heavy_001.ogg",
+      "sha256": "9df61e3ae9a83dc65e5a1fd3ed19d480876f3b22b963a1b9ef6fa293592dcec4"
+    },
+    {
+      "file": "impact-footstep_grass_000.ogg",
+      "original": "impact/footstep_grass_000.ogg",
+      "sha256": "9d49497777405d78d7cf7f2888e28277f3a23192300cfd1d79d54876b20f479f"
+    },
+    {
+      "file": "impact-footstep_grass_001.ogg",
+      "original": "impact/footstep_grass_001.ogg",
+      "sha256": "fb28781bd22b2eefdc14077f1adf5c94d7fe9c3a130194633b55f3e0d39d9f04"
+    },
+    {
+      "file": "impact-footstep_wood_000.ogg",
+      "original": "impact/footstep_wood_000.ogg",
+      "sha256": "5f1c252942a220d658121bd9417448cd19649ded9fff2ff15f6e50899373ce8e"
+    },
+    {
+      "file": "impact-footstep_wood_001.ogg",
+      "original": "impact/footstep_wood_001.ogg",
+      "sha256": "e4f68e1c9fd55b4dc8ca89ed2bbab6f200171bc54bdc18aa96b80d8e7336f462"
+    },
+    {
+      "file": "impact-footstep_concrete_000.ogg",
+      "original": "impact/footstep_concrete_000.ogg",
+      "sha256": "d7267e183067757c92c169de2a379abea592cfca6b39bb2e8feea15221ad79fe"
+    },
+    {
+      "file": "impact-footstep_concrete_001.ogg",
+      "original": "impact/footstep_concrete_001.ogg",
+      "sha256": "507a75eb19b897087855a3be3cf11a12d7fa37d143ad535eeebe0b8031c7325d"
+    },
+    {
+      "file": "pistol-1911.wav",
+      "original": "the-free-firearm-sound-library/A_42P.wav",
+      "sha256": "840427b077b6c3feafff7ee326a8e4251b7d849f1455a8a4f7faf56a81849c90",
+      "conversion": {
+        "sourceRate": 96000,
+        "sourceBits": 24,
+        "sourceChannels": 2,
+        "trimStartSeconds": 0.9264583333333334,
+        "duration": 1.35
+      }
+    },
+    {
+      "file": "ice-wall.wav",
+      "original": "ice-spells/ice.wav",
+      "sha256": "60b56e33b86b7db5e049646ce242700f42f5303c878d274665d79b73be046996",
+      "conversion": {
+        "sourceRate": 44100,
+        "sourceBits": 16,
+        "sourceChannels": 2,
+        "trimStartSeconds": 0,
+        "duration": 1.1639002267573697
+      }
+    },
+    {
+      "file": "blizzard.wav",
+      "original": "ice-spells/coldsnap.wav",
+      "sha256": "c388b9862b563d7fb7eb2efc412aafc5cc7401a299f28bc8797076acff4aa99e",
+      "conversion": {
+        "sourceRate": 44100,
+        "sourceBits": 16,
+        "sourceChannels": 2,
+        "trimStartSeconds": 0,
+        "duration": 1.8
+      }
+    },
+    {
+      "file": "dark-magic-1.flac",
+      "original": "3-dark-magic-spells/fout-01.flac",
+      "sha256": "47a79f97cb3ac35219d02c0c0b7a2aeb09b260ce9eed3d316728be867e6ac0a9"
+    },
+    {
+      "file": "dark-magic-2.flac",
+      "original": "3-dark-magic-spells/fout-02.flac",
+      "sha256": "dbf01a5c9ccf10175038fb3a2ac5092f7d7745b1ab03a31edac221a0188459d1"
+    },
+    {
+      "file": "dark-magic-3.flac",
+      "original": "3-dark-magic-spells/fout-03.flac",
+      "sha256": "ec55b77eb3096dcc083d219254d0a37a0ecf071477d7c47bc363092c2ca02d0d"
+    }
+  ]
+}

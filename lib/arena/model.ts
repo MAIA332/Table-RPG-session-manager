@@ -1,276 +1,396 @@
-/** Motor de luta 2D isolado. Física determinística a 60Hz no servidor.
- * Nenhum HP, recurso ou equipamento da ficha original é modificado. */
-export const ARENA_WIDTH=960
-export const ARENA_HEIGHT=540
-export const ARENA_FLOOR=451
-export const ARENA_MAX_FIGHTERS=4
-export const ROUND_SECONDS=90
-export const ROUNDS_TO_WIN=2
-export const GRAVITY=1740
+import {fighterDimensions,basicAttackRange} from './geometry'
+import {fighterPortrait} from './catalog'
+/** Simulação a 60 Hz, independente das fichas e recursos da campanha. */
+export const ARENA_WIDTH=1600,ARENA_HEIGHT=540,ARENA_FLOOR=451,ARENA_MAX_FIGHTERS=4,ROUND_SECONDS=99,ROUNDS_TO_WIN=2,GRAVITY=1740
+export const ARENA_EDGE=56,HIT_RECOVERY_GRACE=.08
+export const ARENA_SCHEMA_VERSION=7
+export type ArenaSettings={roundSeconds:30|60|99|null;mode:'free-for-all'|'teams'}
+export const DEFAULT_ARENA_SETTINGS:ArenaSettings={roundSeconds:ROUND_SECONDS,mode:'free-for-all'}
+export const arenaSettings=(r:{settings?:ArenaSettings}):ArenaSettings=>r.settings||DEFAULT_ARENA_SETTINGS
+export function configureArenaSettings(r:ArenaSession,value:unknown){
+ if(r.phase!=='lobby')throw new Error('As configurações só podem mudar na seleção de personagens.')
+ if(!value||typeof value!=='object')throw new Error('Configurações inválidas.')
+ const {roundSeconds,mode}=value as ArenaSettings
+ if(roundSeconds!==null&&roundSeconds!==30&&roundSeconds!==60&&roundSeconds!==99)throw new Error('Escolha 30, 60, 99 segundos ou infinito.')
+ if(mode!=='free-for-all'&&mode!=='teams')throw new Error('Modo de partida inválido.')
+ if(mode==='teams'&&(r.fighters.length!==4||r.fighters.some(f=>f.bot||f.withdrawn)))throw new Error('Em equipe exige quatro jogadores: P1 + P3 contra P2 + P4.')
+ r.settings={roundSeconds,mode}
+}
+export const arenaTeam=(r:{fighters:readonly{id:string;team?:0|1}[]},f:{id:string;team?:0|1})=>f.team??Math.max(0,r.fighters.findIndex(e=>e.id===f.id))%2
+export const arenaOpponents=(r:{settings?:ArenaSettings;fighters:readonly{id:string;team?:0|1}[]},a:{id:string;team?:0|1},b:{id:string;team?:0|1})=>a.id!==b.id&&(arenaSettings(r).mode!=='teams'||arenaTeam(r,a)!==arenaTeam(r,b))
+export const EUPHORIA_TRANSFORM_SECONDS=2.1,EUPHORIA_REVERT_SECONDS=1.1,EUPHORIA_DRAIN=3,ALTER_DANCE_SECONDS=1.6
+export const ARENA_GO_CLEAR_SECONDS=.12
 const STEP=1/60
-const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n))
-export type MoveKind='light'|'heavy'|'special'
+const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n))
+export type MoveKind='light'|'heavy'|'kick'|'lowKick'|'special'
 export type ArenaMove={kind:MoveKind;name:string;damage:number;range:number;magic:boolean;projectile:boolean}
-export type ArenaPortrait={id:string;name:string;imageUrl:string;kind:'player'|'npc'|'monster';ownerId?:string;moves:ArenaMove[];speed:number;power:number;weaponStyle?:'blade'|'staff'|'bow'|'fists'}
-export type ArenaInput={left:boolean;right:boolean;jump:boolean;light:boolean;heavy:boolean;special:boolean;guard:boolean;dodge:boolean;crouch:boolean}
-export const NO_INPUT:ArenaInput={left:false,right:false,jump:false,light:false,heavy:false,special:false,guard:false,dodge:false,crouch:false}
-export type FighterPose='idle'|'walk'|'jump'|'crouch'|'guard'|'dash'|'light'|'heavy'|'special'|'hit'|'ko'|'win'
+export type ArenaPortrait={id:string;name:string;imageUrl:string;kind:'player'|'npc'|'monster';ownerId?:string;moves:ArenaMove[];speed:number;power:number;weaponStyle?:'blade'|'staff'|'bow'|'fists';title?:string;color?:string;spriteUrl?:string;spriteRow?:number;techniques?:{name:string;description:string;passive?:boolean}[]}
+export type ArenaInput={left:boolean;right:boolean;jump:boolean;light:boolean;heavy:boolean;kick:boolean;lowKick:boolean;special:boolean;special2:boolean;special3:boolean;guard:boolean;dodge:boolean;crouch:boolean}
+export const NO_INPUT:ArenaInput={left:false,right:false,jump:false,light:false,heavy:false,kick:false,lowKick:false,special:false,special2:false,special3:false,guard:false,dodge:false,crouch:false}
+export const ATTACK_BUTTONS=['special3','special2','special','kick','lowKick','heavy','light'] as const
+export const PULSE_BUTTONS=['jump',...ATTACK_BUTTONS,'dodge'] as const
+export type FighterPose='idle'|'walk'|'jump'|'crouch'|'guard'|'dash'|'light'|'heavy'|'special'|'hit'|'ko'|'win'|'kick'|'lowKick'
 export type ArenaBox={x:number;y:number;w:number;h:number}
 export const intersectsAABB=(a:ArenaBox,b:ArenaBox)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y
+export type DirectionSample={direction:number;at:number}
 export type ArenaFighter={
- id:string;userId:string;device:string;name:string;characterId:string|null;bot:boolean;withdrawn:boolean
- x:number;y:number;vx:number;vy:number;facing:number;onGround:boolean
- health:number;guard:number;meter:number;wins:number;combo:number;comboUntil:number
+ id:string;userId:string;device:string;name:string;characterId:string|null;bot:boolean;withdrawn:boolean;team?:0|1
+ x:number;y:number;vx:number;vy:number;facing:number;onGround:boolean;health:number;guard:number;meter:number;wins:number;combo:number;comboUntil:number
  pose:FighterPose;poseUntil:number;invincibleUntil:number;stunUntil:number;dodgeUntil:number
- attackKind:MoveKind|null;attackAt:number;attackUntil:number;attackHit:boolean;attackCooldownUntil:number
- /** Número do golpe leve na sequência (1, 2, 3). */
- comboStep:number;chainUntil:number;bufferKind:MoveKind|null;bufferUntil:number;airJumps:number
+ attackKind:MoveKind|null;attackAt:number;attackUntil:number;attackHit:boolean;attackTargets:string[];attackCooldownUntil:number;comboStep:number;chainUntil:number;bufferKind:MoveKind|null;bufferUntil:number;airJumps:number
  lastHitBy:string|null;input:ArenaInput;lastSeen:number;lastInputSeq:number;lastInputSource:string;previousJump:boolean;previousLight:boolean;previousHeavy:boolean;previousSpecial:boolean;previousDodge:boolean
+ previousButtons:ArenaInput;directions:DirectionSample[];specialIndex:number;bufferSpecial:number;directional:boolean;activeTechnique:string
+ buffUntil:number;buffKind:string;autoDodgeUntil:number;frozenUntil:number;rootUntil:number;puppetUntil:number;puppetX:number;puddleUntil:number;swallowedUntil:number;swallowedBy:string|null;revived:boolean;weapon:'kunai'|'karambit'
+ alterLysa:boolean;euphoriaState:'normal'|'transforming'|'active'|'reverting';euphoriaAt:number;euphoriaNeedsFull:boolean;euphoriaBurst:boolean;danceAt:number;danceUntil:number;danceLaunched:boolean
 }
-export type ArenaProjectile={id:number;ownerId:string;x:number;y:number;vx:number;damage:number;expiresAt:number;magic:boolean}
-export type ArenaEffect={id:number;x:number;y:number;kind:'hit'|'guard'|'burst'|'ko'|'dust';expiresAt:number;power?:number;facing?:number}
+export type ArenaProjectile={id:number;ownerId:string;x:number;y:number;vx:number;damage:number;expiresAt:number;magic:boolean;style?:string;targetId?:string;launchAt?:number;radius?:number}
+export type ArenaZone={id:number;ownerId:string;kind:'darkness'|'cage'|'blizzard'|'barrier'|'roots'|'fate'|'gravity';x:number;radius:number;expiresAt:number;nextHit:number;targetId?:string;anchorX?:number}
+export type ArenaEffect={id:number;x:number;y:number;kind:'hit'|'guard'|'burst'|'ko'|'dust'|'skill';expiresAt:number;power?:number;facing?:number;style?:string}
 export type ArenaSession={
- id:string;campaignId:string;phase:'lobby'|'playing'|'paused'|'finished';createdAt:number;gmId:string
- roster:ArenaPortrait[];fighters:ArenaFighter[];winnerId:string|null;pausedBy:string|null
- tickAt:number;accumulator:number;gameTime:number;roundElapsed:number;rounds:number;roundStatus:'intro'|'fight'|'ko'
- nextRoundAt:number;message:string;lastUpdateAt:number;projectiles:ArenaProjectile[];effects:ArenaEffect[];effectSequence:number;hitstopFrames?:number
+ schemaVersion?:number;revision?:number
+ settings?:ArenaSettings;winningTeam?:0|1|null
+ secretUnlocks?:{userId:string;device:string}[]
+ id:string;campaignId:string;phase:'lobby'|'stage'|'playing'|'paused'|'finished';createdAt:number;gmId:string;stageId:string
+ roster:ArenaPortrait[];fighters:ArenaFighter[];winnerId:string|null;pausedBy:string|null;tickAt:number;accumulator:number;gameTime:number;roundElapsed:number;rounds:number;roundStatus:'intro'|'fight'|'ko'
+ nextRoundAt:number;message:string;lastUpdateAt:number;projectiles:ArenaProjectile[];zones:ArenaZone[];effects:ArenaEffect[];effectSequence:number;hitstopFrames?:number
 }
-export type ArenaPublicFighter=Omit<ArenaFighter,'input'|'lastSeen'|'lastInputSeq'|'lastInputSource'|'previousJump'|'previousLight'|'previousHeavy'|'previousSpecial'|'previousDodge'>
+type PrivateFighter='input'|'lastSeen'|'lastInputSeq'|'lastInputSource'|'previousJump'|'previousLight'|'previousHeavy'|'previousSpecial'|'previousDodge'|'previousButtons'|'directions'|'bufferKind'|'bufferUntil'|'bufferSpecial'|'attackTargets'
+export type ArenaPublicFighter=Omit<ArenaFighter,PrivateFighter>
 export type ArenaSnapshot=Omit<ArenaSession,'fighters'> & {fighters:ArenaPublicFighter[]}
-const positions=[280,680,150,810]
-export const spawnX=(i:number)=>positions[i]??480
+export const spawnX=(i:number)=>[600,1000,360,1240][i]??800
 const alive=(f:ArenaFighter)=>!f.withdrawn&&f.health>0
-const moveOf=(room:ArenaSession,f:ArenaFighter,kind:MoveKind)=>room.roster.find(p=>p.id===f.characterId)?.moves.find(m=>m.kind===kind)
-export function getFighterHurtbox(f:Pick<ArenaFighter,'x'|'y'|'pose'>):ArenaBox {
- if(f.pose==='ko')return {x:f.x-42,y:f.y-34,w:84,h:30}
- const duck=f.pose==='crouch'
- return {x:f.x-25,y:f.y-(duck?110:160),w:50,h:duck?105:153}
+const nearest=(r:ArenaSession,f:ArenaFighter)=>{const x=f.puppetUntil>r.gameTime?f.puppetX:f.x;return r.fighters.filter(e=>arenaOpponents(r,f,e)&&alive(e)&&e.swallowedUntil<=r.gameTime&&e.puddleUntil<=r.gameTime).sort((a,b)=>Math.hypot(a.x-x,a.y-f.y)-Math.hypot(b.x-x,b.y-f.y)||a.id.localeCompare(b.id))[0]}
+const character=(r:ArenaSession,f:ArenaFighter)=>fighterPortrait(r.roster,f)
+const origin=(f:ArenaFighter,t:number)=>f.puppetUntil>t?f.puppetX:f.x
+export function getFighterHurtbox(f:Pick<ArenaFighter,'x'|'y'|'pose'>&{characterId?:string|null;alterLysa?:boolean;euphoriaState?:string}):ArenaBox {
+ const duck=f.pose==='crouch',ko=f.pose==='ko',body=fighterDimensions(f.characterId),height=ko?30:body.height*(duck?.52:.94),width=ko?84:body.width
+ return {x:f.x-width/2,y:f.y-height,w:width,h:height-4}
 }
-/** A caixa de ataque é independente da arte. Só fica ativa depois do startup. */
-export function getAttackHitbox(f:Pick<ArenaFighter,'x'|'y'|'facing'|'attackKind'|'attackAt'|'attackUntil'|'comboStep'|'onGround'>,at:number,range?:number):ArenaBox|null {
- const kind=f.attackKind
- if(!kind||at>=f.attackUntil)return null
- const startup=kind==='special'?.22:kind==='heavy'?.17:.075
- const active=kind==='special'?.22:kind==='heavy'?.19:.15
- const elapsed=at-f.attackAt
- if(elapsed<startup||elapsed>startup+active)return null
- const step=kind==='light'?Math.max(1,f.comboStep):1
- const width=clamp(range??(kind==='special'?126:kind==='heavy'?100:step===3?105:81),58,185)
- const height=kind==='light'?(step===3?86:75):kind==='heavy'?105:126
- const low=kind==='light'&&step===2
- const base=f.y-(low?85:kind==='special'?163:kind==='heavy'?147:135)
- return {x:f.facing===1?f.x+10:f.x-10-width,y:base,w:width,h:height}
+export function getAttackHitbox(f:Pick<ArenaFighter,'x'|'y'|'facing'|'attackKind'|'attackAt'|'attackUntil'|'comboStep'|'onGround'>&{characterId?:string|null;puppetUntil?:number;alterLysa?:boolean;euphoriaState?:string},at:number,range?:number):ArenaBox|null {
+ const k=f.attackKind;if(!k||at>=f.attackUntil)return null
+ const startup=attackTiming(k).startup
+ if(at-f.attackAt<startup||at-f.attackAt>startup+.14)return null
+ const low=k==='heavy'||k==='lowKick',euphoric=f.alterLysa&&f.euphoriaState==='active',height=fighterDimensions(f.characterId).height*((f.puppetUntil||0)>at?1.45:1),w=clamp((range??basicAttackRange(k))*height/190*(euphoric?1.25:1),50,340)
+ return {x:f.facing===1?f.x:f.x-w,y:f.y-height*(low?.48:.88),w,h:height*(low?.46:.62)}
 }
-export function getProjectileHitbox(p:Pick<ArenaProjectile,'x'|'y'>):ArenaBox{return {x:p.x-19,y:p.y-14,w:38,h:28}}
+export function attackTiming(kind:MoveKind){
+ return kind==='special'?{duration:.66,startup:.28}:kind==='kick'?{duration:.42,startup:.18}:kind==='lowKick'?{duration:.38,startup:.16}:kind==='heavy'?{duration:.36,startup:.14}:{duration:.32,startup:.12}
+}
+export function getProjectileHitbox(p:Pick<ArenaProjectile,'x'|'y'|'radius'>&{style?:string}):ArenaBox {if(p.style==='alterClone')return{x:p.x-27,y:p.y-165,w:54,h:165};if(p.style==='iceDragon')return{x:p.x-115,y:p.y-65,w:230,h:135};const v=p.radius||17;return{x:p.x-v,y:p.y-v,w:v*2,h:v*2}}
+/** 236 / 214 relativos ao lado do lutador; direções neutras são toleradas. */
+export function recognizeMotion(samples:readonly DirectionSample[],facing:number,now:number):'forward'|'back'|null {
+ const recent=samples.filter(s=>now-s.at<=.48&&s.direction!==5)
+ for(const [name,seq] of [['forward',facing===1?[2,3,6]:[2,1,4]],['back',facing===1?[2,1,4]:[2,3,6]]] as const){
+  let j=2;for(let i=recent.length-1;i>=0&&j>=0;i--)if(recent[i].direction===seq[j])j--
+  if(j<0&&recent.at(-1)?.direction===seq[2])return name
+ }return null
+}
 function setupFighter(f:ArenaFighter,index:number){
- f.x=spawnX(index);f.y=ARENA_FLOOR;f.vx=0;f.vy=0;f.facing=index%2?-1:1;f.onGround=true
- f.health=100;f.guard=100;f.meter=0;f.combo=0;f.comboUntil=0;f.pose='idle';f.poseUntil=0
- f.invincibleUntil=0;f.stunUntil=0;f.dodgeUntil=0;f.attackKind=null;f.attackAt=0;f.attackUntil=0;f.attackHit=false;f.attackCooldownUntil=0
- f.comboStep=0;f.chainUntil=0;f.bufferKind=null;f.bufferUntil=0;f.airJumps=1
- f.lastHitBy=null;f.input={...NO_INPUT};f.lastInputSeq=0;f.lastInputSource='';f.previousJump=false;f.previousLight=false;f.previousHeavy=false;f.previousSpecial=false;f.previousDodge=false
+ Object.assign(f,{x:spawnX(index),y:ARENA_FLOOR,vx:0,vy:0,facing:index%2?-1:1,onGround:true,health:100,guard:100,meter:70,combo:0,comboUntil:0,pose:'idle',poseUntil:0,
+ invincibleUntil:0,stunUntil:0,dodgeUntil:0,attackKind:null,attackAt:0,attackUntil:0,attackHit:false,attackTargets:[],attackCooldownUntil:0,comboStep:0,chainUntil:0,bufferKind:null,bufferUntil:0,bufferSpecial:0,airJumps:0,
+ lastHitBy:null,input:{...NO_INPUT},previousButtons:{...NO_INPUT},directions:[],lastInputSeq:0,lastInputSource:'',previousJump:false,previousLight:false,previousHeavy:false,previousSpecial:false,previousDodge:false,
+ specialIndex:0,directional:false,activeTechnique:'',buffUntil:0,buffKind:'',autoDodgeUntil:0,frozenUntil:0,rootUntil:0,puppetUntil:0,puppetX:spawnX(index),puddleUntil:0,swallowedUntil:0,swallowedBy:null,weapon:'kunai',euphoriaState:'normal',euphoriaAt:0,euphoriaNeedsFull:false,euphoriaBurst:false,danceAt:0,danceUntil:0,danceLaunched:false})
 }
-export function newFighter(id:string,userId:string,device:string,name:string,bot=false):ArenaFighter{
- return {id,userId,device,name,characterId:null,bot,withdrawn:false,x:480,y:ARENA_FLOOR,vx:0,vy:0,facing:1,onGround:true,
- health:100,guard:100,meter:0,wins:0,combo:0,comboUntil:0,pose:'idle',poseUntil:0,invincibleUntil:0,stunUntil:0,dodgeUntil:0,
- attackKind:null,attackAt:0,attackUntil:0,attackHit:false,attackCooldownUntil:0,
- comboStep:0,chainUntil:0,bufferKind:null,bufferUntil:0,airJumps:1,
- lastHitBy:null,input:{...NO_INPUT},lastSeen:Date.now(),lastInputSeq:0,lastInputSource:'',previousJump:false,previousLight:false,previousHeavy:false,previousSpecial:false,previousDodge:false}
+export function newFighter(id:string,userId:string,device:string,name:string,bot=false):ArenaFighter {
+ const f={id,userId,device,name,characterId:null,bot,withdrawn:false,wins:0,lastSeen:Date.now(),revived:false,alterLysa:false} as ArenaFighter
+ setupFighter(f,0);return f
 }
-function initRound(room:ArenaSession){
- room.roundElapsed=0;room.rounds++;room.roundStatus='intro';room.nextRoundAt=room.gameTime+1.05
- room.projectiles=[];room.effects=[];room.hitstopFrames=0;room.message=`ROUND ${room.rounds}`
- room.fighters.forEach((f,i)=>{if(!f.withdrawn)setupFighter(f,i)})
+function initRound(r:ArenaSession){
+ r.roundElapsed=0;r.rounds++;r.roundStatus='intro';r.nextRoundAt=r.gameTime+2.6;r.projectiles=[];r.effects=[];r.zones=[];r.hitstopFrames=0;r.message='ROUND '+r.rounds
+ r.fighters.forEach((f,i)=>{if(!f.withdrawn)setupFighter(f,i)})
 }
-export function startRound(room:ArenaSession){
- room.phase='playing';room.winnerId=null;room.pausedBy=null;room.hitstopFrames=0;room.rounds=0;room.gameTime=0;room.tickAt=Date.now();room.accumulator=0;room.effectSequence=0
- room.fighters.forEach(f=>{f.wins=0;f.withdrawn=false});initRound(room)
+export function startRound(r:ArenaSession){
+ if(arenaSettings(r).mode==='teams'&&(r.fighters.length!==4||r.fighters.some(f=>f.bot||f.withdrawn)))throw new Error('Em equipe exige quatro jogadores.')
+ r.phase='playing';r.winnerId=null;r.pausedBy=null;r.hitstopFrames=0;r.rounds=0;r.gameTime=0;r.tickAt=Date.now();r.accumulator=0;r.effectSequence=0
+ r.winningTeam=null;r.fighters.forEach((f,i)=>{f.team=arenaSettings(r).mode==='teams'?i%2 as 0|1:undefined;f.wins=0;f.withdrawn=false;f.revived=false});initRound(r)
 }
-function effect(room:ArenaSession,x:number,y:number,kind:ArenaEffect['kind'],power=1,facing=1){
- room.effects.push({id:++room.effectSequence,x,y,kind,power,facing,expiresAt:room.gameTime+(kind==='ko'?.8:kind==='dust'?.23:.48)});
- if(room.effects.length>40)room.effects.shift()
+function effect(r:ArenaSession,x:number,y:number,kind:ArenaEffect['kind'],power=1,facing=1,style?:string){
+ r.effects.push({id:++r.effectSequence,x,y,kind,power,facing,style,expiresAt:r.gameTime+(kind==='ko'?1:kind==='skill'?.85:kind==='dust'?.3:.4)})
+ if(r.effects.length>64)r.effects.shift()
 }
-function receiveHit(room:ArenaSession,attacker:ArenaFighter,target:ArenaFighter,damage:number,magic:boolean,impactX:number){
- const t=room.gameTime
- if(!alive(target)||target.id===attacker.id||target.invincibleUntil>t)return false
- // Defender voltado para o agressor pode bloquear; costas expostas não bloqueiam.
- const guarding=target.input.guard&&target.onGround&&target.stunUntil<=t&&target.facing*(attacker.x-target.x)>0
- const amount=guarding?Math.max(1,Math.round(damage*.15)):damage
- target.health=clamp(target.health-amount,0,100);target.lastHitBy=attacker.id
- attacker.combo=attacker.comboUntil>=t?attacker.combo+1:1;attacker.comboUntil=t+1.1
- attacker.meter=clamp(attacker.meter+(guarding?4:11),0,100);target.meter=clamp(target.meter+(guarding?5:8),0,100)
- if(guarding){
-  target.guard=clamp(target.guard-(magic?24:17),0,100)
-  target.pose=target.guard===0?'hit':'guard';target.stunUntil=t+(target.guard===0?.8:.14);target.poseUntil=target.stunUntil
-  if(target.guard===0)room.message=`GUARDA QUEBRADA · ${target.name}`
-  effect(room,impactX,target.y-72,'guard',1.1,attacker.facing)
- }else{
-  target.attackKind=null;target.bufferKind=null;target.attackUntil=0;target.chainUntil=0
-  target.vx=(target.x>=attacker.x?1:-1)*(110+damage*7)
-  target.vy=damage>=11?-Math.min(365,100+damage*11):-90
-  target.onGround=false;target.stunUntil=t+clamp(.2+damage*.014,.25,.72)
-  target.pose='hit';target.poseUntil=target.stunUntil
-  effect(room,impactX,target.y-74,'hit',clamp(damage/9,.8,2.5),attacker.facing)
-  // Hitstop: 3–7 quadros congelam o impacto, não o comando nem a interface.
-  room.hitstopFrames=Math.max(room.hitstopFrames||0,clamp(Math.round(damage*.32),3,7))
-  room.message=attacker.combo>=2?`${attacker.name} · ${attacker.combo} HIT COMBO!`:`${attacker.name} acertou ${target.name}`
+export function receiveHit(r:ArenaSession,a:ArenaFighter,b:ArenaFighter,damage:number,magic=false,impactX=b.x,low=false){
+ const t=r.gameTime
+ if(!alive(b)||!arenaOpponents(r,a,b)||b.invincibleUntil>t||b.swallowedUntil>t||b.puddleUntil>t)return false
+ if(b.autoDodgeUntil>t){b.invincibleUntil=t+.2;b.dodgeUntil=t+.3;b.poseUntil=t+.3;b.pose='dash';b.vx=-b.facing*260;effect(r,b.x,b.y-90,'skill',1,b.facing,'dodge');return false}
+ const backwards=b.facing===1?b.input.left:b.input.right
+ const guarding=(b.input.guard||backwards)&&b.onGround&&!b.attackKind&&b.stunUntil<=t&&b.facing*(a.x-b.x)>0&&(!low||b.input.crouch||b.input.guard)
+ const buff=a.buffUntil>t&&['electric','blood','fire'].includes(a.buffKind)?1.28:1
+ const amount=guarding?Math.max(1,Math.round(damage*.1)):Math.round(damage*buff*(a.characterId==='loulan'&&a.weapon==='karambit'?1.18:1)*(a.alterLysa&&a.euphoriaState==='active'?1.18:1)*(b.alterLysa&&b.euphoriaState==='active'?.82:1))
+ b.health=clamp(b.health-amount,0,100);b.lastHitBy=a.id
+ if(a.euphoriaState!=='active')a.meter=clamp(a.meter+5,0,100)
+ if(b.euphoriaState!=='active')b.meter=clamp(b.meter+4,0,100)
+ if(guarding){b.guard=clamp(b.guard-(magic?17:12),0,100);b.pose=b.guard===0?'hit':'guard';b.stunUntil=t+(b.guard===0?.6:.12);effect(r,impactX,b.y-90,'guard',1,a.facing)}
+ else{
+  a.combo=a.comboUntil>=t?a.combo+1:1;a.comboUntil=t+.85
+  b.attackKind=null;b.bufferKind=null;b.attackUntil=0;b.chainUntil=0
+  b.danceUntil=0
+  b.vx=(b.x>=a.x?1:-1)*(80+damage*6);b.vy=damage>13?-230:-45;b.onGround=false;b.stunUntil=t+clamp(.13+damage*.008,.16,.38);b.pose='hit';b.poseUntil=b.stunUntil
+  b.invincibleUntil=Math.max(b.invincibleUntil,b.stunUntil+HIT_RECOVERY_GRACE)
+  effect(r,impactX,b.y-94,'hit',clamp(damage/9,.7,2),a.facing);r.hitstopFrames=Math.max(r.hitstopFrames||0,2)
+  r.message=a.activeTechnique||'Acerto!'
  }
- if(target.health<=0){target.pose='ko';target.poseUntil=t+4;effect(room,target.x,target.y-67,'ko',2.4,attacker.facing)}
+ if(b.health<=0&&b.characterId==='amelia'&&!b.revived){b.revived=true;b.health=45;b.invincibleUntil=t+1.2;b.stunUntil=t+.2;effect(r,b.x,b.y-70,'skill',2,1,'revive');r.message='AMÉLIA · SEGUNDA PRIMAVERA'}
+ else if(b.health<=0){b.pose='ko';b.attackKind=null;b.attackUntil=0;b.vx=(b.x>=a.x?1:-1)*(damage>13?260:65);b.vy=damage>13?-320:-80;b.onGround=false;effect(r,b.x,b.y-70,'ko',2,b.facing)}
  return true
 }
-function botInput(bot:ArenaFighter,room:ArenaSession):ArenaInput{
- const opponent=room.fighters.filter(f=>f.id!==bot.id&&alive(f)).sort((a,b)=>Math.abs(a.x-bot.x)-Math.abs(b.x-bot.x))[0]
- if(!opponent)return {...NO_INPUT}
- const t=room.gameTime,dx=opponent.x-bot.x,dist=Math.abs(dx)
- const beat=Math.floor(t*3.8+bot.x*.002),near=dist<105
- const attacking=opponent.attackKind!==null&&opponent.attackUntil>t
- return {left:dx< -76,right:dx>76,
-  jump:bot.onGround&&dist>140&&dist<240&&beat%8===2,
-  light:near&&beat%3===0,heavy:near&&beat%9===4,
-  special:bot.meter>=35&&dist<280&&beat%11===7,
-  guard:attacking&&dist<125&&beat%3===1,
-  dodge:near&&attacking&&beat%13===3,crouch:false}
+function projectile(r:ArenaSession,f:ArenaFighter,style:string,damage:number,speed=440,delay=0,offset=0){
+ r.projectiles.push({id:++r.effectSequence,ownerId:f.id,x:origin(f,r.gameTime)+f.facing*45,y:f.y-(style==='iceDragon'?155:90)+offset,vx:f.facing*speed,damage,magic:true,style,targetId:nearest(r,f)?.id,launchAt:r.gameTime+delay,expiresAt:r.gameTime+delay+(style==='iceDragon'?4:2.1),radius:({iceDragon:76,ice:42,gravity:34,bullet:8,fire:32,shadow:28,tornado:40,root:24,blood:18,chain:18} as Record<string,number>)[style]||20})
 }
-function startAttack(room:ArenaSession,f:ArenaFighter,kind:MoveKind){
- const t=room.gameTime
- if(kind==='special'&&f.meter<35)return false
- if(kind==='special')f.meter-=35
- if(kind==='light')f.comboStep=f.chainUntil>=t?f.comboStep%3+1:1
- else f.comboStep=0
- f.attackKind=kind;f.attackAt=t;f.attackHit=false
- const duration=kind==='special'?.57:kind==='heavy'?.43:f.comboStep===3?.40:.28
- f.attackUntil=t+duration
- f.chainUntil=kind==='light'?f.attackUntil+.26:0
- f.attackCooldownUntil=f.attackUntil+(kind==='special'?.22:kind==='heavy'?.13:.055)
- f.pose=kind;f.poseUntil=f.attackUntil;f.vx*=kind==='special'?.3:.45
- f.bufferKind=null;f.bufferUntil=0
- if(kind==='heavy')effect(room,f.x+f.facing*30,f.y-85,'dust',.5,f.facing)
- if(kind==='special')room.message=`${f.name} · ${moveOf(room,f,'special')?.name||'GOLPE ESPECIAL'}!`
+function zone(r:ArenaSession,f:ArenaFighter,kind:ArenaZone['kind'],x:number,radius:number,duration:number,target?:ArenaFighter){
+ r.zones.push({id:++r.effectSequence,ownerId:f.id,kind,x,radius,expiresAt:r.gameTime+duration,nextHit:r.gameTime+.12,targetId:target?.id,anchorX:target?.x})
+}
+function direct(r:ArenaSession,f:ArenaFighter,damage:number,range:number,push?:number){
+ const x=origin(f,r.gameTime)
+ // Um golpe direcionado adquire um único alvo; a janela ativa não troca de vítima.
+ if(f.attackTargets.length)return
+ const e=r.fighters.filter(e=>arenaOpponents(r,f,e)&&alive(e)&&e.swallowedUntil<=r.gameTime&&e.puddleUntil<=r.gameTime&&Math.abs(e.x-x)<range&&Math.abs(e.y-f.y)<150&&f.facing*(e.x-x)>-25).sort((a,b)=>Math.abs(a.x-x)-Math.abs(b.x-x)||a.id.localeCompare(b.id))[0]
+ if(e&&receiveHit(r,f,e,damage,true,e.x)){f.attackTargets.push(e.id);if(push)e.vx=push*f.facing}
+}
+function cast(r:ArenaSession,f:ArenaFighter){
+ const t=r.gameTime,n=f.specialIndex,id=f.characterId,e=nearest(r,f),buff=(kind:string)=>{f.buffKind=kind;f.buffUntil=t+6}
+ if(f.alterLysa){if(f.euphoriaState==='active'&&n===0)direct(r,f,22,225,420);return}
+ effect(r,origin(f,t),f.y-85,'skill',1.5,f.facing,id+':'+n)
+ if(id==='fander'){if(n===0){f.vx=f.facing*650;direct(r,f,17,210)}else if(n===1)buff('electric');else{f.vx=f.facing*720;direct(r,f,18,155)}}
+ else if(id==='andreas'){if(n===0)buff('shadow');else if(n===1){projectile(r,f,'shadow',9,290);projectile(r,f,'shadow',9,330,.24,-12)}else zone(r,f,'darkness',f.x,245,3)}
+ else if(id==='lightea'){if(n===0){f.autoDodgeUntil=t+3;f.invincibleUntil=t+.3}else zone(r,f,'fate',e?.x??f.x+f.facing*180,125,3)}
+ else if(id==='maeve'){if(n===0)buff('fire');else projectile(r,f,'fire',17,450)}
+ else if(id==='joffrey'){if(n===0&&e)zone(r,f,'cage',e.x,62,3.8,e);else if(n===1)direct(r,f,15,285);else projectile(r,f,'tornado',17,250)}
+ else if(id==='valya'){if(n===0)projectile(r,f,'ice',14,280);else if(n===1)zone(r,f,'blizzard',e?.x??f.x+f.facing*180,185,4.5);else projectile(r,f,'iceDragon',22,380,.14)}
+ else if(id==='miguel'){if(n===0){f.puppetUntil=f.puppetUntil>t?0:t+6;f.puppetX=f.x+f.facing*115}else if(n===1)direct(r,f,14,290);else zone(r,f,'barrier',f.x,175,2.5)}
+ else if(id==='amelia'){for(let i=0;i<5;i++)projectile(r,f,'root',4,380,i*.12,(i-2)*15)}
+ else if(id==='thorfinn'){if(n===0)for(let i=0;i<3;i++)projectile(r,f,'blood',6,570,i*.07,(i-1)*19);else if(n===1){f.vx=f.facing*680;direct(r,f,18,215)}else buff('blood')}
+ else if(id==='loulan'){if(n===0)projectile(r,f,'chain',10,560);else if(n===1)projectile(r,f,'bullet',13,960);else{effect(r,f.x,f.y-80,'skill',1,f.facing,'weapon:'+f.weapon);r.message='LOULAN · '+(f.weapon==='kunai'?'KUNAI · VELOCIDADE +10%':'KARAMBIT · DANO +18%')}}
+ else if(id==='langris'){if(n===0)zone(r,f,'gravity',f.x+f.facing*100,300,2);else if(n===1){direct(r,f,13,340,750);effect(r,f.x,f.y-75,'skill',3,f.facing,'repulse')}else projectile(r,f,'gravity',20,340)}
+ else if(id==='lysa'){
+  if(n===0)zone(r,f,'roots',e?.x??f.x+f.facing*160,105,3)
+  else if(n===1){f.puddleUntil=t+3;f.invincibleUntil=t+.15}
+  else if(e&&Math.abs(e.x-f.x)<145&&e.invincibleUntil<=t&&e.autoDodgeUntil<=t){e.swallowedUntil=t+1.6;e.swallowedBy=f.id;e.attackKind=null;e.vx=0;e.vy=0;e.input={...NO_INPUT};effect(r,f.x,f.y-100,'skill',2,f.facing,'devour')}
+ }
+}
+function startAttack(r:ArenaSession,f:ArenaFighter,kind:MoveKind){
+ const t=r.gameTime
+ if(f.alterLysa&&kind==='special'&&f.bufferSpecial>=1){
+  if(!f.onGround||f.euphoriaState==='transforming'||f.euphoriaState==='reverting')return false
+  const leaving=f.euphoriaState==='active'
+  if(!leaving&&(f.meter<20||f.euphoriaNeedsFull&&f.meter<99.999))return false
+  if(!leaving)f.meter-=20
+  f.euphoriaState=leaving?'reverting':'transforming';f.euphoriaAt=t;f.euphoriaBurst=false
+  if(leaving)f.euphoriaNeedsFull=true
+  f.specialIndex=1;f.activeTechnique='Euforia descontrolada';f.attackAt=t;f.attackKind=null;f.bufferKind=null;f.bufferUntil=0;f.danceUntil=0;f.vx=0;f.pose='special'
+  f.attackCooldownUntil=t+(leaving?EUPHORIA_REVERT_SECONDS:EUPHORIA_TRANSFORM_SECONDS);return true
+ }
+ if(kind==='special'){
+  const techniques=character(r,f)?.techniques?.filter(s=>!s.passive)||[]
+  f.specialIndex=Math.min(Math.max(0,f.bufferSpecial),Math.max(0,techniques.length-1))
+  if(f.characterId==='lysa'&&!f.alterLysa&&f.specialIndex===1&&f.puddleUntil>t){f.bufferKind=null;f.bufferUntil=0;return false}
+  const cost=f.characterId==='loulan'&&f.specialIndex===2?0:f.alterLysa&&f.euphoriaState==='active'?8:25;if(f.meter<cost)return false
+  f.meter-=cost;f.activeTechnique=techniques[f.specialIndex]?.name||'Especial'
+  if(f.characterId==='loulan'&&f.specialIndex===2)f.weapon=f.weapon==='kunai'?'karambit':'kunai'
+ }else f.activeTechnique=character(r,f)?.moves.find(m=>m.kind===kind)?.name||kind
+ f.attackKind=kind;f.attackAt=t;f.attackHit=false;f.attackTargets=[];f.comboStep=kind==='light'?(f.comboStep%3)+1:0
+ f.attackUntil=t+attackTiming(kind).duration;f.attackCooldownUntil=f.attackUntil+.07;f.chainUntil=f.attackUntil+.2
+ if(f.alterLysa&&kind==='special'&&f.specialIndex===0&&f.euphoriaState==='normal'){
+  f.danceAt=t;f.danceUntil=t+ALTER_DANCE_SECONDS;f.danceLaunched=false;f.attackUntil=f.danceUntil;f.attackCooldownUntil=f.attackUntil+.12
+ }
+ f.pose=kind;f.poseUntil=f.attackUntil;f.vx*=.25;f.bufferKind=null;f.bufferUntil=0;f.puddleUntil=0
+ if(kind==='special')r.message=character(r,f)?.name+' · '+f.activeTechnique
  return true
 }
-function strike(room:ArenaSession,f:ArenaFighter){
- if(!f.attackKind||f.attackHit)return
- const kind=f.attackKind,move=moveOf(room,f,kind)
- const damage=clamp(move?.damage??(kind==='special'?20:kind==='heavy'?14:7),4,26)
- const scaled=kind==='light'?(f.comboStep===3?damage+3:damage):damage
- if(kind==='special'&&move?.projectile){
-  room.projectiles.push({id:++room.effectSequence,ownerId:f.id,x:f.x+f.facing*43,y:f.y-76,vx:f.facing*460,damage:scaled,magic:true,expiresAt:room.gameTime+1.5})
-  effect(room,f.x+f.facing*50,f.y-76,'burst',2.1,f.facing)
- }else{
-  const box=getAttackHitbox(f,room.gameTime,move?.range)
-  if(!box)return
-  for(const enemy of room.fighters){
-   if(!alive(enemy)||enemy.id===f.id)continue
-   if(intersectsAABB(box,getFighterHurtbox(enemy)))receiveHit(room,f,enemy,scaled,!!move?.magic,box.x+box.w/2)
-  }
-  if(kind==='special')effect(room,box.x+box.w/2,box.y+box.h/2,'burst',2.1,f.facing)
+function strike(r:ArenaSession,f:ArenaFighter){
+ if(!f.attackKind)return
+ if(f.attackKind==='special'){
+  if(!f.attackHit){cast(r,f);f.attackHit=true}
+  if(r.gameTime-f.attackAt<=attackTiming('special').startup+.14){
+   if(f.characterId==='fander'&&f.specialIndex!==1)direct(r,f,f.specialIndex===2?18:17,f.specialIndex===2?155:210)
+   else if(f.characterId==='thorfinn'&&f.specialIndex===1)direct(r,f,18,215)
+  }return
  }
- f.attackHit=true
+ const move=character(r,f)?.moves.find(m=>m.kind===f.attackKind),x=origin(f,r.gameTime),box=getAttackHitbox({...f,x},r.gameTime,(move?.range||basicAttackRange(f.attackKind))+(f.directional?25:0));if(!box)return
+ for(const e of r.fighters)if(e.id!==f.id&&!f.attackTargets.includes(e.id)&&intersectsAABB(box,getFighterHurtbox(e))){if(receiveHit(r,f,e,(move?.damage||7)+(f.directional?2:0),false,e.x,f.attackKind==='heavy'||f.attackKind==='lowKick')){f.attackTargets.push(e.id);f.attackHit=true}}
+ if(f.directional&&f.onGround&&f.puppetUntil<=r.gameTime)f.vx=f.facing*170
 }
-function concludeRound(room:ArenaSession){
- if(room.roundStatus!=='fight')return
- const present=room.fighters.filter(f=>!f.withdrawn);if(present.length<2)return
- const living=present.filter(alive);if(living.length>1&&room.roundElapsed<ROUND_SECONDS)return
- const ranked=[...present].sort((a,b)=>b.health-a.health)
- const winner=living.length===1?living[0]:ranked[0]?.health!==ranked[1]?.health?ranked[0]:null
+function botInput(f:ArenaFighter,r:ArenaSession):ArenaInput{
+ const e=nearest(r,f);if(!e)return {...NO_INPUT}
+ const beat=Math.floor(r.gameTime*5),dx=e.x-f.x,near=Math.abs(dx)<110,defend=!!e.attackKind&&near&&beat%3===0
+ return {...NO_INPUT,left:defend?dx>0:dx< -87,right:defend?dx<0:dx>87,jump:Math.abs(dx)>170&&beat%17===3,light:near&&beat%4===0,kick:near&&beat%7===2,lowKick:near&&beat%11===5,special:f.meter>=25&&beat%19===7,special2:f.meter>=25&&beat%23===9,special3:f.meter>=25&&beat%29===11,crouch:defend&&beat%2===0}
+}
+function updateZones(r:ArenaSession,dt:number){
+ const t=r.gameTime
+ for(const z of r.zones){
+  const owner=r.fighters.find(f=>f.id===z.ownerId);if(!owner||!alive(owner)){z.expiresAt=t;continue}
+  const pulse=t>=z.nextHit
+  for(const e of r.fighters){
+   if(!arenaOpponents(r,owner,e)||!alive(e)||Math.abs(e.x-z.x)>z.radius||e.swallowedUntil>t||e.puddleUntil>t)continue
+   if((z.kind==='roots'||z.kind==='fate')&&e.y<ARENA_FLOOR-90)continue
+   if(z.kind==='gravity'||z.kind==='darkness'){if(e.invincibleUntil<=t)e.x+=Math.sign(z.x-e.x)*Math.min(Math.abs(z.x-e.x),130*dt);if(pulse)receiveHit(r,owner,e,2,true,e.x)}
+   else if(z.kind==='cage'&&e.id===z.targetId){if(pulse&&Math.abs(e.x-(z.anchorX??e.x))>6){receiveHit(r,owner,e,4,true,e.x);z.anchorX=e.x}}
+   else if(z.kind==='blizzard'&&pulse){if(receiveHit(r,owner,e,3,true,e.x))e.frozenUntil=t+.35}
+   else if((z.kind==='roots'||z.kind==='fate')&&pulse){if(receiveHit(r,owner,e,z.kind==='fate'?5:3,true,e.x)){e.rootUntil=t+.6;effect(r,e.x,e.y-30,'skill',1,e.facing,z.kind==='fate'?'fateHands':'hands')}}
+   else if(z.kind==='barrier'){e.vx=(e.x>=z.x?1:-1)*500;e.x+=Math.sign(e.x-z.x)*120*dt;if(pulse)receiveHit(r,owner,e,3,true,e.x)}
+  }if(pulse)z.nextHit=t+(z.kind==='cage'?.22:.55)
+ }r.zones=r.zones.filter(z=>z.expiresAt>t)
+}
+function concludeRound(r:ArenaSession){
+ const present=r.fighters.filter(f=>!f.withdrawn);if(present.length<2)return
+ const living=present.filter(alive),settings=arenaSettings(r),expired=settings.roundSeconds!==null&&r.roundElapsed>=settings.roundSeconds
+ if(settings.mode==='teams'){
+  const teams=[0,1].map(team=>({team:team as 0|1,members:present.filter(f=>arenaTeam(r,f)===team)})),livingTeams=teams.filter(team=>team.members.some(alive))
+  if(livingTeams.length>1&&!expired)return
+  const scores=teams.map(team=>({...team,health:team.members.reduce((n,f)=>n+f.health,0)})).sort((a,b)=>b.health-a.health)
+  const winners=livingTeams.length===1?livingTeams[0]:scores[0].health!==scores[1].health?scores[0]:null
+  if(winners){for(const f of winners.members)f.wins++;const representative=[...winners.members].sort((a,b)=>b.health-a.health)[0];if(representative?.wins>=ROUNDS_TO_WIN){r.winnerId=representative.id;r.winningTeam=winners.team}}
+  r.roundStatus='ko';r.nextRoundAt=r.gameTime+2.3;r.message=winners?'EQUIPE '+(winners.team===0?'AZUL':'VERMELHA')+' venceu a rodada':'EMPATE';return
+ }
+ if(living.length>1&&!expired)return
+ const ranked=[...present].sort((a,b)=>b.health-a.health),winner=living.length===1?living[0]:ranked[0].health!==ranked[1].health?ranked[0]:null
  if(winner)winner.wins++
- room.roundStatus='ko';room.nextRoundAt=room.gameTime+2.35
- room.message=winner?`${winner.name} · ROUND ${winner.wins}`:'EMPATE!'
- if(winner&&winner.wins>=ROUNDS_TO_WIN){room.phase='finished';room.winnerId=winner.id;room.message=`${winner.name} VENCEU O COMBATE!`;winner.pose='win'}
+ r.roundStatus='ko';r.nextRoundAt=r.gameTime+2.3;r.message=winner?character(r,winner)?.name+' venceu a rodada':'EMPATE'
+ if(winner&&winner.wins>=ROUNDS_TO_WIN)r.winnerId=winner.id
 }
-function step(room:ArenaSession,dt:number){
- if((room.hitstopFrames||0)>0){room.hitstopFrames=(room.hitstopFrames||0)-1;return}
- room.gameTime+=dt
- const t=room.gameTime
- if(room.roundStatus==='intro'){if(t>=room.nextRoundAt){room.roundStatus='fight';room.message='FIGHT!'}return}
- if(room.roundStatus==='ko'){if(t>=room.nextRoundAt)initRound(room);return}
- room.roundElapsed+=dt;room.effects=room.effects.filter(e=>e.expiresAt>t)
- for(const f of room.fighters){
-  if(!alive(f))continue
-  const input=f.bot?botInput(f,room):f.input
-  const moving=Number(input.right)-Number(input.left)
-  const dizzy=f.stunUntil>t
-  const attackActive=!!f.attackKind&&t<f.attackUntil
-  const speed=clamp(room.roster.find(p=>p.id===f.characterId)?.speed||210,135,310)
-  // Fila de input: golpes rápidos pressionados durante a animação não se perdem.
-  const request:MoveKind|null=input.special&&!f.previousSpecial?'special':input.heavy&&!f.previousHeavy?'heavy':input.light&&!f.previousLight?'light':null
-  f.previousLight=input.light;f.previousHeavy=input.heavy;f.previousSpecial=input.special
-  if(request){f.bufferKind=request;f.bufferUntil=t+.23}
-  if(f.bufferUntil<t)f.bufferKind=null
-  // Cancel de golpe leve em outro leve, de leve em forte ou em especial.
-  const canCancel=attackActive&&f.attackKind==='light'&&f.attackHit&&t>=f.attackAt+.12&&
-   (f.bufferKind==='light'||f.bufferKind==='heavy'||f.bufferKind==='special')
-  if(!dizzy&&!input.guard&&f.bufferKind&&f.bufferUntil>=t&&t>=f.dodgeUntil&&(
-   canCancel||(!attackActive&&t>=f.attackCooldownUntil)))startAttack(room,f,f.bufferKind)
-  const attacking=!!f.attackKind&&t<f.attackUntil
-  if(!dizzy&&!attacking&&t>=f.dodgeUntil){
-   if(input.guard&&f.onGround){f.vx*=.55;f.pose='guard';f.guard=clamp(f.guard-dt*1.6,0,100)}
-   else if(input.crouch&&f.onGround){f.vx*=.62;f.pose='crouch'}
-   else if(moving){f.vx=moving*speed;f.facing=moving;f.pose=f.onGround?'walk':'jump'}
-   else{f.vx*=Math.pow(.81,dt*60);f.pose=f.onGround?'idle':'jump'}
-   if(input.jump&&!f.previousJump&&!input.guard){
-    if(f.onGround){f.vy=-645;f.onGround=false;f.pose='jump';effect(room,f.x,f.y-7,'dust',.8,f.facing)}
-    else if(f.airJumps>0){f.vy=-545;f.airJumps--;f.pose='jump';effect(room,f.x,f.y-30,'burst',.9,f.facing)}
+function advanceFallen(f:ArenaFighter,dt:number){
+ if(f.withdrawn||f.health>0)return
+ f.pose='ko';f.vy=Math.min(1000,f.vy+GRAVITY*dt);f.x=clamp(f.x+f.vx*dt,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE);f.y=Math.min(ARENA_FLOOR,f.y+f.vy*dt)
+ if(f.y>=ARENA_FLOOR){f.onGround=true;f.vy=0;f.vx*=Math.exp(-dt*9)}
+}
+function updateAlterLysa(r:ArenaSession,f:ArenaFighter,dt:number){
+ if(!f.alterLysa)return false
+ const t=r.gameTime,elapsed=t-f.euphoriaAt
+ if(f.euphoriaState==='transforming'){
+  if(elapsed>=.75&&!f.euphoriaBurst){
+   f.euphoriaBurst=true;effect(r,f.x,f.y-95,'burst',2,f.facing,'alterBurst')
+   for(const e of r.fighters)if(arenaOpponents(r,f,e)&&alive(e)&&e.swallowedUntil<=t&&e.puddleUntil<=t&&Math.hypot(e.x-f.x,(e.y-f.y)*.8)<155){
+    receiveHit(r,f,e,8,true,e.x);e.vx=(e.x>=f.x?1:-1)*680;e.vy=-270;e.onGround=false;e.stunUntil=Math.max(e.stunUntil,t+.34)
    }
-   if(input.dodge&&!f.previousDodge&&!input.guard){f.dodgeUntil=t+.55;f.invincibleUntil=t+.21;f.vx=f.facing*470;f.pose='dash';f.poseUntil=t+.21;effect(room,f.x,f.y-20,'dust',.75,f.facing)}
   }
-  f.previousJump=input.jump;f.previousDodge=input.dodge
-  if(f.attackKind){
-   if(t<f.attackUntil){
-    const box=getAttackHitbox(f,t,moveOf(room,f,f.attackKind)?.range)
-    if(box&&!f.attackHit)strike(room,f)
-   }else{f.attackKind=null;if(f.stunUntil<=t)f.pose=f.onGround?'idle':'jump'}
-  }
-  if(dizzy){f.pose='hit';f.vx*=Math.pow(.94,dt*60)}
-  if(t<f.dodgeUntil&&t<f.poseUntil)f.pose='dash'
-  if(!input.guard&&f.guard<100)f.guard=clamp(f.guard+dt*21,0,100)
-  f.vy=clamp(f.vy+GRAVITY*dt,-760,1040)
-  f.x=clamp(f.x+f.vx*dt,26,ARENA_WIDTH-26)
-  f.y+=f.vy*dt
-  if(f.y>=ARENA_FLOOR){if(!f.onGround&&f.vy>320)effect(room,f.x,ARENA_FLOOR-5,'dust',.7,f.facing);f.y=ARENA_FLOOR;f.vy=0;f.onGround=true;f.airJumps=1}else f.onGround=false
+  if(elapsed>=EUPHORIA_TRANSFORM_SECONDS){f.euphoriaState='active';f.euphoriaAt=t;f.pose='idle'}
+ }else if(f.euphoriaState==='reverting'&&elapsed>=EUPHORIA_REVERT_SECONDS){f.euphoriaState='normal';f.euphoriaAt=t;f.pose='idle'}
+ if(f.euphoriaState==='active'){
+  f.meter=clamp(f.meter-EUPHORIA_DRAIN*dt,0,100)
+  if(f.meter<=.001){f.euphoriaState='reverting';f.euphoriaAt=t;f.euphoriaNeedsFull=true;f.attackKind=null;f.danceUntil=0;f.vx=0}
  }
- room.projectiles=room.projectiles.filter(p=>{
-  p.x+=p.vx*dt
-  if(t>=p.expiresAt||p.x<0||p.x>ARENA_WIDTH)return false
-  const owner=room.fighters.find(f=>f.id===p.ownerId);if(!owner)return false
-  for(const f of room.fighters){
-   if(f.id!==p.ownerId&&intersectsAABB(getProjectileHitbox(p),getFighterHurtbox(f))){
-    receiveHit(room,owner,f,p.damage,p.magic,p.x);return false
-   }
+ if(f.danceUntil>0&&!f.danceLaunched&&t>=f.danceUntil){
+  f.danceLaunched=true
+  r.projectiles.push({id:++r.effectSequence,ownerId:f.id,x:clamp(f.x+f.facing*65,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE),y:ARENA_FLOOR,vx:f.facing*180,damage:22,magic:true,style:'alterClone',targetId:nearest(r,f)?.id,launchAt:t,expiresAt:t+10,radius:27})
+ }
+ return f.euphoriaState==='transforming'||f.euphoriaState==='reverting'||f.danceUntil>t
+}
+function step(r:ArenaSession,dt:number){
+ if((r.hitstopFrames||0)>0){r.hitstopFrames=(r.hitstopFrames||0)-1;return}
+ r.gameTime+=dt;const t=r.gameTime
+ if(r.roundStatus==='intro'){const remaining=r.nextRoundAt-t;r.message=remaining<=ARENA_GO_CLEAR_SECONDS?'':remaining<=.8?'LUTEM!':'ROUND '+r.rounds;if(t>=r.nextRoundAt){r.roundStatus='fight';r.message=''}return}
+ if(r.roundStatus==='ko'){
+  r.fighters.forEach(f=>advanceFallen(f,dt))
+  if(t>=r.nextRoundAt){const winner=r.fighters.find(f=>f.id===r.winnerId);if(winner&&winner.wins>=ROUNDS_TO_WIN){r.phase='finished';winner.pose='win';r.message=''}else initRound(r)}return
+ }
+ r.roundElapsed+=dt;r.effects=r.effects.filter(e=>e.expiresAt>t)
+ for(const f of r.fighters){
+  if(!alive(f)){advanceFallen(f,dt);continue}
+  if(f.swallowedBy){const caster=r.fighters.find(e=>e.id===f.swallowedBy)
+   if(f.swallowedUntil>t&&caster&&alive(caster)){f.x=caster.x;f.y=caster.y;continue}
+   f.swallowedBy=null;f.swallowedUntil=0;if(caster){f.x=clamp(caster.x+caster.facing*130,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE);f.invincibleUntil=0;receiveHit(r,caster,f,18,true,f.x);f.vx=caster.facing*580;effect(r,f.x,f.y-100,'skill',1.4,caster.facing,'spit')}
   }
-  return true
+  const input=f.bot?botInput(f,r):f.input;if(f.bot)f.input=input
+  if(updateAlterLysa(r,f,dt)){
+   f.vx=0;f.bufferKind=null;f.previousJump=input.jump;f.previousDodge=input.dodge;f.previousButtons={...input}
+   f.vy=clamp(f.vy+GRAVITY*dt,-750,1000);f.y=Math.min(ARENA_FLOOR,f.y+f.vy*dt);f.onGround=f.y>=ARENA_FLOOR;if(f.onGround)f.vy=0
+   continue
+  }
+  const enemy=nearest(r,f),moving=Number(input.right)-Number(input.left)
+  const facingX=origin(f,t)
+  if(enemy&&f.onGround&&!f.attackKind&&Math.abs(enemy.x-facingX)>8)f.facing=enemy.x>facingX?1:-1
+  const direction=input.crouch?(moving<0?1:moving>0?3:2):moving<0?4:moving>0?6:5
+  if(f.directions.at(-1)?.direction!==direction){f.directions.push({direction,at:t});f.directions=f.directions.filter(s=>t-s.at<.6).slice(-16)}
+  const down=ATTACK_BUTTONS.find(key=>input[key]&&!f.previousButtons[key])
+  if(down){
+   const motion=down.startsWith('special')?null:recognizeMotion(f.directions,f.facing,t),isSpecial=down.startsWith('special')||!!motion
+   f.bufferKind=isSpecial?'special':down as MoveKind;f.bufferSpecial=motion==='back'?1:motion==='forward'?0:down==='special3'?2:down==='special2'?1:0
+   f.bufferUntil=t+.24;f.directional=moving===f.facing;if(motion)f.directions=[]
+   if(input.crouch&&f.bufferKind==='light')f.bufferKind='heavy'
+   if(input.crouch&&f.bufferKind==='kick')f.bufferKind='lowKick'
+  }
+  const dizzy=f.stunUntil>t||f.frozenUntil>t;let active=!!f.attackKind&&t<f.attackUntil
+  const cancel=active&&f.attackKind==='light'&&f.attackHit&&t>=f.attackAt+.17
+  if(!dizzy&&!input.guard&&f.bufferKind&&f.bufferUntil>=t&&t>=f.dodgeUntil&&(cancel||!active&&t>=f.attackCooldownUntil))startAttack(r,f,f.bufferKind)
+  if(f.alterLysa&&(f.euphoriaState==='transforming'||f.euphoriaState==='reverting'||f.danceUntil>t)){f.vx=0;f.previousButtons={...input};continue}
+  if(f.bufferUntil<t)f.bufferKind=null;active=!!f.attackKind&&t<f.attackUntil
+  const speed=(character(r,f)?.speed||225)*(f.buffUntil>t?1.35:1)*(f.characterId==='loulan'&&f.weapon==='kunai'?1.1:1)*(f.alterLysa&&f.euphoriaState==='active'?1.2:1)
+  if(!dizzy&&!active&&t>=f.dodgeUntil){
+   const retreat=moving===-f.facing
+   if(f.puddleUntil>t){f.vx=moving*430;f.pose='dash';if(input.jump){f.puddleUntil=0;effect(r,f.x,f.y-20,'skill',1,1,'emerge')}}
+   else if(f.puppetUntil>t){f.vx=0;f.puppetX=clamp(f.puppetX+moving*speed*dt,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE);f.pose='special'}
+   else if(input.guard&&f.onGround){f.vx=0;f.pose='guard'}
+   else if(input.crouch&&f.onGround){f.vx=0;f.pose='crouch'}
+   else{f.vx=moving*speed*(retreat?.65:1);f.pose=moving?(f.onGround?(retreat&&enemy?.attackKind?'guard':'walk'):'jump'):f.onGround?'idle':'jump'}
+   if(input.jump&&!f.previousJump&&f.onGround&&!input.guard&&f.puppetUntil<=t){f.puddleUntil=0;f.vy=f.alterLysa&&f.euphoriaState==='active'?-1060:-650;f.onGround=false;f.pose='jump';effect(r,f.x,f.y-5,'dust',1)}
+   if(input.dodge&&!f.previousDodge&&f.puppetUntil<=t){const euphoric=f.alterLysa&&f.euphoriaState==='active';f.dodgeUntil=t+(euphoric?.45:.4);f.invincibleUntil=t+.16;f.vx=(moving||f.facing)*(euphoric?930:490);f.pose='dash';f.poseUntil=t+(euphoric?.4:.17)}
+  }
+  if(f.attackKind){if(t<f.attackUntil){if(t-f.attackAt>=attackTiming(f.attackKind).startup)strike(r,f)}else f.attackKind=null}
+  if(dizzy){f.vx*=.85;if(f.pose!=='guard'||f.guard<=0)f.pose='hit'}if(f.frozenUntil>t||f.rootUntil>t)f.vx=0
+  f.previousJump=input.jump;f.previousDodge=input.dodge;f.previousButtons={...input}
+  if(f.dodgeUntil>t&&f.poseUntil>t)f.pose='dash'
+  f.guard=clamp(f.guard+dt*16,0,100);f.meter=clamp(f.meter+(f.alterLysa&&f.euphoriaState==='active'?0:dt*6),0,100)
+  if(f.puppetUntil>t&&f.stunUntil<=t){f.vx=0}
+  f.vy=clamp(f.vy+GRAVITY*dt,f.alterLysa&&f.euphoriaState==='active'?-1150:-750,1000);f.x=clamp(f.x+f.vx*dt,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE);f.y+=f.vy*dt
+  if(f.y>=ARENA_FLOOR){f.y=ARENA_FLOOR;f.vy=0;f.onGround=true}else f.onGround=false
+ }
+ updateZones(r,dt)
+ r.projectiles=r.projectiles.filter(p=>{
+  if(t<(p.launchAt||0))return true
+  const owner=r.fighters.find(f=>f.id===p.ownerId);if(!owner)return false
+  if(p.style==='alterClone'){
+   const target=r.fighters.filter(f=>arenaOpponents(r,owner,f)&&alive(f)&&f.swallowedUntil<=t&&f.puddleUntil<=t).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y)||a.id.localeCompare(b.id))[0]
+   if(!target)return false
+   p.targetId=target.id;p.vx=Math.sign(target.x-p.x)*180;p.y=ARENA_FLOOR
+  }
+  if(['shadow','tornado','iceDragon'].includes(p.style||'')){const e=r.fighters.find(f=>f.id===p.targetId&&alive(f));if(e){p.vx=Math.sign(e.x-p.x)*Math.abs(p.vx);p.y+=(e.y-(p.style==='iceDragon'?120:90)-p.y)*Math.min(1,dt*4)}}
+  p.x+=p.vx*dt;if(t>=p.expiresAt||p.x<0||p.x>ARENA_WIDTH)return false
+  // Colisão física com a primeira vítima no caminho, independente da ordem dos assentos.
+  for(const e of [...r.fighters].sort((a,b)=>Math.abs(a.x-p.x)-Math.abs(b.x-p.x)||a.id.localeCompare(b.id)))if(arenaOpponents(r,owner,e)&&alive(e)&&e.swallowedUntil<=t&&e.puddleUntil<=t&&intersectsAABB(getProjectileHitbox(p),getFighterHurtbox(e))){
+   if(receiveHit(r,owner,e,p.damage,true,p.x)){
+    if(p.style==='chain'){e.vx=Math.sign(owner.x-e.x)*630;e.x=clamp(e.x+Math.sign(owner.x-e.x)*55,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE)}
+    if(p.style==='ice')e.frozenUntil=t+.65;if(p.style==='root')e.rootUntil=t+.32
+    if(p.style==='iceDragon')effect(r,e.x,e.y-100,'skill',1.4,owner.facing,'ice')
+   }return false
+  }return true
  })
- // Separação AABB entre corpos; não atravessam oponentes quando estão no chão.
- for(let i=0;i<room.fighters.length;i++)for(let j=i+1;j<room.fighters.length;j++){
-  const a=room.fighters[i],b=room.fighters[j]
-  if(!alive(a)||!alive(b))continue
+ for(let i=0;i<r.fighters.length;i++)for(let j=i+1;j<r.fighters.length;j++){
+  const a=r.fighters[i],b=r.fighters[j];if(!alive(a)||!alive(b)||a.swallowedUntil>t||b.swallowedUntil>t||a.puddleUntil>t||b.puddleUntil>t)continue
+  // Somente os pés no mesmo plano bloqueiam passagem; o salto cruza por cima do corpo.
+  if(Math.abs(a.y-b.y)>48)continue
   const ab=getFighterHurtbox(a),bb=getFighterHurtbox(b)
-  if(intersectsAABB(ab,bb)){
-   const overlap=Math.min(ab.x+ab.w-bb.x,bb.x+bb.w-ab.x)
-   const sign=a.x<b.x?-1:1
-   a.x=clamp(a.x+sign*overlap/2,26,ARENA_WIDTH-26)
-   b.x=clamp(b.x-sign*overlap/2,26,ARENA_WIDTH-26)
+  if(intersectsAABB(ab,bb)){const overlap=Math.min(ab.x+ab.w-bb.x,bb.x+bb.w-ab.x),sign=a.x<b.x?-1:1;a.x=clamp(a.x+sign*overlap/2,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE);b.x=clamp(b.x-sign*overlap/2,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE)}
+ }concludeRound(r)
+}
+export function advanceArena(r:ArenaSession,now=Date.now()){
+ upgradeArenaSession(r)
+ if(r.phase!=='playing'){r.tickAt=now;r.accumulator=0;return}
+ const elapsed=clamp((now-r.tickAt)/1000,0,.25);r.tickAt=now;r.accumulator=clamp(r.accumulator+elapsed,0,.25)
+ const steps=Math.min(15,Math.floor((r.accumulator+1e-9)/STEP));r.accumulator=Math.max(0,r.accumulator-steps*STEP)
+ for(const f of r.fighters)if(!f.bot&&now-f.lastSeen>950)f.input={...NO_INPUT}
+ for(let i=0;i<steps&&r.phase==='playing';i++)step(r,STEP)
+}
+/** Salas em memória sobrevivem ao hot reload; campos novos precisam ser inicializados. */
+export function upgradeArenaSession(r:ArenaSession){
+ if(r.schemaVersion===ARENA_SCHEMA_VERSION)return
+ for(const [i,f]of r.fighters.entries()){
+  const defaults=newFighter(f.id,f.userId,f.device,f.name,f.bot)
+  for(const key of Object.keys(defaults) as (keyof ArenaFighter)[]){
+   const value=f[key],fallback=defaults[key]
+   if(value===undefined||typeof fallback==='number'&&!Number.isFinite(value as number))(f as unknown as Record<string,unknown>)[key]=fallback
   }
+  if(!Array.isArray(f.attackTargets))f.attackTargets=[]
+  if(!Array.isArray(f.directions))f.directions=[]
+  f.input={...NO_INPUT,...f.input};f.previousButtons={...NO_INPUT,...f.previousButtons}
+  f.x=clamp(f.x,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE)
  }
- concludeRound(room)
+ r.zones||=[];r.projectiles||=[];r.effects||=[];r.secretUnlocks||=[];r.revision||=0;r.settings||={...DEFAULT_ARENA_SETTINGS};r.schemaVersion=ARENA_SCHEMA_VERSION
 }
-/** 60 Hz determinísticos; clamps impedem espirais de atraso após troca de aba. */
-export function advanceArena(room:ArenaSession,now=Date.now()){
- if(room.phase!=='playing'){room.tickAt=now;room.accumulator=0;return}
- const elapsed=clamp((now-room.tickAt)/1000,0,.24);room.tickAt=now
- room.accumulator=clamp((room.accumulator||0)+elapsed,0,.24)
- const steps=Math.min(15,Math.floor((room.accumulator+1e-9)/STEP))
- room.accumulator=Math.max(0,room.accumulator-steps*STEP)
- for(const f of room.fighters)if(!f.bot&&now-f.lastSeen>950)f.input={...NO_INPUT}
- for(let i=0;i<steps&&room.phase==='playing';i++)step(room,STEP)
+export function publicArena(r:ArenaSession):ArenaSnapshot {
+ return {...r,fighters:r.fighters.map(({input,lastSeen,lastInputSeq,lastInputSource,previousJump,previousLight,previousHeavy,previousSpecial,previousDodge,previousButtons,directions,bufferKind,bufferUntil,bufferSpecial,attackTargets,...f})=>f)}
 }
-export function publicArena(room:ArenaSession):ArenaSnapshot{
- return {...room,fighters:room.fighters.map(({input,lastSeen,lastInputSeq,lastInputSource,previousJump,previousLight,previousHeavy,previousSpecial,previousDodge,...f})=>f)}
-}
-export function forfeitArena(room:ArenaSession,fighter:ArenaFighter){
- fighter.withdrawn=true;fighter.health=0;fighter.pose='ko';fighter.input={...NO_INPUT}
- if(room.phase==='paused'){room.phase='playing';room.pausedBy=null;room.tickAt=Date.now()}
- if(room.phase==='playing'){
-  const remaining=room.fighters.filter(alive)
-  if(remaining.length<=1){room.phase='finished';room.winnerId=remaining[0]?.id||null;room.message=remaining.length?`${remaining[0].name} VENCEU POR DESISTÊNCIA`:'PARTIDA ENCERRADA'}
- }
+export function forfeitArena(r:ArenaSession,f:ArenaFighter){
+ f.withdrawn=true;f.health=0;f.pose='ko';f.input={...NO_INPUT}
+ if(r.phase==='paused'){r.phase='playing';r.pausedBy=null;r.tickAt=Date.now()}
+ const rest=r.fighters.filter(alive),teams=arenaSettings(r).mode==='teams',remainingSides=teams?new Set(rest.map(f=>arenaTeam(r,f))).size:rest.length
+ if(remainingSides<=1){r.phase='finished';r.winnerId=rest[0]?.id||null;r.winningTeam=teams&&rest[0]?arenaTeam(r,rest[0]) as 0|1:null;r.message=rest.length?character(r,rest[0])?.name+' VENCEU POR DESISTÊNCIA':'PARTIDA ENCERRADA'}
 }

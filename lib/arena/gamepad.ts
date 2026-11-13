@@ -15,11 +15,15 @@ export function readArenaPadInput(pad: ArenaPad): ArenaInput {
   return {
     left: axis(pad, 0) < -DEADZONE || held(pad, 14),
     right: axis(pad, 0) > DEADZONE || held(pad, 15),
-    jump: held(pad, 0) || held(pad, 12),
+    jump: axis(pad,1)<-DEADZONE || held(pad,12),
     light: held(pad, 2),
     heavy: held(pad, 3),
-    special: held(pad, 5) || held(pad, 7),
-    guard: held(pad, 1),
+    kick: held(pad, 0),
+    lowKick: held(pad, 1),
+    special: held(pad, 5),
+    special2: held(pad, 6),
+    special3: held(pad, 7),
+    guard: false,
     dodge: held(pad, 4),
     crouch: axis(pad, 1) > DEADZONE || held(pad, 13),
   }

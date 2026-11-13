@@ -28,11 +28,12 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   if (auth.error) return auth.error
   const cmd = await request.json().catch(() => null)
   if (!cmd || typeof cmd !== 'object' || typeof cmd.action !== 'string' ||
-      !['open','join','select','start','rematch','reset','close','leave','kick','input','heartbeat','pause','resume','exit','forfeit'].includes(cmd.action))
+      !['open','configure','join','select','unlock-alter-lysa','stage','start','fight','cancel-stage','rematch','reset','close','leave','kick','input','heartbeat','pause','resume','exit','forfeit'].includes(cmd.action))
     return NextResponse.json({error:'Comando inválido.'},{status:400})
   try {
     const room=commandArena(auth.id!, auth.user!.id, auth.role === 'gm', cmd as ArenaCommand)
-    if (cmd.action==='input'||cmd.action==='heartbeat') return NextResponse.json({ok:true},{headers})
+    if (cmd.action==='input') return NextResponse.json({ok:true,...(cmd.snapshot===true?{room:room?{...room,roster:undefined}:null,compact:true}:{})},{headers})
+    if (cmd.action==='heartbeat') return NextResponse.json({ok:true},{headers})
     return NextResponse.json({room},{headers})
   } catch (cause) {
     return NextResponse.json({error: cause instanceof Error ? cause.message : 'Comando não processado.'},{status:409,headers})

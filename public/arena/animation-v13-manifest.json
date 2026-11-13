@@ -1,0 +1,498 @@
+{
+  "version": 13,
+  "columns": 6,
+  "cell": 384,
+  "bodyHeight": 200,
+  "anchor": {
+    "x": 192,
+    "y": 304
+  },
+  "sheets": [
+    {
+      "id": "euphoria-dash",
+      "url": "/arena/animations/alter-lysa/euphoria-dash-v13.webp",
+      "rows": 2,
+      "type": "character",
+      "frames": 12,
+      "sha256": "2bb3363e171b266ecdf4ed4415cbce1dab1cd93221152963b7f6608064317ea5",
+      "frameHashes": [
+        "10a6be8f72ede1a4fa6e3ee217f4fca1a69caa80dd9c8eee1680df9635ee04b6",
+        "a2ef109d9b5a7fc3334893f8343a1375a7c368eb4874c0275645d23919912f55",
+        "2d78307d1fd6ca60d4301c3e4a41ea728252ccee074e380dcf3f0aa85d2f7642",
+        "62fb1affc519bfae5aabfcc4c58e582f6dc380219cf1f7d0497f4dc5b8aa3d5b",
+        "7aa53533ac619f8c8e3672da5f0ea8610d6f851871c2de2d0a8392aad344010a",
+        "10481c0b6d5fa47b385fadcd2e121b992d7aebcfd719e142930ad17088f71fa4",
+        "1a2d1247b2a650924e2c931778468e07b4c0b827b4b07b64408ce9bf21084529",
+        "81eccaaa26f1c868fe377a89224c2e6e3f89a4494a4425506f493104a78fbb4b",
+        "fcf2f69eb0636a0109fcc67245dedecad47de2e68533673adf223b7baaa1e3cf",
+        "7c776e80db85cd65082cfe30d3a60c9cbcfe43225ae80b8bb0bf2b6929bb8ab6",
+        "cb7c96265d2f063d7a5348af89cb8ee819c9506315972b4b03ea483b4092e091",
+        "9ae265545bd956849dfa2fa3592b2950fcb13cbe7b9f93b165348cc7c22eb38b"
+      ],
+      "metrics": [
+        {
+          "row": 0,
+          "frame": 0,
+          "left": 130,
+          "top": 184,
+          "width": 145,
+          "height": 121
+        },
+        {
+          "row": 0,
+          "frame": 1,
+          "left": 119,
+          "top": 171,
+          "width": 148,
+          "height": 134
+        },
+        {
+          "row": 0,
+          "frame": 2,
+          "left": 102,
+          "top": 156,
+          "width": 163,
+          "height": 149
+        },
+        {
+          "row": 0,
+          "frame": 3,
+          "left": 90,
+          "top": 146,
+          "width": 178,
+          "height": 134
+        },
+        {
+          "row": 0,
+          "frame": 4,
+          "left": 81,
+          "top": 144,
+          "width": 208,
+          "height": 113
+        },
+        {
+          "row": 0,
+          "frame": 5,
+          "left": 42,
+          "top": 144,
+          "width": 229,
+          "height": 88
+        },
+        {
+          "row": 1,
+          "frame": 0,
+          "left": 53,
+          "top": 158,
+          "width": 213,
+          "height": 99
+        },
+        {
+          "row": 1,
+          "frame": 1,
+          "left": 111,
+          "top": 172,
+          "width": 162,
+          "height": 126
+        },
+        {
+          "row": 1,
+          "frame": 2,
+          "left": 103,
+          "top": 183,
+          "width": 187,
+          "height": 120
+        },
+        {
+          "row": 1,
+          "frame": 3,
+          "left": 112,
+          "top": 188,
+          "width": 176,
+          "height": 117
+        },
+        {
+          "row": 1,
+          "frame": 4,
+          "left": 98,
+          "top": 179,
+          "width": 184,
+          "height": 124
+        },
+        {
+          "row": 1,
+          "frame": 5,
+          "left": 97,
+          "top": 173,
+          "width": 189,
+          "height": 131
+        }
+      ]
+    },
+    {
+      "id": "transform",
+      "url": "/arena/animations/alter-lysa/transform-v13.webp",
+      "rows": 3,
+      "type": "character",
+      "frames": 18,
+      "sha256": "e014ab56d80e7bd6f3dad5cd51ab12fe74714797fd4c7d0c7267dd71d8c79baa",
+      "frameHashes": [
+        "b4049eb77670048b0e83b91bcd35e19e886133736c3e337f4681c48a3b97b4ef",
+        "1ff293dec1f8840b5ee7aecf43b76e2a48b09dfdfe8fe3e99199f24888dbea17",
+        "d84c48c4ecaa3e4c60249f3f7fb1a178cfd64ca2575bf12addfd0e7a53cb6c0a",
+        "4724f29c5b08f80253cf9c0ca029cc8175b8c5d4555a33cba3eecaf35459c220",
+        "51b42a43b49369d5d426c06ae783d85a60a9ece8a7dec387dfe8cdff83e0c1b0",
+        "3aacc6ee4b1bf29650fbb514eb5092e4dd1af32e64bc3598c50ebf81395b81a6",
+        "bfa1f5c14ad1b33c46c18948ebc9bd8a252b75c556ded99a72c054c047f0cc8f",
+        "88af126b2bba8b3a99c4056c039d6cffb33bf7ef3fd5ab884fb3b878a0cbfdde",
+        "a71ec0aada0640eb2fd5574418063d25ca19b32604c2b3fd73ecabdfe023b8d0",
+        "d7e6e367de6da283b83a1e4bc0866d5483eedc0763889bf1f76877cf9242dea4",
+        "741a1041774aefcf514ab093110154f7de35378d1428a0310c3352884bc8f45d",
+        "3abc0898984c6454c42fb1e7de1406660c6b45eaab6e315f5d55e5ec0e88a470",
+        "3ee3cfdc366bfc3311ec4fadd14ad660c096d0850be58bf0de9d487c9edc9bdd",
+        "fcfa128139c380612bd692ae7d0fe5a95d2e82be3cb4d55f9afb723e38e3192c",
+        "abcc4968608b9a39496440744df54f4b46851c9b98d4ca2693f4ae9092122264",
+        "7fecf58f7b8d14ae96705de5c4bf2d07846c1e8d91a1084d5ba318ea57958f75",
+        "e5d3f7da16e0150a34b7f6fe6811fe3932ede33a634c87a264c276893bf375b2",
+        "e1a69e96a7ed6eb97362dd8764de9ecf1b30493821f8ac5ae9f3de225470d4ff"
+      ],
+      "metrics": [
+        {
+          "row": 0,
+          "frame": 0,
+          "left": 156,
+          "top": 104,
+          "width": 74,
+          "height": 200,
+          "bodyLeg": 116
+        },
+        {
+          "row": 0,
+          "frame": 1,
+          "left": 157,
+          "top": 104,
+          "width": 72,
+          "height": 200,
+          "bodyLeg": 89
+        },
+        {
+          "row": 0,
+          "frame": 2,
+          "left": 156,
+          "top": 104,
+          "width": 79,
+          "height": 200,
+          "bodyLeg": 96
+        },
+        {
+          "row": 0,
+          "frame": 3,
+          "left": 157,
+          "top": 104,
+          "width": 79,
+          "height": 200,
+          "bodyLeg": 105
+        },
+        {
+          "row": 0,
+          "frame": 4,
+          "left": 156,
+          "top": 104,
+          "width": 76,
+          "height": 200,
+          "bodyLeg": 117
+        },
+        {
+          "row": 0,
+          "frame": 5,
+          "left": 155,
+          "top": 104,
+          "width": 81,
+          "height": 200,
+          "bodyLeg": 90
+        },
+        {
+          "row": 1,
+          "frame": 0,
+          "left": 128,
+          "top": 65,
+          "width": 133,
+          "height": 239,
+          "bodyLeg": 116
+        },
+        {
+          "row": 1,
+          "frame": 1,
+          "left": 101,
+          "top": 46,
+          "width": 157,
+          "height": 258,
+          "bodyLeg": 111
+        },
+        {
+          "row": 1,
+          "frame": 2,
+          "left": 92,
+          "top": 52,
+          "width": 186,
+          "height": 252,
+          "bodyLeg": 108
+        },
+        {
+          "row": 1,
+          "frame": 3,
+          "left": 94,
+          "top": 66,
+          "width": 155,
+          "height": 238,
+          "bodyLeg": 140
+        },
+        {
+          "row": 1,
+          "frame": 4,
+          "left": 120,
+          "top": 82,
+          "width": 136,
+          "height": 222,
+          "bodyLeg": 131
+        },
+        {
+          "row": 1,
+          "frame": 5,
+          "left": 125,
+          "top": 99,
+          "width": 132,
+          "height": 205,
+          "bodyLeg": 94
+        },
+        {
+          "row": 2,
+          "frame": 0,
+          "left": 123,
+          "top": 104,
+          "width": 123,
+          "height": 200,
+          "bodyLeg": 94
+        },
+        {
+          "row": 2,
+          "frame": 1,
+          "left": 122,
+          "top": 104,
+          "width": 124,
+          "height": 200,
+          "bodyLeg": 90
+        },
+        {
+          "row": 2,
+          "frame": 2,
+          "left": 123,
+          "top": 104,
+          "width": 126,
+          "height": 200,
+          "bodyLeg": 89
+        },
+        {
+          "row": 2,
+          "frame": 3,
+          "left": 127,
+          "top": 104,
+          "width": 119,
+          "height": 200,
+          "bodyLeg": 94
+        },
+        {
+          "row": 2,
+          "frame": 4,
+          "left": 128,
+          "top": 104,
+          "width": 116,
+          "height": 200,
+          "bodyLeg": 94
+        },
+        {
+          "row": 2,
+          "frame": 5,
+          "left": 132,
+          "top": 104,
+          "width": 112,
+          "height": 200,
+          "bodyLeg": 92
+        }
+      ]
+    },
+    {
+      "id": "dance",
+      "url": "/arena/animations/alter-lysa/dance-v13.webp",
+      "rows": 3,
+      "type": "character",
+      "frames": 18,
+      "sha256": "57833856ae63d290b52e9d86d1673816360504670b8e4148aec67f52e1dc483f",
+      "frameHashes": [
+        "ef21cb35a3242e09da240fb0230adef7d6bab08244db9dd4b953a023ee8f8009",
+        "ce0682118dd7867aaab17cb902fa83ed1a9d6a387c9ccb3c048f371e8ed269d2",
+        "e8a3562395a1c054016839a2a501ace1964f3e3accd221f5756aa972e3f293b5",
+        "61c1abf2288d47177f02a9d6f937d028245f31e29548e387ec06abc5555a8140",
+        "f2c396ae94b061e73e0fd4a3246972a0cfed9bd862b9a888839d3589e0002851",
+        "8b8395d4e807dd0cff6a25227bf1048b5b238f21e9cb3c985e1613f5ac159f86",
+        "2caf6eb9d73977ea9beb789f01808e58299d5633364350e91fee7bfeac9d6d55",
+        "f225ccd65eb68fb7c3b17d48f15a20be12fca5d121b901d9f27bc1badadd0beb",
+        "f9b2e1e66852f0afe3f1a188854896027d99bd46d859b8de13684b47e29b75b8",
+        "43efc00890400ea4dcf1da7ed01485461a199fbada44e5a74d8d08b9f90ce229",
+        "09870c4b2f293d5877b3a305a0b8efaf60e5156a2b99ffcc7e1c29ae79dea386",
+        "8433029562f0697166e2406a541b44744293ed920182c2e9bbbd5bb4101f54f6",
+        "868edd2b84da97adac46466a1ca62f7b394458daa9f1b02310da227d8f2dc9e5",
+        "88b39a25b9e3a00f6b58bef14887c3b7dd9da7511ab222ca3c92341faa577da5",
+        "2f1f903c6eff76d5e41bee0b2815c73c6885d2d23990217e59990d7b84c05372",
+        "f5a8d6b09db9a92052e3e0766074eb7fbd0eeffc847359ec8af694b8148c8002",
+        "1c3681f581d7515fed94948b90d220a64394752a7db7de7d122586f6cc36d2ba",
+        "c2dca3249633c86fdb8a185a32d0d87c90805a0ebad1738929ae49ae203f75f9"
+      ],
+      "metrics": [
+        {
+          "row": 0,
+          "frame": 0,
+          "left": 153,
+          "top": 105,
+          "width": 80,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 1,
+          "left": 153,
+          "top": 105,
+          "width": 107,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 2,
+          "left": 128,
+          "top": 105,
+          "width": 151,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 3,
+          "left": 114,
+          "top": 105,
+          "width": 169,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 4,
+          "left": 123,
+          "top": 105,
+          "width": 149,
+          "height": 200
+        },
+        {
+          "row": 0,
+          "frame": 5,
+          "left": 125,
+          "top": 104,
+          "width": 147,
+          "height": 201
+        },
+        {
+          "row": 1,
+          "frame": 0,
+          "left": 124,
+          "top": 109,
+          "width": 152,
+          "height": 196
+        },
+        {
+          "row": 1,
+          "frame": 1,
+          "left": 135,
+          "top": 109,
+          "width": 128,
+          "height": 196
+        },
+        {
+          "row": 1,
+          "frame": 2,
+          "left": 153,
+          "top": 109,
+          "width": 97,
+          "height": 196
+        },
+        {
+          "row": 1,
+          "frame": 3,
+          "left": 150,
+          "top": 109,
+          "width": 98,
+          "height": 196
+        },
+        {
+          "row": 1,
+          "frame": 4,
+          "left": 137,
+          "top": 110,
+          "width": 113,
+          "height": 195
+        },
+        {
+          "row": 1,
+          "frame": 5,
+          "left": 138,
+          "top": 109,
+          "width": 119,
+          "height": 195
+        },
+        {
+          "row": 2,
+          "frame": 0,
+          "left": 137,
+          "top": 101,
+          "width": 122,
+          "height": 204
+        },
+        {
+          "row": 2,
+          "frame": 1,
+          "left": 117,
+          "top": 108,
+          "width": 163,
+          "height": 197
+        },
+        {
+          "row": 2,
+          "frame": 2,
+          "left": 105,
+          "top": 109,
+          "width": 192,
+          "height": 196
+        },
+        {
+          "row": 2,
+          "frame": 3,
+          "left": 98,
+          "top": 108,
+          "width": 202,
+          "height": 197
+        },
+        {
+          "row": 2,
+          "frame": 4,
+          "left": 105,
+          "top": 109,
+          "width": 190,
+          "height": 196
+        },
+        {
+          "row": 2,
+          "frame": 5,
+          "left": 156,
+          "top": 109,
+          "width": 77,
+          "height": 196
+        }
+      ]
+    }
+  ]
+}
