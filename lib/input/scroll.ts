@@ -1,3 +1,5 @@
+import { focusControllerElement } from './focus'
+
 /** Scrolls the nearest visible panel containing controller focus.
  * No synthetic wheel events: mouse, keyboard and native scrolling stay unchanged.
  */
@@ -53,6 +55,33 @@ export function scrollControllerContent(delta: number): boolean {
     const next=Math.max(0,Math.min(element.scrollHeight-element.clientHeight,before+delta))
     if(Math.abs(next-before) < 0.5) continue
     element.scrollTop=next
+    // Keep controller focus in the viewport of the scrolled panel. The right
+    // stick does not navigate to the old element on the next left-stick move.
+    const viewport = element.getBoundingClientRect()
+    const focused = active?.getBoundingClientRect()
+    const outside = !active || !element.contains(active) || !focused ||
+      focused.bottom < viewport.top + 6 || focused.top > viewport.bottom - 6 ||
+      focused.right < viewport.left + 4 || focused.left > viewport.right - 4
+    if (outside) {
+      const selector = 'button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled]), summary, [role="button"][tabindex]:not([aria-disabled="true"]), [tabindex="0"], [tabindex="-1"][data-controller-item]'
+      const centerX = focused ? (focused.left + focused.right) / 2 : (viewport.left + viewport.right) / 2
+      const y = delta > 0 ? viewport.top + Math.min(viewport.height * .4, 135) : viewport.bottom - Math.min(viewport.height * .4, 135)
+      let choice: HTMLElement | null = null
+      let score = Infinity
+      for (const item of element.querySelectorAll<HTMLElement>(selector)) {
+        if (item.closest('[inert],[aria-hidden="true"]')) continue
+        const bounds = item.getBoundingClientRect()
+        if (bounds.width < 1 || bounds.height < 1 || bounds.bottom <= viewport.top + 5 || bounds.top >= viewport.bottom - 5 ||
+            bounds.right <= viewport.left || bounds.left >= viewport.right) continue
+        const style = getComputedStyle(item)
+        if (style.visibility === 'hidden' || style.display === 'none' || style.pointerEvents === 'none') continue
+        const cx = (bounds.left + bounds.right) / 2
+        const cy = (bounds.top + bounds.bottom) / 2
+        const metric = Math.abs(cy - y) + Math.abs(cx - centerX) * .24
+        if (metric < score) {score = metric; choice = item}
+      }
+      if (choice) focusControllerElement(choice, false)
+    }
     return true
   }
   return false

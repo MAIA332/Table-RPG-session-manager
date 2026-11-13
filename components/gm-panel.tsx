@@ -14,6 +14,7 @@ import { PRESET_CHECKS } from "@/lib/combat-checks"
 import { ELEMENTS, ELEMENT_NAMES, classElement, type ElementId } from "@/lib/elemental-affinities"
 
 import { useState } from "react"
+import { useControllerActions } from "@/lib/input/use-controller-actions"
 import "./gm-panel-immersive.css"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -749,6 +750,7 @@ function CreatedClassCard({
     onToggle,
     onDelete,
     onEdit,
+    onControllerFocus,
     onChangeAffinity,
     onConfigureVisibility,
   }: {
@@ -757,6 +759,7 @@ function CreatedClassCard({
     onToggle: () => void
     onDelete: () => void
     onEdit: () => void
+    onControllerFocus: () => void
     onChangeAffinity: (element: ElementId) => Promise<void>
     onConfigureVisibility: (cls: GameClass) => void
   }) {
@@ -796,6 +799,7 @@ function CreatedClassCard({
           <button
             type="button"
             onClick={onToggle}
+            onFocus={onControllerFocus}
             className="flex-1 min-w-0 flex items-center gap-3 text-left"
           >
             <div className="size-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
@@ -861,7 +865,7 @@ function CreatedClassCard({
             {isClassPublished(cls) ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
             <span className="hidden sm:inline">Permissões</span>
           </button>
-          <button type="button" onClick={onEdit} title="Editar classe ou subclasse" className="p-2 rounded-lg text-amber-300 hover:bg-amber-500/10"><Pencil className="size-4" /></button>
+          <button type="button" onClick={onEdit} title="Editar classe ou subclasse (LB no controle)" className="flex items-center gap-1.5 rounded-lg p-2 text-amber-300 hover:bg-amber-500/10"><Pencil className="size-4" /><kbd className="otms-gm-shortcut-hint">LB</kbd></button>
           <button
             type="button"
             onClick={async (e) => {
@@ -1259,6 +1263,7 @@ export function GmPanel({
 
   // Estado para expandir os detalhes da classe homebrew
   const [expandedClassId, setExpandedClassId] = useState<string | null>(null)
+  const [focusedClassId, setFocusedClassId] = useState<string | null>(null)
   const [savingClass, setSavingClass] = useState(false)
   const [audienceClassId, setAudienceClassId] = useState<string | null>(null)
   const audienceClass = customClasses.find((cls: GameClass) => cls.id === audienceClassId) as GameClass | undefined
@@ -1319,6 +1324,28 @@ export function GmPanel({
       return 0 // A ordem original continua como visualização padrão.
     })
   const selectedCatalogItem = allLoot.find((item) => item.id === selectedLoot)
+  const selectedEditableClass = Array.isArray(customClasses) ? customClasses.find((cls: GameClass) => cls.id === focusedClassId) : undefined
+  const editCatalogSelection = () => {
+    if (!selectedCatalogItem || !String(selectedCatalogItem.id).startsWith("custom-eq-")) return false
+    setDamageMode(/(?:^|[+\-])\s*\d*d/i.test(String(selectedCatalogItem.damage || "")) ? "dice" : "fixed")
+    setSysDraft({ ...selectedCatalogItem, actions: getItemActions(selectedCatalogItem) })
+    setCreationMode("system")
+    setGmPanelTab("custom")
+    document.getElementById("gm-panel-scroll")?.scrollTo({top: 0})
+    return true
+  }
+  const editClassSelection = () => {
+    if (!selectedEditableClass) return false
+    setClassDraft({ ...structuredClone(selectedEditableClass), affinity: classElement(selectedEditableClass), playerVisible: isClassPublished(selectedEditableClass) })
+    setExpandedSkillId(null)
+    requestAnimationFrame(() => document.getElementById("gm-class-forge")?.scrollIntoView({block:"start",behavior:"smooth"}))
+    return true
+  }
+  useControllerActions({"gm.edit": () => {
+    if (gmPanelTab === "catalog") return editCatalogSelection()
+    if (gmPanelTab === "classes") return editClassSelection()
+    return false
+  }}, { enabled: isOpen, priority: 490 })
   const customCatalogCount = customEquipment.length
 
   function resetCatalogFilters() {
@@ -1666,6 +1693,8 @@ export function GmPanel({
               role="dialog"
               aria-modal="true"
               aria-label="Central do Mestre"
+              data-controller-gm-edit={gmPanelTab === "catalog" && selectedCatalogItem && String(selectedCatalogItem.id).startsWith("custom-eq-") ||
+                gmPanelTab === "classes" && selectedEditableClass ? "active" : undefined}
               className="gm-command-center relative h-[100dvh] w-full overflow-hidden"
             >
               <div aria-hidden="true" className="gm-command-ambient" />
@@ -1982,9 +2011,9 @@ export function GmPanel({
                                         )}
                                         {String(selectedCatalogItem.id).startsWith("custom-eq-") && (
                                           <div className="flex gap-2 border-t border-border/70 pt-3">
-                                            <button type="button" onClick={() => { setDamageMode(/(?:^|[+\-])\s*\d*d/i.test(String(selectedCatalogItem.damage || "")) ? "dice" : "fixed"); setSysDraft({ ...selectedCatalogItem, actions: getItemActions(selectedCatalogItem) }); setCreationMode("system"); setGmPanelTab("custom") }}
+                                            <button type="button" onClick={editCatalogSelection}
                                               className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 text-xs font-bold text-accent transition-colors hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                                              <Pencil className="size-3.5" /> Editar item
+                                              <Pencil className="size-3.5" /> Editar item <kbd className="otms-gm-shortcut-hint">LB</kbd>
                                             </button>
                                             <button type="button" aria-label={`Excluir ${selectedCatalogItem.name}`} title="Excluir item"
                                               onClick={() => { onDeleteEquipment(selectedCatalogItem.id); setSelectedLoot(null) }}
@@ -2375,11 +2404,13 @@ export function GmPanel({
                                   key={cls.id}
                                   cls={cls}
                                   expanded={expandedClassId === cls.id}
+                                  onControllerFocus={() => setFocusedClassId(cls.id)}
                                   onConfigureVisibility={cls => setAudienceClassId(cls.id)}
-                                  onToggle={() =>
+                                  onToggle={() => {
+                                    setFocusedClassId(cls.id)
                                     setExpandedClassId(current => current === cls.id ? null : cls.id)
-                                  }
-                                  onEdit={() => { setClassDraft({ ...structuredClone(cls), affinity: classElement(cls), playerVisible: isClassPublished(cls) }); setExpandedSkillId(null) }}
+                                  }}
+                                  onEdit={() => { setFocusedClassId(cls.id); setClassDraft({ ...structuredClone(cls), affinity: classElement(cls), playerVisible: isClassPublished(cls) }); setExpandedSkillId(null) }}
                                   onChangeAffinity={async (affinity) => {
                                     await onCreateClass({ ...cls, affinity })
                                   }}
@@ -2412,7 +2443,7 @@ export function GmPanel({
                         </div>
 
                         {/* CABEÇALHO DA CLASSE */}
-                        <div className="rounded-2xl border border-amber-600/30 bg-foreground/[0.03] overflow-hidden">
+                        <div id="gm-class-forge" className="rounded-2xl border border-amber-600/30 bg-foreground/[0.03] overflow-hidden">
                           <div className="p-4 border-b border-border/60 bg-amber-600/[0.03]">
                             <div className="flex items-center gap-3">
                               <div className="size-10 rounded-xl bg-amber-600/10 border border-amber-600/20 flex items-center justify-center">

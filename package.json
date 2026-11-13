@@ -11,7 +11,7 @@
     "prestart": "npm run db:init",
     "db:migrate": "node scripts/migrate-json-to-mongodb.mjs",
     "predev": "node scripts/sync-voice-dsp.mjs",
-    "prebuild": "node scripts/sync-voice-dsp.mjs",
+    "prebuild": "node scripts/sync-voice-dsp.mjs && node scripts/check-arena-assets.mjs",
     "test:voice-quality": "node --test tests/voice-quality.test.mjs tests/voice-playback-failsafe.test.mjs"
   },
   "dependencies": {

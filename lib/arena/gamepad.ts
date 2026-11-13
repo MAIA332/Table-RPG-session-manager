@@ -12,6 +12,7 @@ const axis = (pad: ArenaPad, index: number) => pad.axes[index] || 0
 const DEADZONE = 0.35
 
 export function readArenaPadInput(pad: ArenaPad): ArenaInput {
+  const horizontal=axis(pad,0)<-DEADZONE||axis(pad,0)>DEADZONE||held(pad,14)||held(pad,15)
   return {
     left: axis(pad, 0) < -DEADZONE || held(pad, 14),
     right: axis(pad, 0) > DEADZONE || held(pad, 15),
@@ -20,10 +21,10 @@ export function readArenaPadInput(pad: ArenaPad): ArenaInput {
     heavy: held(pad, 3),
     kick: held(pad, 0),
     lowKick: held(pad, 1),
-    special: held(pad, 5),
-    special2: held(pad, 6),
-    special3: held(pad, 7),
-    guard: false,
+    special: held(pad, 6),
+    special2: held(pad, 7),
+    special3: held(pad, 5)&&horizontal,
+    guard: held(pad, 5)&&!horizontal,
     dodge: held(pad, 4),
     crouch: axis(pad, 1) > DEADZONE || held(pad, 13),
   }

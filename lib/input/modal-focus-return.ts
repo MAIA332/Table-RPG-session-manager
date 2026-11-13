@@ -71,8 +71,13 @@ export function useControllerModalNavigation(
   useEffect(() => {
     if (!open || !active) return
     const frame = requestAnimationFrame(() => {
-      const first = root.current?.querySelector<HTMLElement>('[data-controller-initial],button:not([disabled]),[role="button"][tabindex],input:not([disabled])')
-      if (first) focusControllerElement(first)
+      // Um item inicial oculto num layout responsivo não pode impedir o foco
+      // de alcançar os itens visíveis, especialmente ao trocar de painel na TV.
+      const preferred = root.current?.querySelectorAll<HTMLElement>('[data-controller-initial]') || []
+      const fallback = root.current?.querySelectorAll<HTMLElement>('button:not([disabled]),[role="button"][tabindex],input:not([disabled])') || []
+      for (const element of [...preferred, ...fallback]) {
+        if (focusControllerElement(element)) break
+      }
     })
     return () => cancelAnimationFrame(frame)
   }, [open, active, root])

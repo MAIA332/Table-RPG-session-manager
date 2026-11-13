@@ -1,5 +1,6 @@
 "use client"
 import { controllerConfirm } from '@/lib/input/dialogs'
+import { useControllerActions } from '@/lib/input/use-controller-actions'
 
 import { useEffect, useState } from "react"
 import { Dices, Eye, EyeOff, Plus, Trash2, Save, Pencil, Loader2, ShieldCheck } from "lucide-react"
@@ -26,6 +27,16 @@ interface Props {
 
 export function CustomChecksWorkbench({ campaignId, checks, revision, onRefresh }: Props) {
   const [draft, setDraft] = useState<CustomCheck | null>(null)
+  const [selectedCheckId, setSelectedCheckId] = useState<string | null>(null)
+  const selectedCheck = checks.find(check => check.id === selectedCheckId)
+  const editSelectedCheck = () => {
+    if (!selectedCheck || saving) return false
+    setDraft(structuredClone(selectedCheck))
+    setNotice("")
+    requestAnimationFrame(() => document.getElementById("gm-check-editor")?.scrollIntoView({block:"nearest",behavior:"smooth"}))
+    return true
+  }
+  useControllerActions({"gm.edit": editSelectedCheck}, {priority: 510})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
@@ -56,7 +67,7 @@ export function CustomChecksWorkbench({ campaignId, checks, revision, onRefresh 
   }))
   const current = checks.find(check => check.id === draft?.id)
 
-  return <section className="space-y-5">
+  return <section className="space-y-5" data-controller-gm-edit={selectedCheck && !saving ? "active" : undefined}>
     <div className="relative overflow-hidden rounded-[24px] border border-accent/25 bg-accent/[0.06] p-5 sm:p-7">
       <div className="pointer-events-none absolute -right-12 -top-16 size-52 rounded-full border-[32px] border-accent/[0.08]" />
       <div className="relative flex flex-wrap items-start justify-between gap-4">
@@ -65,7 +76,7 @@ export function CustomChecksWorkbench({ campaignId, checks, revision, onRefresh 
           <h3 className="mt-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl">Testes personalizados<span className="text-accent">.</span></h3>
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">Combine até dez dados por teste, com faces fixas ou dados dos atributos do personagem. Oculte e revele testes em tempo real.</p>
         </div>
-        <button type="button" className={`${action} border-accent/40 bg-accent text-accent-foreground hover:bg-accent/90`} onClick={() => { setDraft(freshCheck()); setNotice(""); setError("") }}><Plus className="size-4"/> Novo teste</button>
+        <button type="button" className={`${action} border-accent/40 bg-accent text-accent-foreground hover:bg-accent/90`} onClick={() => { setSelectedCheckId(null); setDraft(freshCheck()); setNotice(""); setError("") }}><Plus className="size-4"/> Novo teste</button>
       </div>
       <div className="relative mt-5 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
         <span className="rounded-full border border-border/70 bg-background/80 px-3 py-1.5">{checks.length} criados</span>
@@ -81,7 +92,7 @@ export function CustomChecksWorkbench({ campaignId, checks, revision, onRefresh 
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground"><span>Biblioteca da campanha</span><span>{checks.length} / 100</span></div>
         {checks.length === 0 && <p className="rounded-2xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">Nenhum teste criado. Comece pelo botão <strong>Novo teste</strong>.</p>}
-        {checks.map(check => <div key={check.id} className={`rounded-2xl border p-3 transition ${draft?.id === check.id ? "border-accent/60 bg-accent/[0.07]" : "border-border/70 bg-foreground/[0.025]"}`}>
+        {checks.map(check => <div key={check.id} onFocusCapture={() => setSelectedCheckId(check.id)} onClick={() => setSelectedCheckId(check.id)} className={`rounded-2xl border p-3 transition ${draft?.id === check.id || selectedCheckId === check.id ? "border-accent/60 bg-accent/[0.07]" : "border-border/70 bg-foreground/[0.025]"}`}>
           <div className="flex items-start gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent"><Dices className="size-5"/></div>
             <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-foreground">{check.name}</p><p className="mt-1 truncate text-[11px] text-muted-foreground">{check.dice.map(dieLabel).join(" + ")}</p></div>
@@ -91,14 +102,14 @@ export function CustomChecksWorkbench({ campaignId, checks, revision, onRefresh 
           </div>
           <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/50 pt-2.5">
             <span className={`text-[10px] font-semibold ${check.isPublic ? "text-accent" : "text-muted-foreground"}`}>{check.isPublic ? "Visível aos jogadores" : "Oculto dos jogadores"}</span>
-            <button type="button" className="inline-flex items-center gap-1 text-xs font-semibold text-foreground hover:text-accent" onClick={() => { setDraft(structuredClone(check)); setNotice("") }}><Pencil className="size-3"/> Editar</button>
+            <button type="button" className="inline-flex items-center gap-1 text-xs font-semibold text-foreground hover:text-accent" onClick={() => { setSelectedCheckId(check.id); setDraft(structuredClone(check)); setNotice("") }}><Pencil className="size-3"/> Editar <kbd className="otms-gm-shortcut-hint">LB</kbd></button>
           </div>
         </div>)}
       </div>
 
       <div className="min-w-0">
         {!draft ? <div className="flex min-h-[280px] flex-col items-center justify-center rounded-[24px] border border-dashed border-border/75 bg-foreground/[0.015] p-6 text-center"><Dices className="size-11 text-accent/55"/><p className="mt-4 text-sm font-semibold text-foreground">Selecione um teste para editar</p><p className="mt-1 max-w-xs text-xs text-muted-foreground">Você também pode criar uma composição de dados inteiramente nova.</p></div> :
-          <div className="space-y-5 rounded-[24px] border border-border/70 bg-foreground/[0.025] p-4 sm:p-6">
+          <div id="gm-check-editor" className="space-y-5 rounded-[24px] border border-border/70 bg-foreground/[0.025] p-4 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-[10px] font-bold uppercase tracking-widest text-accent">Editor de testes</p><h4 className="mt-1 text-xl font-bold text-foreground">{current ? "Editar composição" : "Novo teste"}</h4></div>
               <button type="button" className={action} onClick={() => setDraft(null)}>Fechar editor</button></div>
             <label className="block space-y-1.5 text-xs font-semibold text-muted-foreground">Nome do teste<input className={input} maxLength={100} placeholder="Ex.: Ritual da Tempestade" value={draft.name} onChange={event => setDraft(prev => prev && { ...prev, name: event.target.value })}/></label>

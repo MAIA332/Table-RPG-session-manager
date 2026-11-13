@@ -1,10 +1,12 @@
 "use client"
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type DragEvent as ReactDragEvent, type FormEvent } from "react"
 import {
   AudioLines, ChevronDown, Headphones, HeadphoneOff, LoaderCircle, MessageCircle,
   Mic, MicOff, PhoneOff, Phone, Settings2, Signal, SignalLow, Volume2, X,
   ShieldCheck, UserRound, RadioTower, AlertTriangle, UserRoundX,
+  GripVertical, Plus, Trash2, Eye, EyeOff, ArrowRightLeft, VolumeX,
 } from "lucide-react"
+import { createPortal } from "react-dom"
 import { Room, RoomEvent, Track, type Participant, type RemoteTrack, type LocalAudioTrack, type RemoteAudioTrack } from "livekit-client"
 import { VoiceAudioSettings } from "./voice-audio-settings"
 import { audioCounter, audioDelta, audioHealth, type AudioCounter, type AudioDelta } from "@/lib/voice/audio-diagnostics"
@@ -12,6 +14,7 @@ import { VoiceNoiseProcessor, createInputMeter, captureForProfile, isAdvancedNoi
 import { useControllerActions } from "@/lib/input/use-controller-actions"
 import { registerInputHoldHandler } from "@/lib/input/hold"
 import { VoiceChat } from "./voice-chat"
+import type { VoiceRoomInfo, VoiceModerationState } from "@/lib/voice/types"
 import { controllerConfirm } from "@/lib/input/dialogs"
 import { controllerFocus } from "@/lib/input/focus"
 import { CallCuePlayer, type CallCue } from "@/lib/voice/call-cues"
@@ -41,6 +44,7 @@ type VoicePreferences = {
   studio: boolean
   isolation: number
   deviceProfiles: Record<string, VoiceAudioProfile>
+  overlay: boolean
   duckMusic: boolean
   duckDepth: number
   mode: "open" | "ptt"
@@ -51,7 +55,7 @@ type VoicePreferences = {
 }
 const defaults: VoicePreferences = {
   mute: false, deaf: false, noiseMode: "voice", echo: true, gain: false, inputGainDb: 0, studio: true, isolation: 65,
-  deviceProfiles: {}, duckMusic: false, duckDepth: 0.35,
+  deviceProfiles: {}, overlay: false, duckMusic: false, duckDepth: 0.35,
   mode: "open", volume: 1, deviceId: "", personVolumes: {}, personEqualizers: {},
 }
 type VoicePeer = { id: string; name: string; speaking: boolean; microphone: boolean; isMe: boolean; role: string }
@@ -91,6 +95,30 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
   const tabRef = useRef<VoiceTab>("participants")
   tabRef.current = tab
   const [peers, setPeers] = useState<VoicePeer[]>([])
+  const [rooms, setRooms] = useState<VoiceRoomInfo[]>([
+    { id: "main", name: "Sala principal", isDefault: true, participants: [], previewAvailable: false },
+  ])
+  const [selectedRoomId, setSelectedRoomId] = useState("main")
+  const [roomNameInput, setRoomNameInput] = useState("")
+  const [roomBusy, setRoomBusy] = useState(false)
+  const [roomError, setRoomError] = useState("")
+  const [switching, setSwitching] = useState(false)
+  const switchingRef = useRef(false)
+  const confirmSwitchRef = useRef(false)
+  const touchMoveRef = useRef<{
+    pointerId: number; person: {id: string; name: string; role: string}; sourceRoomId: string;
+    x: number; y: number; destination: string | null
+  } | null>(null)
+  const [dropRoomId, setDropRoomId] = useState<string | null>(null)
+  const [moderationBusy, setModerationBusy] = useState(false)
+  const [moderationMap, setModerationMap] = useState<Record<string, VoiceModerationState>>({})
+  const [myModeration, setMyModeration] = useState<VoiceModerationState>({microphoneMuted: false, audioMuted: false})
+  const moderationRef = useRef(myModeration)
+  moderationRef.current = myModeration
+  const processedMoveRef = useRef("")
+  const [overlayPosition, setOverlayPosition] = useState<{x: number; y: number} | null>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const overlayDragRef = useRef<{id: number; x: number; y: number; left: number; top: number} | null>(null)
   const [preferences, setPreferences] = useState<VoicePreferences>(defaults)
   const [hydrated, setHydrated] = useState(false)
   const [held, setHeld] = useState(false)
@@ -176,6 +204,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
         inputGainDb: safeInputGain(Number(saved.inputGainDb ?? 0)),
         studio: v3 ? saved.studio !== false : true, isolation: safeIsolation(Number(saved.isolation ?? 65)),
         deviceProfiles,
+        overlay: saved.overlay === true,
         duckMusic: saved.duckMusic === true,
         duckDepth: clamp(Number(saved.duckDepth ?? 0.35)),
         mode: saved.mode === "ptt" ? "ptt" : "open",
@@ -188,6 +217,11 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       })
     } catch { /* Perfil local indisponível. */ }
     try { setOutputDeviceId(localStorage.getItem(`otms-voice-output-v1-${userId}`) || "") } catch { /* sem storage */ }
+    try {
+      const position = JSON.parse(localStorage.getItem(`otms-voice-overlay-position-${userId}`) || "null")
+      if (position && Number.isFinite(position.x) && Number.isFinite(position.y))
+        setOverlayPosition({x: position.x, y: position.y})
+    } catch { /* Sem storage. */ }
     setHydrated(true)
   }, [userId])
   useEffect(() => {
@@ -199,6 +233,11 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     if (!hydrated) return
     try { localStorage.setItem(`otms-voice-output-v1-${userId}`, outputDeviceId) } catch { /* sem storage */ }
   }, [hydrated, userId, outputDeviceId])
+
+  useEffect(() => {
+    if (!hydrated || !overlayPosition) return
+    try { localStorage.setItem(`otms-voice-overlay-position-${userId}`, JSON.stringify(overlayPosition)) } catch { /* Storage privado. */ }
+  }, [overlayPosition, hydrated, userId])
 
   const updatePreferences = useCallback((patch: Partial<VoicePreferences>) => {
     setPreferences(current => {
@@ -516,7 +555,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     if (!enabled) void room.localParticipant.getTrackPublication(Track.Source.Microphone)?.track?.mute().catch(() => undefined)
     micChain.current = micChain.current.catch(() => undefined).then(async () => {
       if (roomRef.current !== room || statusRef.current !== "connected") return
-      const requested = desiredMicRef.current
+      const requested = desiredMicRef.current && !moderationRef.current.microphoneMuted && room.localParticipant.permissions?.canPublish !== false
       try {
         await room.localParticipant.setMicrophoneEnabled(requested, requested ? captureOptions() : undefined)
         if (requested && roomRef.current === room && desiredMicRef.current) {
@@ -529,7 +568,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
           setLocalMicInfo(requested ? "Microfone publicado" : "Microfone silenciado (captura mantida)")
         }
       } catch (cause) {
-        if (requested && roomRef.current === room) {
+        if (requested && roomRef.current === room && room.localParticipant.permissions?.canPublish !== false && !moderationRef.current.microphoneMuted) {
           console.warn("[Mesa de Voz] Falha ao publicar microfone:", cause)
           setError(describeMicrophoneError(cause))
           setPreferences(current => ({...current, mute: true}))
@@ -539,9 +578,9 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
   }, [captureOptions, configureProcessing, updatePeers])
 
   useEffect(() => {
-    setDesiredMic(status === "connected" && !preferences.mute &&
+    setDesiredMic(status === "connected" && !preferences.mute && !myModeration.microphoneMuted &&
       (preferences.mode === "open" || held || pttReleaseTail))
-  }, [status, preferences.mode, preferences.mute, held, pttReleaseTail, setDesiredMic])
+  }, [status, preferences.mode, preferences.mute, held, pttReleaseTail, myModeration.microphoneMuted, setDesiredMic])
 
   useEffect(() => {
     const room = roomRef.current
@@ -608,14 +647,14 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       const eq = normalizeVoiceEq(values.personEqualizers[identity] || DEFAULT_VOICE_EQ)
       if (playback) {
         playback.setEq(eq)
-        playback.setVolume(values.volume, personal, values.deaf)
+        playback.setVolume(values.volume, personal, values.deaf || moderationRef.current.audioMuted)
       } else {
         // Fallback sem WebAudio: o HTMLAudioElement limita a 100%.
-        element.volume = values.deaf ? 0 : clamp(values.volume * personal)
+        element.volume = values.deaf || moderationRef.current.audioMuted ? 0 : clamp(values.volume * personal)
       }
     }
   }, [])
-  useEffect(() => { applyVolumes() }, [applyVolumes, preferences.volume, preferences.deaf, preferences.personVolumes, preferences.personEqualizers])
+  useEffect(() => { applyVolumes() }, [applyVolumes, preferences.volume, preferences.deaf, myModeration.audioMuted, preferences.personVolumes, preferences.personEqualizers])
 
   // Playback/context watchdog. Do not republish the microphone on every tick:
   // that caused the old random speech cuts. Reanimate playback where the browser
@@ -629,7 +668,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       if (!room) return
       for (const {element, playback} of attachRef.current?.values() ?? []) {
         if (!element.isConnected) continue
-        if (!prefsRef.current.deaf && (element.paused || (playback && playback.state !== "running"))) {
+        if (!prefsRef.current.deaf && !moderationRef.current.audioMuted && (element.paused || (playback && playback.state !== "running"))) {
           const attempt = playback ? playback.play() : element.play()
           void attempt.then(() => setAudioBlocked(false)).catch(() => setAudioBlocked(true))
         }
@@ -674,7 +713,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     }
   }, [status, configureProcessing])
 
-  const join = useCallback(async () => {
+  const join = useCallback(async (targetRoomId = selectedRoomId, skipMicrophoneCheck = false) => {
     if (roomRef.current || statusRef.current !== "idle") return
     // O navegador precisa liberar o AudioContext no gesto do usuário, antes
     // da verificação do microfone e da chamada assíncrona ao token.
@@ -685,14 +724,21 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     setError("")
     setStatus("connecting")
     try {
-      // A verificação acontece a CADA entrada, inclusive com preferências em mute.
-      // Se o acesso falhar, não cria uma chamada que o usuário não pode usar.
-      await requestMicrophoneAccess()
-      if (seq !== joinSeq.current) return
-      const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/voice/token`, {method: "POST"})
+      // Obter antes as permissões impostas pelo Mestre. Quem está com o
+      // microfone bloqueado pode entrar apenas para ouvir sem dispositivo de
+      // captura, e a autorização anterior é reutilizada ao trocar de sala.
+      const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/voice/token?roomId=${encodeURIComponent(targetRoomId)}`, {method: "POST"})
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || "Falha na autenticação da voz.")
       if (seq !== joinSeq.current) return
+      if (data.moderation && typeof data.moderation.microphoneMuted === "boolean" && typeof data.moderation.audioMuted === "boolean") {
+        moderationRef.current = data.moderation
+        setMyModeration(data.moderation)
+      }
+      if (!skipMicrophoneCheck && data.moderation?.microphoneMuted !== true) {
+        await requestMicrophoneAccess()
+        if (seq !== joinSeq.current) return
+      }
       const room = new Room({
         adaptiveStream: false, // Não há vídeo na sala; priorizar áudio contínuo.
         audioCaptureDefaults: captureOptions(),
@@ -736,7 +782,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
           document.body.append(element)
         }
         const recover = () => {
-          if (roomRef.current !== room || prefsRef.current.deaf) return
+          if (roomRef.current !== room || prefsRef.current.deaf || moderationRef.current.audioMuted) return
           if (document.visibilityState === "hidden") return
           if (element.paused && element.isConnected) {
             const attempt = playback ? playback.play() : element.play()
@@ -782,6 +828,13 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       }
       room.on(RoomEvent.ParticipantConnected, onPeerJoined)
       room.on(RoomEvent.ParticipantDisconnected, onPeerLeft)
+      // Dados recebidos são apenas um aviso: o comando é sempre lido na API
+      // autenticada, jamais executado diretamente a partir de payloads de jogadores.
+      room.on(RoomEvent.DataReceived, (_payload, participant, _kind, topic) => {
+        if (!participant && topic === "otms.voice.moderation.v1" && roomRef.current === room) {
+          window.dispatchEvent(new Event("otms.voice.moderation-refresh"))
+        }
+      })
       room.on(RoomEvent.TrackSubscribed, onTrack)
       room.on(RoomEvent.TrackUnsubscribed, offTrack)
       room.on(RoomEvent.TrackMuted, refresh)
@@ -851,7 +904,74 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       setStatus("idle")
       setError(cause instanceof Error ? cause.message : "Falha ao conectar à sala de voz.")
     }
-  }, [campaignId, captureOptions, requestMicrophoneAccess, updatePeers, cleanAudio, applyVolumes, attachments, outputDeviceId, callCuePlayer, playCallCue])
+  }, [campaignId, selectedRoomId, captureOptions, requestMicrophoneAccess, updatePeers, cleanAudio, applyVolumes, attachments, outputDeviceId, callCuePlayer, playCallCue])
+
+  // Uma troca solicitada pelo próprio usuário pede confirmação amigável a
+  // controle; uma transferência autenticada do Mestre não pede nova ação.
+  const switchRoom = useCallback(async (targetId: string, askConfirmation: boolean, moveId?: string) => {
+    if (targetId === selectedRoomId || !rooms.some(room => room.id === targetId) || switchingRef.current || (askConfirmation && confirmSwitchRef.current)) return
+    if (statusRef.current === "idle") {setSelectedRoomId(targetId); return}
+    if (statusRef.current !== "connected") return
+    const destination = rooms.find(room => room.id === targetId)
+    const previousRoom = roomRef.current
+    if (askConfirmation) {
+      confirmSwitchRef.current = true
+      try {
+        if (!await controllerConfirm(`Trocar para "${destination?.name || "outra sala"}" agora? Você sairá da sala atual e entrará automaticamente na nova.`)) return
+      } finally {confirmSwitchRef.current = false}
+    }
+    if (statusRef.current !== "connected" || roomRef.current !== previousRoom || switchingRef.current) return
+    switchingRef.current = true
+    setSwitching(true)
+    try {
+      leave() // Encerrar mídia e handlers da sala anterior antes de conectar a próxima.
+      setSelectedRoomId(targetId)
+      await join(targetId, true) // Captura já consentida, sem um segundo popup.
+      if (moveId && statusRef.current === "connected") {
+        void fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/voice/moderation`, {
+          method: "PATCH", headers: {"Content-Type": "application/json"}, body: JSON.stringify({moveId}),
+        }).catch(() => undefined)
+      }
+    } finally {
+      switchingRef.current = false
+      setSwitching(false)
+    }
+  }, [selectedRoomId, rooms, leave, join, campaignId])
+
+  const refreshModeration = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/voice/moderation?roomId=${encodeURIComponent(selectedRoomId)}`, {cache:"no-store"})
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || "Moderação indisponível")
+      if (data.mine && typeof data.mine.microphoneMuted === "boolean" && typeof data.mine.audioMuted === "boolean")
+        setMyModeration(data.mine)
+      if (role === "gm" && data.moderation && typeof data.moderation === "object") setModerationMap(data.moderation)
+      const move = data.pendingMove
+      if (move && typeof move.id === "string" && move.fromRoomId === selectedRoomId &&
+          typeof move.toRoomId === "string" && processedMoveRef.current !== move.id &&
+          rooms.some(room => room.id === move.toRoomId) && statusRef.current === "connected" && !switchingRef.current) {
+        processedMoveRef.current = move.id
+        void switchRoom(move.toRoomId, false, move.id)
+      }
+    } catch (cause) {
+      console.debug("[Mesa de Voz] Consulta de moderação indisponível:", cause)
+    }
+  }, [campaignId, role, selectedRoomId, switchRoom, rooms])
+
+  useEffect(() => {
+    if (!expanded && status !== "connected" && status !== "reconnecting") return
+    let disposed = false
+    let busy = false
+    const poll = async () => {
+      if (busy || disposed) return
+      busy = true
+      try {await refreshModeration()} finally {busy = false}
+    }
+    void poll()
+    const timer = window.setInterval(() => {if (document.visibilityState === "visible") void poll()}, 1700)
+    window.addEventListener("otms.voice.moderation-refresh", poll)
+    return () => {disposed = true; clearInterval(timer); window.removeEventListener("otms.voice.moderation-refresh", poll)}
+  }, [expanded, status, refreshModeration])
 
   const navigateVoiceTab = useCallback((direction: -1 | 1) => {
     if (!panelRef.current) return false
@@ -872,8 +992,8 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     "ui.back": () => { if (!panelRef.current) return false; setExpanded(false); triggerRef.current?.focus(); return true },
   }, {enabled: expanded, priority: 350})
 
-  const toggleMute = useCallback(() => updatePreferences({mute: !prefsRef.current.mute}), [updatePreferences])
-  const toggleDeaf = useCallback(() => updatePreferences({deaf: !prefsRef.current.deaf}), [updatePreferences])
+  const toggleMute = useCallback(() => {if (!moderationRef.current.microphoneMuted) updatePreferences({mute: !prefsRef.current.mute})}, [updatePreferences])
+  const toggleDeaf = useCallback(() => {if (!moderationRef.current.audioMuted) updatePreferences({deaf: !prefsRef.current.deaf})}, [updatePreferences])
   const toggleNoise = useCallback(() => updatePreferences({
       noiseMode: prefsRef.current.noiseMode === "voice" ? "native" : "voice",
   }), [updatePreferences])
@@ -889,7 +1009,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     heldRef.current = value
     setHeld(value)
     if (value || !wasHeld || immediate || statusRef.current !== "connected" ||
-        prefsRef.current.mode !== "ptt" || prefsRef.current.mute) {
+        prefsRef.current.mode !== "ptt" || prefsRef.current.mute || moderationRef.current.microphoneMuted) {
       setPttReleaseTail(false)
       return
     }
@@ -934,7 +1054,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     void room.startAudio().then(async () => {
       const items = Array.from(attachRef.current?.values() ?? [])
       const results = await Promise.allSettled(items.map(({element, playback}) =>
-        !prefsRef.current.deaf ? (playback ? playback.play() : element.play()) : Promise.resolve()))
+        !prefsRef.current.deaf && !moderationRef.current.audioMuted ? (playback ? playback.play() : element.play()) : Promise.resolve()))
       setAudioBlocked(results.some(result => result.status === "rejected"))
       if (!results.some(result => result.status === "rejected")) setError("")
     }).catch(() => {
@@ -980,10 +1100,13 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     const onOutside = (event: PointerEvent) => {
       if (!(event.target instanceof Node)) return
       if (panelRef.current?.contains(event.target) || triggerRef.current?.contains(event.target)) return
+      if (event.target instanceof Element && event.target.closest(".otms-voice-lightbox, .otms-controller-dialog-backdrop, .otms-controller-select-overlay")) return
       setExpanded(false)
     }
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {setExpanded(false); triggerRef.current?.focus()}
+      if (event.key === "Escape" && !document.querySelector(".otms-controller-dialog-backdrop, .otms-controller-select-overlay")) {
+        setExpanded(false); triggerRef.current?.focus()
+      }
     }
     document.addEventListener("pointerdown", onOutside)
     document.addEventListener("keydown", onEscape)
@@ -997,7 +1120,7 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
     if (roomRef.current !== roomAtRequest) return
     try {
       const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/voice/moderation`, {
-        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({targetId: peer.id}),
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({targetId: peer.id, roomId: selectedRoomId}),
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.error || "Falha ao desconectar.")
@@ -1008,39 +1131,237 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
         setError(cause instanceof Error ? cause.message : "Falha ao desconectar.")
     }
   }
+  const moderatePeer = async (person: {id: string; name: string; role: string}, sourceRoomId: string,
+    action: "move" | "microphone" | "audio", value: string | boolean) => {
+    if (role !== "gm" || person.role !== "player" || moderationBusy || person.id === userId) return
+    if (action === "move" && (typeof value !== "string" || !rooms.some(room => room.id === value) || sourceRoomId === value)) return
+    setModerationBusy(true)
+    setRoomError("")
+    try {
+      const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/voice/moderation`, {
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({
+          action, targetId: person.id, roomId: sourceRoomId,
+          ...(action === "move" ? {targetRoomId: value} : {muted: value}),
+        }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || "Falha ao moderar jogador.")
+      if (result.moderation) setModerationMap(current => ({...current, [person.id]: result.moderation}))
+      if (action === "move") setRoomError(`Transferência de ${person.name} solicitada.`)
+      await refreshModeration()
+      await refreshRooms()
+    } catch (cause) {setRoomError(cause instanceof Error ? cause.message : "Falha ao moderar jogador.")}
+    finally {setModerationBusy(false)}
+  }
+
+  const beginParticipantDrag = (event: ReactDragEvent<HTMLElement>, person: {id: string; role: string}, sourceRoomId: string) => {
+    if (role !== "gm" || person.role !== "player" || moderationBusy) {event.preventDefault(); return}
+    event.dataTransfer.setData("application/x-otms-voice-move", JSON.stringify({id: person.id, sourceRoomId}))
+    event.dataTransfer.effectAllowed = "move"
+  }
+  const dropParticipant = (event: ReactDragEvent<HTMLElement>, targetRoomId: string) => {
+    event.preventDefault()
+    setDropRoomId(null)
+    if (role !== "gm" || moderationBusy) return
+    try {
+      const {id, sourceRoomId} = JSON.parse(event.dataTransfer.getData("application/x-otms-voice-move")) as {id: string; sourceRoomId: string}
+      if (!id || !sourceRoomId || sourceRoomId === targetRoomId) return
+      const person = rooms.find(r => r.id === sourceRoomId)?.participants.find(p => p.id === id) ||
+        (sourceRoomId === selectedRoomId ? peers.find(p => p.id === id) : undefined)
+      if (person) void moderatePeer(person, sourceRoomId, "move", targetRoomId)
+    } catch { /* Não aceitar dados externos não pertencentes à lista de jogadores. */ }
+  }
+  // Em dispositivos de toque, HTML5 drag & drop nem sempre existe.
+  // Permitir arrasto por Pointer Events, além do seletor acessível ao controle.
+  const beginTouchMove = (event: ReactPointerEvent<HTMLElement>, person: {id: string; name: string; role: string}, sourceRoomId: string) => {
+    if (event.pointerType === "mouse" || role !== "gm" || person.role !== "player" || moderationBusy) return
+    touchMoveRef.current = {pointerId: event.pointerId, person, sourceRoomId, x: event.clientX, y: event.clientY, destination: null}
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+  const updateTouchMove = (event: ReactPointerEvent<HTMLElement>) => {
+    const touch = touchMoveRef.current
+    if (!touch || touch.pointerId !== event.pointerId) return
+    if (Math.hypot(event.clientX - touch.x, event.clientY - touch.y) < 10) return
+    event.preventDefault()
+    const below = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-voice-drop-room]")
+    const target = below?.dataset.voiceDropRoom || null
+    touch.destination = target && target !== touch.sourceRoomId ? target : null
+    setDropRoomId(touch.destination)
+  }
+  const endTouchMove = (event: ReactPointerEvent<HTMLElement>) => {
+    const touch = touchMoveRef.current
+    if (!touch || touch.pointerId !== event.pointerId) return
+    touchMoveRef.current = null
+    setDropRoomId(null)
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    if (event.type === "pointerup" && touch.destination) void moderatePeer(touch.person, touch.sourceRoomId, "move", touch.destination)
+  }
+
+  const renderAdminControls = (person: {id: string; name: string; role: string}, sourceRoomId: string) => {
+    if (role !== "gm" || person.role !== "player" || person.id === userId) return null
+    const state = moderationMap[person.id]
+    return <div className="otms-voice-moderation flex flex-wrap items-center gap-1" aria-label={`Moderação de ${person.name}`}>
+      <button type="button" className="otms-voice-action !p-1.5" disabled={moderationBusy}
+        onClick={() => void moderatePeer(person, sourceRoomId, "microphone", !state?.microphoneMuted)}
+        aria-pressed={!!state?.microphoneMuted} title={state?.microphoneMuted ? `Liberar microfone de ${person.name}` : `Mutar microfone de ${person.name}`}
+        aria-label={state?.microphoneMuted ? `Liberar microfone de ${person.name}` : `Mutar microfone de ${person.name}`}>
+        {state?.microphoneMuted ? <MicOff className="size-3.5 text-red-300"/> : <Mic className="size-3.5"/>}
+      </button>
+      <button type="button" className="otms-voice-action !p-1.5" disabled={moderationBusy}
+        onClick={() => void moderatePeer(person, sourceRoomId, "audio", !state?.audioMuted)}
+        aria-pressed={!!state?.audioMuted} title={state?.audioMuted ? `Liberar áudio de ${person.name}` : `Mutar áudio recebido por ${person.name}`}
+        aria-label={state?.audioMuted ? `Liberar áudio de ${person.name}` : `Mutar áudio recebido por ${person.name}`}>
+        {state?.audioMuted ? <VolumeX className="size-3.5 text-red-300"/> : <Volume2 className="size-3.5"/>}
+      </button>
+      <label className="flex items-center gap-1 text-[10px] text-muted-foreground" title={`Mover ${person.name} para outra sala`}>
+        <ArrowRightLeft className="size-3.5"/>
+        <select className="otms-voice-field max-w-[98px] p-1 text-[10px]" disabled={moderationBusy} defaultValue=""
+          aria-label={`Mover ${person.name} para outra sala`} onChange={event => {
+            if (event.target.value) void moderatePeer(person, sourceRoomId, "move", event.target.value)
+            event.target.value = ""
+          }}>
+          <option value="">Mover...</option>
+          {rooms.filter(r => r.id !== sourceRoomId).map(room => <option key={room.id} value={room.id}>{room.name}</option>)}
+        </select>
+      </label>
+    </div>
+  }
+
   const onPttPress = (event: ReactPointerEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
     setTalkHeld(true)
   }
   const meSpeaking = status === "connected" && peers.some(person => person.isMe && person.microphone) &&
-    !preferences.mute && (preferences.mode === "open" || held)
+    !preferences.mute && !myModeration.microphoneMuted && (preferences.mode === "open" || held)
   const connectionTrouble = audioHealth(receiveStats) === "warning" || audioHealth(sendStats) === "warning"
   const inCall = status === "connected" || status === "reconnecting"
+  const selectedRoom = rooms.find(item => item.id === selectedRoomId) || rooms[0]
 
+  const refreshRooms = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/voice/rooms`, {cache: "no-store", signal})
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || "Não foi possível consultar as salas.")
+      if (signal?.aborted) return
+      const updated = data.rooms as VoiceRoomInfo[]
+      if (!Array.isArray(updated) || !updated.length) throw new Error("Resposta inválida das salas.")
+      setRooms(updated)
+      setRoomError("")
+      if (statusRef.current === "idle") setSelectedRoomId(current => updated.some(room => room.id === current) ? current : "main")
+    } catch (cause) {
+      if (signal?.aborted) return
+      setRoomError(cause instanceof Error ? cause.message : "Prévia das salas indisponível.")
+    }
+  }, [campaignId])
+
+  useEffect(() => {
+    if (!expanded && !inCall) return
+    const controller = new AbortController()
+    void refreshRooms(controller.signal)
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refreshRooms(controller.signal)
+    }, 6500)
+    return () => {controller.abort();clearInterval(timer)}
+  }, [expanded, inCall, refreshRooms])
+
+  const createRoom = async (event: FormEvent) => {
+    event.preventDefault()
+    if (role !== "gm" || roomBusy || switching || !roomNameInput.trim()) return
+    setRoomBusy(true)
+    try {
+      const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/voice/rooms`, {
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name: roomNameInput.trim()}),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(body.error || "Não foi possível criar a sala.")
+      const created = body.room as VoiceRoomInfo
+      if (statusRef.current === "idle") setSelectedRoomId(created.id)
+      setRoomNameInput("")
+      await refreshRooms()
+    } catch (cause) {setRoomError(cause instanceof Error ? cause.message : "Erro ao criar sala.")}
+    finally {setRoomBusy(false)}
+  }
+
+  const removeRoom = async (room: VoiceRoomInfo) => {
+    if (role !== "gm" || room.isDefault || roomBusy || switching) return
+    if (!(await controllerConfirm(`Excluir a sala "${room.name}"?`))) return
+    setRoomBusy(true)
+    try {
+      const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/voice/rooms`, {
+        method: "DELETE", headers: {"Content-Type": "application/json"}, body: JSON.stringify({roomId: room.id}),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(body.error || "Não foi possível excluir a sala.")
+      if (room.id === selectedRoomId) setSelectedRoomId("main")
+      await refreshRooms()
+    } catch (cause) {setRoomError(cause instanceof Error ? cause.message : "Erro ao excluir sala.")}
+    finally {setRoomBusy(false)}
+  }
+
+  const keepOverlayInView = (x: number, y: number) => {
+    const rect = overlayRef.current?.getBoundingClientRect()
+    const width = rect?.width || 220
+    const height = rect?.height || 96
+    return {x: Math.max(8, Math.min(x, window.innerWidth - width - 8)),
+      y: Math.max(8, Math.min(y, window.innerHeight - height - 8))}
+  }
+  const beginOverlayDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return
+    const rect = overlayRef.current?.getBoundingClientRect()
+    if (!rect) return
+    overlayDragRef.current = {id: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top}
+    event.currentTarget.setPointerCapture(event.pointerId)
+    event.preventDefault()
+  }
+  const moveOverlay = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const origin = overlayDragRef.current
+    if (!origin || origin.id !== event.pointerId) return
+    setOverlayPosition(keepOverlayInView(origin.left + event.clientX - origin.x, origin.top + event.clientY - origin.y))
+  }
+  const endOverlayDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (overlayDragRef.current?.id !== event.pointerId) return
+    overlayDragRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+  }
+  useEffect(() => {
+    if (!preferences.overlay || !inCall) return
+    const onResize = () => setOverlayPosition(current => current ? keepOverlayInView(current.x, current.y) : null)
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [preferences.overlay, inCall])
+  const speakingPeers = peers.filter(person => person.speaking && person.microphone)
 
   return <div className="otms-voice-root relative" data-controller-target="voice.panel.toggle">
     <button type="button" ref={triggerRef}
       className={`otms-voice-trigger rpg-cartography-action inline-flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold ${inCall ? "otms-voice-connected" : ""}`}
       onClick={togglePanel} aria-expanded={expanded} aria-controls="otms-voice-popover" aria-label="Abrir painel de voz e chat">
-      {status === "connecting" || status === "reconnecting" ? <LoaderCircle className="size-4 animate-spin"/> : <Headphones className="size-4"/>}
+      {status === "connecting" || status === "reconnecting" || switching ? <LoaderCircle className="size-4 animate-spin"/> : <Headphones className="size-4"/>}
       <span>Voz</span>
       {inCall && <span className="otms-voice-count">{peers.length}</span>}
-      {inCall && preferences.mute && <MicOff className="size-3 text-amber-300"/>}
+      {inCall && (preferences.mute || myModeration.microphoneMuted) && <MicOff className="size-3 text-amber-300"/>}
       {unread > 0 && <span className="otms-voice-count" aria-label={`${unread} mensagens novas`}>{Math.min(unread, 99)}</span>}
       <ChevronDown className="size-3 opacity-60"/>
     </button>
-    {expanded && <div ref={panelRef} id="otms-voice-popover" role="dialog" aria-label="Mesa de voz" data-voice-tab-navigation="active"
+    {expanded && <div ref={panelRef} id="otms-voice-popover" role="dialog" aria-label="Mesa de voz" data-voice-tab-navigation="active" data-tab={tab}
       className="otms-voice-popover fixed bottom-3 left-3 right-3 z-[110] flex max-h-[min(80dvh,720px)] flex-col overflow-hidden rounded-xl border p-3 shadow-2xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-[calc(100%+0.6rem)] sm:h-[min(72dvh,600px)] sm:w-[375px]">
-      <header className="mb-3 flex shrink-0 items-center justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="flex items-center gap-2 text-sm font-bold"><Headphones className="size-4 text-amber-300"/> Mesa de Voz</h3>
+      <header className="mb-3 flex shrink-0 items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight"><Headphones className="size-4 text-indigo-300"/> Mesa de Voz</h3>
+            <span className={`otms-voice-status-badge ${inCall ? "otms-voice-status-live" : ""}`}>{inCall ? "Em call" : "Offline"}</span>
+          </div>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {status === "idle" ? "Fora da chamada" : status === "connecting" ? "Conectando..." : status === "reconnecting" ? "Reconectando..." : `${peers.length} na chamada`}
+            {status === "idle" ? `Fora da chamada · ${selectedRoom?.name || "Sala principal"}` : status === "connecting" ? "Conectando..." : status === "reconnecting" ? "Reconectando..." : `${peers.length} em ${selectedRoom?.name || "Sala principal"}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {inCall && (connectionGood && !connectionTrouble ? <Signal className="size-4 text-emerald-400" aria-label="Conexão estabelecida"/> : <SignalLow className="size-4 text-amber-400" aria-label="Perda/jitter ou conexão instável"/>)}
+          <button className="otms-voice-action" type="button" onClick={() => updatePreferences({overlay: !preferences.overlay})}
+            aria-label={preferences.overlay ? "Desativar sobreposição de voz" : "Ativar sobreposição de voz"} aria-pressed={preferences.overlay}
+            title={preferences.overlay ? "Desativar sobreposição" : "Mostrar quem está falando com o painel fechado"}>
+            {preferences.overlay ? <Eye className="size-4 text-emerald-400"/> : <EyeOff className="size-4"/>}
+          </button>
           <button className="otms-voice-action" type="button" onClick={() => setExpanded(false)} aria-label="Fechar painel"><X className="size-4"/></button>
         </div>
       </header>
@@ -1051,17 +1372,95 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       </nav>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {tab === "participants" && <div className="otms-voice-scroll h-full space-y-2 overflow-y-auto py-3">
-          {status === "idle" && <p className="py-8 text-center text-xs text-muted-foreground">Entre na chamada para conversar sem sair do RPG.</p>}
+          <div className="otms-voice-surface space-y-2 p-2.5" aria-label="Salas de voz da campanha">
+            <div className="flex items-center justify-between gap-2"><strong className="text-xs font-semibold tracking-wide text-slate-100">Salas de voz</strong>
+              <span className="text-[10px] text-muted-foreground">{switching ? "Trocando de sala..." : inCall ? "Clique para trocar · arraste jogadores" : "Escolha antes de entrar"}</span></div>
+            <div className="space-y-1.5">
+              {rooms.map(room => <div key={room.id} data-voice-drop-room={room.id} className={`otms-voice-room-target rounded-lg p-1 ${dropRoomId === room.id ? "otms-voice-room-drop" : ""}`}
+                onDragOver={event => {
+                  if (role === "gm" && !moderationBusy && event.dataTransfer.types.includes("application/x-otms-voice-move")) {
+                    event.preventDefault(); event.dataTransfer.dropEffect = "move"; setDropRoomId(room.id)
+                  }
+                }}
+                onDragLeave={event => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropRoomId(current => current === room.id ? null : current)
+                }}
+                onDrop={event => dropParticipant(event, room.id)}>
+                <div className="flex items-center gap-1.5">
+                  <button type="button" className={`otms-voice-room min-w-0 flex-1 rounded-xl px-3 py-2.5 text-left text-xs ${selectedRoomId === room.id ? "otms-voice-room-active" : ""}`}
+                    disabled={status === "connecting" || status === "reconnecting" || switching} aria-pressed={selectedRoomId === room.id}
+                    onClick={() => void switchRoom(room.id, true)}>
+                    <span className="flex items-center gap-3">
+                      <span className="otms-voice-room-icon inline-flex size-8 shrink-0 items-center justify-center rounded-lg"><Volume2 className="size-4"/></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="otms-voice-room-title truncate font-medium">{room.name}</span>
+                          <span className="otms-voice-room-count shrink-0">{room.previewAvailable ? `${room.participants.length}/8` : "--"}</span>
+                        </span>
+                        <span className="otms-voice-room-subtitle mt-0.5 block truncate text-[10px] text-muted-foreground">{!room.previewAvailable ? "Prévia indisponível" : selectedRoomId === room.id ? (inCall ? "Você está nesta sala" : "Sala selecionada") : inCall ? "Trocar para esta sala" : "Entrar nesta sala"}</span>
+                      </span>
+                    </span>
+                  </button>
+                  {role === "gm" && !room.isDefault && <button type="button" className="otms-voice-action !p-2" aria-label={`Excluir sala ${room.name}`}
+                    disabled={roomBusy || !room.previewAvailable || room.participants.length > 0} title="Excluir sala vazia" onClick={() => void removeRoom(room)}><Trash2 className="size-3.5"/></button>}
+                </div>
+                {role === "gm" && room.previewAvailable && room.participants.length > 0 && <div className="mt-1.5 space-y-1 px-1 pb-1">
+                  {room.participants.map(person => <div key={person.id} className={`otms-voice-room-person rounded-xl px-2 py-2 ${person.speaking ? "otms-voice-speaking" : ""}`}>
+                    <div className="flex items-center gap-2">
+                      {person.role === "player" && <span className="otms-voice-grip inline-flex cursor-grab items-center justify-center rounded-md p-1" draggable
+                        title={`Arrastar ${person.name} para outra sala`} aria-label={`Arrastar ${person.name} para outra sala`}
+                        onDragStart={event => beginParticipantDrag(event, person, room.id)} onDragEnd={() => setDropRoomId(null)}
+                        onPointerDown={event => beginTouchMove(event, person, room.id)} onPointerMove={updateTouchMove}
+                        onPointerUp={endTouchMove} onPointerCancel={endTouchMove}>
+                        <GripVertical className="size-3.5"/>
+                      </span>}
+                      <span className="otms-voice-avatar inline-flex size-7 shrink-0 items-center justify-center rounded-full"><UserRound className="size-3.5"/></span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[11px] font-medium text-slate-100">{person.name}</p>
+                        <p className={`text-[10px] ${person.speaking ? "text-emerald-300" : "text-muted-foreground"}`}>{person.role === "gm" ? "Mestre" : person.speaking ? "Falando agora" : "Na escuta"}</p>
+                      </div>
+                      {person.microphone ? <Mic className="size-3.5 text-emerald-400"/> : <MicOff className="size-3.5 text-muted-foreground"/>}
+                    </div>
+                    {renderAdminControls(person, room.id)}
+                  </div>)}
+                </div>}
+              </div>)}
+            </div>
+            {role === "gm" && <form className="flex gap-1.5" onSubmit={createRoom}>
+              <input aria-label="Nome da nova sala de voz" className="otms-voice-field min-w-0 flex-1 px-2 py-1.5 text-xs" placeholder="Nova sala..." maxLength={40} value={roomNameInput} onChange={event => setRoomNameInput(event.target.value)}/>
+              <button type="submit" className="otms-voice-action" disabled={roomBusy || switching || roomNameInput.trim().length < 2} aria-label="Criar sala de voz"><Plus className="size-4"/> Criar</button>
+            </form>}
+            {roomError && <p role="status" className="text-[11px] text-amber-300">{roomError}</p>}
+          </div>
+          {status === "idle" && <div className="otms-voice-surface space-y-1.5 p-2.5" aria-live="polite">
+            <h4 className="text-xs font-semibold tracking-wide text-slate-100">Prévia · {selectedRoom?.name}</h4>
+            {selectedRoom?.previewAvailable ? (selectedRoom.participants.length ? selectedRoom.participants.map(person => <div key={person.id}
+              className={`otms-voice-person flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs ${person.speaking ? "otms-voice-speaking" : ""}`}>
+              <span className="otms-voice-avatar inline-flex size-7 shrink-0 items-center justify-center rounded-full"><UserRound className="size-3.5"/></span><span className="min-w-0 flex-1 truncate">{person.name}{person.role === "gm" ? " · Mestre" : ""}</span>
+              {person.microphone ? <Mic className="size-3.5 text-emerald-400"/> : <MicOff className="size-3.5 text-muted-foreground"/>}
+            </div>) : <p className="text-[11px] text-muted-foreground">Ninguém conectado. Seja o primeiro a entrar.</p>)
+              : <p className="text-[11px] text-muted-foreground">Não foi possível confirmar quem está na sala agora.</p>}
+          </div>}
+          {inCall && (myModeration.microphoneMuted || myModeration.audioMuted) && <p role="status" className="rounded-md border border-red-700/30 bg-red-950/20 p-2 text-[11px] text-amber-200">
+            O Mestre bloqueou: {myModeration.microphoneMuted ? "seu microfone" : ""}{myModeration.microphoneMuted && myModeration.audioMuted ? " e " : ""}{myModeration.audioMuted ? "o áudio que você ouve" : ""}. Os controles serão liberados pelo Mestre.
+          </p>}
           {inCall && connectionTrouble && <p role="alert" className="rounded-md border border-amber-700/40 bg-amber-950/30 p-2 text-[11px] text-amber-200">Instabilidade detectada na mídia WebRTC (perda de pacotes/jitter). Se a voz estiver robótica, teste rede cabeada ou encaminhamento UDP direto ao LiveKit; filtros de microfone não corrigem pacotes perdidos.</p>}
-          {inCall && peers.map(person => <div key={person.id} className={`otms-voice-person rounded-lg px-2 py-2 ${person.speaking ? "otms-voice-speaking" : ""}`}>
+          {inCall && peers.map(person => <div key={person.id} className={`otms-voice-person rounded-xl px-3 py-3 ${person.speaking ? "otms-voice-speaking" : ""}`}>
             <div className="flex items-center gap-2.5">
               <span className="otms-voice-avatar flex size-8 shrink-0 items-center justify-center rounded-full"><UserRound className="size-4"/></span>
               <div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{person.isMe ? `${person.name} (você)` : person.name}</p>
                 <p className={`text-[10px] ${person.speaking ? "text-emerald-400" : "text-muted-foreground"}`}>{person.speaking ? "Falando" : person.isMe && !person.microphone ? "Microfone desativado" : person.role === "gm" ? "Mestre" : "Jogador"}</p>
               </div>
               {person.microphone ? <AudioLines className={`size-4 ${person.speaking ? "text-emerald-400" : "text-muted-foreground"}`}/> : <MicOff className="size-4 text-muted-foreground"/>}
+              {role === "gm" && !person.isMe && person.role === "player" && <span className="otms-voice-grip cursor-grab rounded p-1" draggable
+                title={`Arraste ${person.name} sobre outra sala`} aria-label={`Arrastar ${person.name} para outra sala`}
+                onDragStart={event => beginParticipantDrag(event, person, selectedRoomId)} onDragEnd={() => setDropRoomId(null)}
+                onPointerDown={event => beginTouchMove(event, person, selectedRoomId)} onPointerMove={updateTouchMove}
+                onPointerUp={endTouchMove} onPointerCancel={endTouchMove}>
+                <GripVertical className="size-3.5"/></span>}
               {role === "gm" && !person.isMe && person.role === "player" && <button type="button" className="otms-voice-action !p-1.5 text-red-300" onClick={() => void disconnectPeer(person)} title="Desconectar jogador" aria-label={`Desconectar ${person.name}`}><UserRoundX className="size-3.5"/></button>}
             </div>
+            {renderAdminControls(person, selectedRoomId)}
             {!person.isMe && <div className="mt-2 space-y-2 pl-10 text-[10px] text-muted-foreground">
               <label className="flex items-center gap-2">
                 <Volume2 className="size-3.5 shrink-0"/>
@@ -1110,6 +1509,10 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
         </div>}
         {tab === "chat" && <VoiceChat campaignId={campaignId} meId={userId} canModerate={role === "gm"} active={true} onUnreadChange={setUnread}/>}
         {tab === "settings" && <div className="otms-voice-scroll h-full space-y-4 overflow-y-auto py-3 text-xs">
+          <label className="flex items-center justify-between gap-3 rounded-lg border border-amber-600/20 p-2">
+            <span>Sobreposição de voz<br/><small className="text-[10px] text-muted-foreground">Exibir quem fala quando fechar o painel</small></span>
+            <input type="checkbox" className="size-4 accent-amber-500" checked={preferences.overlay} onChange={event => updatePreferences({overlay: event.target.checked})} />
+          </label>
           <label className="flex items-center justify-between gap-3"><span>Modo do microfone</span>
             <select className="otms-voice-field max-w-[170px] px-2 py-1.5" value={preferences.mode} onChange={e => {setTalkHeld(false); updatePreferences({mode: e.target.value === "ptt" ? "ptt" : "open"})}}>
               <option value="open">Microfone livre</option><option value="ptt">Segurar para falar</option>
@@ -1142,24 +1545,49 @@ export function VoiceDock({ campaignId, userId, userName, role, members }: Voice
       </div>
       {error && <p role="alert" className="mt-2 shrink-0 rounded bg-red-900/20 px-2 py-1.5 text-xs text-red-300"><AlertTriangle className="mr-1 inline size-3"/>{error}</p>}
       {inCall && <button type="button" onClick={allowAudio} className="otms-voice-link my-2 text-left text-xs" title="Reiniciar a reprodução local sem desconectar da call"><Volume2 className="mr-1 inline size-3.5"/> {audioBlocked ? "Liberar reprodução de áudio" : "Restaurar áudio se estiver sem som"}</button>}
-      <footer className="mt-3 flex shrink-0 gap-2 border-t border-amber-600/20 pt-3">
-        {status === "idle" ? <button className="otms-voice-primary flex w-full items-center justify-center gap-2 p-2.5 text-xs" type="button" onClick={() => void join()}><Phone className="size-4"/> Entrar na chamada</button> :
+      <footer className="otms-voice-footer mt-3 flex shrink-0 gap-2 border-t pt-3">
+        {status === "idle" ? <button className="otms-voice-primary flex w-full items-center justify-center gap-2 p-2.5 text-xs" type="button" onClick={() => void join()}><Phone className="size-4"/> Entrar em {selectedRoom?.name || "Sala principal"}</button> :
           <>
-            <button type="button" className="otms-voice-action flex-1" disabled={status !== "connected"} onClick={toggleMute} aria-label={preferences.mute ? "Ativar microfone" : "Silenciar microfone"} title={preferences.mute ? "Ativar microfone" : "Silenciar microfone"}>
-              {preferences.mute ? <MicOff className="size-4 text-amber-300"/> : <Mic className="size-4"/>}<span>{preferences.mute ? "Ativar" : "Mudo"}</span>
+            <button type="button" className="otms-voice-action flex-1" disabled={status !== "connected" || myModeration.microphoneMuted} onClick={toggleMute} aria-label={myModeration.microphoneMuted ? "Microfone bloqueado pelo Mestre" : preferences.mute ? "Ativar microfone" : "Silenciar microfone"} title={myModeration.microphoneMuted ? "Microfone bloqueado pelo Mestre" : preferences.mute ? "Ativar microfone" : "Silenciar microfone"}>
+              {preferences.mute || myModeration.microphoneMuted ? <MicOff className="size-4 text-amber-300"/> : <Mic className="size-4"/>}<span>{myModeration.microphoneMuted ? "Bloqueado" : preferences.mute ? "Ativar" : "Mudo"}</span>
             </button>
-            {preferences.mode === "ptt" && <button type="button" className={`otms-voice-action flex-1 ${held ? "otms-voice-ptt-active" : ""}`} disabled={status !== "connected"}
+            {preferences.mode === "ptt" && <button type="button" className={`otms-voice-action flex-1 ${held ? "otms-voice-ptt-active" : ""}`} disabled={status !== "connected" || myModeration.microphoneMuted}
               onPointerDown={onPttPress} onPointerUp={() => setTalkHeld(false)} onPointerCancel={() => setTalkHeld(false)} onLostPointerCapture={() => setTalkHeld(false)}
               onKeyDown={e => {if ((e.key === " " || e.key === "Enter") && !e.repeat) {e.preventDefault();setTalkHeld(true)}}}
               onKeyUp={e => {if (e.key === " " || e.key === "Enter") {e.preventDefault();setTalkHeld(false)}}}
               aria-label="Segurar para falar" aria-pressed={held}><RadioTower className="size-4"/><span>{held ? "Falando" : "Falar"}</span></button>}
-            <button type="button" className="otms-voice-action flex-1" onClick={toggleDeaf} aria-label={preferences.deaf ? "Voltar a ouvir" : "Silenciar áudio recebido"} title="Silenciar participantes">
-              {preferences.deaf ? <HeadphoneOff className="size-4 text-amber-300"/> : <Headphones className="size-4"/>}<span>{preferences.deaf ? "Ouvir" : "Áudio"}</span>
+            <button type="button" className="otms-voice-action flex-1" onClick={toggleDeaf} disabled={myModeration.audioMuted} aria-label={myModeration.audioMuted ? "Áudio bloqueado pelo Mestre" : preferences.deaf ? "Voltar a ouvir" : "Silenciar áudio recebido"} title="Silenciar participantes">
+              {preferences.deaf || myModeration.audioMuted ? <HeadphoneOff className="size-4 text-amber-300"/> : <Headphones className="size-4"/>}<span>{myModeration.audioMuted ? "Bloqueado" : preferences.deaf ? "Ouvir" : "Áudio"}</span>
             </button>
             <button type="button" className="otms-voice-action otms-voice-leave" onClick={leave} aria-label="Sair da chamada" title="Sair da chamada"><PhoneOff className="size-4"/></button>
           </>}
       </footer>
       {inCall && preferences.mode === "ptt" && <p className="mt-2 text-center text-[10px] text-muted-foreground">{meSpeaking ? "Transmitindo voz" : "Segure o botão Falar ou o atalho configurado no controle"}</p>}
     </div>}
+    {inCall && preferences.overlay && !expanded && createPortal(<div ref={overlayRef} role="region" aria-label="Sobreposição de voz"
+      className="otms-voice-overlay fixed z-[105] w-[218px] max-w-[calc(100vw-16px)] rounded-xl border p-2 shadow-xl"
+      style={overlayPosition ? {left: overlayPosition.x, top: overlayPosition.y} : {right: 16, top: 82}}>
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <button type="button" className="otms-voice-overlay-drag rounded p-1" title="Arraste para mover · setas quando focado"
+          aria-label="Mover sobreposição de voz; use as setas para reposicionar"
+          onPointerDown={beginOverlayDrag} onPointerMove={moveOverlay} onPointerUp={endOverlayDrag} onPointerCancel={endOverlayDrag}
+          onKeyDown={event => {
+            const delta: Record<string, {x:number;y:number}> = {ArrowLeft:{x:-20,y:0},ArrowRight:{x:20,y:0},ArrowUp:{x:0,y:-20},ArrowDown:{x:0,y:20}}
+            const movement = delta[event.key]
+            if (!movement) return
+            event.preventDefault()
+            const rect = overlayRef.current?.getBoundingClientRect()
+            if (rect) setOverlayPosition(keepOverlayInView(rect.left + movement.x, rect.top + movement.y))
+          }}><GripVertical className="size-3.5"/></button>
+        <span className="min-w-0 flex-1 truncate text-[10px] font-semibold">{selectedRoom?.name || "Mesa de Voz"}</span>
+        <button type="button" className="otms-voice-overlay-btn" onClick={() => setExpanded(true)} aria-label="Abrir painel de voz"><Headphones className="size-3.5"/></button>
+        <button type="button" className="otms-voice-overlay-btn" onClick={() => updatePreferences({overlay: false})} aria-label="Desativar sobreposição"><X className="size-3.5"/></button>
+      </div>
+      <div className="space-y-1" aria-live="off">
+        {speakingPeers.length ? speakingPeers.map(person => <div key={person.id} className="otms-voice-overlay-speaker flex items-center gap-1.5 rounded px-1.5 py-1 text-[11px]">
+          <AudioLines className="size-3 shrink-0 text-emerald-300"/><span className="truncate">{person.name}{person.isMe ? " (você)" : ""}</span>
+        </div>) : <p className="px-1.5 py-1 text-[10px] text-muted-foreground">Ninguém falando agora</p>}
+      </div>
+    </div>, document.body)}
   </div>
 }

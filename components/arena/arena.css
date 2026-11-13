@@ -364,6 +364,11 @@ body:has(.rpg-combat-launcher) .otms-arena-entry{bottom:90px}
 .arena-seat-main .arena-seat-copy small svg{flex-shrink:0}
 .otms-arena .arena-launch-actions .arena-settings-open{width:56px;min-width:56px;padding:10px;flex:0 0 56px}
 .arena-settings{z-index:45}
+.arena-volume-row{display:flex;gap:12px;align-items:stretch}
+.arena-volume-row>button{border:1px solid #dac5a455;background:#ffffff08;min-width:44px;min-height:52px;font-size:24px}
+.arena-volume-row .arena-volume-slider{position:relative;isolation:isolate;flex:1;overflow:hidden;font-size:18px;font-weight:700;touch-action:none;cursor:ew-resize}
+.arena-volume-slider i{position:absolute;inset:0 auto 0 0;background:#d5b58155;z-index:-1;pointer-events:none}
+.arena-volume-slider span{pointer-events:none}
 .arena-settings-card{position:relative;width:min(620px,100%);max-height:calc(100dvh - 48px);overflow:auto;padding:32px;background:linear-gradient(130deg,#252029,#100e16);border:1px solid #c5ac7f77;border-top:3px solid #d5b581;box-shadow:0 25px 90px #000a;color:#f4ece0}
 .arena-settings-card h2{display:flex;align-items:center;gap:12px;margin:0 42px 30px 0;font-size:26px;font-weight:900;letter-spacing:.035em}
 .arena-settings-close{position:absolute;right:15px;top:15px;display:grid;place-items:center;background:#ffffff08;border:1px solid #ffffff30;padding:8px}
@@ -390,3 +395,6 @@ body:has(.rpg-combat-launcher) .otms-arena-entry{bottom:90px}
  .arena-health .arena-team-label{font-size:8px;letter-spacing:0}
  .arena-seat .arena-team-label{font-size:8px}
 }
+
+/* Espa?o entre a identifica??o do participante e o retrato. */
+.arena-seat-main .arena-seat-index{margin-right:6px;flex-shrink:0}

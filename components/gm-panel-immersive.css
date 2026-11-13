@@ -311,3 +311,7 @@ html[data-tv-scale="true"] .gm-command-center .gm-command-workspace :is(button,i
   .gm-command-controller-dock .otms-controller-hud-keys { font-size: 9px; }
   .gm-command-controller-dock .otms-controller-hud-heading > span { display: none; }
 }
+
+/* A dica só é visualmente exibida em modo controle; não altera bindings salvos. */
+.otms-gm-shortcut-hint{display:none;min-width:24px;padding:3px 5px;border:1px solid #d6b57d8c;border-radius:5px;background:#d6b57d1a;color:#f0d39c;font:800 10px/1.1 system-ui,sans-serif;text-align:center}
+html[data-input="controller"] .otms-gm-shortcut-hint{display:inline-flex;align-items:center;justify-content:center}

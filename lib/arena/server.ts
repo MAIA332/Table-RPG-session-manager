@@ -72,7 +72,7 @@ export function commandArena(campaignId: string, userId: string, gm: boolean, cm
     if(room.phase==='playing'&&Array.isArray(cmd.inputs))for(const entry of cmd.inputs.slice(0,ARENA_MAX_FIGHTERS) as Array<{device?:unknown;buttons?:unknown;pulses?:unknown}>){
       let device:string;try{device=deviceKey(entry?.device)}catch{continue}
       const fighter=ownFighter(room,userId,device);if(!fighter)continue
-      applyArenaInputPacket(fighter,entry.buttons,entry.pulses,typeof cmd.seq==='number'&&Number.isSafeInteger(cmd.seq)?cmd.seq:0,typeof cmd.source==='string'?cmd.source.slice(0,80):'',Date.now())
+      applyArenaInputPacket(fighter,entry.buttons,entry.pulses,typeof cmd.seq==='number'&&Number.isSafeInteger(cmd.seq)?cmd.seq:0,typeof cmd.source==='string'?cmd.source.slice(0,80):'',Date.now(),room.roundStatus==='fight')
     }
     return cmd.snapshot===true?publicArena(room):null
   }
@@ -107,6 +107,7 @@ export function commandArena(campaignId: string, userId: string, gm: boolean, cm
   if (cmd.action === 'forfeit') {
     const fighter:any=ownFighter(room,userId,deviceKey(cmd.device))
     if (!fighter) error('Lutador não encontrado.')
+    if((room.phase==='playing'||room.phase==='paused')&&room.fighters.length<=2)return commandArena(campaignId,userId,gm,{action:'reset'})
     revokeAlterUnlock(room,userId,fighter.device)
     if (room.phase==='playing'||room.phase==='paused')forfeitArena(room,fighter)
     changed(campaignId)
@@ -185,7 +186,7 @@ export function commandArena(campaignId: string, userId: string, gm: boolean, cm
   } else if (cmd.action === 'start' || cmd.action === 'rematch') {
     if (cmd.action === 'rematch' && room.phase !== 'finished') error('A revanche só começa ao término do combate.')
     if (cmd.action === 'start' && room.phase !== 'lobby') error('Rodada em andamento.')
-    if(cmd.action==='rematch')revokeAlterUnlock(room)
+    if(cmd.action==='rematch'){revokeAlterUnlock(room);room.fighters.forEach(f=>{f.withdrawn=false})}
     room.fighters = room.fighters.filter(f => !f.autoBot)
     updateRoster(room)
     if (!room.fighters.some(f=>!f.bot) || room.fighters.some(f => !f.characterId)) error('Todos os jogadores devem escolher personagens.')

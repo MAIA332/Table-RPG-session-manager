@@ -20,6 +20,7 @@ export type InputAction =
   | 'voice.join' | 'voice.leave' | 'voice.mute.toggle' | 'voice.deafen.toggle'
   | 'voice.ptt' | 'voice.panel.toggle' | 'voice.chat.toggle' | 'voice.noise.toggle'
   | 'voice.volume.up' | 'voice.volume.down' | 'voice.studio.toggle' | 'voice.audio.recover'
+  | 'bestiary.spawn' | 'bestiary.edit' | 'combat.creature.remove' | 'combat.toggle' | 'gm.edit'
   | 'qte.react'
 
 export type GamepadButtonName = 'A' | 'B' | 'X' | 'Y' | 'LB' | 'RB' | 'LT' | 'RT' |

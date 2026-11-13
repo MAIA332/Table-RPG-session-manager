@@ -2431,3 +2431,26 @@ body:has(.rpg-combat-launcher) .otms-controller-hud{left:auto;right:15px;bottom:
 .otms-controller-action-picker select{flex:1 1 155px;min-width:110px;max-width:none!important}
 .otms-controller-action-picker select:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 @media(max-width:560px){.otms-controller-action-picker{flex-basis:100%;order:3}.otms-controller-action-picker select{width:100%}}
+
+/* Teclado virtual integrado: acessível por A/B e analógico no controle. */
+.otms-controller-keyboard-overlay{position:fixed;inset:0;z-index:21000;display:grid;place-items:center;padding:12px;background:#030303ed;backdrop-filter:blur(12px)}
+.otms-controller-keyboard-panel{width:min(820px,100%);max-height:min(92dvh,800px);display:flex;flex-direction:column;gap:12px;overflow:hidden;border:1px solid #c5a47483;border-radius:12px;background:linear-gradient(145deg,#242019,#10100f);padding:clamp(12px,2.4vw,24px);box-shadow:0 24px 90px #000d;color:#f4e4c7}
+.otms-controller-keyboard-panel header{min-width:0}
+.otms-controller-keyboard-panel h3{font:700 clamp(17px,2vw,24px)/1.25 Georgia,serif;overflow-wrap:anywhere}
+.otms-controller-keyboard-panel header p{margin-top:5px;font-size:12px;color:#b7a58a}
+.otms-controller-keyboard-preview{border:1px solid #7b6446;background:#090908;padding:12px 15px;border-radius:8px;min-height:53px;max-height:105px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:500 18px/1.5 system-ui,sans-serif}
+.otms-controller-keyboard-keys{min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;align-content:start;padding:3px}
+.otms-controller-keyboard-key{min-height:48px;min-width:0;border:1px solid #9f825b66;border-radius:7px;background:#ffffff0b;color:#f5e7cd;font-size:clamp(13px,1.6vw,17px);font-weight:650;transition:background .12s,border-color .12s}
+.otms-controller-keyboard-key:focus-visible,.otms-controller-keyboard-key[data-controller-focused="true"]{background:#b39a6b40;border-color:#ffdb98;outline:3px solid #f0c77b;outline-offset:0;box-shadow:0 0 0 3px #edba6833}
+.otms-controller-keyboard-special{grid-column:span 2;font-size:12px;white-space:normal;line-height:1.15;padding:5px}
+.otms-controller-keyboard-numeric{grid-template-columns:repeat(3,minmax(0,1fr));max-width:410px;width:100%;margin-inline:auto}
+.otms-controller-keyboard-numeric .otms-controller-keyboard-special{grid-column:span 3}
+.otms-controller-keyboard-help{font-size:12px;color:#b6a383;border-top:1px solid #9d804c45;padding-top:10px}
+@media(max-width:640px){.otms-controller-keyboard-keys{gap:4px}.otms-controller-keyboard-key{min-height:42px}.otms-controller-keyboard-special{grid-column:span 2;font-size:10px}}
+
+/* Ergonomia do teclado de controle: cursor visível e legenda física legível. */
+.otms-controller-keyboard-preview{position:relative;min-width:0;overflow:auto;overflow-wrap:anywhere;word-break:break-word;line-height:1.65}
+.otms-controller-keyboard-caret{display:inline-block;width:0;height:1.15em;vertical-align:-.18em;border-left:2px solid #f7ca77;box-shadow:0 0 6px #f7ca7766;pointer-events:none}
+.otms-controller-keyboard-help{line-height:1.65;white-space:normal;overflow-wrap:break-word}
+@media(max-height:720px){.otms-controller-keyboard-panel{gap:8px}.otms-controller-keyboard-key{min-height:36px}.otms-controller-keyboard-preview{min-height:40px}}
+@media(prefers-reduced-motion:reduce){.otms-controller-keyboard-key{transition:none}}

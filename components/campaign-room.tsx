@@ -2,6 +2,7 @@
 import { VoiceDock } from "./voice/voice-dock"
 import { ArenaMinigame } from "./arena/arena-minigame"
 import "./voice/voice.css"
+import "./fullscreen-archives.css"
 import { controllerAlert, controllerConfirm } from '@/lib/input/dialogs'
 import {
   assertInventoryChange,
@@ -20,6 +21,7 @@ import type { PlayerAttackPreview, PlayerSpecialAttack, PlayerSpecialAttackChara
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useControllerActions } from "@/lib/input/use-controller-actions"
+import { ControllerGlyph } from "./controller/controller-glyph"
 import { registerInputHandler } from "@/lib/input/dispatcher"
 import { targetOfAction, restoreTargetOfAction, characterBoundOfAction } from "@/lib/input/targeted-actions"
 import { skillRank } from "@/lib/skill-progression"
@@ -3991,6 +3993,49 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
   const canExpandCharacter = (character: Character) => isGm || !isMasterOwnedCharacter(character)
   const isCombatActive =
     (isGm && activeCreatures.length > 0) || combatController.combat?.enabled
+  const mainCombatShortcutBusy = useRef(false)
+  async function toggleMainCombat() {
+    if (!isGm || !isCombatActive || combatController.pending || mainCombatShortcutBusy.current) return
+    const snapshot = combatController.combat
+    if (!snapshot) return
+    mainCombatShortcutBusy.current = true
+    try {
+      if (snapshot.enabled) {
+        if (await controllerConfirm("Encerrar o combate? Os tokens serão zerados; criaturas e ataques cadastrados serão preservados.", true))
+          await runCombat({type: "end"})
+      } else {
+        const participants = snapshot.participantCharacterIds.length
+          ? snapshot.participantCharacterIds
+          : characters.filter(c => data.members.some(member => member.userId === c.ownerId)).map(c => c.id)
+        if (!participants.length) {
+          // Preserve o fluxo de configuração quando não há personagens escalados.
+          openCombatAction(activeCreatures[0]?.instanceId || "")
+          controllerAlert("Adicione participantes no painel de combate antes de iniciar.")
+          return
+        }
+        if (await controllerConfirm(`Iniciar o combate com ${participants.length} participante(s)?`, true))
+          await runCombat({type: "start", characterIds: participants})
+      }
+    } finally { mainCombatShortcutBusy.current = false }
+  }
+  async function removeFocusedCombatCreature() {
+    if (!isGm || !isCombatActive || combatController.pending || mainCombatShortcutBusy.current || !activeCreatures.length) return
+    const focused = document.activeElement instanceof Element
+      ? document.activeElement.closest<HTMLElement>('[data-controller-creature-instance]')?.dataset.controllerCreatureInstance : undefined
+    const targetId = focused || selectedCombatCreatureId || (activeCreatures.length === 1 ? activeCreatures[0].instanceId : "")
+    const creature = activeCreatures.find(item => item.instanceId === targetId)
+    if (!creature) { controllerAlert("Selecione uma criatura na mesa antes de usar R3 para removê-la."); return }
+    mainCombatShortcutBusy.current = true
+    try {
+      if (!await controllerConfirm(`Remover ${creature.name} da cena?`, true)) return
+      if (await runCombat({type: "remove-creature", instanceId: creature.instanceId}))
+        setSelectedCombatCreatureId(current => current === creature.instanceId ? null : current)
+    } finally { mainCombatShortcutBusy.current = false }
+  }
+  useControllerActions({
+    'combat.toggle': () => { void toggleMainCombat(); return true },
+    'combat.creature.remove': () => { void removeFocusedCombatCreature(); return true },
+  }, {enabled: isGm && !!isCombatActive, priority: 340})
   const combatDiceState = combatController.combat as (typeof combatController.combat & MonsterDiceState)
   const recentCreatureRolls = [
     ...(combatDiceState?.monsterAttributeRolls || []),
@@ -4981,10 +5026,12 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                 saveCustomCreaturesToStorage([c, ...customCreatures])
               }
               onUpdate={(creature) => {
-                if (!customCreatures.some(entry => entry.id === creature.id)) {
-                  return Promise.reject(new Error("Esta criatura não está mais no bestiário. Reabra a lista."))
-                }
-                return saveCustomCreaturesToStorage(customCreatures.map(entry => entry.id === creature.id ? creature : entry))
+                // Uma criatura de catálogo pode ser personalizada pelo Mestre:
+                // salvar com o mesmo ID sobrepõe apenas esta campanha, sem
+                // alterar o bestiário padrão ou outras campanhas.
+                return saveCustomCreaturesToStorage(customCreatures.some(entry => entry.id === creature.id)
+                  ? customCreatures.map(entry => entry.id === creature.id ? creature : entry)
+                  : [creature, ...customCreatures])
               }}
               onDelete={(id) =>
                 saveCustomCreaturesToStorage(
@@ -5150,16 +5197,17 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                   initial="hidden"
                   animate="visible"
                   exit="exit"
-                  className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 sm:p-8 overflow-hidden"
+                  className="rpg-archive-overlay fixed inset-0 z-[810] flex h-[100dvh] w-screen overflow-hidden bg-[#060c12]"
                   onClick={() => setShowImagepad(false)}
                 >
                   <motion.div
                     variants={modalVariants}
                     role="dialog" aria-modal="true" aria-label="Galeria arcana"
-                  className="rpg-modal rpg-media-modal relative w-full max-w-6xl h-[85vh] min-h-[600px] flex flex-col bg-transparent"
+                    data-controller-layer="active"
+                    className="rpg-gallery-fullscreen relative flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <div className="rpg-media-modal-frame flex-1 w-full h-full overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/10">
+                    <div className="rpg-media-modal-frame min-h-0 flex-1 w-full overflow-hidden">
                       <Imagepad
                         isGm={isGm}
                         myUserId={data.me.id}
@@ -5471,7 +5519,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
         <div className="grid h-full min-h-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="flex flex-col min-h-0 h-full overflow-hidden">
             {isCombatActive ? (
-              <div className="flex flex-col h-full gap-5 relative min-h-0">
+              <div data-controller-combat-table={isGm ? "active" : undefined} data-controller-has-creature={activeCreatures.length > 0} className="flex flex-col h-full gap-5 relative min-h-0">
                 {/* --- SUPER BARRA DE STATUS DO COMBATE --- */}
                 <div
                   className={`shrink-0 flex flex-wrap items-center justify-between gap-4 px-5 py-4 rounded-xl shadow-[0_4px_30px_rgba(0,0,0,0.5)] relative z-20 backdrop-blur-md transition-colors ${pendingCombatAction ? "bg-red-950/90 border border-red-500 ring-2 ring-red-500/50" : "bg-zinc-950/90 border border-amber-500/30"}`}
@@ -5573,13 +5621,17 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                               <Button
                                 data-controller-combat-start="true"
                                 className="bg-amber-500 text-black hover:bg-amber-400 font-bold gap-2 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
-                                onClick={() =>
-                                  openCombatAction(
-                                    activeCreatures[0]?.instanceId || "",
-                                  )
-                                }
+                                disabled={combatController.pending || mainCombatShortcutBusy.current}
+                                onClick={() => void toggleMainCombat()}
                               >
-                                <Zap className="size-4" /> Iniciar Combate
+                                <ControllerGlyph button="LS" small/><Zap className="size-4" /> Iniciar Combate
+                              </Button>
+                            )}
+                            {combatController.combat?.enabled && (
+                              <Button type="button" size="sm" variant="outline" className="gap-2 border-red-500/40 text-red-200 hover:bg-red-950/40"
+                                disabled={combatController.pending || mainCombatShortcutBusy.current}
+                                onClick={() => void toggleMainCombat()} title="Encerrar combate · L3">
+                                <ControllerGlyph button="LS" small/> Encerrar combate
                               </Button>
                             )}
                             {combatController.combat?.enabled && (
@@ -5806,8 +5858,8 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                     <div className="flex flex-wrap content-start gap-4 pb-10">
                       {(combatController.combat?.creatures || []).map(
                         (creature) => (
+                          <div key={creature.instanceId} data-controller-creature-instance={creature.instanceId} className="w-full sm:max-w-[420px]">
                           <CombatMonsterCard
-                            key={creature.instanceId}
                             creature={creature}
                             crisisConditions={crisisConditionsOfCreature(creature.instanceId)}
                             customChecks={customChecks}
@@ -5891,6 +5943,7 @@ export function CampaignRoom({ initial }: { initial: CampaignData }) {
                               })
                             }}
                           />
+                          </div>
                         ),
                       )}
                     </div>

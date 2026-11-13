@@ -6,6 +6,7 @@ import {
 } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useControllerActions } from "@/lib/input/use-controller-actions"
+import { controllerFocus, focusControllerElement } from "@/lib/input/focus"
 import { Grip, Maximize2, Minimize2, X } from "lucide-react"
 
 type Position = { x: number; y: number }
@@ -26,9 +27,27 @@ export function GalleryImageViewer({ src, onClose }: { src: string; onClose: () 
   const [minimized, setMinimized] = useState(false)
   const [position, setPosition] = useState<Position | null>(null)
   const pipRef = useRef<HTMLElement | null>(null)
+  const fullscreenRef = useRef<HTMLDivElement>(null)
   const dragOrigin = useRef<DragOrigin | null>(null)
-  // Viewer flutuante ou tela cheia: B sai da imagem antes do painel ao fundo.
-  useControllerActions({'ui.back': () => {onClose();return true}}, {priority: 350})
+  // O fullscreen é uma camada de controle própria, acima da galeria.
+  // O PiP continua permitindo navegar na galeria ao fundo.
+  useControllerActions({
+    'ui.up': () => controllerFocus('ui.up', fullscreenRef.current),
+    'ui.down': () => controllerFocus('ui.down', fullscreenRef.current),
+    'ui.left': () => controllerFocus('ui.left', fullscreenRef.current),
+    'ui.right': () => controllerFocus('ui.right', fullscreenRef.current),
+    'ui.next': () => controllerFocus('ui.right', fullscreenRef.current),
+    'ui.previous': () => controllerFocus('ui.left', fullscreenRef.current),
+    'ui.confirm': () => controllerFocus('ui.confirm', fullscreenRef.current),
+    'ui.back': () => {onClose();return true},
+  }, {priority: 350, captureAll: !minimized})
+  useEffect(() => {
+    if (minimized || document.documentElement.dataset.input !== 'controller') return
+    const frame = requestAnimationFrame(() => {
+      focusControllerElement(fullscreenRef.current?.querySelector<HTMLButtonElement>('[data-controller-initial]'))
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [minimized])
 
   // A tela ampliada é modal; a janela flutuante NÃO bloqueia a mesa ao fundo.
   useEffect(() => {
@@ -126,6 +145,7 @@ export function GalleryImageViewer({ src, onClose }: { src: string; onClose: () 
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.16 }}
+          ref={fullscreenRef}
           role="dialog"
           aria-modal="true"
           aria-label="Visualização ampliada de imagem"
@@ -137,6 +157,7 @@ export function GalleryImageViewer({ src, onClose }: { src: string; onClose: () 
               <button
                 type="button"
                 onClick={() => setMinimized(true)}
+                data-controller-initial="true"
                 aria-label="Minimizar imagem para janela flutuante"
                 title="Minimizar (picture-in-picture)"
                 className="flex items-center gap-2 rounded-lg border border-primary/40 bg-card/90 p-3 text-card-foreground shadow-xl transition-colors hover:bg-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"

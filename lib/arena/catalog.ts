@@ -1,10 +1,10 @@
 import type { ArenaPortrait,ArenaPublicFighter,ArenaSession } from './model'
 import {basicAttackRange} from './geometry'
 export const ARENA_STAGES = [
- {id:'forest',name:'Santuário Verde',region:'Floresta ancestral',color:'#64d5b4',image:'/arena/stages/forest.webp'},
- {id:'harbor',name:'Porto das Marés',region:'Porto de pesca',color:'#efbd76',image:'/arena/stages/harbor.webp'},
- {id:'egypt',name:'Trono do Sol',region:'Cidade egípcia',color:'#f3ce86',image:'/arena/stages/egypt-v10.webp'},
- {id:'swamp',name:'Pântano do Eclipse',region:'Pântano sombrio',color:'#b19cdf',image:'/arena/stages/swamp.webp'},
+ {id:'forest',name:'Santuário Verde',region:'Floresta ancestral',color:'#64d5b4',image:'/arena/stages/forest-v15.webp'},
+ {id:'harbor',name:'Porto das Marés',region:'Porto de pesca',color:'#efbd76',image:'/arena/stages/harbor-v15.webp'},
+ {id:'egypt',name:'Trono do Sol',region:'Cidade egípcia',color:'#f3ce86',image:'/arena/stages/egypt-v15.webp'},
+ {id:'swamp',name:'Pântano do Eclipse',region:'Pântano sombrio',color:'#b19cdf',image:'/arena/stages/swamp-v15.webp'},
 ] as const
 type Entry=[string,string,string,string,string,number,string[],string[]]
 const entries:Entry[]=[
@@ -29,7 +29,7 @@ export const ARENA_CAST:ArenaPortrait[]=entries.map(([id,name,title,color,atlas,
 export const BASE_LYSA=ARENA_CAST.find(p=>p.id==='lysa')!
 export const ALTER_LYSA:ArenaPortrait={...BASE_LYSA,name:'Alter Lysa',title:'A herdeira do vazio',color:'#e17d9b',imageUrl:'/arena/portraits/alter-lysa-v11.webp',techniques:[
  {name:'Me concede essa dança?',description:'Dança e lança uma cópia parasitária. Em euforia: golpe com as duas maças.'},
- {name:'Euforia descontrolada',description:'Transforme-se: 3 MP/s. Use de novo para voltar; uma nova transformação exige MP cheio.'},
+ {name:'Euforia descontrolada',description:'Forma selvagem por 10 segundos: dano +60%. Use de novo para voltar; uma nova transformação exige MP cheio.'},
 ]}
 export function fighterPortrait(roster:readonly ArenaPortrait[],f:Pick<ArenaPublicFighter,'characterId'>&{alterLysa?:boolean}){
  return f.characterId==='lysa'?(f.alterLysa?ALTER_LYSA:BASE_LYSA):roster.find(p=>p.id===f.characterId)

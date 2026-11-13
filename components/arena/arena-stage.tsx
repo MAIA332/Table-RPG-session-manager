@@ -1,6 +1,6 @@
 'use client'
 import {useEffect,useRef} from 'react'
-import {ARENA_FLOOR,ARENA_HEIGHT,ARENA_WIDTH,ARENA_EDGE,ARENA_GO_CLEAR_SECONDS,GRAVITY,getFighterHurtbox,getAttackHitbox,arenaOpponents,type ArenaSnapshot,type ArenaInput} from '@/lib/arena/model'
+import {ARENA_FLOOR,ARENA_HEIGHT,ARENA_WIDTH,ARENA_EDGE,ARENA_GO_CLEAR_SECONDS,GRAVITY,AIR_MOVE_MULTIPLIER,getFighterHurtbox,getAttackHitbox,arenaOpponents,type ArenaSnapshot,type ArenaInput} from '@/lib/arena/model'
 import {ARENA_STAGES,fighterPortrait} from '@/lib/arena/catalog'
 import {animationFrame,attackAnimationFrame,type AnimationClock,type AnimationFrame} from '@/lib/arena/animation'
 import {FX_ROWS,FX_URLS,fxFrame,fxUrl,fxRows,CHARACTER_SPECIAL_FX,CHARACTER_BASIC_FX,type ArenaFx} from '@/lib/arena/fx'
@@ -17,6 +17,17 @@ type Props={room:ArenaSnapshot;getSnapshot?:()=>ArenaSnapshot;debugBoxes?:boolea
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n))
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t
 const asset=arenaImage
+const backdropPalette=new Map<string,[string,string]>()
+function panoramaColors(image:HTMLImageElement):[string,string]{
+ const cached=backdropPalette.get(image.src);if(cached)return cached
+ const canvas=document.createElement('canvas');canvas.width=1;canvas.height=2
+ const context=canvas.getContext('2d',{willReadFrequently:true})!
+ context.drawImage(image,0,0,image.naturalWidth,2,0,0,1,1)
+ context.drawImage(image,0,image.naturalHeight-2,image.naturalWidth,2,0,1,1,1)
+ const data=context.getImageData(0,0,1,2).data
+ const colors:[string,string]=[`rgb(${data[0]},${data[1]},${data[2]})`,`rgb(${data[4]},${data[5]},${data[6]})`]
+ backdropPalette.set(image.src,colors);return colors
+}
 function drawFrame(g:CanvasRenderingContext2D,sample:AnimationFrame,x:number,y:number,facing:number,characterId:string,horns=false,t=0){
  const image=asset(sample.url);if(!image.complete||!image.naturalWidth||![sample.frame,sample.row,x,y].every(Number.isFinite))return false
  const width=image.naturalWidth/6,height=image.naturalHeight/sample.rows
@@ -90,17 +101,18 @@ export function ArenaStage(props:Props){
    view.x=clamp(mix(view.x,wanted.x,1-Math.exp(-dt*12)),-ARENA_CAMERA_MARGIN,Math.max(-ARENA_CAMERA_MARGIN,ARENA_WIDTH+ARENA_CAMERA_MARGIN-logicalWidth/view.zoom))
    const camera={...view,y:ARENA_FLOOR*(1-view.zoom)}
    canvas.dataset.camera=JSON.stringify({x:camera.x,zoom:camera.zoom,worldWidth:ARENA_WIDTH,viewportWidth:logicalWidth})
+   g.save();g.translate(-camera.x*camera.zoom,camera.y);g.scale(camera.zoom,camera.zoom)
    if(background.complete&&background.naturalWidth){
     const backdrop=arenaBackdrop(background.naturalWidth,background.naturalHeight,logicalWidth,camera)
     canvas.dataset.backdrop=JSON.stringify({worldHeight:backdrop.worldHeight,worldWidth:backdrop.worldWidth})
-    for(const tile of backdrop.tiles){
-     g.save();g.translate(tile.x+(tile.mirror?backdrop.width:0),0);g.scale(tile.mirror?-1:1,1)
-     if(backdrop.top>0)g.drawImage(background,0,0,background.naturalWidth,2,0,0,backdrop.width,backdrop.top+2)
-     if(backdrop.bottom<540)g.drawImage(background,0,background.naturalHeight-2,background.naturalWidth,2,0,backdrop.bottom-1,backdrop.width,541-backdrop.bottom)
-     g.drawImage(background,0,backdrop.top,backdrop.width,backdrop.height);g.restore()
-    }
+    // Wide camera shots expose more sky/floor without resizing the world artwork.
+    const [sky,floor]=panoramaColors(background),left=backdrop.tiles[0].x
+    g.fillStyle=sky;g.fillRect(-10000,-10000,20000,10000+backdrop.top+1)
+    g.fillStyle=floor;g.fillRect(-10000,backdrop.bottom-1,20000,10000)
+    g.drawImage(background,backdrop.tiles[0].x,backdrop.top,backdrop.width,backdrop.height)
+    const upper=g.createLinearGradient(0,backdrop.top,0,backdrop.top+20);upper.addColorStop(0,sky);upper.addColorStop(1,sky.replace('rgb(','rgba(').replace(')',',0)'));g.fillStyle=upper;g.fillRect(left,backdrop.top,backdrop.width,20)
+    const lower=g.createLinearGradient(0,backdrop.bottom-20,0,backdrop.bottom);lower.addColorStop(0,floor.replace('rgb(','rgba(').replace(')',',0)'));lower.addColorStop(1,floor);g.fillStyle=lower;g.fillRect(left,backdrop.bottom-20,backdrop.width,20)
    }
-   g.save();g.translate(-camera.x*camera.zoom,camera.y);g.scale(camera.zoom,camera.zoom)
    // Os efeitos de golpe, campos e projéteis são quadros de atlas desenhados.
    for(const zone of room.zones||[]){
     const key:ArenaFx=zone.kind==='gravity'?'gravityPull':zone.kind==='fate'?'fateHands':zone.kind==='roots'?'parasitic':zone.kind
@@ -114,8 +126,8 @@ export function ArenaStage(props:Props){
     const input=owned&&room.roundStatus==='fight'?current.getLocalInput(f.device):undefined,intent=input?Number(input.right)-Number(input.left):0
     let x=f.x+(owned?f.vx*lag:0),y=owned?Math.min(ARENA_FLOOR,f.y+f.vy*lag+(f.onGround?0:.5*GRAVITY*lag*lag)):f.y
     const state=positions.get(f.id)
-    if(owned&&state&&room.roundStatus==='fight'&&f.stunUntil<=t&&f.frozenUntil<=t&&f.rootUntil<=t&&!f.attackKind&&f.puppetUntil<=t&&f.dodgeUntil<=t&&!(f.alterLysa&&(f.euphoriaState==='transforming'||f.euphoriaState==='reverting'||f.danceUntil>t))){
-     const speed=f.puddleUntil>t?430:(p.speed||225)*(f.buffUntil>t?1.35:1)*(f.characterId==='loulan'&&f.weapon==='kunai'?1.1:1)*(f.alterLysa&&f.euphoriaState==='active'?1.2:1)*(intent===-f.facing?.65:1)*(f.onGround&&(input?.crouch||input?.guard)?0:1)
+    if(owned&&state&&room.roundStatus==='fight'&&f.stunUntil<=t&&f.knockdownUntil<=t&&f.frozenUntil<=t&&f.rootUntil<=t&&!f.attackKind&&f.puppetUntil<=t&&f.dodgeUntil<=t&&!(f.alterLysa&&(f.euphoriaState==='transforming'||f.euphoriaState==='reverting'||f.danceUntil>t))){
+     const speed=f.puddleUntil>t?430:(p.speed||225)*(f.buffUntil>t?1.35:1)*(f.characterId==='loulan'&&f.weapon==='kunai'?1.1:1)*(f.alterLysa&&f.euphoriaState==='active'?1.2:1)*(f.onGround&&(input?.crouch||input?.guard)?0:1)*(f.onGround?1:AIR_MOVE_MULTIPLIER)
      x=state.x+intent*speed*dt;x+=clamp(f.x+intent*speed*.025-x,-45,45)*Math.min(1,dt*10);x=clamp(x,ARENA_EDGE,ARENA_WIDTH-ARENA_EDGE)
     }else if(owned&&state&&Math.abs(state.x-x)<120){x=mix(state.x,x,1-Math.exp(-dt*26));y=mix(state.y,y,1-Math.exp(-dt*28))}
     positions.set(f.id,{x,y})
@@ -127,17 +139,18 @@ export function ArenaStage(props:Props){
     const submerged=f.puddleUntil>t&&(!f.attackKind||progress>.55)
     if(prior.active&&!submerged)prior.emergeAt=t
     prior.active=submerged;puddle.set(f.id,prior)
-    const controlling=f.puppetUntil>t&&f.health>0&&!(f.attackKind==='special'&&f.specialIndex===0)
-    const drawn=animationFrame(p,{...f,x,y,...(controlling?{pose:'idle' as const,vx:0,attackKind:null,puppetUntil:0}:{pose:owned&&input&&intent&&!input.crouch&&!input.guard&&f.pose!=='guard'&&!f.attackKind&&f.onGround&&f.stunUntil<=t&&f.puppetUntil<=t&&f.dodgeUntil<=t?'walk':f.pose})},t,clocks.get(f.id))
+    const controlling=f.puppetUntil>t&&f.health>0&&f.knockdownUntil<=t&&f.stunUntil<=t&&!(f.attackKind==='special'&&f.specialIndex===0)
+    const visualFacing=owned&&intent&&!f.attackKind&&f.stunUntil<=t&&f.knockdownUntil<=t?Math.sign(intent):f.facing
+    const drawn=animationFrame(p,{...f,x,y,facing:visualFacing,...(controlling?{pose:'idle' as const,vx:0,attackKind:null,puppetUntil:0}:{vx:owned&&input&&intent&&!f.attackKind&&f.knockdownUntil<=t?intent*225:f.vx,pose:owned&&input&&intent&&!input.crouch&&!input.guard&&f.pose!=='guard'&&!f.attackKind&&f.onGround&&f.stunUntil<=t&&f.puppetUntil<=t&&f.dodgeUntil<=t?'walk':f.pose})},t,clocks.get(f.id))
     clocks.set(f.id,drawn.clock)
     // A poça é a própria transformação da Lysa, sem uma segunda criatura sobreposta.
-    if(submerged)drawFrame(g,{url:'/arena/animations/lysa/combat.webp',row:5,rows:7,frame:4,action:'special1'},x,y,f.facing,p.id)
-    else if(p.id==='lysa'&&!f.attackKind&&t-prior.emergeAt<.25)drawFrame(g,{url:'/arena/animations/lysa/combat.webp',row:5,rows:7,frame:Math.min(5,3+Math.floor((t-prior.emergeAt)*12)),action:'special1'},x,y,f.facing,p.id)
+    if(submerged)drawFrame(g,{url:'/arena/animations/lysa/combat.webp',row:5,rows:7,frame:4,action:'special1'},x,y,visualFacing,p.id)
+    else if(p.id==='lysa'&&!f.attackKind&&t-prior.emergeAt<.25)drawFrame(g,{url:'/arena/animations/lysa/combat.webp',row:5,rows:7,frame:Math.min(5,3+Math.floor((t-prior.emergeAt)*12)),action:'special1'},x,y,visualFacing,p.id)
     else {
-     if(drawFrame(g,drawn.sample,x,y,f.facing,p.id,f.buffUntil>t&&f.buffKind==='electric',t))previousFrames.set(f.id,drawn.sample)
+     if(drawFrame(g,drawn.sample,x,y,visualFacing,p.id,f.buffUntil>t&&f.buffKind==='electric',t))previousFrames.set(f.id,drawn.sample)
      else {
       const previous=previousFrames.get(f.id)||animationFrame(p,{...f,pose:'idle',vx:0,attackKind:null,puppetUntil:0,health:Math.max(1,f.health),onGround:true},t).sample
-      drawFrame(g,previous,x,y,f.facing,p.id,f.buffUntil>t&&f.buffKind==='electric',t)
+      drawFrame(g,previous,x,y,visualFacing,p.id,f.buffUntil>t&&f.buffKind==='electric',t)
      }
     }
     canvas.dataset.animation=drawn.sample.action
@@ -149,7 +162,10 @@ export function ArenaStage(props:Props){
      const step=Math.floor((drawn.clock.travel||0)/66)
      if(steps.get(f.id)!==step){steps.set(f.id,step);void arenaAudio.play('world:step:'+stage.id+':'+step%2,x)}
     }
-    if(f.puppetUntil>t)fx(g,'puppet',f.puppetX,ARENA_FLOOR-215+Math.sin(t*2.8)*4,420,420,t,true,nearestFacing(room,f.puppetX,f.id),1,f.attackKind?attackAnimationFrame(f.attackKind,t-f.attackAt):0)
+    if(f.puppetUntil>t)fx(g,'puppet',f.puppetX,ARENA_FLOOR-215+Math.sin(t*2.8)*4,420,420,t,true,f.facing,1,f.attackKind?attackAnimationFrame(f.attackKind,t-f.attackAt):0)
+    if(f.dizzyUntil>t){
+     for(let star=0;star<3;star++){const angle=t*4+star*Math.PI*2/3,sx=x+Math.cos(angle)*29,sy=y-fighterDimensions(p.id).height-12+Math.sin(angle)*7;g.save();g.translate(sx,sy);g.rotate(t+star);g.fillStyle='#ffe18b';g.shadowColor='#f8b94c';g.shadowBlur=7;g.beginPath();for(let k=0;k<10;k++){const a=k*Math.PI/5-Math.PI/2,r=k%2?3:7;g.lineTo(Math.cos(a)*r,Math.sin(a)*r)}g.closePath();g.fill();g.restore()}
+    }
     if(f.frozenUntil>t)fx(g,'ice',x,y-95,145,230,t,true,1,.8)
     if(f.rootUntil>t){const source=room.fighters.find(owner=>owner.id===f.lastHitBy),key=source?.characterId==='lysa'?'parasitic':'roots';fx(g,key,x,ARENA_FLOOR,180,140,t,true,1,.9,undefined,true)}
     if(p.id!=='lysa'&&f.attackKind&&f.attackKind!=='special'&&progress>.28&&progress<.85){
@@ -192,7 +208,7 @@ export function ArenaStage(props:Props){
      if(key==='revive')once('revive:'+e.id,'world:revive',e.x)
     }
    }
-   if(heard.size>600)heard.clear()
+    while(heard.size>600)heard.delete(heard.values().next().value!)
    g.restore()
    if(room.roundStatus==='intro'||room.roundStatus==='ko'){
     const remaining=room.nextRoundAt-t,text=room.roundStatus==='ko'?'K.O.':remaining<=ARENA_GO_CLEAR_SECONDS?'':remaining<=.8?'LUTEM!':'ROUND '+room.rounds

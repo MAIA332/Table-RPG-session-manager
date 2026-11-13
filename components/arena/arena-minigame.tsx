@@ -30,6 +30,7 @@ const KEY_INPUT:Record<string,keyof ArenaInput>={
   KeyJ:'light',KeyK:'heavy',KeyL:'kick',Semicolon:'lowKick',KeyU:'special',KeyO:'special2',KeyP:'special3',KeyI:'guard',ShiftLeft:'dodge',ShiftRight:'dodge',ArrowDown:'crouch',KeyS:'crouch',
 }
 const columns=()=>typeof window==='undefined'?6:window.innerWidth<600?4:6
+const fighterAssetKey=(fighters:ArenaSnapshot['fighters'])=>fighters.map(f=>f.alterLysa?'alter-lysa':f.characterId).sort().join('|')
 
 export function ArenaMinigame({campaignId,userId,isGm}:Props){
   const [visible,setVisible]=useState(false)
@@ -37,7 +38,12 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
   const [showSettings,setShowSettings]=useState(false)
   const settingsRef=useRef(false);settingsRef.current=showSettings
   const [assetsReady,setAssetsReady]=useState(false)
-  const [soundEnabled,setSoundEnabled]=useState(true)
+  const [preparedKey,setPreparedKey]=useState('')
+  const [mixer,setMixer]=useState({music:50,effects:50})
+  const [showAudio,setShowAudio]=useState(false)
+  const audioRef=useRef(false);audioRef.current=showAudio
+  const [waitingMenu,setWaitingMenu]=useState(false)
+  const waitingRef=useRef(false);waitingRef.current=waitingMenu
   const [stageCursor,setStageCursor]=useState(0)
   const stageCursorRef=useRef(0);stageCursorRef.current=stageCursor
   const focusedButtons=useRef(new Map<string,HTMLButtonElement>())
@@ -56,7 +62,7 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
   const cursorsRef=useRef(cursors);cursorsRef.current=cursors
   const memory=useRef(new Map<number,PadMemory>())
   const pressed=useRef(new Set<string>())
-  const motionHistory=useRef(new Map<string,DirectionSample[]>())
+  const motionHistory=useRef(new Map<string,DirectionSample[]>()),motionFacings=useRef(new Map<string,number>())
   const queuedPresses=useRef(new Map<string,Partial<ArenaInput>>())
   const liveInputs=useRef(new Map<string,ArenaInput>())
   const inputInFlight=useRef(0),inputPump=useRef<(()=>void)|null>(null)
@@ -71,25 +77,27 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
   const inputSequence=useRef(0)
   const inputSource=useRef(`web:${Date.now()}:${Math.random().toString(36).slice(2)}`)
   const dismissed=useRef<string|null>(null)
-  useEffect(()=>{arenaAudio.setEnabled(soundEnabled)},[soundEnabled])
-  useEffect(()=>{arenaAudio.setMusic(visible?(room?.phase==='playing'||room?.phase==='paused'||room?.phase==='finished'?'battle':'menu'):null,room?.phase==='paused')},[visible,room?.phase])
+  useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem('otms-arena-mixer')||'null');if(saved&&Number.isFinite(saved.music)&&Number.isFinite(saved.effects))setMixer({music:Math.max(0,Math.min(100,saved.music)),effects:Math.max(0,Math.min(100,saved.effects))})}catch{}},[])
+  useEffect(()=>{arenaAudio.setEnabled(true);arenaAudio.setVolumes(mixer.music/100,mixer.effects/100);try{localStorage.setItem('otms-arena-mixer',JSON.stringify(mixer))}catch{}},[mixer])
+  useEffect(()=>{arenaAudio.setMusic(visible?(waitingMenu?'menu':room?.phase==='playing'||room?.phase==='paused'||room?.phase==='finished'?'battle':'menu'):null,room?.phase==='paused'&&!waitingMenu)},[visible,room?.phase,waitingMenu])
   useEffect(()=>()=>arenaAudio.setMusic(null),[])
   const endpoint=`/api/campaigns/${encodeURIComponent(campaignId)}/arena`
   const rememberDirection=useCallback((device:string,input:ArenaInput)=>{
     const now=performance.now()/1000,moving=Number(input.right)-Number(input.left)
     const direction=input.crouch?(moving<0?1:moving>0?3:2):moving<0?4:moving>0?6:5
     const history=(motionHistory.current.get(device)||[]).filter(sample=>now-sample.at<.5)
+    if(input.crouch&&(history.at(-1)?.direction??5)===5){const f=roomRef.current?.fighters.find(f=>f.userId===userId&&f.device===device);if(f)motionFacings.current.set(device,f.facing)}
     if(history.at(-1)?.direction!==direction)history.push({direction,at:now})
     motionHistory.current.set(device,history)
     return {history,now}
   },[])
   const queuePulse=useCallback((device:string,key:keyof ArenaInput,input:ArenaInput)=>{
+    if(roomRef.current?.phase!=='playing'||roomRef.current.roundStatus!=='fight'||waitingRef.current||audioRef.current||helpRef.current)return
     const {history,now}=rememberDirection(device,input)
     const fighter=roomRef.current?.fighters.find(f=>f.userId===userId&&f.device===device)
     const basic=['light','heavy','kick','lowKick'].includes(key)
-    const motion=basic&&fighter?recognizeMotion(history,fighter.facing,now):null
-    const forwardShortcut=key==='special'&&device.startsWith('pad:')&&fighter&&(Number(input.right)-Number(input.left))===fighter.facing
-    const effective=motion==='forward'?'special':motion==='back'?'special2':forwardShortcut?'special3':key
+    const motion=basic&&fighter?recognizeMotion(history,motionFacings.current.get(device)??fighter.facing,now):null
+    const effective=motion==='forward'?'special':motion==='back'?'special2':key
     const counts=pulseCounters.current.get(device)||{};counts[effective]=(counts[effective]||0)+1;pulseCounters.current.set(device,counts)
     queuedPresses.current.set(device,{...queuedPresses.current.get(device),[effective]:true})
     if(motion)motionHistory.current.set(device,[])
@@ -139,7 +147,7 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
   },[applyRoom,endpoint])
   const focusScope=useCallback(()=>{
     const root=ref.current;if(!root)return null
-    return root.querySelector<HTMLElement>('.arena-help-card,.arena-settings-card,.arena-result-card')||root
+    return root.querySelector<HTMLElement>('.arena-help-card,.arena-audio-card,.arena-settings-card,.arena-result-card')||root
   },[])
   const focusButton=useCallback((device:string,button:HTMLButtonElement,sound=true)=>{
     ref.current?.querySelectorAll('[data-controller-focus=true]').forEach(el=>el.removeAttribute('data-controller-focus'))
@@ -150,6 +158,8 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
     if(button.dataset.stageIndex!==undefined){const i=Number(button.dataset.stageIndex);stageCursorRef.current=i;setStageCursor(i)}
   },[])
   const moveCursor=useCallback((device:string,step:number)=>{
+    const channel=(focusedButtons.current.get(device)||document.activeElement as HTMLButtonElement|null)?.dataset.volumeChannel as 'music'|'effects'|undefined
+    if(audioRef.current&&channel&&Math.abs(step)===1){setMixer(v=>({...v,[channel]:Math.max(0,Math.min(100,v[channel]+Math.sign(step)))}));return}
     const root=focusScope();if(!root)return
     focusDevice(device)
     const button=nextArenaButton(root,focusedButtons.current.get(device),step)
@@ -165,7 +175,7 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
     void arenaAudio.unlock();void arenaAudio.play('ui:confirm')
     void command(existing?'select':'join',{device,characterId})
   },[command,focusDevice,userId])
-  const start=useCallback(()=>{if(assetsReady)void command('start')},[command,assetsReady])
+  const start=useCallback(()=>{if(assetsReady&&preparedKey===fighterAssetKey(roomRef.current?.fighters||[])){if(waitingRef.current){if(roomRef.current?.phase==='finished')void command('rematch')}else void command('start')}},[command,assetsReady,preparedKey])
   const rematch=useCallback(()=>{void command('rematch')},[command])
   const backToLobby=useCallback(()=>{void command('reset')},[command])
   const confirmLobby=useCallback((device:string)=>{
@@ -183,35 +193,36 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
       void command('pause',{device:participant?.device||device})
     }else if(current.phase==='paused'&&(isGm||current.pausedBy===userId))void command('resume')
   },[command,isGm,userId])
-  const exitMatch=useCallback(()=>{
+  const exitMatch=useCallback(async()=>{
     const current=roomRef.current
     if(!current)return
-    if(isGm)void command('exit')
-    else{
-      const fighter=current.fighters.find(f=>f.userId===userId&&!f.bot)
-      if(fighter)void command('forfeit',{device:fighter.device}).then(()=>hide())
-      else hide()
-    }
-  },[command,hide,isGm,userId])
+    pressed.current.clear();queuedPresses.current.clear()
+    for(const f of current.fighters.filter(f=>f.userId===userId&&!f.bot&&!f.withdrawn)){if(!['playing','paused'].includes(roomRef.current?.phase||''))break;await command('forfeit',{device:f.device})}
+    if(roomRef.current?.phase==='paused'&&isGm)await command('resume')
+    setWaitingMenu(true)
+  },[command,isGm,userId])
   const pauseActions=useCallback(()=>{
     const current=roomRef.current
     const canResume=isGm||current?.pausedBy===userId
     return [{label:'Continuar combate',enabled:canResume,action:()=>{if(canResume)void command('resume')}},
-      {label:isGm?'Voltar para seleção':'Desistir e sair',enabled:true,action:exitMatch}]
+      {label:'Desistir e sair',enabled:true,action:exitMatch}]
   },[command,exitMatch,isGm,userId])
   const openHelp=useCallback(()=>{
     pressed.current.clear();queuedPresses.current.clear()
     const current=roomRef.current
     if(current?.phase==='playing'){
-      const fighter=current.fighters.find(f=>f.userId===userId&&!f.bot)
+      const fighter=current.fighters.find(f=>f.userId===userId&&!f.bot&&!f.withdrawn)
       if(fighter)void command('pause',{device:fighter.device})
     }
     setShowHelp(true)
   },[command,userId])
+  const openAudio=useCallback(()=>{pressed.current.clear();queuedPresses.current.clear();const current=roomRef.current;if(current?.phase==='playing'&&!waitingRef.current){const f=current.fighters.find(f=>f.userId===userId&&!f.bot&&!f.withdrawn);if(f||isGm)void command('pause',{device:f?.device||'keyboard'})}setShowAudio(true)},[command,userId,isGm])
   const activatePause=useCallback(()=>{confirmLobby(targetRef.current)},[confirmLobby])
   const backMenu=useCallback((device:string)=>{
     if(helpRef.current){setShowHelp(false);return}
+    if(audioRef.current){setShowAudio(false);return}
     if(settingsRef.current){setShowSettings(false);return}
+    if(waitingRef.current)return
     const phase=roomRef.current?.phase
     if(phase==='stage')void command('cancel-stage')
     else if(phase==='finished')void command('reset')
@@ -221,16 +232,17 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
 
   useEffect(()=>{
     if(!visible)return
-    if(room?.phase==='playing'&&!showHelp&&!showSettings){focusedButtons.current.clear();ref.current?.querySelectorAll('[data-controller-focus]').forEach(el=>el.removeAttribute('data-controller-focus'));ref.current?.focus({preventScroll:true});return}
+    if(room?.phase==='playing'&&!showHelp&&!showSettings&&!showAudio&&!waitingMenu){focusedButtons.current.clear();ref.current?.querySelectorAll('[data-controller-focus]').forEach(el=>el.removeAttribute('data-controller-focus'));ref.current?.focus({preventScroll:true});return}
     focusedButtons.current.clear()
     const timer=requestAnimationFrame(()=>{
       const root=focusScope();if(!root)return
-      const preferred=root.querySelector<HTMLButtonElement>(showSettings?'[data-time-choice][aria-pressed=true]':room?.phase==='paused'?'.arena-pause-card button:not(:disabled)':room?.phase==='stage'?'[data-stage-index="0"]':'.arena-character[aria-pressed=true],.arena-character')
+      const preferred=root.querySelector<HTMLButtonElement>(showAudio?'[data-volume-channel="music"]':showSettings?'[data-time-choice][aria-pressed=true]':waitingMenu?'.arena-toolbar button':room?.phase==='paused'?'.arena-pause-card button:not(:disabled)':room?.phase==='stage'?'[data-stage-index="0"]':'.arena-character[aria-pressed=true],.arena-character')
       const button=preferred||arenaButtons(root)[0]
       if(button)focusButton(targetRef.current,button,false)
     })
     return()=>cancelAnimationFrame(timer)
-  },[visible,room?.phase,showHelp,showSettings,focusButton,focusScope])
+  },[visible,room?.phase,showHelp,showSettings,showAudio,waitingMenu,focusButton,focusScope])
+  useEffect(()=>{if(waitingMenu&&(room?.phase==='lobby'||room?.phase==='stage'))setWaitingMenu(false)},[waitingMenu,room?.phase])
   useEffect(()=>{if(room?.phase!=='lobby')setShowSettings(false)},[room?.phase])
   useEffect(()=>{
     const secret=(event:Event)=>{
@@ -258,18 +270,19 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
     window.requestAnimationFrame(()=>ref.current?.focus({preventScroll:true}))
     return()=>{document.documentElement.dataset.otmsArenaActive='false';document.body.style.overflow=overflow}
   },[visible])
-  const selectionKey=(room?.fighters||[]).map(f=>f.alterLysa?'alter-lysa':f.characterId).sort().join('|')
+  const selectionKey=fighterAssetKey(room?.fighters||[])
   useEffect(()=>{
     if(!visible)return
     let cancelled=false
-    setAssetsReady(false)
+    setAssetsReady(false);setPreparedKey('')
     const ids=selectionKey.split('|').filter(Boolean)
     if(!ids.length)ids.push('fander')
     if(ids.length===1)ids.push(ids[0]==='fander'?'andreas':'fander')
     const sources=new Set([...ids.flatMap(animationUrls),...FX_URLS,...ARENA_STAGES.map(s=>s.image)])
-    void Promise.all([preloadArenaImages(sources),arenaAudio.preload(ids)]).then(()=>{
-      if(!cancelled)setAssetsReady(true)
-    }).catch(()=>{if(!cancelled)setError('Não foi possível carregar as animações ou os sons. Confira a conexão e reabra a arena.')})
+    void arenaAudio.preload(ids).catch(()=>{})
+    void preloadArenaImages(sources).then(()=>{
+      if(!cancelled){setPreparedKey(selectionKey);setAssetsReady(true)}
+    }).catch(error=>{if(!cancelled)setError('Não foi possível carregar a animação. '+(error instanceof Error?error.message:''))})
     return()=>{cancelled=true}
   },[visible,selectionKey])
   useEffect(()=>{
@@ -317,11 +330,11 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
         return
       }
       if(helpRef.current){e.preventDefault();if(e.code==='Escape'||e.code==='Enter')setShowHelp(false);else if(e.code==='ArrowDown'||e.code==='ArrowUp')ref.current?.querySelector('.arena-help-card')?.scrollBy({top:e.code==='ArrowDown'?150:-150});return}
-      const phase=roomRef.current?.phase
+      const phase=waitingRef.current?'lobby':roomRef.current?.phase
       if(e.code==='Escape'||e.code==='Backspace'){
         e.preventDefault();if(!e.repeat)backMenu(roomRef.current?.phase==='lobby'?targetRef.current:'keyboard');return
       }
-      if(settingsRef.current){
+      if(settingsRef.current||audioRef.current){
         const directions:Record<string,number>={ArrowLeft:-1,ArrowRight:1,ArrowUp:-2,ArrowDown:2}
         if(directions[e.code]){e.preventDefault();if(!e.repeat)moveCursor('keyboard',directions[e.code])}
         else if(e.code==='Enter'||e.code==='Space'){e.preventDefault();if(!e.repeat)confirmLobby('keyboard')}
@@ -340,9 +353,10 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
         if(e.code==='Enter'){e.preventDefault();if(!e.repeat)confirmLobby('keyboard');return}
         if(e.code==='Backspace'){e.preventDefault();if(!e.repeat)void command('leave',{device:'keyboard'});return}
       }
+      if(phase!=='playing')return
       if(e.code in KEY_INPUT){
         e.preventDefault()
-        const input=KEY_INPUT[e.code],fresh=!pressed.current.has(e.code)
+        const input=KEY_INPUT[e.code],fresh=!e.repeat&&!pressed.current.has(e.code)
         pressed.current.add(e.code)
         const buttons:ArenaInput={...NO_INPUT};for(const code of pressed.current)buttons[KEY_INPUT[code]]=true
         rememberDirection('keyboard',buttons)
@@ -351,7 +365,7 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
       }
     }
     const keyup=(e:KeyboardEvent)=>{if(e.code in KEY_INPUT){e.preventDefault();pressed.current.delete(e.code);const buttons:ArenaInput={...NO_INPUT};for(const code of pressed.current)buttons[KEY_INPUT[code]]=true;rememberDirection('keyboard',buttons);inputPump.current?.()}}
-    const clear=()=>{pressed.current.clear();queuedPresses.current.clear();lastCombatPad.current.clear();motionHistory.current.clear();mouse.current={light:false,heavy:false};inputPump.current?.()}
+    const clear=()=>{pressed.current.clear();queuedPresses.current.clear();lastCombatPad.current.clear();motionHistory.current.clear();motionFacings.current.clear();mouse.current={light:false,heavy:false};inputPump.current?.()}
     window.addEventListener('keydown',keydown,true);window.addEventListener('keyup',keyup,true);window.addEventListener('blur',clear)
     return()=>{window.removeEventListener('keydown',keydown,true);window.removeEventListener('keyup',keyup,true);window.removeEventListener('blur',clear);clear()}
   },[visible,activatePause,backToLobby,command,confirmLobby,hide,joinOrSelect,moveCursor,pause,rematch,rememberDirection,queuePulse,backMenu,focusButton,focusScope])
@@ -367,23 +381,24 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
       for(const index of memory.current.keys())if(!available.has(index))memory.current.delete(index)
       for(const pad of connected){
         const pressedNow=readArenaPadMenu(pad),prev=memory.current.get(pad.index)||blankMemory()
-        const isLobby=current?.phase==='lobby',isPaused=current?.phase==='paused',isStage=current?.phase==='stage'
-        const {next,move}=menuRepeatStep(prev.repeat,current?.phase!=='playing'||helpRef.current?pressedNow.direction:0,now)
+        const isLobby=current?.phase==='lobby'||waitingRef.current,isPaused=current?.phase==='paused'&&!waitingRef.current,isStage=current?.phase==='stage'
+        const {next,move}=menuRepeatStep(prev.repeat,current?.phase!=='playing'||helpRef.current||audioRef.current||waitingRef.current?pressedNow.direction:0,now)
         const device=deviceKey(pad.index)
-        if(current?.phase==='playing'){
+        if(current?.phase==='playing'&&!waitingRef.current&&!audioRef.current){
           const live=readArenaPadInput(pad)
+          if(current.roundStatus!=='fight')queuedPresses.current.delete(device)
           rememberDirection(device,live)
-          const prior=lastCombatPad.current.get(pad.index)||NO_INPUT
-          for(const key of PULSE_BUTTONS)if(live[key]&&!prior[key])queuePulse(device,key,live)
+          const prior=lastCombatPad.current.get(pad.index)||live
+          for(const key of PULSE_BUTTONS)if(current.roundStatus==='fight'&&live[key]&&!prior[key])queuePulse(device,key,live)
           lastCombatPad.current.set(pad.index,live)
         }else lastCombatPad.current.delete(pad.index)
         if(helpRef.current){
           if(move)ref.current?.querySelector('.arena-help-card')?.scrollBy({top:Math.sign(move)*145})
           if(pressedNow.back&&!prev.back||pressedNow.confirm&&!prev.confirm)setShowHelp(false)
-        }else if(settingsRef.current){
+        }else if(settingsRef.current||audioRef.current){
           if(move)moveCursor(device,move)
           if(pressedNow.confirm&&!prev.confirm)confirmLobby(device)
-          if(pressedNow.back&&!prev.back)setShowSettings(false)
+          if(pressedNow.back&&!prev.back){setShowSettings(false);setShowAudio(false)}
         }else if(isLobby||isStage||isPaused||current?.phase==='finished'){
           if(move)moveCursor(device,move)
           if(pressedNow.confirm&&!prev.confirm)confirmLobby(device)
@@ -413,7 +428,7 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
     let stopped=false,lastSignature='',lastSend=0
     const controllers=new Set<AbortController>()
     const push=async()=>{
-      if(stopped||inputInFlight.current>=3||document.visibilityState!=='visible'||roomRef.current?.phase!=='playing')return
+      if(stopped||waitingRef.current||inputInFlight.current>=3||document.visibilityState!=='visible'||roomRef.current?.phase!=='playing')return
       const owned=roomRef.current?.fighters.filter(f=>f.userId===userId&&!f.bot&&!f.withdrawn)||[]
       if(!owned.length)return
       const keyboard:ArenaInput={...NO_INPUT}
@@ -481,7 +496,7 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
     const inspect=(now:number)=>{
       frame=requestAnimationFrame(inspect)
       const current=roomRef.current
-      if(current?.phase!=='lobby'||helpRef.current){holds.clear();return}
+      if(current?.phase!=='lobby'||helpRef.current||audioRef.current){holds.clear();return}
       const devices=[{device:'keyboard',held:ALTER_LYSA_KEYS.every(k=>keys.has(k))},...connectedPads().map(p=>({device:deviceKey(p.index),held:ALTER_LYSA_PAD.every(i=>p.buttons[i]?.pressed)}))]
       for(const {device,held}of devices){
         const f=current.fighters.find(f=>f.userId===userId&&f.device===device&&!f.bot)
@@ -500,7 +515,8 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
   const focus=Math.max(0,Math.min(roster.length-1,cursors[selected]??fallback))
   const preview=roster[focus]
   const settings=arenaSettings(room||{}),teams=settings.mode==='teams',teamColors=['#94cafa','#f0a3a0'],teamName=(team:number)=>team===0?'AZUL':'VERMELHA'
-  const canStart=assetsReady&&!!room&&(room.phase==='lobby'||room.phase==='finished')&&fighters.some(f=>!f.bot)&&fighters.filter(f=>!f.bot).every(f=>!!f.characterId)&&(!teams||fighters.length===4)
+  const ongoing=waitingMenu&&(room?.phase==='playing'||room?.phase==='paused')
+  const canStart=!ongoing&&assetsReady&&preparedKey===selectionKey&&!!room&&(room.phase==='lobby'||room.phase==='finished')&&fighters.some(f=>!f.bot)&&fighters.filter(f=>!f.bot).every(f=>!!f.characterId)&&(!teams||fighters.length===4)
   const solo=fighters.length===1
   const options=pauseActions()
   const isPause=room?.phase==='paused'
@@ -511,13 +527,14 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
   }
   const stage=room?.phase==='stage'?ARENA_STAGES[stageCursor]:ARENA_STAGES.find(s=>s.id===room?.stageId)||ARENA_STAGES[0]
   const winner=fighters.find(f=>f.id===room?.winnerId)
+  const setVolumeAt=(channel:'music'|'effects',x:number,button:HTMLButtonElement)=>{const b=button.getBoundingClientRect();setMixer(v=>({...v,[channel]:Math.max(0,Math.min(100,Math.round((x-b.x)/b.width*100)))}))}
   return createPortal(<div className="otms-arena" role="presentation" style={{'--arena-accent':preview?.color||'#dcbe8b','--arena-scenery':'url("'+stage.image+'")'} as CSSProperties}>
     <div className="otms-arena-shell" onPointerDownCapture={()=>{void arenaAudio.unlock()}} ref={ref} role="dialog" aria-modal="true" aria-label="Morte Mágica: Arena" tabIndex={-1}>
       <div className="arena-atmosphere" aria-hidden="true"/><div className="arena-scanlines" aria-hidden="true"/>
       <header className="arena-header">
         <div className="arena-wordmark"><img src="/arena/logo-v10.png" alt="Morte Mágica: Arena" fetchPriority="high"/></div>
         <div className="arena-toolbar">
-          <button aria-label={soundEnabled?'Silenciar efeitos sonoros':'Ativar efeitos sonoros'} aria-pressed={soundEnabled} onClick={()=>{setSoundEnabled(!soundEnabled);arenaAudio.setEnabled(!soundEnabled);if(!soundEnabled)void arenaAudio.unlock()}}>{soundEnabled?<Volume2 size={18}/>:<VolumeX size={18}/>}</button>
+          <button aria-label="Áudio" title="Música e efeitos sonoros" onClick={openAudio}><Volume2 size={18}/></button>
           <button onClick={toggleFullscreen} aria-label="Alternar tela cheia">{browserFullscreen?<Minimize2 size={18}/>:<Maximize2 size={18}/>}</button>
           {room?.phase!=='playing'&&room?.phase!=='paused'&&<button onClick={openHelp} aria-label="Comandos" title="Comandos"><BookOpen size={16}/></button>}
           {isGm&&room&&<button onClick={()=>void command('close')} title="Encerrar a sala para todos"><LogOut size={16}/></button>}
@@ -526,7 +543,7 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
       </header>
       {error&&<div role="alert" className="arena-error">{error}<button onClick={()=>setError('')} aria-label="Fechar aviso"><X size={15}/></button></div>}
       {!room?<section className="arena-empty"><Swords size={54}/><h2>SEU PRÓXIMO DUELO ESPERA.</h2><button className="arena-launch" onClick={()=>void command('open')}><Play size={19}/> ENTRAR</button></section>:
-      room.phase==='lobby'?<main className="arena-lobby">
+      room.phase==='lobby'||waitingMenu?<main className="arena-lobby">
         <div className="arena-section-title"><span>SELEÇÃO DE PERSONAGEM</span></div>
         <div className="arena-selection">
           <section className="arena-showcase" key={preview?.id} aria-label="Personagem em destaque">
@@ -542,7 +559,7 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
             <div className="arena-roster" style={{'--roster-columns':columns()} as CSSProperties}>
               {roster.map((p,i)=>{
                 const picks=fighters.map((f,j)=>({f,j:f.slot??j})).filter(({f})=>f.characterId===p.id)
-                return <button type="button" className="arena-character" key={p.id} data-roster-index={i} data-focused={focus===i} aria-label={'Escolher '+p.name} aria-pressed={own?.characterId===p.id} onMouseEnter={()=>{cursorsRef.current={...cursorsRef.current,[selected]:i};setCursors(cursorsRef.current)}} onClick={()=>onPortrait(p,i)} style={{'--fighter-color':p.color,'--card-order':i} as CSSProperties}>
+                return <button type="button" className="arena-character" disabled={waitingMenu} key={p.id} data-roster-index={i} data-focused={focus===i} aria-label={'Escolher '+p.name} aria-pressed={own?.characterId===p.id} onMouseEnter={()=>{cursorsRef.current={...cursorsRef.current,[selected]:i};setCursors(cursorsRef.current)}} onClick={()=>onPortrait(p,i)} style={{'--fighter-color':p.color,'--card-order':i} as CSSProperties}>
                   <img src={p.imageUrl} alt="" draggable={false}/><span className="arena-character-glow"/><strong>{p.name}</strong>
                   <span className="arena-pick-badges">{picks.map(({f,j})=><b key={f.id} style={{background:colors[j%4]}}>P{j+1}</b>)}</span>
                   {focus===i&&<span className="arena-corner-mark" aria-hidden="true"/>}
@@ -550,22 +567,22 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
               })}
             </div>
             <div className="arena-techniques" key={preview?.id}>
-              {preview?.techniques?.map((skill,i)=><div className="arena-technique" key={skill.name}><span className="arena-motion">{skill.passive?'✦':i===0?'↓ ↘ →':i===1?'↓ ↙ ←':<><span>→ +</span><kbd className="arena-shoulder-key" aria-label="Botão RB">RB</kbd></>}</span><div><b>{skill.name}</b><p>{skill.description}</p></div></div>)}
+              {preview?.techniques?.map((skill,i)=><div className="arena-technique" key={skill.name}><span className="arena-motion">{skill.passive?'✦':i===0?'↓ ↘ →':i===1?'↓ ↙ ←':<><span>← / → +</span><kbd className="arena-shoulder-key" aria-label="Botão RB">RB</kbd></>}</span><div><b>{skill.name}</b><p>{skill.description}</p></div></div>)}
             </div>
           </section>
         </div>
         <section className="arena-seats" aria-label="Participantes">{Array.from({length:4},(_,i)=>{
           const f=fighters.find((f,j)=>(f.slot??j)===i),c=f?fighterPortrait(roster,f):undefined,canEditBot=!!f?.bot&&(isGm||f.botOwnerId===userId)
           return <div className="arena-seat" key={i} data-slot={i} data-occupied={!!f} style={{'--seat-color':colors[i]} as CSSProperties}>
-            <button type="button" className="arena-seat-main" disabled={!!f&&(f.bot||f.userId!==userId)||!f&&!!own} onClick={()=>{if(!f)joinOrSelect(selected);else if(f.userId===userId)focusDevice(f.device)}}><span className="arena-seat-index">P{i+1}</span>{c&&<img src={c.imageUrl} alt=""/>}<span className="arena-seat-copy"><b>{c?.name||'ENTRAR'}</b><small>{f?<><span className="arena-seat-player">{f.bot?'BOT':f.userId===userId?'Você':f.name}</span>{f.bot?<Bot size={16} aria-label="BOT"/>:f.device==='keyboard'?<Keyboard size={16} role="img" aria-label={labelDevice(f.device)}/>:<Gamepad2 size={16} role="img" aria-label={labelDevice(f.device)}/>}</>:'Escolha um personagem'}</small>{teams&&<em className="arena-team-label" style={{color:teamColors[i%2]}}>EQUIPE {teamName(i%2)}</em>}</span>{f&&!f.bot&&<Check className="arena-seat-check" size={17}/>}</button>
-            {!f?<button className="arena-seat-add-bot" aria-label={'Adicionar BOT em P'+(i+1)} onClick={()=>void command('add-bot',{slot:i})}><Bot size={19}/><span>BOT</span></button>:canEditBot?<div className="arena-bot-actions"><button aria-label={'Trocar personagem do BOT P'+(i+1)} title="Trocar personagem" onClick={()=>void command('select-bot',{fighterId:f.id,characterId:roster[(roster.findIndex(p=>p.id===f.characterId)+1)%roster.length].id})}><RotateCcw size={15}/></button><button aria-label={'Remover BOT de P'+(i+1)} title="Remover BOT" onClick={()=>void command('remove-bot',{fighterId:f.id})}><Trash2 size={15}/></button></div>:null}
+            <button type="button" className="arena-seat-main" disabled={waitingMenu||!!f&&(f.bot||f.userId!==userId)||!f&&!!own} onClick={()=>{if(!f)joinOrSelect(selected);else if(f.userId===userId)focusDevice(f.device)}}><span className="arena-seat-index">P{i+1}</span>{c&&<img src={c.imageUrl} alt=""/>}<span className="arena-seat-copy"><b>{c?.name||'ENTRAR'}</b><small>{f?<><span className="arena-seat-player">{f.bot?'BOT':f.userId===userId?'Você':f.name}</span>{f.bot?<Bot size={16} aria-label="BOT"/>:f.device==='keyboard'?<Keyboard size={16} role="img" aria-label={labelDevice(f.device)}/>:<Gamepad2 size={16} role="img" aria-label={labelDevice(f.device)}/>}</>:'Escolha um personagem'}</small>{teams&&<em className="arena-team-label" style={{color:teamColors[i%2]}}>EQUIPE {teamName(i%2)}</em>}</span>{f&&!f.bot&&<Check className="arena-seat-check" size={17}/>}</button>
+            {!f&&!waitingMenu?<button className="arena-seat-add-bot" aria-label={'Adicionar BOT em P'+(i+1)} onClick={()=>void command('add-bot',{slot:i})}><Bot size={19}/><span>BOT</span></button>:canEditBot&&!waitingMenu?<div className="arena-bot-actions"><button aria-label={'Trocar personagem do BOT P'+(i+1)} title="Trocar personagem" onClick={()=>void command('select-bot',{fighterId:f.id,characterId:roster[(roster.findIndex(p=>p.id===f.characterId)+1)%roster.length].id})}><RotateCcw size={15}/></button><button aria-label={'Remover BOT de P'+(i+1)} title="Remover BOT" onClick={()=>void command('remove-bot',{fighterId:f.id})}><Trash2 size={15}/></button></div>:null}
           </div>
         })}</section>
         <div className="arena-ready"><div className="arena-devices" role="group" aria-label="Dispositivo do jogador">{pads.map((p,i)=>{
           const device=deviceKey(p.index),joined=fighters.some(f=>f.userId===userId&&f.device===device)
           return <button type="button" key={device} data-active={target===device} aria-pressed={target===device} onClick={()=>{focusDevice(device);if(!joined)joinOrSelect(device)}}><Gamepad2 size={16}/>Controle {p.index+1}</button>
         })}<button data-active={target==='keyboard'} aria-pressed={target==='keyboard'} onClick={()=>{focusDevice('keyboard');if(!fighters.some(f=>f.userId===userId&&f.device==='keyboard'))joinOrSelect('keyboard')}}><Keyboard size={15}/>Teclado</button>{own&&<button className="arena-device-leave" onClick={()=>void command('leave',{device:selected})} aria-label={'Desconectar '+labelDevice(selected)}><LogOut size={14}/>Sair</button>}</div>
-          <div className="arena-launch-actions"><button className="arena-launch arena-settings-open" onClick={()=>setShowSettings(true)} aria-label="Configurações da arena" title="Configurações da arena"><Settings size={24}/></button><button className="arena-launch" disabled={!canStart} onClick={start}><span>{!assetsReady?'PREPARANDO ARENA…':solo?'JOGAR CONTRA CPU':'JOGAR'}</span><ChevronRight size={25}/></button></div>
+          <div className="arena-launch-actions"><button className="arena-launch arena-settings-open" disabled={waitingMenu} onClick={()=>setShowSettings(true)} aria-label="Configurações da arena" title="Configurações da arena"><Settings size={24}/></button><button className="arena-launch" disabled={!canStart} onClick={start}><span>{ongoing?'EM ANDAMENTO':!assetsReady?'PREPARANDO ARENA…':solo?'JOGAR CONTRA CPU':'JOGAR'}</span><ChevronRight size={25}/></button></div>
         </div>
       </main>:room.phase==='stage'?<main className="arena-stage-selection">
         <div className="arena-section-title"><span>SELEÇÃO DE CENÁRIO</span><button onClick={()=>void command('cancel-stage')}><ArrowLeft size={20}/> Voltar aos personagens</button></div>
@@ -577,7 +594,7 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
         <div className="arena-health-grid" data-fighters={fighters.filter(f=>!f.withdrawn).length}><b className="arena-clock" aria-label="Tempo restante">{settings.roundSeconds===null?'∞':String(Math.max(0,settings.roundSeconds-Math.floor(room.roundElapsed))).padStart(2,'0')}</b>{fighters.filter(f=>!f.withdrawn).map((f,i,active)=>{
           const p=fighterPortrait(roster,f)
           const side=teams?(arenaTeam(room,f)===0?'left':'right'):i<Math.ceil(active.length/2)?'left':'right',row=teams?active.slice(0,i).filter(e=>arenaTeam(room,e)===arenaTeam(room,f)).length+1:side==='left'?i+1:i-Math.ceil(active.length/2)+1
-          return <div key={f.id} className="arena-health" data-side={side} style={{'--seat-color':teams?teamColors[arenaTeam(room,f)]:colors[i%4],gridColumn:side==='left'?1:3,gridRow:row} as CSSProperties}><img src={p?.imageUrl} alt=""/><div><div className="arena-health-name"><b>{p?.name}</b><small>{teams&&<span className="arena-team-label">{teamName(arenaTeam(room,f))} · </span>}{f.bot?'CPU':f.userId===userId?labelDevice(f.device):f.name} {'◆'.repeat(f.wins)}</small></div><div className="arena-health-track"><span style={{width:f.health+'%'}}/></div><div className="arena-meter-row"><div title={f.alterLysa?'Euforia: 20 MP para transformar e 3 MP/s. Após sair, exige MP cheio.':'Magia: cada especial consome 25'}><span style={{width:f.meter+'%'}}/></div><small>{Math.ceil(f.health)} HP</small></div>{f.characterId==='loulan'&&<span className="arena-weapon-state" data-weapon={f.weapon}>{f.weapon==='kunai'?'◆ KUNAI · VELOCIDADE +10%':'◒ KARAMBIT · DANO +18%'}</span>}</div></div>
+          return <div key={f.id} className="arena-health" data-side={side} style={{'--seat-color':teams?teamColors[arenaTeam(room,f)]:colors[i%4],gridColumn:side==='left'?1:3,gridRow:row} as CSSProperties}><img src={p?.imageUrl} alt=""/><div><div className="arena-health-name"><b>{p?.name}</b><small>{teams&&<span className="arena-team-label">{teamName(arenaTeam(room,f))} · </span>}{f.bot?'CPU':f.userId===userId?labelDevice(f.device):f.name} {f.alterLysa&&f.euphoriaState==='active'&&<span data-euphoria-time>{Math.max(0,Math.ceil(10-(room.gameTime-f.euphoriaAt)))}s · </span>} {'◆'.repeat(f.wins)}</small></div><div className="arena-health-track"><span style={{width:f.health+'%'}}/></div><div className="arena-meter-row"><div title={f.alterLysa?'Euforia: 20 MP para transformar, 10 segundos e dano +60%. Após sair, exige MP cheio.':'Magia: cada especial consome 25'}><span style={{width:f.meter+'%'}}/></div><small>{Math.ceil(f.health)} HP</small></div>{f.characterId==='loulan'&&<span className="arena-weapon-state" data-weapon={f.weapon}>{f.weapon==='kunai'?'◆ KUNAI · VELOCIDADE +10%':'◒ KARAMBIT · DANO +18%'}</span>}</div></div>
         })}</div>
         <div className="arena-stage-wrap"><ArenaStage room={room} getSnapshot={()=>roomRef.current||room} debugBoxes={debugBoxes} localPlayerId={userId} getLocalInput={(device)=>{if(device==='keyboard'){const input:ArenaInput={...NO_INPUT};for(const code of pressed.current){const key=KEY_INPUT[code];if(key)input[key]=true}input.light||=mouse.current.light;input.heavy||=mouse.current.heavy;return input}const pad=connectedPads().find(p=>deviceKey(p.index)===device);return pad?readArenaPadInput(pad):liveInputs.current.get(device)}} onPointerAttack={(kind,isPressed)=>{const fresh=isPressed&&!mouse.current[kind];mouse.current[kind]=isPressed;if(fresh){const input:ArenaInput={...NO_INPUT};for(const code of pressed.current){const key=KEY_INPUT[code];if(key)input[key]=true}input.light=mouse.current.light;input.heavy=mouse.current.heavy;queuePulse('keyboard',kind,input)}inputPump.current?.()}}/>
           {room.phase==='finished'&&<div className="arena-overlay arena-result"><div className="arena-result-card"><strong>{winner?'VITÓRIA':'FIM DO COMBATE'}</strong><h2>{teams&&room.winningTeam!=null?'EQUIPE '+teamName(room.winningTeam):winner?fighterPortrait(roster,winner)?.name||'EMPATE':'EMPATE'}</h2>{teams&&room.winningTeam!=null&&<p>{fighters.filter(f=>arenaTeam(room,f)===room.winningTeam).map(f=>fighterPortrait(roster,f)?.name).join(' + ')}</p>}<div><button className="arena-launch" onClick={rematch}><RotateCcw size={18}/> REVANCHE</button><button onClick={backToLobby}>Voltar à seleção</button></div></div></div>}
@@ -586,8 +603,9 @@ export function ArenaMinigame({campaignId,userId,isGm}:Props){
         <div className="arena-battle-footer"><button disabled={room.phase==='finished'||(!isGm&&!fighters.some(f=>f.userId===userId&&!f.bot&&!f.withdrawn))||(isPause&&!isGm&&room.pausedBy!==userId)} aria-label={isPause?'Continuar partida':'Pausar partida'} onClick={()=>pause(fighters.find(f=>f.userId===userId&&!f.withdrawn)?.device||'keyboard')}><Pause size={14}/> {isPause?'Continuar':'Pausa'} <kbd>ESC</kbd></button></div>
       </main>}
       <footer className="arena-footer"><span><span className="arena-pad-key key-a">A</span><kbd>ENTER</kbd> Confirmar <span className="arena-pad-key key-b">B</span><kbd>ESC</kbd> Voltar</span><span className="arena-secret-hint"><kbd>L3</kbd> + <kbd>R3</kbd> Abrir arena</span></footer>
-      {showSettings&&room?.phase==='lobby'&&<div className="arena-overlay arena-settings" role="dialog" aria-modal="true" aria-label="Configurações da arena"><div className="arena-settings-card"><button className="arena-settings-close" onClick={()=>setShowSettings(false)} aria-label="Sair das configurações"><X size={22}/></button><h2><Settings size={28}/> CONFIGURAÇÕES</h2><section aria-label="Tempo da partida"><h3>TEMPO DA PARTIDA</h3><div className="arena-time-options">{([30,60,99,null] as const).map(seconds=><button key={seconds??'infinite'} data-time-choice={seconds??'infinite'} aria-pressed={settings.roundSeconds===seconds} onClick={()=>void command('configure',{settings:{...settings,roundSeconds:seconds}})}>{seconds===null?'∞ Infinito':seconds+'s'}</button>)}</div></section><section aria-label="Modo da partida"><h3>MODO DA PARTIDA</h3><div className="arena-mode-options"><button aria-pressed={!teams} onClick={()=>void command('configure',{settings:{...settings,mode:'free-for-all'}})}><Swords size={21}/><span>Todos contra todos</span></button><button aria-pressed={teams} disabled={fighters.filter(f=>!f.withdrawn).length!==4} onClick={()=>void command('configure',{settings:{...settings,mode:'teams'}})}><Users size={21}/><span>Em equipe · 2 × 2</span></button></div></section><button className="arena-launch" onClick={()=>setShowSettings(false)}><ArrowLeft size={19}/> VOLTAR AO MENU</button></div></div>}
-      {showHelp&&<div className="arena-overlay arena-help" role="dialog" aria-modal="true" aria-label="Comandos da arena"><div className="arena-help-card"><button className="arena-help-close" onClick={()=>setShowHelp(false)} aria-label="Fechar comandos"><X size={20}/></button><h2>COMANDOS</h2><div className="arena-command-columns"><section><h3><Gamepad2 size={18}/> CONTROLE</h3>{[['← / →','Mover / recuar para bloquear'],['↑','Pular'],['↓','Abaixar / bloquear golpes baixos'],['X','Soco alto'],['Y','Soco baixo'],['A','Chute alto'],['B','Chute baixo'],['RB / LT / RT','Especial 1 / 2 / 3'],['LB','Esquiva'],['START','Pausa']].map(([key,label])=><div key={key}><kbd className={['X','Y','A','B'].includes(key)?'arena-pad-key key-'+key.toLowerCase():''}>{key}</kbd><span>{label}</span></div>)}</section><section><h3><Keyboard size={18}/> TECLADO</h3>{[['A / D ou ← / →','Mover / recuar para bloquear'],['W / ↑ / ESPAÇO','Pular'],['S / ↓','Abaixar / bloquear golpes baixos'],['J','Soco alto'],['K','Soco baixo'],['L','Chute alto'],[';','Chute baixo'],['U / O / P','Especial 1 / 2 / 3'],['SHIFT','Esquiva'],['ESC','Pausa'],['F1','Mostrar hitboxes']].map(([key,label])=><div key={key}><kbd>{key}</kbd><span>{label}</span></div>)}</section></div><div className="arena-motion-guide"><b>↓ ↘ → + ATAQUE</b><span>Meia-lua para frente · Especial 1</span><b>↓ ↙ ← + ATAQUE</b><span>Meia-lua para trás · Especial 2</span><b>→ + <kbd className="arena-shoulder-key" aria-label="Botão RB">RB</kbd></b><span>Especial 3 · As direções acompanham o lado do personagem.</span></div></div></div>}
+      {showAudio&&<div className="arena-overlay arena-settings" role="dialog" aria-modal="true" aria-label="Áudio da arena"><div className="arena-settings-card arena-audio-card"><button className="arena-settings-close" onClick={()=>setShowAudio(false)} aria-label="Fechar áudio"><X size={22}/></button><h2><Volume2 size={28}/> ÁUDIO</h2>{(['music','effects'] as const).map(channel=><section key={channel}><h3>{channel==='music'?'MÚSICA':'EFEITOS SONOROS'}</h3><div className="arena-volume-row"><button aria-label={'Diminuir '+(channel==='music'?'música':'efeitos sonoros')} onClick={()=>setMixer(v=>({...v,[channel]:Math.max(0,v[channel]-1)}))}>−</button><button type="button" className="arena-volume-slider" role="slider" aria-label={channel==='music'?'Volume da música':'Volume dos efeitos sonoros'} aria-valuemin={0} aria-valuemax={100} aria-valuenow={mixer[channel]} data-volume-channel={channel} onFocus={e=>focusButton(targetRef.current,e.currentTarget,false)} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);setVolumeAt(channel,e.clientX,e.currentTarget)}} onPointerMove={e=>{if(e.buttons===1)setVolumeAt(channel,e.clientX,e.currentTarget)}}><i style={{width:mixer[channel]+'%'}}/><span>{mixer[channel]}%</span></button><button aria-label={'Aumentar '+(channel==='music'?'música':'efeitos sonoros')} onClick={()=>setMixer(v=>({...v,[channel]:Math.min(100,v[channel]+1)}))}>+</button></div></section>)}<button className="arena-launch" onClick={()=>setShowAudio(false)}><ArrowLeft size={19}/> VOLTAR</button></div></div>}
+      {showSettings&&room?.phase==='lobby'&&<div className="arena-overlay arena-settings" role="dialog" aria-modal="true" aria-label="Configurações da arena"><div className="arena-settings-card"><button className="arena-settings-close" onClick={()=>setShowSettings(false)} aria-label="Sair das configurações"><X size={22}/></button><h2><Settings size={28}/> CONFIGURAÇÕES</h2><section aria-label="Tempo da partida"><h3>TEMPO DA PARTIDA</h3><div className="arena-time-options">{([30,60,99,null] as const).map(seconds=><button key={seconds??'infinite'} data-time-choice={seconds??'infinite'} aria-pressed={settings.roundSeconds===seconds} onClick={()=>void command('configure',{settings:{...settings,roundSeconds:seconds}})}>{seconds===null?'∞ Infinito':seconds+'s'}</button>)}</div></section><section aria-label="Modo da partida"><h3>MODO DA PARTIDA</h3><div className="arena-mode-options"><button aria-pressed={!teams} onClick={()=>void command('configure',{settings:{...settings,mode:'free-for-all'}})}><Swords size={21}/><span>Todos contra todos</span></button><button aria-pressed={teams} disabled={fighters.filter(f=>!f.withdrawn).length!==4} onClick={()=>void command('configure',{settings:{...settings,mode:'teams'}})}><Users size={21}/><span>Em equipe · 2 × 2</span></button></div></section><button className="arena-launch" onClick={()=>setShowSettings(false)}><ArrowLeft size={19}/> VOLTAR</button></div></div>}
+      {showHelp&&<div className="arena-overlay arena-help" role="dialog" aria-modal="true" aria-label="Comandos da arena"><div className="arena-help-card"><button className="arena-help-close" onClick={()=>setShowHelp(false)} aria-label="Fechar comandos"><X size={20}/></button><h2>COMANDOS</h2><div className="arena-command-columns"><section><h3><Gamepad2 size={18}/> CONTROLE</h3>{[['← / →','Mover / virar'],['↑','Pular'],['↓','Abaixar / bloquear golpes baixos'],['X','Soco alto'],['Y','Soco baixo'],['A','Chute alto'],['B','Chute baixo'],['LT / RT','Especial 1 / 2'],['← / → + RB','Especial 3'],['RB','Defender'],['LB','Dash'],['← / → + B','Agarrão'],['START','Pausa']].map(([key,label])=><div key={key}><kbd className={['X','Y','A','B'].includes(key)?'arena-pad-key key-'+key.toLowerCase():''}>{key}</kbd><span>{label}</span></div>)}</section><section><h3><Keyboard size={18}/> TECLADO</h3>{[['A / D ou ← / →','Mover / virar'],['W / ↑ / ESPAÇO','Pular'],['S / ↓','Abaixar / bloquear golpes baixos'],['J','Soco alto'],['K','Soco baixo'],['L','Chute alto'],[';','Chute baixo'],['U / O / P','Especial 1 / 2 / 3'],['I','Defender'],['SHIFT','Dash'],['← / → + ;','Agarrão'],['ESC','Pausa'],['F1','Mostrar hitboxes']].map(([key,label])=><div key={key}><kbd>{key}</kbd><span>{label}</span></div>)}</section></div><div className="arena-motion-guide"><b>↓ ↘ → + ATAQUE</b><span>Meia-lua para frente · Especial 1</span><b>↓ ↙ ← + ATAQUE</b><span>Meia-lua para trás · Especial 2</span><b>← / → + <kbd className="arena-shoulder-key" aria-label="Botão RB">RB</kbd></b><span>Especial 3 · As direções acompanham o lado do personagem.</span></div></div></div>}
     </div>
   </div>,document.body)
 }

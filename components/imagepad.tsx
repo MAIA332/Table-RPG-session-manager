@@ -1,9 +1,12 @@
 "use client"
 import { controllerConfirm } from '@/lib/input/dialogs'
+import { useControllerModalNavigation } from '@/lib/input/modal-focus-return'
+import { ControllerGlyph } from '@/components/controller/controller-glyph'
+import { focusControllerElement } from '@/lib/input/focus'
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { Check, ChevronRight, Eye, EyeOff, Folder, FolderPlus, FolderLock, LockKeyhole, ShieldCheck, Image as ImageIcon, Loader2, Pencil, Plus, Search, Send, Trash2, Upload, X } from "lucide-react"
+import { Check, ChevronDown, ChevronRight, Eye, EyeOff, Folder, FolderPlus, FolderLock, LockKeyhole, ShieldCheck, Settings2, Image as ImageIcon, Loader2, Pencil, Plus, Search, Send, Trash2, Upload, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
@@ -271,7 +274,8 @@ const GalleryCard = memo(function GalleryCard({
         </div>
         {canManage && <div className="flex shrink-0 items-center gap-1">
           <Button size="sm" variant="ghost" className={`size-8 p-0 ${image.isPublic ? "text-green-400" : "text-muted-foreground"}`}
-            disabled={busyVisibility} onClick={() => onToggle(image)} title={image.isPublic ? "Tornar privada" : "Tornar pública"}>
+            disabled={busyVisibility} onClick={() => onToggle(image)} title={image.isPublic ? "Tornar privada" : "Tornar pública"}
+            aria-label={`${image.isPublic ? "Tornar privada" : "Tornar pública"} a imagem ${image.name} (exige confirmação)`}>
             {busyVisibility ? <Loader2 className="size-4 animate-spin" /> : image.isPublic ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
           </Button>
           {movableFolders.length > 1 && <select aria-label={`Mover ${image.name} para pasta`} value={image.folderId || "root"} onChange={(event) => onMove(image, event.target.value)}
@@ -349,6 +353,8 @@ export function Imagepad({
 
 }) {
 
+  const workspaceRef = useRef<HTMLDivElement>(null)
+  const [settingsExpanded, setSettingsExpanded] = useState(false)
   const [targetUserId, setTargetUserId] = useState<string | null>(null)
 
   const validTarget = targetUserId === null || (targetingEnabled && players.some(player => player.userId === targetUserId))
@@ -362,6 +368,26 @@ export function Imagepad({
   const [activeFolderId, setActiveFolderId] = useState("root")
 
   const [showNewFolder, setShowNewFolder] = useState(false)
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
+  const [renamingFolderName, setRenamingFolderName] = useState("")
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  useControllerModalNavigation(Boolean(onClose), workspaceRef, () => {
+    // B desfaz primeiro a operação interna, não encerra a galeria inesperadamente.
+    if (renamingFolderId) {setRenamingFolderId(null); return}
+    if (showNewFolder) {setShowNewFolder(false); return}
+    if (settingsExpanded) {setSettingsExpanded(false); return}
+    onClose?.()
+  }, 290)
+  useEffect(() => {
+    if (!renamingFolderId) return
+    const frame = requestAnimationFrame(() => {
+      if (renameInputRef.current) {
+        if (document.documentElement.dataset.input === "controller") focusControllerElement(renameInputRef.current)
+        else renameInputRef.current.focus({preventScroll: true})
+      }
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [renamingFolderId])
 
   const [newFolderName, setNewFolderName] = useState("")
 
@@ -375,6 +401,7 @@ export function Imagepad({
   const [pageLimit, setPageLimit] = useState(GALLERY_PAGE_SIZE)
   const [showingIds, setShowingIds] = useState<ReadonlySet<string>>(() => new Set())
   const showingRef = useRef(new Set<string>())
+  const visibilityConfirmingRef = useRef(new Set<string>())
 
 
   const normalizedFolders = useMemo(() => {
@@ -603,13 +630,22 @@ export function Imagepad({
     setShowNewFolder(false)
   }
 
-  async function renameFolder(folder: GalleryFolder) {
+  function renameFolder(folder: GalleryFolder) {
     if (!mayEditFolder(folder)) return
-    const name = window.prompt("Novo nome da pasta:", folder.name)?.trim()
-    if (!name || name === folder.name) return
+    setRenamingFolderId(folder.id)
+    setRenamingFolderName(folder.name)
+    setError("")
+  }
+
+  async function saveFolderRename(folder: GalleryFolder) {
+    if (busyKey || !mayEditFolder(folder)) return
+    const name = renamingFolderName.trim()
+    if (!name) return setError("Informe um nome para a pasta.")
+    if (name === folder.name) {setRenamingFolderId(null); return}
     if (normalizedFolders.some(entry => entry.id !== folder.id && entry.name.toLowerCase() === name.toLowerCase()))
       return setError("Já existe uma pasta com esse nome.")
-    await runAction(`folder:${folder.id}`, "rename-folder", { folderId: folder.id, name })
+    const saved = await runAction(`folder:${folder.id}`, "rename-folder", {folderId: folder.id, name})
+    if (saved) setRenamingFolderId(null)
   }
 
   async function deleteFolder(folder: GalleryFolder) {
@@ -637,8 +673,22 @@ export function Imagepad({
   cardActions.current = {
     show: image => { void showImage(image) },
     toggle: image => {
-      // Edição individual, inclusive para o Mestre com proteção desligada.
-      void runAction(`visibility:${image.id}`, "toggle-public", { imageId: image.id })
+      // Mestre e proprietário usam o mesmo diálogo acessível via A/B no controle.
+      // Evita prompts simultâneos se o botão for pressionado rapidamente.
+      if (busyKey || visibilityConfirmingRef.current.has(image.id) || !canManageImage(image)) return
+      visibilityConfirmingRef.current.add(image.id)
+      void (async () => {
+        try {
+          const description = image.isPublic
+            ? `Tornar a imagem "${image.name}" privada? Ela deixará de aparecer para quem não tiver permissão de acesso.`
+            : `Tornar a imagem "${image.name}" pública? Ela ficará visível para os membros da mesa com acesso à galeria.`
+          if (!await controllerConfirm(description, true)) return
+          // Revalidar as permissões e o estado após a confirmação assíncrona.
+          const current = normalizedImages.find(item => item.id === image.id)
+          if (!current || current.isPublic !== image.isPublic || !canManageImage(current)) return
+          await runAction(`visibility:${image.id}`, "toggle-public", { imageId: image.id })
+        } finally { visibilityConfirmingRef.current.delete(image.id) }
+      })()
     },
     move: (image, folderId) => {
       void runAction(`move:${image.id}`, "move", { imageId: image.id, folderId })
@@ -656,29 +706,32 @@ export function Imagepad({
 
   return (
 
-    <div className="rpg-themed-workspace flex h-full min-h-0 flex-col overflow-hidden bg-[#15100c] p-4 text-foreground sm:p-6">
+    <div ref={workspaceRef} data-controller-scroll-root="gallery" className="rpg-themed-workspace rpg-gallery-workspace flex h-full min-h-0 flex-col overflow-hidden text-foreground">
 
-      <header className="mb-4 flex shrink-0 items-start justify-between gap-4 border-b border-primary/25 pb-4">
+      <header className="rpg-archive-header flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-primary/20">
 
         <div className="min-w-0 flex-1">
 
-          <span className="rpg-kicker mb-1">Acervo visual</span>
-
-          <h2 className="rpg-title flex items-center gap-2 text-2xl font-black"><ImageIcon className="size-6" /> Galeria arcana</h2>
-
-          <p className="mt-1 text-sm text-muted-foreground">{isGm ? "Crie pastas, organize imagens e aprove solicitações dos jogadores." : "Use sua pasta pessoal para publicar imagens e solicitar uma transmissão."}</p>
-
-          <div className="relative mt-3 max-w-md"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar imagem por nome..." className="w-full rounded-sm border border-white/10 bg-black/40 py-2 pl-9 pr-4 text-sm outline-none focus:border-primary" /></div>
-
+          <span className="rpg-archive-eyebrow">Biblioteca da campanha / Acervo visual</span>
+          <h2 className="rpg-title flex items-center gap-2 text-xl font-black sm:text-2xl"><ImageIcon className="size-6" /> Galeria arcana</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">{isGm ? "Organize o acervo e apresente imagens à mesa." : "Explore imagens e gerencie sua coleção."}</p>
         </div>
-
-        {onClose && <button type="button" onClick={onClose} className="rounded-sm border border-border/50 bg-black/20 p-2 hover:border-primary/60"><X className="size-5" /></button>}
+        <div className="flex w-full items-center gap-2 sm:w-auto sm:flex-1 sm:justify-end">
+          <label className="rpg-archive-search relative flex-1 sm:max-w-[380px]"><span className="sr-only">Buscar imagem por nome</span><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar no acervo..." className="w-full rounded-xl border border-white/10 bg-black/40 py-2.5 pl-9 pr-4 text-sm outline-none focus:border-primary" /></label>
+          {onClose && <button type="button" aria-label="Fechar galeria arcana" onClick={onClose} className="rpg-archive-close grid size-11 shrink-0 place-items-center rounded-xl border border-border/50 bg-black/20 transition-colors hover:border-primary/60"><X className="size-5" /></button>}
+        </div>
 
       </header>
 
       {error && <div className="mb-3 flex shrink-0 items-center justify-between rounded-sm border border-red-500/40 bg-red-950/40 px-3 py-2 text-sm text-red-200"><span>{error}</span><button onClick={() => setError("")}><X className="size-4" /></button></div>}
 
-      {isGm && <section className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/[0.035] p-3 sm:p-4" aria-label="Proteção das pastas de jogadores">
+      {isGm && <div className="rpg-archive-settings mt-3 shrink-0">
+        <div className="rpg-archive-settings-bar flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/20 bg-black/20 px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2 text-xs"><ShieldCheck className="size-4 shrink-0 text-primary"/><span className="font-bold">Privacidade e envio</span><span className="truncate text-muted-foreground">{privacyEnabled ? "Pastas privadas" : "Pastas compartilhadas"} · {targetUserId ? players.find(player => player.userId === targetUserId)?.name || "Jogador" : "Todos na mesa"}</span></div>
+          <button type="button" aria-expanded={settingsExpanded} aria-controls="rpg-gallery-options" onClick={() => setSettingsExpanded(value => !value)} className="rpg-archive-options-button inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary/25 px-3 text-xs font-bold"><Settings2 className="size-4"/>{settingsExpanded ? "Recolher opções" : "Configurar"}<ChevronDown className={`size-4 transition-transform ${settingsExpanded ? "rotate-180" : ""}`}/></button>
+        </div>
+        <div id="rpg-gallery-options" data-controller-scrollport="true" hidden={!settingsExpanded} className="rpg-archive-options mt-2 grid gap-3 lg:grid-cols-2">
+          <section className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/[0.035] p-3" aria-label="Proteção das pastas de jogadores">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-primary/25 bg-primary/10 text-primary"><LockKeyhole className="size-4" /></span>
           <div><p className="text-xs font-bold text-foreground">Pastas privadas dos jogadores</p>
@@ -692,9 +745,9 @@ export function Imagepad({
           className={`relative h-7 w-14 shrink-0 rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${privacyEnabled ? "border-primary bg-primary/80" : "border-border bg-muted"}`}>
           <span className={`absolute top-[3px] size-5 rounded-full bg-white shadow-sm transition-all ${privacyEnabled ? "left-[30px]" : "left-[3px]"}`} />
         </button>
-      </section>}
+      </section>
 
-      {isGm && <section className="mb-4 shrink-0 rounded-sm border border-primary/25 bg-black/25 p-3">
+          <section className="rounded-xl border border-primary/25 bg-black/25 p-3">
 
         <label className="block text-sm font-bold">
 
@@ -722,7 +775,9 @@ export function Imagepad({
 
         {!validTarget && <p role="alert" className="mt-1 text-xs text-red-300">O destinatário não está disponível. Selecione novamente.</p>}
 
-      </section>}
+          </section>
+        </div>
+      </div>}
 
       {isGm && requests.length > 0 && <section className="mb-4 shrink-0 rounded-sm border border-amber-400/40 bg-amber-950/25 p-3">
 
@@ -732,28 +787,40 @@ export function Imagepad({
 
       </section>}
 
-      <div className="flex min-h-0 flex-1 gap-4">
+      <div className="rpg-archive-layout flex min-h-0 flex-1 gap-3">
 
-        <aside className="hidden w-64 shrink-0 flex-col overflow-hidden rounded-sm border border-primary/20 bg-black/20 md:flex">
+        <aside className="rpg-archive-sidebar hidden w-64 shrink-0 flex-col overflow-hidden rounded-xl border border-primary/20 bg-black/20 md:flex">
 
           <div className="flex items-center justify-between border-b border-primary/15 p-3"><span className="text-xs font-black uppercase tracking-widest">Pastas</span>{mayCreateFolder && <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => setShowNewFolder(true)} title="Nova pasta"><FolderPlus className="size-4" /></Button>}</div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-2 custom-scrollbar-sepia">
+          <div data-controller-scrollport="true" className="min-h-0 flex-1 overflow-y-auto p-2 custom-scrollbar-sepia">
             {normalizedFolders.map(folder => {
               const owned = folder.ownerId === myUserId
               const protectedFolder = isPrivatePlayerFolder(folder) && (privacyEnabled || !isGm)
               const openable = folderCanOpen(folder)
               return <div key={folder.id} className={`group mb-1 flex items-center rounded-lg border ${activeFolderId === folder.id ? "border-primary/35 bg-primary/15 text-primary" : "border-transparent hover:border-border/50 hover:bg-white/5"}`}>
-                <button type="button" disabled={!openable} aria-label={`${folder.name}${openable ? "" : ", pasta bloqueada"}`} title={openable ? folder.name : "Pasta privada: nenhuma imagem liberada pelo dono"}
-                  onClick={() => setActiveFolderId(folder.id)} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-55">
-                  {protectedFolder && !owned ? <FolderLock className="size-4 shrink-0 text-primary/65" /> : <Folder className="size-4 shrink-0" />}
-                  <span className="min-w-0 flex-1"><span className="block truncate">{folder.id === "root" ? "Todas as imagens" : folder.name}</span>
-                    {folder.ownerId && <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">por {(folder as GalleryFolder & GalleryPrivacyFolder).ownerName || players.find(player => player.userId === folder.ownerId)?.name || (owned ? "Você" : "Jogador")}</span>}
-                  </span>
-                  {protectedFolder && !owned && <LockKeyhole className="size-3 shrink-0 text-muted-foreground" />}
-                  <span className="text-[10px] text-muted-foreground">{openable ? count(folder.id) : "—"}</span>
-                </button>
-                {mayEditFolder(folder) && <div className="mr-1 flex gap-1 opacity-60 transition hover:opacity-100 group-focus-within:opacity-100"><button type="button" aria-label={`Renomear ${folder.name}`} onClick={() => void renameFolder(folder)}><Pencil className="size-3" /></button><button type="button" aria-label={`Excluir ${folder.name}`} onClick={() => void deleteFolder(folder)} className="text-red-400"><Trash2 className="size-3" /></button></div>}
+                {renamingFolderId === folder.id ? <div className="rpg-archive-folder-rename flex w-full items-center gap-1.5 p-1.5">
+                  <label className="min-w-0 flex-1"><span className="sr-only">Novo nome de {folder.name}</span>
+                    <input ref={renameInputRef} value={renamingFolderName} maxLength={60} onChange={event => setRenamingFolderName(event.target.value)}
+                      onKeyDown={event => {
+                        if (event.key === "Enter") {event.preventDefault(); void saveFolderRename(folder)}
+                        if (event.key === "Escape") {event.preventDefault();event.stopPropagation();setRenamingFolderId(null)}
+                      }} className="w-full min-w-0 rounded-lg border border-primary/30 bg-black/50 px-2 py-2 text-xs" />
+                  </label>
+                  <button type="button" disabled={!!busyKey} onClick={() => void saveFolderRename(folder)} aria-label={`Salvar nome de ${folder.name}`} className="rpg-archive-icon-button"><Check className="size-4"/></button>
+                  <button type="button" onClick={() => setRenamingFolderId(null)} aria-label="Cancelar renomeação" className="rpg-archive-icon-button"><X className="size-4"/></button>
+                </div> : <>
+                  <button type="button" disabled={!openable} aria-label={`${folder.name}${openable ? "" : ", pasta bloqueada"}`} title={openable ? folder.name : "Pasta privada: nenhuma imagem liberada pelo dono"}
+                    onClick={() => setActiveFolderId(folder.id)} data-controller-initial={folder.id === "root" ? "true" : undefined} aria-pressed={activeFolderId === folder.id} className="rpg-archive-folder-button flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-55">
+                    {protectedFolder && !owned ? <FolderLock className="size-4 shrink-0 text-primary/65" /> : <Folder className="size-4 shrink-0" />}
+                    <span className="min-w-0 flex-1"><span className="block truncate">{folder.id === "root" ? "Todas as imagens" : folder.name}</span>
+                      {folder.ownerId && <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">por {(folder as GalleryFolder & GalleryPrivacyFolder).ownerName || players.find(player => player.userId === folder.ownerId)?.name || (owned ? "Você" : "Jogador")}</span>}
+                    </span>
+                    {protectedFolder && !owned && <LockKeyhole className="size-3 shrink-0 text-muted-foreground" />}
+                    <span className="text-[10px] text-muted-foreground">{openable ? count(folder.id) : "—"}</span>
+                  </button>
+                  {mayEditFolder(folder) && <div className="mr-1 flex gap-1 opacity-60 transition hover:opacity-100 group-focus-within:opacity-100"><button type="button" aria-label={`Renomear ${folder.name}`} onClick={() => renameFolder(folder)}><Pencil className="size-3" /></button><button type="button" aria-label={`Excluir ${folder.name}`} onClick={() => void deleteFolder(folder)} className="text-red-400"><Trash2 className="size-3" /></button></div>}
+                </>}
               </div>
             })}
           </div>
@@ -762,12 +829,12 @@ export function Imagepad({
 
         </aside>
 
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <main className="rpg-archive-content flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-primary/15 bg-black/15 p-3 sm:p-4">
 
           <div className="mb-3 flex shrink-0 items-center gap-2 overflow-x-auto pb-1 md:hidden">{normalizedFolders.map(folder => {
             const openable = folderCanOpen(folder)
             const protectedFolder = isPrivatePlayerFolder(folder) && (privacyEnabled || !isGm) && folder.ownerId !== myUserId
-            return <button key={folder.id} type="button" disabled={!openable} onClick={() => setActiveFolderId(folder.id)} className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 ${activeFolderId === folder.id ? "border-primary/40 bg-primary/15 text-primary" : "border-white/10 bg-black/20"}`}>
+            return <button key={folder.id} type="button" disabled={!openable} onClick={() => setActiveFolderId(folder.id)} data-controller-initial={folder.id === "root" ? "true" : undefined} aria-pressed={activeFolderId === folder.id} className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 ${activeFolderId === folder.id ? "border-primary/40 bg-primary/15 text-primary" : "border-white/10 bg-black/20"}`}>
               {protectedFolder ? <FolderLock className="size-3.5" /> : <Folder className="size-3.5" />}
               <span className="flex flex-col items-start"><span>{folder.id === "root" ? "Todas" : folder.name}</span>{folder.ownerId && <small className="text-[9px] font-normal text-muted-foreground">{(folder as GalleryFolder & GalleryPrivacyFolder).ownerName || "Jogador"}</small>}</span>
               {protectedFolder && <LockKeyhole className="size-3" />}
@@ -790,7 +857,7 @@ export function Imagepad({
 
           </div>}
 
-          <div ref={gridRef} className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 content-start gap-5 overflow-y-auto pb-10 pr-2 custom-scrollbar-sepia sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div ref={gridRef} data-controller-scrollport="true" className="rpg-archive-grid grid min-h-0 flex-1 auto-rows-max grid-cols-1 content-start gap-3 overflow-y-auto pb-6 pr-2 custom-scrollbar-sepia sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {renderedImages.map(image => (
               <GalleryCard
                 key={image.id}
@@ -825,6 +892,11 @@ export function Imagepad({
         </main>
 
       </div>
+
+      <footer className="rpg-archive-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-primary/15 text-[11px] text-muted-foreground">
+        <span>{visibleImages.length} imagem(ns) nesta seleção · {normalizedFolders.length} pasta(s)</span>
+        <span className="inline-flex items-center gap-2"><span>Direcional navegar</span><ControllerGlyph button="A" small/> Selecionar <ControllerGlyph button="B" small/> Voltar</span>
+      </footer>
 
       {mayCreateFolder && showNewFolder && (
 

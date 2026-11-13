@@ -9,10 +9,12 @@ import {
 import { ACTION_LABELS } from '@/lib/input/labels'
 import { dispatchInputAction, registerInputHandler } from '@/lib/input/dispatcher'
 import { dispatchInputHoldAction } from '@/lib/input/hold'
-import { controllerFocus, clearControllerFocus, controllerSelectOpen, closeControllerSelect } from '@/lib/input/focus'
+import { controllerFocus, controllerFocusedFieldAction, clearControllerFocus, controllerSelectOpen, closeControllerSelect } from '@/lib/input/focus'
+import { controllerKeyboardOpen, handleControllerKeyboard, handleControllerKeyboardButton, closeControllerKeyboard } from '@/lib/input/virtual-keyboard'
 import { scrollControllerContent } from '@/lib/input/scroll'
 import { isEditableKeyboardTarget } from '@/lib/input/keyboard-target'
 import { dispatchRightStick } from '@/lib/input/right-stick'
+import { contextualShortcut, replaceContextualActions, type ContextualScope } from '@/lib/input/contextual-shortcuts'
 import { ControllerDialogs } from './controller-dialogs'
 import { triggerPanelAction, labelForPanelAction } from '@/lib/input/panel-actions'
 import { ControllerStatus } from './controller-status'
@@ -128,6 +130,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
     return () => { window.removeEventListener('otms.controller.skills', handleSkills) }
   }, [])
 
+  useEffect(() => () => closeControllerKeyboard(false), [])
   useEffect(() => {
     document.documentElement.dataset.input = active ? 'controller' : 'desktop'
     document.documentElement.dataset.tvScale = active && settings.tvScale ? 'true' : 'false'
@@ -138,6 +141,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
   // Menu Start = maior prioridade. Não deixa comandos de combate vazarem por trás do menu.
   useEffect(() => registerInputHandler(action => {
     if (!settingsOpenRef.current) return false
+    if (controllerKeyboardOpen()) return handleControllerKeyboard(action)
     if (controllerSelectOpen()) return controllerFocus(action)
     if (action === 'ui.back' || action === 'ui.settings') {setSettingsOpen(false); return true}
     if (action === 'ui.previous' || action === 'ui.next') {
@@ -148,8 +152,12 @@ export function ControllerProvider({children}: {children:ReactNode}) {
     return true
   }, 1000), [])
 
-  // Diálogos de seleção são superiores a modais e atalhos do jogo.
-  useEffect(() => registerInputHandler(action => controllerSelectOpen() ? controllerFocus(action) : false, 2000), [])
+  // Teclado e selects são superiores a todos os comandos do jogo.
+  useEffect(() => registerInputHandler(action => controllerKeyboardOpen() ? handleControllerKeyboard(action) :
+    controllerSelectOpen() ? controllerFocus(action) : false, 2200), [])
+  // Campos editáveis sempre abrem o teclado no A e ajustam números nas setas,
+  // mesmo quando o painel possui seu próprio handler de navegação.
+  useEffect(() => registerInputHandler(action => controllerFocusedFieldAction(action), 1700), [])
 
   useEffect(() => registerInputHandler(action => {
     if (action === 'ui.settings') {
@@ -178,7 +186,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
     let pttDown = false
     let pttArmed = false // Após perda de foco/controle, exige soltar antes de falar novamente.
     const releasePtt = () => { if (pttDown) {pttDown = false; dispatchInputHoldAction('voice.ptt', false)} }
-    let lastNativeAt = 0, wasConnected = false, lastName = '', lastButtonCount = -1, lastScrollAt = 0
+    let lastNativeAt = 0, wasConnected = false, lastName = '', lastButtonCount = -1, lastScrollAt = 0, lastDialogStickAt = 0
     const times = new Map<string,number>()
     // Código oculto: VIEW + L3 + R3, segurados 650 ms em QUALQUER controle.
     // É físico, não remapeável e nunca pode ser disparado por teclado/mouse.
@@ -239,7 +247,26 @@ export function ControllerProvider({children}: {children:ReactNode}) {
         releasePtt(); previous = buttons; return
       }
       if(buttons.has('LT')!==previous.has('LT'))setLtHeld(buttons.has('LT'))
-      const physicallyPtt = [...buttons].some(button =>
+      // Descobre o escopo ANTES de processar PTT: se o jogador mapeou voz.ptt
+      // para LB/RB/L3/R3, o atalho contextual também deve suspender o hold.
+      const soundpadFocused = !settingsOpenRef.current && !!document.querySelector('[data-soundpad-fullscreen]')
+      const modalBlocking = !!document.querySelector('.otms-controller-dialog-backdrop, .otms-controller-select-overlay, .otms-controller-keyboard-overlay')
+      const bestiary = document.querySelector('[data-controller-bestiary-shortcuts="active"]')
+      const gmEditCandidate = document.querySelector<HTMLElement>('[data-controller-gm-edit="active"]')
+      const modalStack = [...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')].filter(element =>
+        element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().height > 0)
+      const gmEdit = gmEditCandidate && (!modalStack.length ||
+        modalStack.at(-1) === gmEditCandidate.closest('[aria-modal="true"]') ||
+        gmEditCandidate.contains(modalStack.at(-1)!)) ? gmEditCandidate : null
+      const combatModal = document.querySelector<HTMLElement>('[data-controller-combat-modal="active"]')
+      const tableAvailable = !document.querySelector('[aria-modal="true"], [data-controller-layer="active"]')
+      const combatPanel = combatModal || (tableAvailable
+        ? document.querySelector<HTMLElement>('[data-controller-combat-table="active"]') : null)
+      const scope: ContextualScope = !soundpadFocused && !settingsOpenRef.current && !modalBlocking
+        ? bestiary ? 'bestiary' : combatPanel ? 'combat' : gmEdit ? 'gm' : null : null
+      const hasCreature = combatPanel?.dataset.controllerHasCreature === 'true'
+      const physicallyPtt = !controllerKeyboardOpen() && [...buttons].some(button =>
+        !(scope && !buttons.has('LT') && contextualShortcut(button, scope, hasCreature)) &&
         actionForButton(button, buttons, getBindings(settingsRef.current)) === 'voice.ptt')
       if (settingsOpenRef.current) pttArmed = false
       if (!physicallyPtt) pttArmed = true
@@ -268,20 +295,71 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       const hasRightStick=Math.abs(axisX)>deadzone || Math.abs(axisY)>deadzone
       // O manequim pode usar os dois eixos para girar/aproximar, sem rolar a página.
       // Menus de confirmação e Start continuam tendo prioridade sobre esse gesto.
-      const rightStickTaken=activeRef.current && hasRightStick && !settingsOpenRef.current &&
-        dispatchRightStick(Math.abs(axisX)>deadzone ? axisX : 0, Math.abs(axisY)>deadzone ? axisY : 0, elapsed)
+      // Em seleção/teclado virtual, o stick direito navega escolhas ao invés de
+      // rolar sem atualizar o índice confirmado por A. Não vaza comandos ao mapa.
+      const floatingChoices = controllerKeyboardOpen() || controllerSelectOpen()
+      const rightStickDialog = activeRef.current && floatingChoices && hasRightStick
+      if (rightStickDialog && Math.abs(axisY) > deadzone && now - lastDialogStickAt >= 195) {
+        controllerFocus(axisY > 0 ? 'ui.down' : 'ui.up')
+        lastDialogStickAt = now
+      }
+      const rightStickTaken = !!rightStickDialog || (activeRef.current && hasRightStick && !settingsOpenRef.current &&
+        dispatchRightStick(Math.abs(axisX)>deadzone ? axisX : 0, Math.abs(axisY)>deadzone ? axisY : 0, elapsed))
       let scrolled=false
       if(activeRef.current && !rightStickTaken && Math.abs(axisY)>deadzone){
         scrolled=scrollControllerContent(Math.sign(axisY)*Math.pow(Math.abs(axisY),1.3)*Math.max(5,elapsed*1.3))
       }
       lastScrollAt=now
+      // O teclado virtual possui layout FÍSICO próprio. Não deixar comandos
+      // remapeados (inclusive PTT, inventário e Start) escaparem pelo jogo.
+      // A seleção A/B e o direcional repetem; atalhos de edição repetem
+      // somente após uma pausa, para evitar apagar letras em excesso.
+      if (activeRef.current && controllerKeyboardOpen()) {
+        for (const button of newlyPressed) {
+          if (handleControllerKeyboardButton(button)) {
+            times.set(`vk:${button}`, now)
+            times.set(`vk-start:${button}`, now)
+          }
+        }
+        for (const button of buttons) {
+          if (!['X','LB','RT'].includes(button) || !previous.has(button) || !controllerKeyboardOpen()) continue
+          const last = times.get(`vk:${button}`) ?? now
+          const heldFor = times.get(`vk-start:${button}`) ?? now
+          if (!times.has(`vk-start:${button}`)) times.set(`vk-start:${button}`, now)
+          if (now - heldFor > 430 && now - last >= 95) {
+            handleControllerKeyboardButton(button)
+            times.set(`vk:${button}`, now)
+          }
+        }
+        const vkActions = collectActions(buttons, previous, now, times,
+          settingsRef.current.repeatMs, {
+            A:'ui.confirm', B:'ui.back', UP:'ui.up', DOWN:'ui.down',
+            LEFT:'ui.left', RIGHT:'ui.right',
+          })
+        for (const action of vkActions) {
+          if (!controllerKeyboardOpen()) break
+          runAction(action, pad)
+        }
+        previous=buttons
+        for (const button of ['X','LB','RT'] as const) {
+          if (!buttons.has(button)) {times.delete(`vk:${button}`);times.delete(`vk-start:${button}`)}
+        }
+        return
+      }
       // Soundpad fullscreen owns its gamepad profile. It cannot execute ordinary
       // campaign shortcuts, and closing it restores the user's normal profile.
-      const soundpadFocused = !settingsOpenRef.current && !!document.querySelector('[data-soundpad-fullscreen]')
       const bindings = soundpadFocused
         ? soundpadRuntimeBindings(settingsRef.current.soundpadBindings)
         : getBindings(settingsRef.current)
-      const actions=collectActions(buttons,previous,now,times,settingsRef.current.repeatMs,bindings)
+      let actions=collectActions(buttons,previous,now,times,settingsRef.current.repeatMs,bindings)
+      // Painéis dedicados tomam posse temporária dos botões físicos, mesmo
+      // quando LB/RB/L3/R3 foram personalizados no perfil global. O modal
+      // de confirmação e o Start sempre prevalecem; LT mantém seus atalhos.
+      if (scope) {
+        actions = replaceContextualActions(actions, buttons, new Set(newlyPressed), scope,
+          hasCreature, button => actionForButton(button, buttons, bindings))
+      }
+      const contextualPanelOpen = !!document.querySelector('[data-controller-bestiary-shortcuts="active"], [data-controller-combat-shortcuts="active"], [data-controller-gm-edit="active"]')
       // SELECT/VIEW pode ser remapeado normalmente. Apenas uma foto de golpe
       // ativa do Mestre tem prioridade sobre o atalho configurado.
       const cancelablePreviews = [...document.querySelectorAll<HTMLElement>('[data-controller-preview-cancelable="true"]')]
@@ -294,7 +372,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       }
       // Na loja, LB/RB alternam entre mochila, vitrine e inspeção mesmo que
       // os comandos globais tenham sido personalizados. Fora da loja não mudam.
-      if(!soundpadFocused && (newlyPressed.includes('LB') || newlyPressed.includes('RB')) && !settingsOpenRef.current &&
+      if(!soundpadFocused && !contextualPanelOpen && (newlyPressed.includes('LB') || newlyPressed.includes('RB')) && !settingsOpenRef.current &&
         !buttons.has('LT') && document.querySelector('[data-controller-store="active"]')) {
         for(const [button,nav] of [['LB','ui.previous'],['RB','ui.next']] as const){
           if(!newlyPressed.includes(button)) continue
@@ -307,7 +385,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       // Na Forja do Viajante, LB/RB são sempre etapas, não atalhos globais.
       // O modificador LT continua separado. Fora da Forja, os mapeamentos
       // personalizados permanecem inalterados.
-      if (!soundpadFocused && !settingsOpenRef.current && !buttons.has('LT') &&
+      if (!soundpadFocused && !contextualPanelOpen && !settingsOpenRef.current && !buttons.has('LT') &&
           document.querySelector('[data-controller-creator="active"]')) {
         for (const [button, nav] of [['LB','ui.previous'], ['RB','ui.next']] as const) {
           if (!newlyPressed.includes(button)) continue
@@ -319,7 +397,7 @@ export function ControllerProvider({children}: {children:ReactNode}) {
       }
       // Quando a Mesa de Voz está aberta, os ombros mudam a aba sem exigir A,
       // independente dos atalhos globais; LT mantém seu modificador normal.
-      if (!soundpadFocused && !settingsOpenRef.current && !buttons.has('LT') &&
+      if (!soundpadFocused && !contextualPanelOpen && !settingsOpenRef.current && !buttons.has('LT') &&
           document.querySelector('[data-voice-tab-navigation="active"]')) {
         for (const [button, nav] of [['LB', 'ui.previous'], ['RB', 'ui.next']] as const) {
           if (!buttons.has(button)) continue

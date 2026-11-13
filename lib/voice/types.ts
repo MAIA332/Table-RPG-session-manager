@@ -24,3 +24,26 @@ export interface VoiceChatPage {
   messages: VoiceChatMessage[]
   nextCursor: string | null
 }
+
+
+/** Visualização da ocupação das salas antes de ingressar na call. */
+export interface VoiceRoomParticipant {
+  id: string
+  name: string
+  role: string
+  speaking: boolean
+  microphone: boolean
+}
+export interface VoiceRoomInfo {
+  id: string
+  name: string
+  isDefault: boolean
+  participants: VoiceRoomParticipant[]
+  previewAvailable: boolean
+}
+
+/** Restrições definidas pelo Mestre, independentes das preferências locais. */
+export interface VoiceModerationState {
+  microphoneMuted: boolean
+  audioMuted: boolean
+}

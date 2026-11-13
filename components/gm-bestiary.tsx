@@ -7,8 +7,12 @@ import { BESTIARY_DICE, validateBestiaryCombat, validateBestiaryDice, formatBest
 import { createClientId } from "@/lib/client-id"
 import { defaultAttack, type Ability, type Attack, type CreatureCombat } from "@/lib/combat-model"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useControllerModalNavigation } from "@/lib/input/modal-focus-return"
 import { useControllerActions } from "@/lib/input/use-controller-actions"
+import { useController } from "@/components/controller/controller-provider"
+import { focusControllerElement } from "@/lib/input/focus"
+import { ControllerGlyph } from "@/components/controller/controller-glyph"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { Skull, X, Search, Heart, Zap, Target, Plus, Save, Trash2, FolderOpen, ChevronDown } from "lucide-react"
@@ -44,6 +48,9 @@ interface GmBestiaryProps {
 }
 
 export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCreatures, onCreate, onUpdate, onDelete }: GmBestiaryProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const {active: controllerActive} = useController()
+  const [mobileSection, setMobileSection] = useState<"catalog" | "details">("catalog")
   const [editingCreature, setEditingCreature] = useState<Creature | null>(null)
   const [saving, setSaving] = useState(false)
   const [spawning, setSpawning] = useState(false)
@@ -63,8 +70,25 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
   const [hoveredCreature, setHoveredCreature] = useState<Creature | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set())
-  // B usa a mesma confirmação de descarte que o botão de fechar.
-  useControllerActions({'ui.back': () => { closeEditor(); return true }}, {enabled: isOpen, priority: 325})
+  // B retorna à lista no celular; no desktop fecha com confirmação de rascunho.
+  useControllerModalNavigation(isOpen, dialogRef, () => {
+    if (typeof window !== "undefined" && window.innerWidth < 768 && mobileSection === "details" && !isCreating) {
+      setMobileSection("catalog")
+    } else void closeEditor()
+  }, 325)
+
+  // Ao alternar catálogo/ficha no controle, não deixar o foco numa área oculta.
+  useEffect(() => {
+    if (!isOpen || !controllerActive || typeof window === "undefined" || window.innerWidth >= 768) return
+    const frame = requestAnimationFrame(() => {
+      const scope = dialogRef.current?.querySelector<HTMLElement>(mobileSection === "catalog" ? ".rpg-bestiary-catalog" : ".rpg-bestiary-details")
+      const target = mobileSection === "catalog"
+        ? scope?.querySelector<HTMLElement>('[data-controller-initial],button:not([disabled])')
+        : scope?.querySelector<HTMLElement>('[data-bestiary-detail-start],input:not([disabled]),button:not([disabled])')
+      if (target) focusControllerElement(target)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [isOpen, controllerActive, mobileSection, hoveredCreature?.id, isCreating])
 
   // Junta o bestiário fixo com as criaturas criadas pelo mestre
   const allCreatures = [...customCreatures, ...BESTIARY.filter(base => !customCreatures.some(custom => custom.id === base.id))]
@@ -87,6 +111,8 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
   const sortedFolders = Object.keys(groupedCreatures).sort((a, b) => a.localeCompare(b));
 
   const isSearching = searchQuery.trim().length > 0;
+  const firstVisibleFolder = sortedFolders.find(folder => groupedCreatures[folder].some(c => filteredBestiary.includes(c)))
+  const firstVisibleCreatureId = firstVisibleFolder && groupedCreatures[firstVisibleFolder].find(c => filteredBestiary.includes(c))?.id
 
   function toggleFolder(folder: string) {
     setCollapsedFolders(prev => {
@@ -134,6 +160,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
     setEquipmentText((creature?.equipment || []).join("\n"))
     setSpellsText((creature?.spells || []).join("\n"))
     setIsCreating(true)
+    setMobileSection("details")
   }
 
   async function handleSaveDraft() {
@@ -175,6 +202,20 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
     }
   }
 
+  // Os atalhos são físicos e temporários: RB invoca, LB edita. Nunca
+  // executam a ação sobre um formulário aberto ou uma criatura não selecionada.
+  useControllerActions({
+    'bestiary.spawn': () => {
+      if (!isCreating && hoveredCreature && !savingRef.current && !spawning) void spawnSelected()
+      return true
+    },
+    'bestiary.edit': () => {
+      if (!isCreating && hoveredCreature && !savingRef.current && !spawning)
+        void openEditor(hoveredCreature)
+      return true
+    },
+  }, { enabled: isOpen && controllerActive, priority: 360 })
+
   async function spawnSelected() {
     if (!hoveredCreature || spawning || saving) return
     setSpawning(true)
@@ -199,24 +240,30 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 md:p-8 overflow-hidden" onClick={closeEditor}>
-          <motion.div variants={modalVariants} role="dialog" aria-modal="true" aria-label="Bestiário do mestre" className="rpg-modal relative flex h-full w-full max-w-6xl flex-col overflow-hidden border border-destructive/50 bg-zinc-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <motion.div variants={overlayVariants} initial="hidden" animate="visible" exit="exit" className="rpg-archive-overlay fixed inset-0 z-[820] flex h-[100dvh] w-screen overflow-hidden bg-[#060c12]" onClick={closeEditor}>
+          <motion.div ref={dialogRef} variants={modalVariants} role="dialog" aria-modal="true" aria-label="Bestiário do mestre" data-controller-layer="active" data-controller-scroll-root="bestiary" data-controller-bestiary-shortcuts="active" data-mobile-section={mobileSection} className="rpg-bestiary-fullscreen relative flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden" onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); void closeEditor() } }} onClick={(event) => event.stopPropagation()}>
             
-            <div className="flex justify-between items-center gap-4 p-6 border-b border-white/10 bg-black/40 shrink-0">
-              <h4 className="font-serif text-2xl md:text-3xl font-black flex items-center gap-3">
-                <Skull className="size-6 text-destructive md:size-8" /> 
-                <span className="text-foreground">Bestiário do Mestre</span>
-              </h4>
-              <div className="flex shrink-0 items-center gap-2">
-                <button aria-label="Fechar bestiário" onClick={closeEditor} className="rounded-full p-2 bg-white/5 hover:bg-white/10 transition-colors">
-                  <X className="size-5 md:size-6 text-muted-foreground hover:text-white" />
-                </button>
+            <header className="rpg-archive-header flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/10">
+              <div className="min-w-0">
+                <span className="rpg-archive-eyebrow">Biblioteca da campanha / Compêndio</span>
+                <h4 className="flex items-center gap-3 font-serif text-xl font-black text-foreground sm:text-2xl">
+                  <span className="rpg-bestiary-emblem grid size-10 shrink-0 place-items-center rounded-xl"><Skull className="size-5"/></span>
+                  Bestiário do Mestre
+                </h4>
+                <p className="mt-0.5 text-xs text-muted-foreground">{allCreatures.length} criaturas no acervo · {sortedFolders.length} categorias</p>
               </div>
-            </div>
+              <div className="flex items-center gap-2">
+                <div className="rpg-bestiary-mobile-switch inline-flex items-center gap-1 rounded-xl border border-white/10 p-1 md:hidden" role="group" aria-label="Navegação do bestiário">
+                  <button type="button" onClick={() => setMobileSection("catalog")} aria-pressed={mobileSection === "catalog"} className="rounded-lg px-3 py-2 text-xs font-bold">Criaturas</button>
+                  <button type="button" onClick={() => setMobileSection("details")} aria-pressed={mobileSection === "details"} className="rounded-lg px-3 py-2 text-xs font-bold">Detalhes</button>
+                </div>
+                <button type="button" aria-label="Fechar bestiário" onClick={() => void closeEditor()} className="rpg-archive-close grid size-11 place-items-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10"><X className="size-5" /></button>
+              </div>
+            </header>
 
-            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+            <div className="rpg-bestiary-layout flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
               {/* COLUNA ESQUERDA: LISTA EM PASTAS */}
-              <div className="lg:w-1/3 border-r border-border/40 p-4 flex flex-col gap-4 bg-black/20">
+              <aside className="rpg-bestiary-catalog flex min-h-0 flex-col gap-3 border-r border-white/10 bg-black/20 p-3 sm:p-4 md:w-[min(31vw,365px)] md:shrink-0">
                 <div className="flex gap-2 shrink-0">
                   <div className="relative flex-1">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -233,7 +280,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
                   </Button>
                 </div>
                 
-                <div className="overflow-y-auto custom-scrollbar-sepia flex flex-col gap-4 flex-1 pr-2">
+                <div data-controller-scrollport="true" className="rpg-bestiary-list min-h-0 flex-1 overflow-y-auto custom-scrollbar-sepia flex flex-col gap-4 pr-2">
                   {sortedFolders.map(folder => {
                     // Se estiver pesquisando, filtra o que aparece dentro da pasta
                     const folderCreatures = groupedCreatures[folder].filter(c => 
@@ -276,9 +323,11 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
                                 return (
                                   <button 
                                     key={c.id} 
-                                    onClick={async () => { if (!savingRef.current && (!isCreating || await controllerConfirm("Descartar as alterações não salvas?"))) { setHoveredCreature(c); setIsCreating(false); } }} 
+                                    onClick={async () => { if (!savingRef.current && (!isCreating || await controllerConfirm("Descartar as alterações não salvas?"))) { setHoveredCreature(c); setIsCreating(false); setMobileSection("details"); } }} 
                                     // IMPORTANTE: O shrink-0 previne o esmagamento dos botões como na imagem que você mandou
-                                    className={`shrink-0 text-left p-3 rounded-lg border transition-colors relative overflow-hidden ${hoveredCreature?.id === c.id && !isCreating ? "bg-destructive/10 border-destructive/50 shadow-[0_0_10px_rgba(255,0,0,0.1)]" : "bg-card/40 border-border/30 hover:border-destructive/30"}`}
+                                    aria-pressed={hoveredCreature?.id === c.id && !isCreating}
+                                    data-controller-initial={c.id === firstVisibleCreatureId ? "true" : undefined}
+                                    className={`rpg-bestiary-creature shrink-0 text-left p-3 rounded-xl border transition-colors relative overflow-hidden ${hoveredCreature?.id === c.id && !isCreating ? "is-selected bg-destructive/10 border-destructive/50" : "bg-card/40 border-border/30 hover:border-destructive/30"}`}
                                   >
                                     {isCustom && <div className="absolute top-0 right-0 border-l border-b border-purple-500/30 bg-purple-500/10 px-1.5 py-0.5 rounded-bl text-[8px] font-bold uppercase tracking-widest text-purple-400 shadow-sm">Custom</div>}
                                     <p className="font-bold text-foreground text-sm pr-10 truncate">{c.name}</p>
@@ -294,15 +343,15 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
                   })}
                   {filteredBestiary.length === 0 && <p className="text-xs text-muted-foreground text-center mt-4 border border-dashed border-white/10 p-4 rounded-lg bg-black/20">Nenhuma criatura encontrada.</p>}
                 </div>
-              </div>
+              </aside>
 
               {/* COLUNA DIREITA: VISUALIZAÇÃO OU CRIAÇÃO */}
-              <div className="lg:w-2/3 p-6 overflow-y-auto custom-scrollbar-sepia bg-black/20 relative">
+              <main data-controller-scrollport="true" className="rpg-bestiary-details min-h-0 min-w-0 flex-1 overflow-y-auto custom-scrollbar-sepia bg-black/10 p-4 sm:p-6 lg:p-8">
                 {error && <p role="alert" className="mb-4 rounded-lg border border-red-400 bg-red-950 p-3 text-red-100">{error}</p>}
                 {isCreating ? (
                   <fieldset disabled={saving} className="flex min-w-0 flex-col gap-6 animate-in fade-in slide-in-from-right-4 max-w-2xl mx-auto">
                     <div className="flex items-center justify-between border-b border-destructive/30 pb-4">
-                      <h2 className="font-serif text-2xl font-black text-foreground flex items-center gap-2"><Plus className="size-5 text-destructive" /> {editingCreature ? "Editar Criatura" : "Forjar Nova Criatura"}</h2>
+                      <h2 tabIndex={-1} data-controller-item="true" data-bestiary-detail-start="true" className="font-serif text-2xl font-black text-foreground flex items-center gap-2"><Plus className="size-5 text-destructive" /> {editingCreature ? "Editar Criatura" : "Forjar Nova Criatura"}</h2>
                       <Button variant="ghost" size="sm" onClick={async () => { if (await controllerConfirm("Descartar as alterações não salvas?")) { setIsCreating(false); setError(""); } }}>Cancelar</Button>
                     </div>
 
@@ -388,7 +437,7 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
                           <Image src={hoveredCreature.imageUrl} alt={hoveredCreature.name} fill className="object-cover" />
                         </div>
                         <div className="flex flex-col justify-center">
-                          <h2 className="font-serif text-3xl font-black text-foreground">{hoveredCreature.name}</h2>
+                          <h2 tabIndex={-1} data-controller-item="true" data-bestiary-detail-start="true" className="font-serif text-3xl font-black text-foreground">{hoveredCreature.name}</h2>
                           <p className="text-sm font-bold tracking-widest uppercase text-destructive mt-1">Lv. {hoveredCreature.level} · {hoveredCreature.species}</p>
                           <div className="flex gap-4 mt-4">
                             <span className="flex items-center gap-1.5 text-sm text-[color:var(--hp)]"><Heart className="size-4" /> {hoveredCreature.maxHp} HP</span>
@@ -397,12 +446,11 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
                         </div>
                       </div>
                       
-                      {customCreatures.some(custom => custom.id === hoveredCreature.id) && (
-                        <div className="flex gap-2">
-                          <Button variant="outline" disabled={saving} onClick={() => openEditor(hoveredCreature)}>Editar criatura</Button>
-                          <Button variant="ghost" disabled={saving} onClick={deleteSelected} aria-label="Excluir criatura"><Trash2 className="size-4" /></Button>
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" disabled={saving || spawning} onClick={() => openEditor(hoveredCreature)} className="gap-2"><ControllerGlyph button="LB" small/> Editar criatura</Button>
+                        {customCreatures.some(custom => custom.id === hoveredCreature.id) &&
+                          <Button variant="ghost" disabled={saving} onClick={deleteSelected} aria-label="Excluir criatura"><Trash2 className="size-4" /></Button>}
+                      </div>
                     </div>
                     
                     <div className="grid grid-cols-4 gap-2">
@@ -442,15 +490,23 @@ export function GmBestiary({ isOpen, onClose, onSpawn, onConvertToNpc, customCre
 
                     <Button variant="outline" disabled={spawning || saving} onClick={async () => { setSpawning(true); setError(""); try { await onConvertToNpc(hoveredCreature); onClose() } catch (cause) { setError(cause instanceof Error ? cause.message : "Falha na conversão.") } finally { setSpawning(false) } }}>Converter em NPC do Berçário</Button>
                     <Button className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2 h-12 text-lg font-bold shadow-[0_0_15px_rgba(255,0,0,0.3)] mt-2" disabled={spawning || saving} onClick={() => void spawnSelected()}>
-                      <Target className="size-5" /> {spawning ? "Invocando..." : "Invocar para a Mesa"}
+                      <ControllerGlyph button="RB" small/><Target className="size-5" /> {spawning ? "Invocando..." : "Invocar para a Mesa"}
                     </Button>
                   </div>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-muted-foreground italic text-sm">Selecione uma criatura na lista ou forje uma nova.</div>
+                  <div className="rpg-bestiary-empty flex min-h-full flex-col items-center justify-center gap-3 text-center">
+                    <span className="rpg-bestiary-emblem grid size-20 place-items-center rounded-2xl"><Skull className="size-10"/></span>
+                    <h2 className="mt-2 font-serif text-2xl font-bold text-foreground">Seu bestiário, seu mundo</h2>
+                    <p className="max-w-md text-sm leading-relaxed text-muted-foreground">Escolha uma criatura na lista para ver atributos e ataques, invocá-la na mesa ou preparar novas ameaças.</p>
+                    <Button variant="outline" className="mt-3 gap-2" onClick={() => void openEditor()}><Plus className="size-4"/> Forjar criatura</Button>
+                  </div>
                 )}
-              </div>
+              </main>
             </div>
-
+            <footer className="rpg-archive-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/10 text-[11px] text-muted-foreground">
+              <span>Selecione uma criatura para ver atributos, ataques e ações.</span>
+              <span className="inline-flex flex-wrap items-center gap-2">Direcional navegar <ControllerGlyph button="A" small/> Selecionar <ControllerGlyph button="B" small/> Voltar <ControllerGlyph button="RB" small/> Invocar <ControllerGlyph button="LB" small/> Editar</span>
+            </footer>
           </motion.div>
         </motion.div>
       )}

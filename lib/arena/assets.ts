@@ -18,6 +18,15 @@ export function arenaImage(url:string):HTMLImageElement{
  return entry.image
 }
 export async function preloadArenaImages(urls:Iterable<string>){
- await Promise.all([...new Set(urls)].map(url=>{arenaImage(url);return cache.get(url)!.ready}))
+ const pending=[...new Set(urls)]
+ await Promise.all(Array.from({length:Math.min(6,pending.length)},async()=>{
+  while(pending.length){const url=pending.shift()!;let failure:unknown
+   for(let attempt=0;attempt<3;attempt++){
+    if(attempt){cache.delete(url);await new Promise(resolve=>setTimeout(resolve,250*attempt))}
+    try{arenaImage(url);await cache.get(url)!.ready;failure=null;break}catch(error){failure=error}
+   }
+   if(failure)throw failure
+  }
+ }))
 }
 export function arenaImageCount(){return cache.size}

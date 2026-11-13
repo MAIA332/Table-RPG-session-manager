@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ClipboardEvent as ReactClipboardEvent } from "react"
 import { FileUp, ImageIcon, LoaderCircle, Send, Download, MessageSquareText } from "lucide-react"
 import { VOICE_FILE_MAX_BYTES, type VoiceChatMessage, type VoiceChatPage } from "@/lib/voice/types"
+import { splitMessageLinks } from "@/lib/voice/linkify"
+import { VoiceImageLightbox } from "./voice-image-lightbox"
 
 type Props = { campaignId: string; active: boolean; meId: string; canModerate: boolean; onUnreadChange?: (value: number) => void }
 
@@ -73,6 +75,8 @@ export function VoiceChat({ campaignId, active, meId, canModerate, onUnreadChang
   const [deleting, setDeleting] = useState("")
   const [fetching, setFetching] = useState(false)
   const [error, setError] = useState("")
+  const [viewer, setViewer] = useState<{src: string; name: string} | null>(null)
+  const closeViewer = useCallback(() => setViewer(null), [])
   const [unread, setUnread] = useState(0)
   const chatBottomRef = useRef<HTMLDivElement>(null)
   const loadedRef = useRef(false)
@@ -208,14 +212,18 @@ export function VoiceChat({ campaignId, active, meId, canModerate, onUnreadChang
             {new Date(message.createdAt).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"})}
           </time>
         </div>
-        {message.text && <p className="whitespace-pre-wrap break-words text-xs leading-relaxed">{message.text}</p>}
+        {message.text && <p className="whitespace-pre-wrap break-words text-xs leading-relaxed">{splitMessageLinks(message.text).map((part, index) => part.href ?
+          <a key={index} href={part.href} target="_blank" rel="noopener noreferrer" className="otms-voice-link break-all" title={part.href}>{part.text}</a>
+          : <span key={index}>{part.text}</span>)}</p>}
         {message.attachment && <div className="mt-2">
           {message.attachment.kind === "image" ?
-            <a href={urlFor(campaignId, message.attachment.id)} target="_blank" rel="noopener noreferrer" className="block" aria-label={`Abrir imagem ${message.attachment.name}`}>
-              {/* Imagens locais autenticadas; não são URLs externas. */}
+            <button type="button" className="block cursor-zoom-in rounded-md text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400"
+              onClick={() => setViewer({src: urlFor(campaignId, message.attachment!.id), name: message.attachment!.name})}
+              aria-label={`Ampliar imagem ${message.attachment.name} dentro do chat`}>
+              {/* Imagens locais autenticadas; visualizador interno sem nova aba. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={urlFor(campaignId, message.attachment.id)} alt={message.attachment.name} loading="lazy" className="max-h-48 w-auto max-w-full rounded-md border border-amber-600/20 object-contain"/>
-            </a> : null}
+            </button> : null}
           <a className="otms-voice-link mt-1 inline-flex max-w-full items-center gap-1.5 truncate" href={urlFor(campaignId, message.attachment.id)} download={message.attachment.name}>
             <Download className="size-3 shrink-0"/> {message.attachment.name} ({Math.round(message.attachment.originalSize / 1024)} KB)
           </a>
@@ -253,5 +261,6 @@ export function VoiceChat({ campaignId, active, meId, canModerate, onUnreadChang
       </div>
       {error && <p role="alert" className="mt-2 text-xs text-red-400">{error}</p>}
     </form>
+    {viewer && <VoiceImageLightbox src={viewer.src} name={viewer.name} onClose={closeViewer}/>}
   </section>
 }

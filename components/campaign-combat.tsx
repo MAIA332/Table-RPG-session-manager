@@ -2,6 +2,7 @@
 import { controllerConfirm } from '@/lib/input/dialogs'
 import { useEffect, useRef, useState } from "react"
 import { Swords, Wifi, WifiOff, X } from "lucide-react"
+import { ControllerGlyph } from "./controller/controller-glyph"
 import { useController } from "./controller/controller-provider"
 import { useControllerActions } from "@/lib/input/use-controller-actions"
 import { CreatureAbilitiesManager } from "./creature-abilities-manager"
@@ -252,6 +253,40 @@ export function CampaignCombat({
     combat?.creatures.find((c) => c.instanceId === selectedCreature) ||
     combat?.creatures[0]
   const creatureParalyzed = Boolean(creature && (combat as typeof combat & { crisis?: CrisisPublicState } | null)?.crisis?.creatures?.[creature.instanceId]?.conditions.some(c => c.kind === "paralysis"))
+
+  const actionPromptOpenRef = useRef(false)
+  async function toggleCombatFromPad() {
+    if (!isGm || !open || !combat || pending || actionPromptOpenRef.current) return
+    if (!combat.enabled && !chosen.length) { setLocalError("Selecione participantes antes de iniciar o combate."); return }
+    actionPromptOpenRef.current = true
+    try {
+      if (combat.enabled) {
+        if (!await controllerConfirm("Encerrar o combate? Os tokens serão zerados; criaturas e ataques cadastrados serão preservados.", true)) return
+        await run({type: "end"})
+      } else {
+        if (!await controllerConfirm(`Iniciar o combate com ${chosen.length} participante(s)?`, true)) return
+        if (await run({type: "start", characterIds: chosen})) {
+          setRosterDraft(null)
+          setSettings(false)
+        }
+      }
+    } finally { actionPromptOpenRef.current = false }
+  }
+  async function removeCreatureFromPad() {
+    if (!isGm || !open || !creature || pending || actionPromptOpenRef.current) return
+    const selected = creature
+    actionPromptOpenRef.current = true
+    try {
+      if (!await controllerConfirm(`Retirar "${selected.name}" da mesa?`, true)) return
+      if (!combat?.creatures.some(item => item.instanceId === selected.instanceId)) return
+      await run({type: "remove-creature", instanceId: selected.instanceId})
+      setSelectedCreature(current => current === selected.instanceId ? "" : current)
+    } finally { actionPromptOpenRef.current = false }
+  }
+  useControllerActions({
+    'combat.toggle': () => { void toggleCombatFromPad(); return true },
+    'combat.creature.remove': () => { void removeCreatureFromPad(); return true },
+  }, {enabled: controllerActive && isGm && open, priority: 360})
   const pcAttacks = myCharacter
     ? combat?.playerAttacks[myCharacter.id] || []
     : []
@@ -359,7 +394,7 @@ export function CampaignCombat({
             if (e.key === "Escape") setOpen(false)
           }}
         >
-          <div data-controller-combat-root tabIndex={-1} className="rpg-combat-modal rpg-modal rpg-themed-workspace mx-auto max-w-5xl rounded-xl border border-primary/35 bg-background/95 p-4 pb-24 text-foreground shadow-2xl sm:p-6">
+          <div data-controller-combat-root tabIndex={-1} data-controller-combat-shortcuts={isGm ? "active" : undefined} data-controller-combat-modal={isGm ? "active" : undefined} data-controller-has-creature={!!creature} className="rpg-combat-modal rpg-modal rpg-themed-workspace mx-auto max-w-5xl rounded-xl border border-primary/35 bg-background/95 p-4 pb-24 text-foreground shadow-2xl sm:p-6">
             <header className="rpg-modal-header -mx-4 -mt-4 mb-5 flex items-center justify-between gap-3 border-b border-border/60 px-4 py-4 sm:-mx-6 sm:-mt-6 sm:px-6">
               <div className="flex items-center gap-3">
                 <span className="grid size-11 shrink-0 place-items-center rounded-lg border border-primary/35 bg-primary/15 text-primary"><Swords className="size-5" /></span>
@@ -427,7 +462,7 @@ export function CampaignCombat({
                             void run({ type: "end" })
                         }}
                       >
-                        Encerrar combate
+                        <span className="inline-flex items-center gap-2"><ControllerGlyph button="LS" small/> Encerrar combate</span>
                       </button>
                     )}
                   </div>
@@ -476,7 +511,7 @@ export function CampaignCombat({
                     >
                       {combat.enabled
                         ? "Atualizar participantes"
-                        : "Iniciar combate"}
+                        : <span className="inline-flex items-center gap-2"><ControllerGlyph button="LS" small/> Iniciar combate</span>}
                     </button>
                     <details className="border-t border-border/50 pt-4">
                       <summary className="cursor-pointer font-semibold">
@@ -788,6 +823,10 @@ export function CampaignCombat({
                                 {creature.currentMp}/{creature.maxMp} MP
                               </span>
                             ) : null}
+                            {isGm && <button type="button" className={`${button} ml-auto inline-flex items-center gap-2 border-destructive/50 text-red-200 hover:border-destructive`} disabled={pending || actionPromptOpenRef.current}
+                              aria-label={`Retirar ${creature.name} da mesa`} title={`Retirar ${creature.name} da mesa · R3`} onClick={() => void removeCreatureFromPad()}>
+                              <ControllerGlyph button="RS" small/><X className="size-4"/><span className="hidden sm:inline">Retirar da mesa</span>
+                            </button>}
                           </div>
                           {isGm && (
                             <CreatureResourceControls

@@ -1,5 +1,6 @@
 "use client"
 import { useState } from "react"
+import { ControllerGlyph } from "./controller/controller-glyph"
 import { PRESET_CHECKS, QTE_CHECKS } from "@/lib/combat-checks"
 import type { CustomCheck } from "@/lib/custom-checks"
 import type { MonsterAttribute } from "@/lib/monster-dice"
@@ -94,12 +95,13 @@ export function CombatMonsterCard({
           </p>
         </div>
         <button
-          className="p-2 text-zinc-400 hover:text-red-300"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-2 py-2 text-zinc-400 hover:border-red-500/30 hover:bg-red-900/15 hover:text-red-300 focus-visible:ring-2 focus-visible:ring-amber-300"
           disabled={pending}
-          aria-label={`Remover ${creature.name}`}
+          aria-label={`Remover ${creature.name} da mesa (R3 quando focada)`}
+          title="Remover criatura · R3 quando focada"
           onClick={onRemove}
         >
-          ×
+          <ControllerGlyph button="RS" small/><span aria-hidden="true" className="text-xl leading-none">×</span>
         </button>
       </header>
       {crisisConditions.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label={`Condições de ${creature.name}`}>{crisisConditions.map(condition => <span key={condition.applicationId || condition.id} title={condition.description} className="rounded border border-rose-500/40 bg-rose-950/40 px-2 py-1 text-xs text-rose-200">{condition.name}{crisisModifierLabel(condition) ? ` · ${crisisModifierLabel(condition)}` : ""}{condition.stage ? ` · estágio ${condition.stage}` : ""}</span>)}</div>}

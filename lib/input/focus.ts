@@ -1,5 +1,6 @@
 import type { InputAction } from './actions'
 import { nearestInDirection, type NavDirection } from './spatial-navigation'
+import { controllerKeyboardOpen, handleControllerKeyboard, openControllerKeyboard } from './virtual-keyboard'
 
 const FOCUSABLE = 'button:not([disabled]),a[href],input:not([disabled]):not([type="hidden"]),textarea:not([disabled]),select:not([disabled]),summary,[role="button"][tabindex]:not([aria-disabled="true"]),[tabindex="0"], [tabindex="-1"][data-controller-item]'
 function shown(el: HTMLElement) {
@@ -23,6 +24,22 @@ let selectDialog: HTMLDivElement | null = null
 let selectedIndex = 0
 let selectedSource: HTMLSelectElement | null = null
 
+/** Accessible label without descendant option values or nested controls. */
+export function controllerFieldLabel(source: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, fallback = 'Campo de texto'): string {
+  const clean = (value: string | null | undefined) => value?.replace(/\s+/g, ' ').trim().slice(0, 72) || ''
+  const labelledBy = source.getAttribute('aria-labelledby')?.split(/\s+/).map(id => document.getElementById(id)?.textContent?.trim()).filter(Boolean).join(' ')
+  const fromLabel = (label: HTMLLabelElement | null) => {
+    if (!label) return ''
+    const copy = label.cloneNode(true) as HTMLElement
+    copy.querySelectorAll('input, select, option, textarea, button, [aria-hidden="true"], small').forEach(el => el.remove())
+    return clean(copy.textContent)
+  }
+  const labels = 'labels' in source && source.labels ? [...source.labels] : []
+  return clean(source.getAttribute('aria-label')) || clean(labelledBy) ||
+    labels.map(fromLabel).find(Boolean) || fromLabel(source.closest('label')) ||
+    clean(source.getAttribute('placeholder')) || clean(source.getAttribute('name')) || fallback
+}
+
 export function controllerSelectOpen(): boolean { return !!selectDialog }
 export function closeControllerSelect(restore = true) {
   selectDialog?.remove()
@@ -42,7 +59,9 @@ function openControllerSelect(source: HTMLSelectElement) {
   const panel = document.createElement('section')
   panel.className = 'otms-controller-select-panel'
   const title = document.createElement('h3')
-  title.textContent = source.getAttribute('aria-label') || source.closest('label')?.textContent?.trim().slice(0,90) || 'Escolha uma opção'
+  // Never read options from a label: select labels can wrap all <option> text
+  // and previously rendered titles like MIGD4D6D8D10D12D20.
+  title.textContent = controllerFieldLabel(source, 'Escolha uma opção')
   panel.appendChild(title)
   const list = document.createElement('div')
   list.className = 'otms-controller-select-list'
@@ -97,7 +116,7 @@ function handleSelectDialog(action: InputAction) {
  * o comportamento atual do foco.
  */
 function scrollFocusedIntoView(el: HTMLElement) {
-  const root = el.closest<HTMLElement>('[data-controller-scroll-root="special-attacks"], [data-controller-scroll-root="character-creator"], [data-controller-scroll-root="soundpad"]')
+  const root = el.closest<HTMLElement>('[data-controller-scroll-root="special-attacks"], [data-controller-scroll-root="character-creator"], [data-controller-scroll-root="soundpad"], [data-controller-scroll-root="gallery"], [data-controller-scroll-root="bestiary"]')
   if (!root) {
     el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
     return
@@ -130,17 +149,17 @@ function scrollFocusedIntoView(el: HTMLElement) {
     if (dx && (getComputedStyle(content).overflowX === 'auto' || getComputedStyle(content).overflowX === 'scroll')) content.scrollLeft += dx
   }
 }
-function focus(el: HTMLElement) {
+function focus(el: HTMLElement, reveal = true) {
   previouslyFocused?.removeAttribute('data-controller-focused')
   previouslyFocused = el
   el.dataset.controllerFocused = 'true'
   el.focus({ preventScroll: true })
-  scrollFocusedIntoView(el)
+  if (reveal) scrollFocusedIntoView(el)
 }
 /** Aplica a mesma marcação visível do direcional ao foco definido por atalhos. */
-export function focusControllerElement(element: HTMLElement | null | undefined): boolean {
+export function focusControllerElement(element: HTMLElement | null | undefined, reveal = true): boolean {
   if (!element || !shown(element)) return false
-  focus(element)
+  focus(element, reveal)
   return true
 }
 export function clearControllerFocus() {
@@ -149,7 +168,42 @@ export function clearControllerFocus() {
   previouslyFocused = null
   document.querySelectorAll('[data-controller-focused]').forEach(el => el.removeAttribute('data-controller-focused'))
 }
+/** Highest-priority field handling, shared by panels with their own A/arrow mapping. */
+export function controllerFocusedFieldAction(action: InputAction): boolean {
+  if (typeof document === 'undefined' || controllerKeyboardOpen() || controllerSelectOpen()) return false
+  const current = document.activeElement
+  if (!(current instanceof HTMLElement) || !shown(current)) return false
+  if (action === 'ui.confirm' && (current instanceof HTMLTextAreaElement ||
+      (current instanceof HTMLInputElement && ['text','search','email','password','tel','url','number'].includes(current.type)))) {
+    if (current.readOnly || current.hasAttribute('disabled')) return true
+    openControllerKeyboard(current, controllerFieldLabel(current, current instanceof HTMLInputElement && current.type === 'number' ? 'Valor numérico' : 'Digite o texto'))
+    return true
+  }
+  if (action !== 'ui.left' && action !== 'ui.right') return false
+  if (!(current instanceof HTMLInputElement) || current.readOnly || current.disabled) return false
+  if (current.type === 'range') {
+    current.stepUp(action === 'ui.right' ? 1 : -1)
+    current.dispatchEvent(new Event('input',{bubbles:true}))
+    current.dispatchEvent(new Event('change',{bubbles:true}))
+    return true
+  }
+  if (current.type !== 'number') return false
+  const step = current.step && current.step !== 'any' && Number(current.step) > 0 ? Number(current.step) : 1
+  const min = current.min !== '' ? Number(current.min) : -Infinity
+  const max = current.max !== '' ? Number(current.max) : Infinity
+  const value = current.value === '' ? (Number.isFinite(min) ? min : 0) : Number(current.value)
+  const next = Math.min(max, Math.max(min, value + (action === 'ui.right' ? step : -step)))
+  if (Number.isFinite(next) && (next !== value || current.value === '')) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+    setter?.call(current, String(Number(next.toFixed(10))))
+    current.dispatchEvent(new Event('input', {bubbles:true}))
+    current.dispatchEvent(new Event('change', {bubbles:true}))
+  }
+  return true
+}
+
 export function controllerFocus(action: InputAction, requestedLayer?: HTMLElement | null): boolean {
+  if (controllerKeyboardOpen()) return handleControllerKeyboard(action)
   if (selectDialog) return handleSelectDialog(action)
   // Modais em portais podem coexistir com fichas da sala. O dono da interação
   // informa seu escopo para não navegar por elementos atrás do modal.
@@ -162,9 +216,7 @@ export function controllerFocus(action: InputAction, requestedLayer?: HTMLElemen
       items.find(el => el.hasAttribute('data-controller-initial')) || items[0]
   if (action === 'ui.confirm') {
     if (current && layer.contains(current) && shown(current)) {
-      if (current.matches('input:not([type="checkbox"]):not([type="radio"]), textarea')) {
-        current.focus(); return true
-      }
+      if (controllerFocusedFieldAction(action)) return true
       if (current instanceof HTMLSelectElement) {openControllerSelect(current);return true}
       current.click(); return true
     }
@@ -185,15 +237,7 @@ export function controllerFocus(action: InputAction, requestedLayer?: HTMLElemen
     return false
   }
   if (!items.length) return false
-  // Ajustes de slider continuam no eixo horizontal; selects NÃO são alterados por setas.
-  if (current && layer.contains(current) && (action === 'ui.left' || action === 'ui.right')) {
-    if (current instanceof HTMLInputElement && current.type === 'range') {
-      current.stepUp(action === 'ui.right' ? 1 : -1)
-      current.dispatchEvent(new Event('input',{bubbles:true}))
-      current.dispatchEvent(new Event('change',{bubbles:true}))
-      return true
-    }
-  }
+  if (controllerFocusedFieldAction(action)) return true
   const direction = ({'ui.up':'up', 'ui.down':'down', 'ui.left':'left', 'ui.right':'right',
     'ui.previous':'left', 'ui.next':'right' } as Partial<Record<InputAction, NavDirection>>)[action]
   if (!direction) return false
